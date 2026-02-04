@@ -88,15 +88,47 @@
 
 ## Traceability
 
-Requirements mapped to phases during roadmap creation.
+**Coverage:** 29/29 v1 requirements mapped to phases ✓
 
-**Coverage:**
-- v1 requirements: 29 total (backend-only, no auth/UI)
-- Mapped to phases: (pending roadmap)
-- Unmapped: (pending roadmap)
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| EXTR-01 | Phase 1 | Pending |
+| EXTR-02 | Phase 1 | Pending |
+| EXTR-03 | Phase 1 | Pending |
+| EXTR-04 | Phase 1 | Pending |
+| EXTR-05 | Phase 1 | Pending |
+| EXTR-06 | Phase 1 | Pending |
+| ETL-01 | Phase 1 | Pending |
+| ETL-02 | Phase 1 | Pending |
+| ETL-03 | Phase 1 | Pending |
+| ETL-04 | Phase 1 | Pending |
+| ETL-05 | Phase 1 | Pending |
+| ETL-06 | Phase 1 | Pending |
+| DB-01 | Phase 1 | Pending |
+| DB-02 | Phase 1 | Pending |
+| DB-03 | Phase 1 | Pending |
+| DB-04 | Phase 1 | Pending |
+| DB-05 | Phase 1 | Pending |
+| DB-06 | Phase 1 | Pending |
+| DB-07 | Phase 1 | Pending |
+| SCHED-01 | Phase 1 | Pending |
+| SCHED-02 | Phase 3 | Pending |
+| SCHED-03 | Phase 3 | Pending |
+| MON-01 | Phase 1 | Pending |
+| MON-02 | Phase 1 | Pending |
+| MON-03 | Phase 2 | Pending |
+| MON-04 | Phase 2 | Pending |
+| MON-05 | Phase 1 | Pending |
+| MON-06 | Phase 2 | Pending |
+| MON-07 | Phase 1 | Pending |
 
-**Note:** Streamlit/UI dashboard deferred to v2 - v1 is pure backend (ETL + database)
+**Phase Distribution:**
+- Phase 1 (Foundation): 24 requirements
+- Phase 2 (Operational Maturity): 3 requirements
+- Phase 3 (Production Excellence): 2 requirements
+
+**Note:** Phase 1 includes all critical pitfall preventions and table stakes features for zero data loss guarantee. Phase 2 adds operational improvements discovered through production experience. Phase 3 is triggered by operational need, not pre-scheduled.
 
 ---
 *Requirements defined: 2026-02-04*
-*Last updated: 2026-02-04 after research synthesis*
+*Traceability updated: 2026-02-04 after roadmap creation*
