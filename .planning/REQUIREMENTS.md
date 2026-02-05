@@ -116,10 +116,9 @@
 | SCHED-03 | Phase 3 | Pending |
 | MON-01 | Phase 1 | Pending |
 | MON-02 | Phase 1 | Pending |
-| MON-03 | Phase 2 | Pending |
-| MON-04 | Phase 2 | Pending |
-| MON-05 | Phase 1 | Pending |
-| MON-06 | Phase 2 | Pending |
+| MON-03 | Phase 2 | Complete |
+| MON-04 | Phase 2 | Complete |
+| MON-06 | Phase 2 | Complete |
 | MON-07 | Phase 1 | Pending |
 
 **Phase Distribution:**
