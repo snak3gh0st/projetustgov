@@ -204,3 +204,7 @@ def reload_config() -> AppConfig:
     """
     get_config.cache_clear()
     return get_config()
+
+
+# Backward compatibility alias
+get_settings = get_config
