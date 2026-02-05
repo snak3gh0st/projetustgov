@@ -67,6 +67,12 @@ class Settings(BaseSettings):
         description="Days to retain raw files before cleanup",
     )
 
+    # Reconciliation
+    alert_on_mismatch: bool = Field(
+        default=True,
+        description="Send Telegram alert when reconciliation mismatch detected",
+    )
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
