@@ -1,0 +1,38 @@
+# PROJETUS Configuration
+# Phase 2: Operational Maturity
+
+# Alerting Configuration
+alerting:
+  telegram:
+    enabled: true
+    bot_token: "${TELEGRAM_BOT_TOKEN}"
+    chat_id: "${TELEGRAM_CHAT_ID}"
+  email:
+    enabled: false  # Enable after SMTP configured
+    smtp_host: "${EMAIL_SMTP_HOST}"
+    smtp_port: 587
+    from: alerts@projetus.com
+    to:
+      - tito@projetus.com
+      - philipe@projetus.com
+
+# Reconciliation Configuration
+reconciliation:
+  volume_tolerance_percent: 10
+  alert_on_mismatch: true
+  alert_on_scheduler_miss: true
+
+# Extraction Configuration
+extraction:
+  hour: 9
+  timezone: America/Sao_Paulo
+  dry_run_default: false
+
+# Data Lineage Configuration
+lineage:
+  enabled: true
+  track_pipeline_version: true
+
+# Database (references DATABASE_URL from .env)
+database:
+  url: "${DATABASE_URL}"
