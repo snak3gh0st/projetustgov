@@ -208,3 +208,31 @@ class ExtractionLog(Base):
     records_skipped: Mapped[Optional[int]] = mapped_column()
     duration_seconds: Mapped[Optional[float]] = mapped_column(Float)
     error_message: Mapped[Optional[str]] = mapped_column(Text)
+
+
+class DataLineage(Base):
+    """Data lineage tracking for audit trail and compliance.
+
+    Tracks the source file, extraction timestamp, and pipeline version
+    for each record to support data provenance and zero data loss verification.
+    """
+
+    __tablename__ = "data_lineage"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    entity_type: Mapped[str] = mapped_column(
+        String, nullable=False, index=True
+    )  # "proposta", "apoiador", "emenda", "programa"
+    entity_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    source_file: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    extraction_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    pipeline_version: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    record_hash: Mapped[Optional[str]] = mapped_column(
+        String, nullable=True
+    )  # SHA256 of record content
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_data_lineage_entity", "entity_type", "entity_id"),
+        Index("ix_data_lineage_source", "source_file"),
+    )
