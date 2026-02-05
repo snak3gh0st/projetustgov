@@ -59,10 +59,13 @@ Plans:
   7. Dry-run mode previews extraction without writing to database (safe testing of parser changes)
   8. Full upsert logic implemented with ON CONFLICT DO UPDATE (handles changing data gracefully)
 
-**Plans**: TBD (to be determined during plan-phase)
+**Plans**: 4 plans created
 
 Plans:
-- [ ] TBD during planning
+- [ ] 02-01-PLAN.md — Configuration Externalization (YAML + Pydantic)
+- [ ] 02-02-PLAN.md — Enhanced Alerting (Telegram + Email + Volume + Scheduler)
+- [ ] 02-03-PLAN.md — Reconciliation & Lineage (DB model + tracking)
+- [ ] 02-04-PLAN.md — Dry-Run Mode & Health Check API
 
 ### Phase 3: Production Excellence
 **Goal**: Add advanced capabilities for self-healing, performance optimization, and data quality monitoring. Only build when operational pain justifies complexity investment. This phase is triggered by need, not pre-scheduled.
@@ -97,7 +100,7 @@ Phases execute in numeric order: 1 → 2 → 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 5/5 | Complete | 2026-02-05 |
-| 2. Operational Maturity | 0/TBD | Not started | - |
+| 2. Operational Maturity | 0/4 | Planned | - |
 | 3. Production Excellence | 0/TBD | Not started | - |
 
 ---
