@@ -1,0 +1,6 @@
+transfer_gov_id,titulo,valor_global,valor_repasse,valor_contrapartida,situacao,estado,municipio,proponente,programa_id
+PROP-001,"Projeto de Aração e Gradagem",150000.00,120000.00,30000.00,Em execução,CE,Fortaleza,Prefeitura Municipal,PROGRAMA-001
+PROP-002,"Construção de Escola Rural",850000.00,700000.00,150000.00,Concluída,BA,Salvador,Secretaria de Educação,PROGRAMA-002
+PROP-003,"Infraestrutura Hídrica - Açude",320000.50,280000.00,40000.50,Em execução,PE,Recife,Consórcio de Água,PROGRAMA-003
+PROP-004,"Equipamento Agrícola - Trator",275000.00,220000.00,55000.00,Proposta,MG,Belo Horizonte,Cooperativa Rural,PROGRAMA-001
+PROP-005,"Regularização Fundiária - Projeto",180000.00,150000.00,30000.00,Em análise,RS,Porto Alegre,INCRA,PROGRAMA-004
