@@ -7,10 +7,11 @@ Monitors extraction scheduler and alerts when runs are missed or delayed.
 from datetime import datetime, timedelta
 from typing import Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from src.loader.database import get_engine
 from src.loader.extraction_log import get_last_extraction
+from src.loader.db_models import ExtractionLog
 
 
 def _get_extraction_hour() -> int:
@@ -29,7 +30,7 @@ def _get_extraction_hour() -> int:
 
 
 def should_alert_scheduler_miss(
-    last_extraction: Optional[object],
+    last_extraction: Optional[ExtractionLog],
     expected_hour: int = 9,
 ) -> bool:
     """Check if scheduler miss should trigger an alert.
@@ -81,7 +82,7 @@ def get_scheduler_status() -> dict:
     expected_hour = _get_extraction_hour()
 
     # Get last extraction
-    SessionLocal = Session(bind=get_engine())
+    SessionLocal = sessionmaker(bind=get_engine())
     with SessionLocal() as session:
         last_extraction = get_last_extraction(session)
 
@@ -154,7 +155,7 @@ def check_scheduler_health(
         - is_healthy=False, message="..." if scheduler miss detected
     """
     # Get last extraction
-    SessionLocal = Session(bind=get_engine())
+    SessionLocal = sessionmaker(bind=get_engine())
     with SessionLocal() as session:
         last_extraction = get_last_extraction(session)
 
