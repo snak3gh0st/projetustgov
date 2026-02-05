@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from pydantic import BaseModel
 
-from src.loader.database import get_engine
+from src.loader.database import get_engine, create_session_factory
 from src.loader.extraction_log import get_last_extraction
 from src.monitor.scheduler_health import get_scheduler_status
 
@@ -88,7 +88,8 @@ async def health_check():
     logger.debug("Health check requested")
 
     # Get database session
-    SessionLocal = get_engine().sessionmaker
+    engine = get_engine()
+    SessionLocal = create_session_factory(engine)
     last_extraction = None
 
     try:
@@ -176,9 +177,13 @@ async def readiness_check():
     # Check database connectivity
     db_ready = False
     try:
-        with get_engine().sessionmaker() as session:
+        from sqlalchemy import text
+
+        engine = get_engine()
+        SessionLocal = create_session_factory(engine)
+        with SessionLocal() as session:
             # Simple query to verify database connection
-            session.execute("SELECT 1")
+            session.execute(text("SELECT 1"))
             db_ready = True
     except Exception as e:
         logger.error(f"Database readiness check failed: {e}")
@@ -224,7 +229,8 @@ async def metrics_endpoint():
     """
     logger.debug("Metrics requested")
 
-    SessionLocal = get_engine().sessionmaker
+    engine = get_engine()
+    SessionLocal = create_session_factory(engine)
 
     total_extractions = 0
     successful_extractions = 0
