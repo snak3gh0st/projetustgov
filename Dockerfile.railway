@@ -22,8 +22,8 @@ RUN uv sync --frozen
 COPY src/ ./src/
 COPY config.yaml ./
 
-# Expose port
+# Expose port (Railway will assign PORT env var)
 EXPOSE 8000
 
-# Run the API server
-CMD ["uv", "run", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the API server using $PORT from Railway
+CMD ["sh", "-c", "uv run uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
