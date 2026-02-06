@@ -11,9 +11,13 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 import yaml
+from dotenv import load_dotenv
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 T = TypeVar("T")
+
+# Load .env file at module import time
+load_dotenv()
 
 
 def substitute_env_vars(obj: Any) -> Any:
