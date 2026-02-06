@@ -65,6 +65,11 @@ COLUMN_ALIASES = {
         "municipio": ["munic_proponente"],
         "proponente": ["nm_proponente"],
         "programa_id": ["id_programa", "cod_programa"],
+        "proponente_cnpj": ["identif_proponente"],
+        "natureza_juridica_proponente": ["natureza_juridica"],
+        "cep_proponente": ["cep_proponente"],
+        "endereco_proponente": ["endereco_proponente"],
+        "bairro_proponente": ["bairro_proponente"],
     },
     "apoiadores": {
         "nome": [

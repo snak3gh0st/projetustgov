@@ -1,8 +1,9 @@
 """SQLAlchemy ORM models for the Transfer Gov data schema.
 
-This module defines all 7 tables for the PROJETUS database:
+This module defines all 8 tables for the PROJETUS database:
 - Programa (programas) - Government transfer programs
 - Proposta (propostas) - Transfer proposals/applications
+- Proponente (proponentes) - Proponent entities (dimension table)
 - Apoiador (apoiadores) - Supporters/beneficiaries
 - Emenda (emendas) - Budget amendments
 - PropostaApoiador (proposta_apoiadores) - Junction: proposals to supporters
@@ -63,6 +64,35 @@ class Programa(Base):
     extraction_date: Mapped[Optional[date]] = mapped_column(Date)
 
 
+class Proponente(Base):
+    """Proponent entities (proposers) - dimension table for client qualification."""
+
+    __tablename__ = "proponentes"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    cnpj: Mapped[str] = mapped_column(
+        String(14), unique=True, index=True, nullable=False
+    )
+    nome: Mapped[Optional[str]] = mapped_column(String)
+    natureza_juridica: Mapped[Optional[str]] = mapped_column(String(5), index=True)
+    estado: Mapped[Optional[str]] = mapped_column(String(2))
+    municipio: Mapped[Optional[str]] = mapped_column(String)
+    cep: Mapped[Optional[str]] = mapped_column(String(8))
+    endereco: Mapped[Optional[str]] = mapped_column(String)
+    bairro: Mapped[Optional[str]] = mapped_column(String)
+    is_osc: Mapped[bool] = mapped_column(default=False, index=True)
+    total_propostas: Mapped[int] = mapped_column(default=0)
+    total_emendas: Mapped[int] = mapped_column(default=0)
+    valor_total_emendas: Mapped[Optional[float]] = mapped_column(Float)
+
+    # Audit columns
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+    extraction_date: Mapped[Optional[date]] = mapped_column(Date)
+
+
 class Proposta(Base):
     """Transfer proposals/applications submitted by entities."""
 
@@ -85,6 +115,8 @@ class Proposta(Base):
     proponente: Mapped[Optional[str]] = mapped_column(String)
     # Application-level FK to programas.transfer_gov_id (no DB constraint for partial extractions)
     programa_id: Mapped[Optional[str]] = mapped_column(String)
+    # Extracted from IDENTIF_PROPONENTE, links to proponentes.cnpj
+    proponente_cnpj: Mapped[Optional[str]] = mapped_column(String(14), index=True)
 
     # Audit columns
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
