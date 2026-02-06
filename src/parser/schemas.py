@@ -42,6 +42,7 @@ EXPECTED_COLUMNS = {
         "acao_orcamentaria",
         "natureza_juridica",
     ],
+    "programa_proposta": ["id_programa", "id_proposta"],
 }
 
 # Required columns per file type (minimum needed to proceed)
@@ -50,6 +51,7 @@ REQUIRED_COLUMNS = {
     "apoiadores": [],
     "emendas": [],
     "programas": ["transfer_gov_id"],
+    "programa_proposta": [],
 }
 
 # Column aliases to map raw CSV headers to expected names
@@ -96,6 +98,7 @@ COLUMN_ALIASES = {
         "tipo": ["indicacao_apoiadores_emendas"],
         "ano": ["ano_emenda"],
     },
+    "programa_proposta": {},
     "programas": {
         "transfer_gov_id": ["id_programa"],
         "nome": ["nome_programa"],

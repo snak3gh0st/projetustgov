@@ -388,6 +388,8 @@ def load_extraction_data(
     # Add extraction_date to each record in all lists
     # This ensures every record tracks which extraction produced it
     for key in validated_data:
+        if not isinstance(validated_data[key], list):
+            continue
         for record in validated_data[key]:
             record["extraction_date"] = extraction_date
 

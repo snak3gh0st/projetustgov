@@ -22,6 +22,7 @@ FILE_MAPPING = {
     "apoiadores": "siconv_apoiadores_emendas_programas.zip",  # Contains apoiadores
     "emendas": "siconv_apoiadores_emendas_programas.zip",  # Contains emendas
     "programas": "siconv_programa.csv.zip",
+    "programa_proposta": "siconv_programa_proposta.csv.zip",  # Links propostas to programas
 }
 
 
@@ -167,7 +168,7 @@ def download_entity_file(entity_type: str, extraction_date: date | None = None) 
         # Find the CSV file we need
         # For propostas and programas, the CSV is directly in the ZIP
         # For apoiadores/emendas, we need to find the right file in the ZIP
-        if entity_type in ["propostas", "programas"]:
+        if entity_type in ["propostas", "programas", "programa_proposta"]:
             # Look for CSV file
             csv_file = find_file_by_pattern(extract_dir, "*.csv")
             if csv_file:
@@ -207,7 +208,7 @@ def run_repository_download(extraction_date: date | None = None) -> dict[str, st
 
     results: dict[str, str | None] = {}
 
-    entity_types = ["propostas", "apoiadores", "emendas", "programas"]
+    entity_types = ["propostas", "apoiadores", "emendas", "programas", "programa_proposta"]
 
     for entity_type in entity_types:
         logger.info("Downloading {}...", entity_type)

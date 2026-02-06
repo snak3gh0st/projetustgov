@@ -191,7 +191,7 @@ def render_propostas():
         related = get_related_entities(proposta_id)
 
         # Use tabs to organize related entities
-        tab1, tab2 = st.tabs(["Proponente", "Outras Propostas"])
+        tab1, tab2, tab3 = st.tabs(["Proponente", "Programa", "Outras Propostas"])
 
         with tab1:
             st.markdown("**Dados do Proponente**")
@@ -214,6 +214,22 @@ def render_propostas():
                     st.metric("Natureza Juridica", prop.get("natureza_juridica", "N/A"))
 
         with tab2:
+            st.markdown("**Programa vinculado**")
+            df_programa = related["programa"]
+            if df_programa.empty:
+                st.info("Programa não encontrado.")
+            else:
+                prog = df_programa.iloc[0]
+                st.metric("Nome", prog.get("nome", "N/A"))
+                col_p1, col_p2 = st.columns(2)
+                with col_p1:
+                    st.metric("Órgão Superior", prog.get("orgao_superior", "N/A"))
+                    st.metric("Modalidade", prog.get("modalidade", "N/A"))
+                with col_p2:
+                    st.metric("Natureza Jurídica", prog.get("natureza_juridica", "N/A"))
+                    st.metric("Ação Orçamentária", prog.get("acao_orcamentaria", "N/A"))
+
+        with tab3:
             st.markdown("**Outras propostas do mesmo proponente**")
             df_outras = related["outras_propostas"]
             if df_outras.empty:

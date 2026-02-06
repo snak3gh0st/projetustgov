@@ -33,7 +33,10 @@ def infer_entity_type(filename: str) -> Optional[str]:
     """
     name = filename.lower()
 
-    if "proposta" in name:
+    # Check programa_proposta before programa (more specific first)
+    if "programa_proposta" in name:
+        return "programa_proposta"
+    elif "proposta" in name:
         return "propostas"
     elif "apoiador" in name:
         return "apoiadores"
@@ -316,6 +319,21 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
                 # Parse file
                 df = parse_file(str(file_path), entity_type)
                 logger.info(f"Parsed {file_name}: {len(df)} rows")
+
+                if entity_type == "programa_proposta":
+                    # programa_proposta CSV: maps ID_PROPOSTA → ID_PROGRAMA
+                    id_programa_col = _col(df, "id_programa")
+                    id_proposta_col = _col(df, "id_proposta")
+                    if id_programa_col and id_proposta_col:
+                        for row in df.iter_rows(named=True):
+                            prop_id = str(row.get(id_proposta_col, "")).strip()
+                            prog_id = str(row.get(id_programa_col, "")).strip()
+                            if prop_id and prog_id:
+                                programa_links[prop_id] = prog_id
+                        logger.info(f"Loaded {len(programa_links)} programa_proposta links")
+                    else:
+                        logger.warning(f"Could not find ID columns in {file_name}")
+                    continue
 
                 if entity_type in ("apoiadores", "emendas"):
                     # Relationship CSV: extract entities + junctions from raw data

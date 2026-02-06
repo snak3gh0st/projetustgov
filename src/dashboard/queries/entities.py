@@ -222,7 +222,18 @@ def get_related_entities(proposta_id: str) -> dict:
     """
     outras_df = run_query(outras_query, {"proposta_id": proposta_id})
 
+    # Get programa details via programa_id
+    programa_query = """
+        SELECT pr.*
+        FROM programas pr
+        INNER JOIN propostas p ON p.programa_id = pr.transfer_gov_id
+        WHERE p.transfer_gov_id = :proposta_id
+        LIMIT 1
+    """
+    programa_df = run_query(programa_query, {"proposta_id": proposta_id})
+
     return {
         "proponente": proponente_df,
         "outras_propostas": outras_df,
+        "programa": programa_df,
     }
