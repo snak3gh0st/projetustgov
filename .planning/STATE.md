@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 ## Current Position
 
 Phase: 4 of 4 (Data Dashboard)
-Plan: 3 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: In progress
-Last activity: 2026-02-06 — Completed 04-03-PLAN.md Railway deployment configuration
+Last activity: 2026-02-06 — Completed 04-02-PLAN.md entity pages with cross-filtering
 
-Progress: [█████████████░] 92%
+Progress: [█████████████░] 93%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
-- Average duration: ~12 min (01-01: 65 min, 01-02: 5 min, 01-04: 15 min, 02-03: 5 min, 02-01: 8 min, 04-01: 4 min, 04-03: 2 min)
-- Total execution time: ~1.7 hours
+- Total plans completed: 8
+- Average duration: ~11 min (01-01: 65 min, 01-02: 5 min, 01-04: 15 min, 02-03: 5 min, 02-01: 8 min, 04-01: 4 min, 04-02: 3 min, 04-03: 2 min)
+- Total execution time: ~1.8 hours
 
 **By Phase:**
 
@@ -29,11 +29,11 @@ Progress: [█████████████░] 92%
 |-------|-------|-------|----------|
 | 1. Foundation | 3 | 5 | ~28 min |
 | 2. Operational Maturity | 4 | 4 | ~5 min |
-| 4. Data Dashboard | 2 | 2 | ~3 min |
+| 4. Data Dashboard | 3 | 3 | ~3 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-03 (2 min), 04-01 (4 min), 02-01 (8 min), 02-03 (5 min), 01-04 (15 min)
-- Trend: Phase 4 accelerating, deployment config complete
+- Last 5 plans: 04-02 (3 min), 04-03 (2 min), 04-01 (4 min), 02-01 (8 min), 02-03 (5 min)
+- Trend: Phase 4 maintaining high velocity, entity pages complete
 
 *Updated after each plan completion*
 
@@ -59,6 +59,10 @@ Recent decisions affecting current work:
 - Dashboard 10-minute query cache TTL — Balance between freshness and performance
 - Dashboard as separate Railway service — Shares codebase/database with API, uses separate railway.dashboard.json config
 - Railway PORT env var for dynamic port assignment — Enables multi-service deployment flexibility
+- st.dataframe on_select for row selection — Native table selection UX with automatic rerun
+- Cross-filtering via session_state — Store selected_proposta_id, read from other pages for cohesive filtering
+- Junction table filtering — Query via SQL to get related entity IDs, then filter DataFrames
+- Date range with st.date_input — Gives users full control over date ranges vs preset buttons
 
 ### Pending Todos
 
@@ -80,8 +84,8 @@ None of these are blocking — they're implementation details that emerge during
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 04-03-PLAN.md Railway deployment configuration
+Stopped at: Completed 04-02-PLAN.md entity pages with cross-filtering
 Resume file: None
 
 ---
-*Phase 4 Data Dashboard in progress: 04-01 complete (foundation), 04-03 complete (deployment), 04-02 and 04-04 remaining*
+*Phase 4 Data Dashboard in progress: 04-01 complete (foundation), 04-02 complete (entity pages), 04-03 complete (deployment), 04-04 remaining*
