@@ -57,13 +57,13 @@ def emendas_page():
 
 
 # Define navigation structure with exactly 5 tabs as per locked decision
-pages = {
-    "Home": st.Page(home_page, title="Home", icon="🏠"),
-    "Propostas": st.Page(propostas_page, title="Propostas", icon="📄"),
-    "Programas": st.Page(programas_page, title="Programas", icon="📋"),
-    "Apoiadores": st.Page(apoiadores_page, title="Apoiadores", icon="👥"),
-    "Emendas": st.Page(emendas_page, title="Emendas", icon="💰"),
-}
+pages = [
+    st.Page(home_page, title="Home", icon="🏠"),
+    st.Page(propostas_page, title="Propostas", icon="📄"),
+    st.Page(programas_page, title="Programas", icon="📋"),
+    st.Page(apoiadores_page, title="Apoiadores", icon="👥"),
+    st.Page(emendas_page, title="Emendas", icon="💰"),
+]
 
 # Create navigation
 pg = st.navigation(pages)
