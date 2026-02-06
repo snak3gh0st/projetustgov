@@ -16,6 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 2: Operational Maturity** - Advanced monitoring, reconciliation, configuration management
 - [ ] **Phase 3: Production Excellence** - Optional enhancements triggered by operational need
 - [ ] **Phase 4: Data Dashboard** - Streamlit dashboard for visualizing extracted Transfer Gov data
+- [ ] **Phase 5: Client Qualification** - Intuitive interface for clients to find and contact the most valuable proponents
 
 ## Phase Details
 
@@ -115,10 +116,32 @@ Plans:
 - [ ] 04-03-PLAN.md — Extraction history page and Railway deployment configuration
 - [ ] 04-04-PLAN.md — Human verification of complete dashboard
 
+### Phase 5: Client Qualification
+**Goal**: Create an intuitive interface that makes it easy for clients to discover and contact the most valuable proponents (those with fewer projects and new to the system). The interface should highlight proponent value metrics and streamline the qualification workflow. Consider alternatives to Streamlit for better UX.
+
+**Depends on**: Phase 4 (needs dashboard foundation)
+
+**Success Criteria** (what must be TRUE):
+  1. Proponents are ranked by value metrics (fewer active projects = higher value, new/virgin proponents = highest value)
+  2. Client can easily search and filter proponents by value criteria
+  3. Contact information is prominently displayed for each proponent
+  4. Interface is intuitive enough for non-technical clients to use without training
+  5. Value metrics are clearly explained (why fewer projects = more valuable)
+  6. Client can save/export their qualified proponent list
+  7. Interface performs well with the current data volume
+  8. Technology choice (Streamlit vs alternatives) is validated for client UX needs
+
+**Plans**: 3 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Proponente data model + ETL extraction (dimension table, CNPJ dedup, OSC classification, aggregations)
+- [ ] 05-02-PLAN.md — Qualification dashboard page (ranked table, filters, KPIs, CSV export)
+- [ ] 05-03-PLAN.md — Human verification of complete qualification feature
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -126,6 +149,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 2. Operational Maturity | 4/4 | Complete | 2026-02-05 |
 | 3. Production Excellence | 0/TBD | Not started | - |
 | 4. Data Dashboard | 0/4 | Planning complete | - |
+| 5. Client Qualification | 0/3 | Planning complete | - |
 
 ---
 *Roadmap created: 2026-02-04*
