@@ -10,7 +10,7 @@ import streamlit as st
 from sqlalchemy import and_, func, select
 
 from src.dashboard.config import get_db_engine
-from src.loader.db_models import Proponente
+from src.loader.db_models import Proponente, Proposta
 
 
 @st.cache_data(ttl="10m")
@@ -34,13 +34,23 @@ def get_proponentes(limit: int = 5000, filters: dict = None) -> pd.DataFrame:
     filters = filters or {}
 
     with engine.connect() as conn:
-        query = select(Proponente)
+        # Join with propostas to filter by year
+        query = (
+            select(Proponente)
+            .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
+            .where(Proposta.ano == 2026)  # Filter for 2026 data only
+            .distinct()  # Remove duplicates from join
+        )
 
         # Apply filters
         conditions = []
 
+        # ALWAYS filter to OSCs only (per user requirement)
+        conditions.append(Proponente.is_osc == True)
+
         if filters.get("is_osc") is not None:
-            conditions.append(Proponente.is_osc == filters["is_osc"])
+            # Override if explicitly set in filters
+            conditions[-1] = Proponente.is_osc == filters["is_osc"]
 
         if filters.get("estado"):
             conditions.append(Proponente.estado == filters["estado"])
@@ -84,7 +94,17 @@ def get_proponente_estados() -> list[str]:
     engine = get_db_engine()
 
     with engine.connect() as conn:
-        query = select(Proponente.estado).distinct().where(Proponente.estado.isnot(None))
+        # Only estados from 2026 OSC proponentes
+        query = (
+            select(Proponente.estado)
+            .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
+            .where(and_(
+                Proposta.ano == 2026,
+                Proponente.is_osc == True,
+                Proponente.estado.isnot(None)
+            ))
+            .distinct()
+        )
         result = conn.execute(query)
         rows = result.fetchall()
 
@@ -106,21 +126,41 @@ def get_proponente_stats() -> dict:
     engine = get_db_engine()
 
     with engine.connect() as conn:
-        # Total count
-        total_query = select(func.count(Proponente.id))
+        # Filter to only proponentes with 2026 propostas
+        base_query = (
+            select(Proponente)
+            .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
+            .where(Proposta.ano == 2026)
+            .distinct()
+        )
+
+        # Total count (2026 proponentes with OSC filter)
+        total_query = select(func.count(Proponente.id.distinct())).select_from(
+            base_query.subquery()
+        )
         total_result = conn.execute(total_query)
         total_count = total_result.scalar() or 0
 
-        # OSC count
-        osc_query = select(func.count(Proponente.id)).where(Proponente.is_osc == True)
+        # OSC count (2026 + OSC)
+        osc_query = (
+            select(func.count(Proponente.id.distinct()))
+            .select_from(Proponente)
+            .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
+            .where(and_(Proposta.ano == 2026, Proponente.is_osc == True))
+        )
         osc_result = conn.execute(osc_query)
         osc_count = osc_result.scalar() or 0
 
-        # Government count
+        # Government count (should be 0 per user requirement - OSCs only)
         gov_count = total_count - osc_count
 
-        # Average propostas
-        avg_query = select(func.avg(Proponente.total_propostas))
+        # Average propostas (for 2026 OSCs only)
+        avg_query = (
+            select(func.avg(Proponente.total_propostas))
+            .select_from(Proponente)
+            .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
+            .where(and_(Proposta.ano == 2026, Proponente.is_osc == True))
+        )
         avg_result = conn.execute(avg_query)
         avg_propostas = avg_result.scalar() or 0.0
 
