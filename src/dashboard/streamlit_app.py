@@ -40,21 +40,24 @@ def propostas_page():
 
 
 def programas_page():
-    """Programas entity page (coming soon)."""
-    st.title("Programas")
-    st.info("Programas page coming soon...")
+    """Programas entity page with cross-filter awareness."""
+    from src.dashboard.pages.programas import render_programas
+
+    render_programas()
 
 
 def apoiadores_page():
-    """Apoiadores entity page (coming soon)."""
-    st.title("Apoiadores")
-    st.info("Apoiadores page coming soon...")
+    """Apoiadores entity page with cross-filter awareness."""
+    from src.dashboard.pages.apoiadores import render_apoiadores
+
+    render_apoiadores()
 
 
 def emendas_page():
-    """Emendas entity page (coming soon)."""
-    st.title("Emendas")
-    st.info("Emendas page coming soon...")
+    """Emendas entity page with cross-filter awareness."""
+    from src.dashboard.pages.emendas import render_emendas
+
+    render_emendas()
 
 
 # Define navigation structure with exactly 5 tabs as per locked decision
