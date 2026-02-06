@@ -4,6 +4,15 @@ This is the main entry point for the dashboard. Run with:
     streamlit run src/dashboard/streamlit_app.py
 """
 
+import sys
+from pathlib import Path
+
+# Add project root to sys.path so 'from src.*' imports work when Streamlit
+# runs this file as a script (not as a module).
+_project_root = str(Path(__file__).resolve().parent.parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+
 import streamlit as st
 
 # Configure page settings (must be first Streamlit command)
