@@ -16,7 +16,7 @@ from loguru import logger
 from src.config.loader import get_config
 from src.loader.database import get_engine, create_session_factory, init_db
 from src.loader.extraction_log import create_extraction_log
-from src.loader.upsert import load_extraction_data
+from src.loader.upsert import load_extraction_data, extract_proponentes_from_propostas, normalize_cnpj
 from src.parser.file_parser import parse_file
 from src.parser.schemas import _normalize_column_name
 from src.transformer.validator import validate_dataframe
@@ -273,6 +273,7 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
         validated_data: dict[str, list[dict]] = {
             "programas": [],
             "propostas": [],
+            "proponentes": [],
             "apoiadores": [],
             "emendas": [],
             "proposta_apoiadores": [],
@@ -321,6 +322,33 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
                     logger.info(
                         f"Validated {file_name}: {len(valid_records)} valid records"
                     )
+
+                    # Extract proponentes from propostas
+                    if entity_type == "propostas" and len(valid_records) > 0:
+                        proponentes = extract_proponentes_from_propostas(valid_records, df)
+                        validated_data["proponentes"].extend(proponentes)
+                        logger.info(
+                            f"Extracted {len(proponentes)} proponentes from {file_name}"
+                        )
+
+                        # Also add proponente_cnpj to each proposta record
+                        cnpj_col = _col(df, "identif_proponente")
+                        if cnpj_col:
+                            proposta_id_col = _col(df, "id_proposta")
+                            # Create CNPJ lookup from raw df
+                            cnpj_lookup = {}
+                            for row in df.iter_rows(named=True):
+                                prop_id = str(row.get(proposta_id_col, "")).strip()
+                                cnpj_raw = row.get(cnpj_col, "")
+                                cnpj = normalize_cnpj(cnpj_raw)
+                                if prop_id and cnpj:
+                                    cnpj_lookup[prop_id] = cnpj
+
+                            # Add proponente_cnpj to validated records
+                            for record in valid_records:
+                                prop_id = record.get("transfer_gov_id")
+                                if prop_id and prop_id in cnpj_lookup:
+                                    record["proponente_cnpj"] = cnpj_lookup[prop_id]
 
             except Exception as e:
                 error_msg = f"Error processing {file_name}: {e}"

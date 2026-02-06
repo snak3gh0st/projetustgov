@@ -10,9 +10,12 @@ Design principles:
 - Junction tables use compound unique constraints as conflict targets
 """
 
+import re
 from datetime import date
 from typing import Any, TypedDict
 
+import polars as pl
+from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Row
 from sqlalchemy.orm import Session
@@ -22,6 +25,7 @@ from src.loader.db_models import (
     Emenda,
     ExtractionLog,
     Programa,
+    Proponente,
     Proposta,
     PropostaApoiador,
     PropostaEmenda,
@@ -33,20 +37,26 @@ def upsert_records(
     session: Session,
     model_class: type,
     records: list[dict],
-    conflict_column: str = "transfer_gov_id",
+    conflict_column: str | list[str] = "transfer_gov_id",
+    batch_size: int = 100,
 ) -> dict[str, int]:
     """Bulk upsert records using PostgreSQL ON CONFLICT DO UPDATE.
 
     This function inserts new records and updates existing records when a
-    conflict occurs on the specified column. It guarantees idempotency:
+    conflict occurs on the specified column(s). It guarantees idempotency:
     re-running the same data produces no duplicates.
+
+    IMPORTANT: Records are batched to avoid PostgreSQL's 65,535 parameter limit.
 
     Args:
         session: SQLAlchemy Session for database operations
         model_class: ORM model class to insert into (e.g., Proposta, Programa)
         records: List of dictionaries representing records to upsert
-        conflict_column: Column name to use for conflict detection
-            (default: "transfer_gov_id" for main entities)
+        conflict_column: Column name(s) to use for conflict detection
+            - str: Single column (e.g., "transfer_gov_id" for main entities)
+            - list[str]: Multiple columns for compound unique constraints (junction tables)
+        batch_size: Number of records per batch (default: 1000)
+            PostgreSQL limit: 65,535 parameters. With 10 columns, max ~6500 rows.
 
     Returns:
         Dictionary with "inserted" and "updated" counts.
@@ -63,69 +73,264 @@ def upsert_records(
         logger.debug("No records to upsert for %s", model_class.__tablename__)
         return {"inserted": 0, "updated": 0}
 
+    # Normalize conflict_column to list for consistent handling
+    conflict_columns = [conflict_column] if isinstance(conflict_column, str) else conflict_column
+
     # Deduplicate records within the batch (last occurrence wins)
     # PostgreSQL rejects duplicate values within a single INSERT statement
     seen = {}
     for record in records:
-        key = record.get(conflict_column)
-        if key is not None:
-            seen[key] = record
+        # Create composite key for deduplication
+        key_values = tuple(record.get(col) for col in conflict_columns)
+        if all(v is not None for v in key_values):
+            seen[key_values] = record
         else:
             seen[id(record)] = record
     deduped = list(seen.values())
     if len(deduped) < len(records):
         logger.warning(
-            "Deduplicated %d → %d records for %s (conflict column: %s)",
+            "Deduplicated %d → %d records for %s (conflict columns: %s)",
             len(records),
             len(deduped),
             model_class.__tablename__,
-            conflict_column,
+            conflict_columns,
         )
     records = deduped
 
     # Get the table from the model
     table = model_class.__table__
 
-    # Build the insert statement
-    stmt = insert(table).values(records)
-
-    # Build update dictionary: all columns EXCEPT primary key (id) and conflict_column
-    # Always include updated_at for audit trail
-    update_cols = {}
-    for col in table.columns:
-        col_name = col.name
-        # Skip primary key (id) - we don't want to change it
-        if col_name == "id":
-            continue
-        # Skip the conflict column - we keep the original value
-        if col_name == conflict_column:
-            continue
-        # Always update audit columns
-        if col_name == "updated_at":
-            update_cols[col_name] = stmt.excluded[col_name]
-        else:
-            update_cols[col_name] = stmt.excluded[col_name]
-
-    # Build the on_conflict_do_update statement
-    stmt = stmt.on_conflict_do_update(
-        index_elements=[conflict_column],
-        set_=update_cols,
-    )
-
-    # Execute the statement
-    result = session.execute(stmt)
-    rowcount: int = result.rowcount  # type: ignore[attr-defined]
+    # Process records in batches to avoid PostgreSQL parameter limit
+    total_inserted = 0
+    total_batches = (len(records) + batch_size - 1) // batch_size
 
     logger.info(
-        "Upserted %d records into %s (conflict column: %s)",
-        rowcount,
+        "Upserting %d records into %s in %d batches of %d",
+        len(records),
         model_class.__tablename__,
-        conflict_column,
+        total_batches,
+        batch_size,
+    )
+
+    for i in range(0, len(records), batch_size):
+        batch = records[i:i + batch_size]
+        batch_num = (i // batch_size) + 1
+
+        # Build the insert statement for this batch
+        stmt = insert(table).values(batch)
+
+        # Build update dictionary: all columns EXCEPT primary key (id) and conflict_columns
+        # Always include updated_at for audit trail
+        update_cols = {}
+        for col in table.columns:
+            col_name = col.name
+            # Skip primary key (id) - we don't want to change it
+            if col_name == "id":
+                continue
+            # Skip the conflict columns - we keep the original values
+            if col_name in conflict_columns:
+                continue
+            # Always update all other columns
+            update_cols[col_name] = stmt.excluded[col_name]
+
+        # Build the on_conflict_do_update statement
+        stmt = stmt.on_conflict_do_update(
+            index_elements=conflict_columns,
+            set_=update_cols,
+        )
+
+        # Execute the statement
+        result = session.execute(stmt)
+        rowcount: int = result.rowcount  # type: ignore[attr-defined]
+        total_inserted += rowcount
+
+        # Flush every 10 batches to reduce memory pressure
+        if batch_num % 10 == 0:
+            session.flush()
+            logger.debug("Flushed session after batch %d", batch_num)
+
+        if batch_num % 100 == 0 or batch_num == total_batches:
+            logger.info(
+                "Batch %d/%d: upserted %d records into %s",
+                batch_num,
+                total_batches,
+                rowcount,
+                model_class.__tablename__,
+            )
+
+    logger.info(
+        "Completed upsert: %d total records into %s (conflict columns: %s)",
+        total_inserted,
+        model_class.__tablename__,
+        conflict_columns,
     )
 
     # PostgreSQL doesn't distinguish insert vs update in rowcount
     # For accurate counts, we'd need RETURNING clause, but keeping it simple
-    return {"inserted": rowcount, "updated": 0}
+    return {"inserted": total_inserted, "updated": 0}
+
+
+def normalize_cnpj(raw: str) -> str:
+    """Normalize CNPJ to 14-digit zero-padded format.
+
+    Args:
+        raw: Raw CNPJ string (may include formatting or be numeric)
+
+    Returns:
+        14-digit zero-padded CNPJ string, or empty string if invalid
+    """
+    if not raw:
+        return ""
+    digits = re.sub(r'[^0-9]', '', str(raw))
+    # Skip all-zeros CNPJ
+    if not digits or digits == '0' * len(digits):
+        return ""
+    return digits.zfill(14) if len(digits) <= 14 else ""
+
+
+def is_osc(natureza_juridica: str) -> bool:
+    """Classify if natureza juridica indicates OSC (non-profit) vs government.
+
+    Uses IBGE CONCLA classification:
+    - 3XX range = non-profits (OSCs)
+    - 1XX range = government entities (exclude)
+
+    Args:
+        natureza_juridica: IBGE CONCLA code (e.g., "103-1", "306-9")
+
+    Returns:
+        True if OSC, False if government or unknown
+    """
+    if not natureza_juridica:
+        return False
+    # Simple heuristic: 3XX range = non-profits
+    return natureza_juridica.strip().startswith('3')
+
+
+def extract_proponentes_from_propostas(
+    propostas_records: list[dict], raw_df: pl.DataFrame
+) -> list[dict]:
+    """Extract unique proponentes from propostas with CNPJ deduplication.
+
+    Args:
+        propostas_records: Validated proposta records (not used, kept for signature consistency)
+        raw_df: Raw propostas DataFrame with all columns including proponente fields
+
+    Returns:
+        List of proponente dictionaries ready for upsert
+    """
+    from src.parser.schemas import _normalize_column_name
+
+    # Helper to find column by normalized name
+    def _col(name: str) -> str | None:
+        for col in raw_df.columns:
+            if _normalize_column_name(col) == _normalize_column_name(name):
+                return col
+        return None
+
+    # Resolve actual column names
+    cnpj_col = _col("identif_proponente")
+    nome_col = _col("nm_proponente")
+    nat_jur_col = _col("natureza_juridica")
+    uf_col = _col("uf_proponente")
+    munic_col = _col("munic_proponente")
+    cep_col = _col("cep_proponente")
+    endereco_col = _col("endereco_proponente")
+    bairro_col = _col("bairro_proponente")
+
+    if not cnpj_col:
+        logger.warning("Could not find CNPJ column (IDENTIF_PROPONENTE) in propostas CSV")
+        return []
+
+    proponentes_dict: dict[str, dict] = {}
+
+    for row in raw_df.iter_rows(named=True):
+        cnpj_raw = row.get(cnpj_col, "")
+        cnpj = normalize_cnpj(cnpj_raw)
+
+        if not cnpj:
+            continue
+
+        # Skip if already seen (take first occurrence)
+        if cnpj in proponentes_dict:
+            proponentes_dict[cnpj]["total_propostas"] += 1
+            continue
+
+        # Extract proponente fields
+        nat_jur = str(row.get(nat_jur_col, "")).strip() if nat_jur_col else None
+
+        proponentes_dict[cnpj] = {
+            "cnpj": cnpj,
+            "nome": str(row.get(nome_col, "")).strip() if nome_col else None,
+            "natureza_juridica": nat_jur,
+            "estado": str(row.get(uf_col, "")).strip() if uf_col else None,
+            "municipio": str(row.get(munic_col, "")).strip() if munic_col else None,
+            "cep": str(row.get(cep_col, "")).strip() if cep_col else None,
+            "endereco": str(row.get(endereco_col, "")).strip() if endereco_col else None,
+            "bairro": str(row.get(bairro_col, "")).strip() if bairro_col else None,
+            "is_osc": is_osc(nat_jur) if nat_jur else False,
+            "total_propostas": 1,
+        }
+
+    logger.info(f"Extracted {len(proponentes_dict)} unique proponentes from propostas CSV")
+    return list(proponentes_dict.values())
+
+
+def compute_proponente_aggregations(session: Session) -> None:
+    """Compute aggregated metrics for proponentes from propostas and emendas tables.
+
+    Updates:
+    - total_propostas: Count of propostas per CNPJ
+    - total_emendas: Count of emendas per CNPJ (via junction tables)
+    - valor_total_emendas: Sum of emenda values per CNPJ
+
+    Args:
+        session: SQLAlchemy Session for database operations
+    """
+    # Count propostas per proponente CNPJ
+    proposta_counts = (
+        session.query(
+            Proposta.proponente_cnpj,
+            func.count(Proposta.id).label('total_propostas')
+        )
+        .filter(Proposta.proponente_cnpj.isnot(None))
+        .group_by(Proposta.proponente_cnpj)
+        .all()
+    )
+
+    for cnpj, count in proposta_counts:
+        session.query(Proponente).filter_by(cnpj=cnpj).update(
+            {"total_propostas": count},
+            synchronize_session=False
+        )
+
+    logger.info(f"Updated total_propostas for {len(proposta_counts)} proponentes")
+
+    # Count emendas and sum values per proponente CNPJ
+    # Join: Proposta -> PropostaEmenda -> Emenda
+    emenda_stats = (
+        session.query(
+            Proposta.proponente_cnpj,
+            func.count(Emenda.id).label('total_emendas'),
+            func.sum(Emenda.valor).label('valor_total')
+        )
+        .join(PropostaEmenda, Proposta.transfer_gov_id == PropostaEmenda.proposta_transfer_gov_id)
+        .join(Emenda, PropostaEmenda.emenda_transfer_gov_id == Emenda.transfer_gov_id)
+        .filter(Proposta.proponente_cnpj.isnot(None))
+        .group_by(Proposta.proponente_cnpj)
+        .all()
+    )
+
+    for cnpj, total_emendas, valor_total in emenda_stats:
+        session.query(Proponente).filter_by(cnpj=cnpj).update(
+            {
+                "total_emendas": total_emendas,
+                "valor_total_emendas": valor_total
+            },
+            synchronize_session=False
+        )
+
+    logger.info(f"Updated emenda stats for {len(emenda_stats)} proponentes")
 
 
 def load_extraction_data(
@@ -192,7 +397,23 @@ def load_extraction_data(
             result["updated"],
         )
 
-    # 2. propostas (depends on programas, but we use app-level FK so order doesn't matter)
+    # 2. proponentes (dimension table, no dependencies)
+    if validated_data.get("proponentes"):
+        result = upsert_records(
+            session,
+            Proponente,
+            validated_data["proponentes"],
+            conflict_column="cnpj"
+        )
+        stats["proponentes"] = result
+        logger.info(
+            "Loaded %d proponentes records (inserted: %d, updated: %d)",
+            len(validated_data["proponentes"]),
+            result["inserted"],
+            result["updated"],
+        )
+
+    # 3. propostas (depends on programas, but we use app-level FK so order doesn't matter)
     if validated_data.get("propostas"):
         result = upsert_records(session, Proposta, validated_data["propostas"])
         stats["propostas"] = result
@@ -203,7 +424,7 @@ def load_extraction_data(
             result["updated"],
         )
 
-    # 3. apoiadores (no dependencies)
+    # 4. apoiadores (no dependencies)
     if validated_data.get("apoiadores"):
         result = upsert_records(session, Apoiador, validated_data["apoiadores"])
         stats["apoiadores"] = result
@@ -214,7 +435,7 @@ def load_extraction_data(
             result["updated"],
         )
 
-    # 4. emendas (no dependencies)
+    # 5. emendas (no dependencies)
     if validated_data.get("emendas"):
         result = upsert_records(session, Emenda, validated_data["emendas"])
         stats["emendas"] = result
@@ -225,14 +446,14 @@ def load_extraction_data(
             result["updated"],
         )
 
-    # 5. proposta_apoiadores (junction table with compound unique constraint)
+    # 6. proposta_apoiadores (junction table with compound unique constraint)
     if validated_data.get("proposta_apoiadores"):
-        # Junction tables: conflict target is compound unique constraint columns
+        # Junction tables: conflict target is BOTH columns in the unique constraint
         result = upsert_records(
             session,
             PropostaApoiador,
             validated_data["proposta_apoiadores"],
-            conflict_column="proposta_transfer_gov_id",  # Will be updated via set_ for apoiador too
+            conflict_column=["proposta_transfer_gov_id", "apoiador_transfer_gov_id"],
         )
         stats["proposta_apoiadores"] = result
         logger.info(
@@ -242,13 +463,14 @@ def load_extraction_data(
             result["updated"],
         )
 
-    # 6. proposta_emendas (junction table with compound unique constraint)
+    # 7. proposta_emendas (junction table with compound unique constraint)
     if validated_data.get("proposta_emendas"):
+        # Junction tables: conflict target is BOTH columns in the unique constraint
         result = upsert_records(
             session,
             PropostaEmenda,
             validated_data["proposta_emendas"],
-            conflict_column="proposta_transfer_gov_id",  # Will be updated via set_ for emenda too
+            conflict_column=["proposta_transfer_gov_id", "emenda_transfer_gov_id"],
         )
         stats["proposta_emendas"] = result
         logger.info(
@@ -257,6 +479,10 @@ def load_extraction_data(
             result["inserted"],
             result["updated"],
         )
+
+    # 8. Compute aggregated metrics for proponentes
+    if validated_data.get("proponentes"):
+        compute_proponente_aggregations(session)
 
     logger.info("Extraction data loading complete: %d tables processed", len(stats))
     return stats
