@@ -33,9 +33,10 @@ def home_page():
 
 
 def propostas_page():
-    """Propostas entity page (coming soon)."""
-    st.title("Propostas")
-    st.info("Propostas page coming soon...")
+    """Propostas entity page with interactive data table and cross-filtering."""
+    from src.dashboard.pages.propostas import render_propostas
+
+    render_propostas()
 
 
 def programas_page():
