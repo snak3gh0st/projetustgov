@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 ## Current Position
 
 Phase: 4 of 5 (Client Qualification)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-06 — Completed 05-01-PLAN.md Proponente dimension table
+Last activity: 2026-02-06 — Completed 04-02-PLAN.md Client qualification dashboard
 
-Progress: [█████████████░] 94%
+Progress: [█████████████░] 95%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: ~10 min (01-01: 65 min, 01-02: 5 min, 01-04: 15 min, 02-03: 5 min, 02-01: 8 min, 04-01: 4 min, 04-02: 3 min, 04-03: 2 min, 05-01: 3 min)
+- Total plans completed: 10
+- Average duration: ~9 min (01-01: 65 min, 01-02: 5 min, 01-04: 15 min, 02-03: 5 min, 02-01: 8 min, 04-01: 4 min, 04-02: 3 min, 04-03: 2 min, 04-01: 3 min, 04-02: 2 min)
 - Total execution time: ~1.9 hours
 
 **By Phase:**
@@ -29,11 +29,11 @@ Progress: [█████████████░] 94%
 |-------|-------|-------|----------|
 | 1. Foundation | 3 | 5 | ~28 min |
 | 2. Operational Maturity | 4 | 4 | ~5 min |
-| 4. Data Dashboard | 3 | 3 | ~3 min |
-| 5. Client Qualification | 1 | 1 | ~3 min |
+| 4. Client Qualification | 2 | 2 | ~2.5 min |
+| 5. Data Dashboard | 3 | 3 | ~3 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-01 (3 min), 04-02 (3 min), 04-03 (2 min), 04-01 (4 min), 02-01 (8 min)
+- Last 5 plans: 04-02 (2 min), 04-01 (3 min), 04-03 (2 min), 04-02 (3 min), 04-01 (4 min)
 - Trend: Sustained high velocity across phases 4-5
 
 *Updated after each plan completion*
@@ -67,6 +67,9 @@ Recent decisions affecting current work:
 - 3XX range heuristic for OSC classification — Simple and effective using IBGE CONCLA natureza juridica codes
 - Two-phase ETL for aggregations — Extract entities first, compute metrics after all tables loaded
 - CNPJ normalization to 14-digit zero-padded — Consistent format for matching across data sources
+- Value ranking by proposal count — Fewer proposals = higher value for prospecting (less competition)
+- CNPJ formatting pattern — Display XX.XXX.XXX/XXXX-XX, export unformatted for data use
+- Virgin proponent highlighting — Green background for 0 proposals (highest value prospects)
 
 ### Pending Todos
 
@@ -88,8 +91,8 @@ None of these are blocking — they're implementation details that emerge during
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 05-01-PLAN.md Proponente dimension table
+Stopped at: Completed 04-02-PLAN.md Client qualification dashboard
 Resume file: None
 
 ---
-*Phase 5 Client Qualification started: 05-01 complete (Proponente dimension table), 05-02 and 05-03 remaining*
+*Phase 4 Client Qualification in progress: 04-01 complete (Proponente dimension table), 04-02 complete (Client qualification dashboard), 04-03 remaining*
