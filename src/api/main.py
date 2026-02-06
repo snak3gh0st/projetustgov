@@ -4,15 +4,21 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from pydantic import BaseModel
 
+from src.config.loader import get_config
 from src.loader.database import get_engine, create_session_factory
 from src.loader.extraction_log import get_last_extraction
 from src.monitor.scheduler_health import get_scheduler_status
 from src.orchestrator.pipeline import run_pipeline
+
+# Module-level scheduler so health checks can inspect it
+_scheduler: Optional[BackgroundScheduler] = None
 
 
 # Pydantic models for response
@@ -54,14 +60,56 @@ class PipelineResponse(BaseModel):
     timestamp: str
 
 
+def _run_pipeline_job():
+    """Wrapper for scheduled pipeline execution with error handling."""
+    logger.info("Scheduled pipeline execution starting")
+    try:
+        run_pipeline()
+        logger.info("Scheduled pipeline execution completed successfully")
+    except Exception as e:
+        logger.error(f"Scheduled pipeline execution failed: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events."""
+    global _scheduler
+
     # Startup
     logger.info("Starting PROJETUS FastAPI application")
     logger.info("Health check endpoints available at /health, /ready, /metrics")
+
+    # Start extraction scheduler
+    try:
+        config = get_config()
+        extraction = config.extraction
+
+        _scheduler = BackgroundScheduler()
+        _scheduler.add_job(
+            _run_pipeline_job,
+            trigger=CronTrigger(
+                hour=extraction.hour,
+                minute=extraction.minute,
+                timezone=extraction.timezone,
+            ),
+            id="daily_extraction",
+            name="Daily Transfer Gov extraction",
+            replace_existing=True,
+        )
+        _scheduler.start()
+        logger.info(
+            f"Scheduler started: daily extraction at {extraction.hour:02d}:{extraction.minute:02d} "
+            f"({extraction.timezone})"
+        )
+    except Exception as e:
+        logger.error(f"Failed to start scheduler: {e}")
+
     yield
+
     # Shutdown
+    if _scheduler and _scheduler.running:
+        _scheduler.shutdown(wait=False)
+        logger.info("Scheduler shut down")
     logger.info("Shutting down PROJETUS FastAPI application")
 
 

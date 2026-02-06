@@ -109,6 +109,12 @@ class ExtractionConfig(BaseModel):
         le=23,
         description="Hour to run extraction (0-23)",
     )
+    minute: int = Field(
+        default=15,
+        ge=0,
+        le=59,
+        description="Minute to run extraction (0-59)",
+    )
     timezone: str = Field(
         default="America/Sao_Paulo",
         description="Timezone for extraction scheduling",
