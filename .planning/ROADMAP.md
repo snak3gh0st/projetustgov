@@ -15,6 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 1: Foundation** - Complete ETL pipeline with zero data loss guarantee
 - [ ] **Phase 2: Operational Maturity** - Advanced monitoring, reconciliation, configuration management
 - [ ] **Phase 3: Production Excellence** - Optional enhancements triggered by operational need
+- [ ] **Phase 4: Data Dashboard** - Streamlit dashboard for visualizing extracted Transfer Gov data
 
 ## Phase Details
 
@@ -92,16 +93,39 @@ Plans:
 Plans:
 - [ ] TBD when operational need emerges
 
+### Phase 4: Data Dashboard
+**Goal**: Build a Streamlit dashboard that visualizes all extracted Transfer Gov data — propostas, programas, apoiadores, and emendas — with row counts, extraction history, data freshness, and drill-down views. Provides operational visibility without writing SQL queries.
+
+**Depends on**: Phase 1 (needs data in PostgreSQL)
+
+**Success Criteria** (what must be TRUE):
+  1. Dashboard displays row counts per entity table (programas, propostas, apoiadores, emendas)
+  2. Extraction history shows last 30 days of pipeline runs with status (success/partial/failed)
+  3. Data tables are browsable with search, sort, and filter capabilities
+  4. Dashboard shows data freshness (last extraction date and time)
+  5. Propostas can be explored with related programas, apoiadores, and emendas
+  6. Dashboard is deployable on Railway alongside the existing API service
+  7. Portuguese characters render correctly throughout the dashboard
+
+**Plans**: 4 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Dashboard foundation: Streamlit app structure, DB queries, shared components, home overview page
+- [ ] 04-02-PLAN.md — Entity pages: Propostas, Programas, Apoiadores, Emendas with cross-filtering and CSV export
+- [ ] 04-03-PLAN.md — Extraction history page and Railway deployment configuration
+- [ ] 04-04-PLAN.md — Human verification of complete dashboard
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3
+Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 5/5 | Complete | 2026-02-05 |
 | 2. Operational Maturity | 4/4 | Complete | 2026-02-05 |
 | 3. Production Excellence | 0/TBD | Not started | - |
+| 4. Data Dashboard | 0/4 | Planning complete | - |
 
 ---
 *Roadmap created: 2026-02-04*
