@@ -35,6 +35,12 @@ def create_db_engine(database_url: str) -> Engine:
     Returns:
         Configured SQLAlchemy Engine instance
     """
+    # Ensure we use psycopg3 driver (psycopg) instead of psycopg2
+    if database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    elif database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql+psycopg://", 1)
+    
     engine = create_engine(
         database_url,
         pool_size=5,  # Maintain 5 persistent connections
@@ -87,7 +93,7 @@ def get_engine() -> Engine:
 
     if _engine is None:
         settings = get_settings()
-        _engine = create_db_engine(settings.database.url)
+        _engine = create_db_engine(settings.database_url)
         logger.debug("Created database engine")
 
     return _engine
