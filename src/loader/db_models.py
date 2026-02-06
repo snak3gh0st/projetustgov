@@ -74,7 +74,7 @@ class Proponente(Base):
         String(14), unique=True, index=True, nullable=False
     )
     nome: Mapped[Optional[str]] = mapped_column(String)
-    natureza_juridica: Mapped[Optional[str]] = mapped_column(String(5), index=True)
+    natureza_juridica: Mapped[Optional[str]] = mapped_column(String(100), index=True)
     estado: Mapped[Optional[str]] = mapped_column(String(2))
     municipio: Mapped[Optional[str]] = mapped_column(String)
     cep: Mapped[Optional[str]] = mapped_column(String(8))

@@ -318,6 +318,33 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
                             f"Validation errors in {file_name}: {len(errors)} errors"
                         )
 
+                    # FILTER: Only 2026 data and OSCs
+                    if entity_type == "propostas":
+                        # Get year and natureza_juridica columns from raw dataframe
+                        ano_col = _col(df, "ano_prop")
+                        nat_jur_col = _col(df, "natureza_juridica")
+
+                        if ano_col and nat_jur_col:
+                            # Build index of valid rows (2026 + OSC)
+                            valid_indices = set()
+                            for idx, row in enumerate(df.iter_rows(named=True)):
+                                ano = row.get(ano_col)
+                                nat_jur = str(row.get(nat_jur_col, "")).strip()
+
+                                # Filter: year = 2026 AND natureza_juridica starts with "3" (OSC)
+                                if ano == 2026 and nat_jur.startswith("3"):
+                                    valid_indices.add(idx)
+
+                            # Filter valid_records to only include matching rows
+                            original_count = len(valid_records)
+                            valid_records = [
+                                record for idx, record in enumerate(valid_records)
+                                if idx in valid_indices
+                            ]
+                            logger.info(
+                                f"Filtered {file_name}: {original_count} → {len(valid_records)} records (2026 + OSCs only)"
+                            )
+
                     validated_data[entity_type].extend(valid_records)
                     logger.info(
                         f"Validated {file_name}: {len(valid_records)} valid records"
