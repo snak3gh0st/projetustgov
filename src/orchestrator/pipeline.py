@@ -329,10 +329,15 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
                             valid_indices = set()
                             for idx, row in enumerate(df.iter_rows(named=True)):
                                 ano = row.get(ano_col)
-                                nat_jur = str(row.get(nat_jur_col, "")).strip()
+                                nat_jur = str(row.get(nat_jur_col, "")).strip().lower()
 
-                                # Filter: year = 2026 AND natureza_juridica starts with "3" (OSC)
-                                if ano == 2026 and nat_jur.startswith("3"):
+                                # Filter: year = 2026 AND natureza_juridica contains "sociedade civil" (OSC)
+                                is_osc = (
+                                    "organização da sociedade civil" in nat_jur or
+                                    "sociedade civil" in nat_jur or
+                                    "osc" in nat_jur
+                                )
+                                if ano == 2026 and is_osc:
                                     valid_indices.add(idx)
 
                             # Filter valid_records to only include matching rows

@@ -191,20 +191,34 @@ def normalize_cnpj(raw: str) -> str:
 def is_osc(natureza_juridica: str) -> bool:
     """Classify if natureza juridica indicates OSC (non-profit) vs government.
 
-    Uses IBGE CONCLA classification:
-    - 3XX range = non-profits (OSCs)
-    - 1XX range = government entities (exclude)
+    Handles both IBGE CONCLA codes and descriptive text:
+    - Codes: 3XX range = non-profits (OSCs), 1XX = government
+    - Text: "Organização da Sociedade Civil", "Sociedade Civil", "OSC"
 
     Args:
-        natureza_juridica: IBGE CONCLA code (e.g., "103-1", "306-9")
+        natureza_juridica: IBGE CONCLA code (e.g., "103-1", "306-9") or descriptive text
 
     Returns:
         True if OSC, False if government or unknown
     """
     if not natureza_juridica:
         return False
-    # Simple heuristic: 3XX range = non-profits
-    return natureza_juridica.strip().startswith('3')
+
+    nat_jur = str(natureza_juridica).strip().lower()
+
+    # Check for descriptive text (Transfer Gov format)
+    if (
+        "organização da sociedade civil" in nat_jur or
+        "sociedade civil" in nat_jur or
+        "osc" in nat_jur
+    ):
+        return True
+
+    # Check for IBGE code format (3XX range = non-profits)
+    if nat_jur.startswith('3'):
+        return True
+
+    return False
 
 
 def extract_proponentes_from_propostas(
