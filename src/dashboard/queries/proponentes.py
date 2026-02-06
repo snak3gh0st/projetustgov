@@ -7,7 +7,7 @@ Specifically designed for client qualification workflow - ranks proponents by va
 
 import pandas as pd
 import streamlit as st
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, extract, func, select
 
 from src.dashboard.config import get_db_engine
 from src.loader.db_models import Proponente, Proposta
@@ -34,11 +34,11 @@ def get_proponentes(limit: int = 5000, filters: dict = None) -> pd.DataFrame:
     filters = filters or {}
 
     with engine.connect() as conn:
-        # Join with propostas to filter by year
+        # Join with propostas to filter by year (using data_publicacao)
         query = (
             select(Proponente)
             .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
-            .where(Proposta.ano == 2026)  # Filter for 2026 data only
+            .where(extract('year', Proposta.data_publicacao) == 2026)  # Filter for 2026 data only
             .distinct()  # Remove duplicates from join
         )
 
@@ -94,12 +94,12 @@ def get_proponente_estados() -> list[str]:
     engine = get_db_engine()
 
     with engine.connect() as conn:
-        # Only estados from 2026 OSC proponentes
+        # Only estados from 2026 OSC proponentes (using data_publicacao)
         query = (
             select(Proponente.estado)
             .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
             .where(and_(
-                Proposta.ano == 2026,
+                extract('year', Proposta.data_publicacao) == 2026,
                 Proponente.is_osc == True,
                 Proponente.estado.isnot(None)
             ))
@@ -126,11 +126,11 @@ def get_proponente_stats() -> dict:
     engine = get_db_engine()
 
     with engine.connect() as conn:
-        # Filter to only proponentes with 2026 propostas
+        # Filter to only proponentes with 2026 propostas (using data_publicacao)
         base_query = (
             select(Proponente)
             .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
-            .where(Proposta.ano == 2026)
+            .where(extract('year', Proposta.data_publicacao) == 2026)
             .distinct()
         )
 
@@ -146,7 +146,7 @@ def get_proponente_stats() -> dict:
             select(func.count(Proponente.id.distinct()))
             .select_from(Proponente)
             .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
-            .where(and_(Proposta.ano == 2026, Proponente.is_osc == True))
+            .where(and_(extract('year', Proposta.data_publicacao) == 2026, Proponente.is_osc == True))
         )
         osc_result = conn.execute(osc_query)
         osc_count = osc_result.scalar() or 0
@@ -159,7 +159,7 @@ def get_proponente_stats() -> dict:
             select(func.avg(Proponente.total_propostas))
             .select_from(Proponente)
             .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
-            .where(and_(Proposta.ano == 2026, Proponente.is_osc == True))
+            .where(and_(extract('year', Proposta.data_publicacao) == 2026, Proponente.is_osc == True))
         )
         avg_result = conn.execute(avg_query)
         avg_propostas = avg_result.scalar() or 0.0
