@@ -69,13 +69,21 @@ def emendas_page():
     render_emendas()
 
 
-# Define navigation structure with exactly 5 tabs as per locked decision
+def qualificacao_page():
+    """Qualificacao de Proponentes page for client discovery and prospecting."""
+    from src.dashboard.pages.qualificacao import render_qualificacao
+
+    render_qualificacao()
+
+
+# Define navigation structure with 6 tabs (5 entity pages + Qualificacao)
 pages = [
     st.Page(home_page, title="Home", icon="🏠"),
     st.Page(propostas_page, title="Propostas", icon="📄"),
     st.Page(programas_page, title="Programas", icon="📋"),
     st.Page(apoiadores_page, title="Apoiadores", icon="👥"),
     st.Page(emendas_page, title="Emendas", icon="💰"),
+    st.Page(qualificacao_page, title="Qualificacao", icon="🎯"),
 ]
 
 # Create navigation
