@@ -43,11 +43,12 @@ def render_qualificacao():
     """Render the Client Qualification page with ranked proponent table."""
     st.title("Qualificacao de Proponentes")
 
-    # Info box explaining value metrics
+    # Info box explaining value metrics and year filter
     st.info(
         "🎯 **Criterio de Valor:** Proponentes com menos propostas ativas sao mais valiosos "
         "para prospeccao - indicam menor concorrencia e maior receptividade a novas parcerias. "
-        "Proponentes novos (sem historico) sao os mais valiosos."
+        "Proponentes novos (sem historico) sao os mais valiosos.\n\n"
+        "📅 **Dados:** Filtrando proponentes com propostas de 2025-2026."
     )
 
     # --- KPI METRICS ROW ---

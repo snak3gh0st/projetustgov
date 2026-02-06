@@ -19,8 +19,24 @@ def render_propostas():
     st.title("Propostas")
     st.markdown("Explore todas as propostas de transferência registradas no sistema.")
 
+    # Add year filter at the top
+    col_year, col_spacer = st.columns([1, 3])
+    with col_year:
+        year_filter = st.selectbox(
+            "Ano",
+            options=["Todos", 2026, 2025],
+            index=0,
+            key="propostas_year_filter",
+            help="Filtrar propostas por ano de publicação"
+        )
+
+    # Build filters dict
+    year_filters = {}
+    if year_filter != "Todos":
+        year_filters["year"] = year_filter
+
     # Fetch all propostas (cached)
-    df_propostas = get_propostas(limit=10000, filters=None)
+    df_propostas = get_propostas(limit=10000, filters=year_filters)
 
     if df_propostas.empty:
         st.info("Nenhuma proposta disponível no momento.")

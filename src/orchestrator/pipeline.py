@@ -98,6 +98,7 @@ def extract_relationships(
     - Unique emendas (deduplicated by numero_emenda)
     - Junction records for proposta_apoiadores and proposta_emendas
     - Programa links (proposta_transfer_gov_id → programa_transfer_gov_id)
+    - CNPJ-based emenda stats (for proponente aggregation)
 
     Results are appended directly into validated_data.
     """
@@ -109,6 +110,7 @@ def extract_relationships(
     tipo_col = _col(raw_df, "indicacao_apoiadores_emendas")
     orgao_col = _col(raw_df, "nome_proponente_apoiadores_emendas")
     valor_col = _col(raw_df, "valor_repasse_proposta_apoiadores_emendas")
+    cnpj_col = _col(raw_df, "cnpj_proponente_apoiadores_emendas")
 
     if not proposta_col:
         logger.warning("Could not find proposta ID column in relationship CSV")
@@ -118,6 +120,8 @@ def extract_relationships(
     seen_emendas: dict[str, dict] = {}
     junction_apoiadores: set[tuple[str, str]] = set()
     junction_emendas: set[tuple[str, str]] = set()
+    # Track emenda stats by CNPJ (for proponente aggregation)
+    cnpj_emenda_stats: dict[str, dict] = {}  # cnpj → {count, total_valor}
 
     for row in raw_df.iter_rows(named=True):
         proposta_id = str(row.get(proposta_col, "")).strip()
@@ -150,15 +154,16 @@ def extract_relationships(
             numero = str(row.get(emenda_num_col, "")).strip()
             if numero:
                 emenda_id = numero  # numero_emenda is already unique
+                valor_raw = row.get(valor_col) if valor_col else None
+                valor = None
+                if valor_raw is not None:
+                    try:
+                        valor = float(valor_raw)
+                    except (ValueError, TypeError):
+                        pass
+
                 if emenda_id not in seen_emendas:
                     autor = str(row.get(parlamentar_col, "")).strip() if parlamentar_col else None
-                    valor_raw = row.get(valor_col) if valor_col else None
-                    valor = None
-                    if valor_raw is not None:
-                        try:
-                            valor = float(valor_raw)
-                        except (ValueError, TypeError):
-                            pass
                     tipo = str(row.get(tipo_col, "")).strip() if tipo_col else None
                     seen_emendas[emenda_id] = {
                         "transfer_gov_id": emenda_id,
@@ -169,6 +174,19 @@ def extract_relationships(
                         "ano": None,
                     }
                 junction_emendas.add((proposta_id, emenda_id))
+
+                # Aggregate emenda stats by CNPJ
+                if cnpj_col:
+                    cnpj = str(row.get(cnpj_col, "")).strip()
+                    if cnpj:
+                        if cnpj not in cnpj_emenda_stats:
+                            cnpj_emenda_stats[cnpj] = {"count": 0, "total_valor": 0.0}
+                        cnpj_emenda_stats[cnpj]["count"] += 1
+                        if valor:
+                            cnpj_emenda_stats[cnpj]["total_valor"] += valor
+
+    # Store CNPJ emenda stats for proponente aggregation
+    validated_data["cnpj_emenda_stats"] = cnpj_emenda_stats
 
     # Append to validated_data
     validated_data["apoiadores"].extend(seen_apoiadores.values())
@@ -318,7 +336,7 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
                             f"Validation errors in {file_name}: {len(errors)} errors"
                         )
 
-                    # FILTER: Only 2026 data and OSCs
+                    # FILTER: Only 2025-2026 data and OSCs
                     if entity_type == "propostas":
                         # Get year, natureza_juridica, and ID columns from raw dataframe
                         ano_col = _col(df, "ano_prop")
@@ -326,20 +344,28 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
                         id_col = _col(df, "id_proposta")
 
                         if ano_col and nat_jur_col and id_col:
-                            # Build set of valid IDs (2026 + OSC)
+                            # Build set of valid IDs (2025-2026 + OSC)
                             valid_ids = set()
                             for row in df.iter_rows(named=True):
-                                ano = row.get(ano_col)
+                                ano_raw = row.get(ano_col)
+                                # Convert ano to int for comparison (may be string from CSV)
+                                try:
+                                    ano = int(ano_raw) if ano_raw else None
+                                except (ValueError, TypeError):
+                                    ano = None
+
                                 nat_jur = str(row.get(nat_jur_col, "")).strip().lower()
                                 record_id = str(row.get(id_col, "")).strip()
 
-                                # Filter: year = 2026 AND natureza_juridica contains "sociedade civil" (OSC)
+                                # Filter: year in [2025, 2026] AND natureza_juridica contains "sociedade civil" (OSC)
+                                # Use flexible matching to handle encoding issues
                                 is_osc = (
-                                    "organização da sociedade civil" in nat_jur or
                                     "sociedade civil" in nat_jur or
-                                    "osc" in nat_jur
+                                    "socieda" in nat_jur or
+                                    "osc" in nat_jur or
+                                    "organiza" in nat_jur
                                 )
-                                if ano == 2026 and is_osc and record_id:
+                                if ano in (2025, 2026) and is_osc and record_id:
                                     valid_ids.add(record_id)
 
                             # Filter valid_records to only include matching IDs
@@ -349,7 +375,7 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
                                 if record.get("transfer_gov_id") in valid_ids
                             ]
                             logger.info(
-                                f"Filtered {file_name}: {original_count} → {len(valid_records)} records (2026 + OSCs only)"
+                                f"Filtered {file_name}: {original_count} → {len(valid_records)} records (2025-2026 + OSCs only)"
                             )
 
                     validated_data[entity_type].extend(valid_records)

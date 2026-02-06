@@ -32,6 +32,7 @@ def get_propostas(limit: int = 1000, filters: dict = None) -> pd.DataFrame:
             - situacao: str
             - date_start: date
             - date_end: date
+            - year: int (filter by year from data_publicacao)
 
     Returns:
         DataFrame with proposta records
@@ -52,6 +53,10 @@ def get_propostas(limit: int = 1000, filters: dict = None) -> pd.DataFrame:
             conditions.append(Proposta.data_publicacao >= filters["date_start"])
         if filters.get("date_end"):
             conditions.append(Proposta.data_publicacao <= filters["date_end"])
+        if filters.get("year"):
+            from sqlalchemy import extract
+            # Use extraction_date as fallback when data_publicacao is not populated
+            conditions.append(extract('year', Proposta.extraction_date) == filters["year"])
 
         if conditions:
             query = query.where(and_(*conditions))

@@ -7,10 +7,10 @@ Specifically designed for client qualification workflow - ranks proponents by va
 
 import pandas as pd
 import streamlit as st
-from sqlalchemy import and_, extract, func, select
+from sqlalchemy import and_, func, select
 
 from src.dashboard.config import get_db_engine
-from src.loader.db_models import Proponente, Proposta
+from src.loader.db_models import Proponente
 
 
 @st.cache_data(ttl="10m")
@@ -34,13 +34,10 @@ def get_proponentes(limit: int = 5000, filters: dict = None) -> pd.DataFrame:
     filters = filters or {}
 
     with engine.connect() as conn:
-        # Join with propostas to filter by year (using data_publicacao)
-        query = (
-            select(Proponente)
-            .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
-            .where(extract('year', Proposta.data_publicacao) == 2026)  # Filter for 2026 data only
-            .distinct()  # Remove duplicates from join
-        )
+        # Query proponentes directly - pipeline already filters to 2025-2026 OSC data
+        # Note: data_publicacao is not populated from source CSV, so we cannot filter by it.
+        # The pipeline's ANO_PROP filter ensures only 2025-2026 records are loaded.
+        query = select(Proponente)
 
         # Apply filters
         conditions = []
@@ -94,12 +91,11 @@ def get_proponente_estados() -> list[str]:
     engine = get_db_engine()
 
     with engine.connect() as conn:
-        # Only estados from 2026 OSC proponentes (using data_publicacao)
+        # Get distinct estados from OSC proponentes
+        # Pipeline already filters to 2025-2026 data, no need to join with propostas
         query = (
             select(Proponente.estado)
-            .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
             .where(and_(
-                extract('year', Proposta.data_publicacao) == 2026,
                 Proponente.is_osc == True,
                 Proponente.estado.isnot(None)
             ))
@@ -126,25 +122,15 @@ def get_proponente_stats() -> dict:
     engine = get_db_engine()
 
     with engine.connect() as conn:
-        # Total count (2026 proponentes - all types)
-        total_query = (
-            select(func.count(func.distinct(Proponente.id)))
-            .select_from(Proponente)
-            .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
-            .where(extract('year', Proposta.data_publicacao) == 2026)
-        )
+        # Total count (all proponentes - pipeline already filters to 2025-2026)
+        total_query = select(func.count(Proponente.id))
         total_result = conn.execute(total_query)
         total_count = total_result.scalar() or 0
 
-        # OSC count (2026 + OSC)
+        # OSC count
         osc_query = (
-            select(func.count(func.distinct(Proponente.id)))
-            .select_from(Proponente)
-            .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
-            .where(and_(
-                extract('year', Proposta.data_publicacao) == 2026,
-                Proponente.is_osc == True
-            ))
+            select(func.count(Proponente.id))
+            .where(Proponente.is_osc == True)
         )
         osc_result = conn.execute(osc_query)
         osc_count = osc_result.scalar() or 0
@@ -152,15 +138,10 @@ def get_proponente_stats() -> dict:
         # Government count
         gov_count = total_count - osc_count
 
-        # Average propostas (for 2026 OSCs only)
+        # Average propostas (for OSCs only)
         avg_query = (
             select(func.avg(Proponente.total_propostas))
-            .select_from(Proponente)
-            .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
-            .where(and_(
-                extract('year', Proposta.data_publicacao) == 2026,
-                Proponente.is_osc == True
-            ))
+            .where(Proponente.is_osc == True)
         )
         avg_result = conn.execute(avg_query)
         avg_propostas = avg_result.scalar() or 0.0

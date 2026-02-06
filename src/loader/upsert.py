@@ -290,16 +290,18 @@ def extract_proponentes_from_propostas(
     return list(proponentes_dict.values())
 
 
-def compute_proponente_aggregations(session: Session) -> None:
-    """Compute aggregated metrics for proponentes from propostas and emendas tables.
+def compute_proponente_aggregations(session: Session, cnpj_emenda_stats: dict = None) -> None:
+    """Compute aggregated metrics for proponentes from propostas and emendas.
 
     Updates:
     - total_propostas: Count of propostas per CNPJ
-    - total_emendas: Count of emendas per CNPJ (via junction tables)
+    - total_emendas: Count of emendas per CNPJ (from CNPJ-based stats)
     - valor_total_emendas: Sum of emenda values per CNPJ
 
     Args:
         session: SQLAlchemy Session for database operations
+        cnpj_emenda_stats: Pre-computed dict of cnpj → {count, total_valor}
+            from the apoiadores/emendas CSV (keyed by CNPJ_PROPONENTE)
     """
     # Count propostas per proponente CNPJ
     proposta_counts = (
@@ -320,31 +322,21 @@ def compute_proponente_aggregations(session: Session) -> None:
 
     logger.info(f"Updated total_propostas for {len(proposta_counts)} proponentes")
 
-    # Count emendas and sum values per proponente CNPJ
-    # Join: Proposta -> PropostaEmenda -> Emenda
-    emenda_stats = (
-        session.query(
-            Proposta.proponente_cnpj,
-            func.count(Emenda.id).label('total_emendas'),
-            func.sum(Emenda.valor).label('valor_total')
-        )
-        .join(PropostaEmenda, Proposta.transfer_gov_id == PropostaEmenda.proposta_transfer_gov_id)
-        .join(Emenda, PropostaEmenda.emenda_transfer_gov_id == Emenda.transfer_gov_id)
-        .filter(Proposta.proponente_cnpj.isnot(None))
-        .group_by(Proposta.proponente_cnpj)
-        .all()
-    )
+    # Update emenda stats from CNPJ-based aggregation (bypasses junction table)
+    updated_emendas = 0
+    if cnpj_emenda_stats:
+        for cnpj, stats in cnpj_emenda_stats.items():
+            rows_updated = session.query(Proponente).filter_by(cnpj=cnpj).update(
+                {
+                    "total_emendas": stats["count"],
+                    "valor_total_emendas": stats["total_valor"],
+                },
+                synchronize_session=False,
+            )
+            if rows_updated:
+                updated_emendas += 1
 
-    for cnpj, total_emendas, valor_total in emenda_stats:
-        session.query(Proponente).filter_by(cnpj=cnpj).update(
-            {
-                "total_emendas": total_emendas,
-                "valor_total_emendas": valor_total
-            },
-            synchronize_session=False
-        )
-
-    logger.info(f"Updated emenda stats for {len(emenda_stats)} proponentes")
+    logger.info(f"Updated emenda stats for {updated_emendas} proponentes")
 
 
 def load_extraction_data(
@@ -496,7 +488,8 @@ def load_extraction_data(
 
     # 8. Compute aggregated metrics for proponentes
     if validated_data.get("proponentes"):
-        compute_proponente_aggregations(session)
+        cnpj_emenda_stats = validated_data.get("cnpj_emenda_stats", {})
+        compute_proponente_aggregations(session, cnpj_emenda_stats)
 
     logger.info("Extraction data loading complete: %d tables processed", len(stats))
     return stats
