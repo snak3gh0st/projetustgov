@@ -4,11 +4,13 @@ This module orchestrates the complete extraction, transformation, and loading
 process: parsing files, validating data, and loading into the database.
 """
 
+import hashlib
 import time
 from datetime import date
 from pathlib import Path
 from typing import Optional
 
+import polars as pl
 from loguru import logger
 
 from src.config.loader import get_config
@@ -16,6 +18,7 @@ from src.loader.database import get_engine, create_session_factory, init_db
 from src.loader.extraction_log import create_extraction_log
 from src.loader.upsert import load_extraction_data
 from src.parser.file_parser import parse_file
+from src.parser.schemas import _normalize_column_name
 from src.transformer.validator import validate_dataframe
 
 
@@ -72,6 +75,122 @@ def find_latest_data_directory(raw_data_dir: Path) -> Path:
         return latest_dir
 
     return raw_data_dir
+
+
+def _col(df: pl.DataFrame, name: str) -> Optional[str]:
+    """Find column in DataFrame by normalized name, return actual name or None."""
+    for col in df.columns:
+        if _normalize_column_name(col) == _normalize_column_name(name):
+            return col
+    return None
+
+
+def extract_relationships(
+    raw_df: pl.DataFrame,
+    validated_data: dict[str, list[dict]],
+    programa_links: dict[str, str],
+) -> None:
+    """Extract entities and relationships from the apoiadores/emendas CSV.
+
+    The CSV is a relationship table where each row links a proposta to an
+    emenda, apoiador, and programa. This function extracts:
+    - Unique apoiadores (deduplicated by nome_parlamentar)
+    - Unique emendas (deduplicated by numero_emenda)
+    - Junction records for proposta_apoiadores and proposta_emendas
+    - Programa links (proposta_transfer_gov_id → programa_transfer_gov_id)
+
+    Results are appended directly into validated_data.
+    """
+    # Resolve actual column names
+    proposta_col = _col(raw_df, "id_cnpj_programa_emenda_apoiadores_emendas")
+    emenda_num_col = _col(raw_df, "numero_emenda_apoiadores_emendas")
+    parlamentar_col = _col(raw_df, "nome_parlamentar_apoiadores_emendas")
+    programa_col = _col(raw_df, "id_programa")
+    tipo_col = _col(raw_df, "indicacao_apoiadores_emendas")
+    orgao_col = _col(raw_df, "nome_proponente_apoiadores_emendas")
+    valor_col = _col(raw_df, "valor_repasse_proposta_apoiadores_emendas")
+
+    if not proposta_col:
+        logger.warning("Could not find proposta ID column in relationship CSV")
+        return
+
+    seen_apoiadores: dict[str, dict] = {}
+    seen_emendas: dict[str, dict] = {}
+    junction_apoiadores: set[tuple[str, str]] = set()
+    junction_emendas: set[tuple[str, str]] = set()
+
+    for row in raw_df.iter_rows(named=True):
+        proposta_id = str(row.get(proposta_col, "")).strip()
+        if not proposta_id:
+            continue
+
+        # Extract programa link
+        if programa_col:
+            prog_id = str(row.get(programa_col, "")).strip()
+            if prog_id:
+                programa_links[proposta_id] = prog_id
+
+        # Extract apoiador
+        if parlamentar_col:
+            nome = str(row.get(parlamentar_col, "")).strip()
+            if nome:
+                # Use hash of nome as transfer_gov_id for apoiador
+                apoiador_id = hashlib.sha256(nome.encode()).hexdigest()[:16]
+                if apoiador_id not in seen_apoiadores:
+                    seen_apoiadores[apoiador_id] = {
+                        "transfer_gov_id": apoiador_id,
+                        "nome": nome,
+                        "tipo": str(row.get(tipo_col, "")).strip() if tipo_col else None,
+                        "orgao": str(row.get(orgao_col, "")).strip() if orgao_col else None,
+                    }
+                junction_apoiadores.add((proposta_id, apoiador_id))
+
+        # Extract emenda
+        if emenda_num_col:
+            numero = str(row.get(emenda_num_col, "")).strip()
+            if numero:
+                emenda_id = numero  # numero_emenda is already unique
+                if emenda_id not in seen_emendas:
+                    autor = str(row.get(parlamentar_col, "")).strip() if parlamentar_col else None
+                    valor_raw = row.get(valor_col) if valor_col else None
+                    valor = None
+                    if valor_raw is not None:
+                        try:
+                            valor = float(valor_raw)
+                        except (ValueError, TypeError):
+                            pass
+                    tipo = str(row.get(tipo_col, "")).strip() if tipo_col else None
+                    seen_emendas[emenda_id] = {
+                        "transfer_gov_id": emenda_id,
+                        "numero": numero,
+                        "autor": autor,
+                        "valor": valor,
+                        "tipo": tipo,
+                        "ano": None,
+                    }
+                junction_emendas.add((proposta_id, emenda_id))
+
+    # Append to validated_data
+    validated_data["apoiadores"].extend(seen_apoiadores.values())
+    validated_data["emendas"].extend(seen_emendas.values())
+
+    for proposta_id, apoiador_id in junction_apoiadores:
+        validated_data["proposta_apoiadores"].append({
+            "proposta_transfer_gov_id": proposta_id,
+            "apoiador_transfer_gov_id": apoiador_id,
+        })
+
+    for proposta_id, emenda_id in junction_emendas:
+        validated_data["proposta_emendas"].append({
+            "proposta_transfer_gov_id": proposta_id,
+            "emenda_transfer_gov_id": emenda_id,
+        })
+
+    logger.info(
+        f"Extracted relationships: {len(seen_apoiadores)} apoiadores, "
+        f"{len(seen_emendas)} emendas, {len(junction_apoiadores)} proposta_apoiadores, "
+        f"{len(junction_emendas)} proposta_emendas, {len(programa_links)} programa links"
+    )
 
 
 def run_pipeline(config_path: Optional[str] = None) -> None:
@@ -162,6 +281,7 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
 
         extraction_date = date.today()
         validation_errors = []
+        programa_links: dict[str, str] = {}  # proposta_id → programa_id
 
         for file_path in sorted(files):
             file_name = file_path.name
@@ -178,29 +298,45 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
                 df = parse_file(str(file_path), entity_type)
                 logger.info(f"Parsed {file_name}: {len(df)} rows")
 
-                # Validate data
-                valid_records, errors = validate_dataframe(df, entity_type)
-
-                if errors:
-                    for error in errors:
-                        validation_errors.append(
-                            f"{file_name}: {error.get('errors', 'Validation error')}"
-                        )
-                    logger.warning(
-                        f"Validation errors in {file_name}: {len(errors)} errors"
+                if entity_type in ("apoiadores", "emendas"):
+                    # Relationship CSV: extract entities + junctions from raw data
+                    extract_relationships(df, validated_data, programa_links)
+                    logger.info(
+                        f"Extracted relationships from {file_name}"
                     )
+                else:
+                    # Standard entity: validate and collect
+                    valid_records, errors = validate_dataframe(df, entity_type)
 
-                # Add valid records to validated_data
-                validated_data[entity_type].extend(valid_records)
-                logger.info(
-                    f"Validated {file_name}: {len(valid_records)} valid records"
-                )
+                    if errors:
+                        for error in errors:
+                            validation_errors.append(
+                                f"{file_name}: {error.get('errors', 'Validation error')}"
+                            )
+                        logger.warning(
+                            f"Validation errors in {file_name}: {len(errors)} errors"
+                        )
+
+                    validated_data[entity_type].extend(valid_records)
+                    logger.info(
+                        f"Validated {file_name}: {len(valid_records)} valid records"
+                    )
 
             except Exception as e:
                 error_msg = f"Error processing {file_name}: {e}"
                 validation_errors.append(error_msg)
                 logger.error(error_msg)
                 # Continue processing other files
+
+        # Apply programa_id links to propostas
+        if programa_links and validated_data["propostas"]:
+            linked = 0
+            for proposta in validated_data["propostas"]:
+                prog_id = programa_links.get(proposta.get("transfer_gov_id"))
+                if prog_id and not proposta.get("programa_id"):
+                    proposta["programa_id"] = prog_id
+                    linked += 1
+            logger.info(f"Linked {linked} propostas to programa_id from relationship data")
 
         # Determine status based on results
         total_valid = sum(len(records) for records in validated_data.values())

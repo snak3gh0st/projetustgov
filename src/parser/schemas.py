@@ -31,8 +31,8 @@ EXPECTED_COLUMNS = {
         "proponente",
         "programa_id",
     ],
-    "apoiadores": ["transfer_gov_id", "nome", "tipo", "orgao"],
-    "emendas": ["transfer_gov_id", "numero", "autor", "valor", "tipo", "ano"],
+    "apoiadores": ["nome", "tipo", "orgao"],
+    "emendas": ["numero", "autor", "valor", "tipo", "ano"],
     "programas": [
         "transfer_gov_id",
         "nome",
@@ -47,8 +47,8 @@ EXPECTED_COLUMNS = {
 # Required columns per file type (minimum needed to proceed)
 REQUIRED_COLUMNS = {
     "propostas": ["transfer_gov_id"],
-    "apoiadores": ["transfer_gov_id"],
-    "emendas": ["transfer_gov_id"],
+    "apoiadores": [],
+    "emendas": [],
     "programas": ["transfer_gov_id"],
 }
 
@@ -67,10 +67,6 @@ COLUMN_ALIASES = {
         "programa_id": ["id_programa", "cod_programa"],
     },
     "apoiadores": {
-        "transfer_gov_id": [
-            "id_programa",
-            "id_cnpj_programa_emenda_apoiadores_emendas",
-        ],
         "nome": [
             "nome_parlamentar_apoiadores_emendas",
             "nome_pf_solicitante_apoiadores_emendas",
@@ -86,10 +82,6 @@ COLUMN_ALIASES = {
         ],
     },
     "emendas": {
-        "transfer_gov_id": [
-            "id_programa",
-            "id_cnpj_programa_emenda_apoiadores_emendas",
-        ],
         "numero": ["numero_emenda_apoiadores_emendas"],
         "autor": ["nome_parlamentar_apoiadores_emendas"],
         "valor": ["valor_repasse_proposta_apoiadores_emendas"],
