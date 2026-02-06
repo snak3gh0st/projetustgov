@@ -320,16 +320,18 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
 
                     # FILTER: Only 2026 data and OSCs
                     if entity_type == "propostas":
-                        # Get year and natureza_juridica columns from raw dataframe
+                        # Get year, natureza_juridica, and ID columns from raw dataframe
                         ano_col = _col(df, "ano_prop")
                         nat_jur_col = _col(df, "natureza_juridica")
+                        id_col = _col(df, "id_proposta")
 
-                        if ano_col and nat_jur_col:
-                            # Build index of valid rows (2026 + OSC)
-                            valid_indices = set()
-                            for idx, row in enumerate(df.iter_rows(named=True)):
+                        if ano_col and nat_jur_col and id_col:
+                            # Build set of valid IDs (2026 + OSC)
+                            valid_ids = set()
+                            for row in df.iter_rows(named=True):
                                 ano = row.get(ano_col)
                                 nat_jur = str(row.get(nat_jur_col, "")).strip().lower()
+                                record_id = str(row.get(id_col, "")).strip()
 
                                 # Filter: year = 2026 AND natureza_juridica contains "sociedade civil" (OSC)
                                 is_osc = (
@@ -337,14 +339,14 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
                                     "sociedade civil" in nat_jur or
                                     "osc" in nat_jur
                                 )
-                                if ano == 2026 and is_osc:
-                                    valid_indices.add(idx)
+                                if ano == 2026 and is_osc and record_id:
+                                    valid_ids.add(record_id)
 
-                            # Filter valid_records to only include matching rows
+                            # Filter valid_records to only include matching IDs
                             original_count = len(valid_records)
                             valid_records = [
-                                record for idx, record in enumerate(valid_records)
-                                if idx in valid_indices
+                                record for record in valid_records
+                                if record.get("transfer_gov_id") in valid_ids
                             ]
                             logger.info(
                                 f"Filtered {file_name}: {original_count} → {len(valid_records)} records (2026 + OSCs only)"
