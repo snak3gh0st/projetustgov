@@ -126,32 +126,30 @@ def get_proponente_stats() -> dict:
     engine = get_db_engine()
 
     with engine.connect() as conn:
-        # Filter to only proponentes with 2026 propostas (using data_publicacao)
-        base_query = (
-            select(Proponente)
+        # Total count (2026 proponentes - all types)
+        total_query = (
+            select(func.count(func.distinct(Proponente.id)))
+            .select_from(Proponente)
             .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
             .where(extract('year', Proposta.data_publicacao) == 2026)
-            .distinct()
-        )
-
-        # Total count (2026 proponentes with OSC filter)
-        total_query = select(func.count(Proponente.id.distinct())).select_from(
-            base_query.subquery()
         )
         total_result = conn.execute(total_query)
         total_count = total_result.scalar() or 0
 
         # OSC count (2026 + OSC)
         osc_query = (
-            select(func.count(Proponente.id.distinct()))
+            select(func.count(func.distinct(Proponente.id)))
             .select_from(Proponente)
             .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
-            .where(and_(extract('year', Proposta.data_publicacao) == 2026, Proponente.is_osc == True))
+            .where(and_(
+                extract('year', Proposta.data_publicacao) == 2026,
+                Proponente.is_osc == True
+            ))
         )
         osc_result = conn.execute(osc_query)
         osc_count = osc_result.scalar() or 0
 
-        # Government count (should be 0 per user requirement - OSCs only)
+        # Government count
         gov_count = total_count - osc_count
 
         # Average propostas (for 2026 OSCs only)
@@ -159,7 +157,10 @@ def get_proponente_stats() -> dict:
             select(func.avg(Proponente.total_propostas))
             .select_from(Proponente)
             .join(Proposta, Proponente.cnpj == Proposta.proponente_cnpj)
-            .where(and_(extract('year', Proposta.data_publicacao) == 2026, Proponente.is_osc == True))
+            .where(and_(
+                extract('year', Proposta.data_publicacao) == 2026,
+                Proponente.is_osc == True
+            ))
         )
         avg_result = conn.execute(avg_query)
         avg_propostas = avg_result.scalar() or 0.0
