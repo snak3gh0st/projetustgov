@@ -92,8 +92,9 @@ def navigate_to_panel(page: Page, url: str | None = None) -> None:
     Raises:
         NavigationError: If navigation fails.
     """
-    settings = get_settings()
-    target_url = url or settings.transfer_gov_url
+    # Use default URL if not provided
+    default_url = "https://dd-publico.serpro.gov.br/extensions/gestao-transferencias/gestao-transferencias.html"
+    target_url = url or default_url
 
     logger.info("Navigating to Transfer Gov panel: {}", target_url)
 

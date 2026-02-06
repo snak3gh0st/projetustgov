@@ -63,6 +63,26 @@ def upsert_records(
         logger.debug("No records to upsert for %s", model_class.__tablename__)
         return {"inserted": 0, "updated": 0}
 
+    # Deduplicate records within the batch (last occurrence wins)
+    # PostgreSQL rejects duplicate values within a single INSERT statement
+    seen = {}
+    for record in records:
+        key = record.get(conflict_column)
+        if key is not None:
+            seen[key] = record
+        else:
+            seen[id(record)] = record
+    deduped = list(seen.values())
+    if len(deduped) < len(records):
+        logger.warning(
+            "Deduplicated %d → %d records for %s (conflict column: %s)",
+            len(records),
+            len(deduped),
+            model_class.__tablename__,
+            conflict_column,
+        )
+    records = deduped
+
     # Get the table from the model
     table = model_class.__table__
 

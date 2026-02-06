@@ -93,7 +93,7 @@ def get_engine() -> Engine:
 
     if _engine is None:
         settings = get_settings()
-        _engine = create_db_engine(settings.database_url)
+        _engine = create_db_engine(settings.database.url)
         logger.debug("Created database engine")
 
     return _engine

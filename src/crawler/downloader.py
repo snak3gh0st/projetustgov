@@ -67,9 +67,9 @@ def cleanup_old_raw_files(
     Returns:
         Number of directories deleted.
     """
-    settings = get_settings()
-    base_dir = raw_data_dir or settings.raw_data_dir
-    days = retention_days or settings.raw_retention_days
+    # Use defaults if not provided
+    base_dir = raw_data_dir or "data/raw"
+    days = retention_days or 30
 
     if not os.path.isdir(base_dir):
         logger.info("Raw data directory doesn't exist, nothing to clean up")
@@ -112,12 +112,14 @@ def get_retry_decorator():
 
     Uses exponential backoff as recommended in RESEARCH.md.
     """
-    settings = get_settings()
+    # Default retry settings
+    max_retries = 3
+    retry_base_delay = 2
 
     return retry(
-        stop=stop_after_attempt(settings.max_retries),
+        stop=stop_after_attempt(max_retries),
         wait=wait_exponential(
-            multiplier=settings.retry_base_delay,
+            multiplier=retry_base_delay,
             min=2,  # Minimum 2 seconds
             max=8,  # Maximum 8 seconds
         ),
@@ -288,7 +290,6 @@ def run_crawler(
     Raises:
         CrawlerError: If critical crawler operations fail.
     """
-    settings = get_settings()
     results: dict[str, str | None] = {}
 
     logger.info("Starting Transfer Gov crawler (headless={})", headless)
@@ -344,8 +345,8 @@ def get_latest_download(raw_data_dir: str | None = None) -> dict[str, str] | Non
     Returns:
         Dict of file_type -> file_path, or None if directory doesn't exist.
     """
-    settings = get_settings()
-    base_dir = raw_data_dir or settings.raw_data_dir
+    # Use default if not provided
+    base_dir = raw_data_dir or "data/raw"
     today_dir = get_raw_dir()
 
     if not os.path.isdir(today_dir):

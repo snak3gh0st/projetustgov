@@ -1,6 +1,6 @@
 """Pydantic validation models for Transfer Gov entities."""
 
-from pydantic import BaseModel, field_validator, Field
+from pydantic import BaseModel, field_validator, Field, ConfigDict
 from typing import Optional
 from datetime import date
 
@@ -39,6 +39,8 @@ VALID_UF_CODES = {
 
 class PropostaValidation(BaseModel):
     """Validates a single proposta record from Transfer Gov."""
+
+    model_config = ConfigDict(extra="ignore")  # Ignore extra fields from source
 
     transfer_gov_id: str = Field(..., description="Unique identifier from Transfer Gov")
     titulo: Optional[str] = Field(None, description="Title of the proposal")
@@ -97,6 +99,8 @@ class PropostaValidation(BaseModel):
 class ApoiadorValidation(BaseModel):
     """Validates a single apoiador record from Transfer Gov."""
 
+    model_config = ConfigDict(extra="ignore")  # Ignore extra fields from source
+
     transfer_gov_id: str = Field(..., description="Associated proposal ID")
     nome: Optional[str] = Field(None, description="Name of the supporter")
     tipo: Optional[str] = Field(
@@ -115,6 +119,8 @@ class ApoiadorValidation(BaseModel):
 
 class EmendaValidation(BaseModel):
     """Validates a single emenda record from Transfer Gov."""
+
+    model_config = ConfigDict(extra="ignore")  # Ignore extra fields from source
 
     transfer_gov_id: str = Field(..., description="Associated proposal ID")
     numero: Optional[str] = Field(None, description="Amendment number")
@@ -152,6 +158,8 @@ class EmendaValidation(BaseModel):
 
 class ProgramaValidation(BaseModel):
     """Validates a single programa record from Transfer Gov."""
+
+    model_config = ConfigDict(extra="ignore")  # Ignore extra fields from source
 
     transfer_gov_id: str = Field(..., description="Unique program identifier")
     nome: Optional[str] = Field(None, description="Name of the program")

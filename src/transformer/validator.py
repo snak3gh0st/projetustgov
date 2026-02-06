@@ -10,6 +10,7 @@ from .models import (
     EmendaValidation,
     ProgramaValidation,
 )
+from src.parser.schemas import COLUMN_ALIASES, _normalize_column_name
 
 
 # Mapping of file types to their validation models
@@ -45,11 +46,31 @@ def validate_dataframe(
     valid_records = []
     errors = []
 
+    def map_row_keys(row: dict) -> dict:
+        """Map raw column names to expected keys using known aliases."""
+        if file_type not in COLUMN_ALIASES:
+            return row
+
+        aliases = COLUMN_ALIASES[file_type]
+        normalized_row = {_normalize_column_name(k): k for k in row.keys()}
+        mapped = dict(row)
+
+        for target_key, candidates in aliases.items():
+            if target_key in mapped:
+                continue
+            for candidate in candidates:
+                candidate_norm = _normalize_column_name(candidate)
+                if candidate_norm in normalized_row:
+                    mapped[target_key] = row[normalized_row[candidate_norm]]
+                    break
+        return mapped
+
     # Iterate over rows as dictionaries
     for row_dict in df.iter_rows(named=True):
         try:
             # Validate the row using Pydantic model
-            model = model_class(**row_dict)
+            mapped_row = map_row_keys(row_dict)
+            model = model_class(**mapped_row)
             # Convert back to dictionary for processing
             valid_records.append(model.model_dump())
         except Exception as e:

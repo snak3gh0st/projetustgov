@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from src.loader.database import get_engine, create_session_factory
 from src.loader.extraction_log import get_last_extraction
 from src.monitor.scheduler_health import get_scheduler_status
+from src.orchestrator.pipeline import run_pipeline
 
 
 # Pydantic models for response
@@ -43,6 +44,14 @@ class MetricsResponse(BaseModel):
     failed_extractions: int = 0
     last_extraction_timestamp: Optional[str] = None
     extraction_success_rate: float = 0.0
+
+
+class PipelineResponse(BaseModel):
+    """Pipeline execution response model."""
+
+    status: str  # success, failed
+    message: str
+    timestamp: str
 
 
 @asynccontextmanager
@@ -88,15 +97,15 @@ async def health_check():
     logger.debug("Health check requested")
 
     # Get database session
-    engine = get_engine()
-    SessionLocal = create_session_factory(engine)
     last_extraction = None
 
     try:
+        engine = get_engine()
+        SessionLocal = create_session_factory(engine)
         with SessionLocal() as session:
             last_extraction = get_last_extraction(session)
     except Exception as e:
-        logger.error(f"Database connection failed: {e}")
+        logger.error(f"Database connection or config loading failed: {e}")
         return HealthResponse(
             status="unhealthy",
             last_extraction=None,
@@ -179,14 +188,17 @@ async def readiness_check():
     try:
         from sqlalchemy import text
 
-        engine = get_engine()
-        SessionLocal = create_session_factory(engine)
-        with SessionLocal() as session:
-            # Simple query to verify database connection
-            session.execute(text("SELECT 1"))
-            db_ready = True
+        try:
+            engine = get_engine()
+            SessionLocal = create_session_factory(engine)
+            with SessionLocal() as session:
+                # Simple query to verify database connection
+                session.execute(text("SELECT 1"))
+                db_ready = True
+        except Exception as e:
+            logger.error(f"Database readiness check failed: {e}")
     except Exception as e:
-        logger.error(f"Database readiness check failed: {e}")
+        logger.error(f"Config loading failed during readiness check: {e}")
 
     # Check scheduler status
     scheduler_status = get_scheduler_status()
@@ -229,15 +241,14 @@ async def metrics_endpoint():
     """
     logger.debug("Metrics requested")
 
-    engine = get_engine()
-    SessionLocal = create_session_factory(engine)
-
     total_extractions = 0
     successful_extractions = 0
     failed_extractions = 0
     last_extraction_timestamp = None
 
     try:
+        engine = get_engine()
+        SessionLocal = create_session_factory(engine)
         with SessionLocal() as session:
             from src.loader.db_models import ExtractionLog
 
@@ -283,6 +294,44 @@ async def metrics_endpoint():
     return response
 
 
+@app.post("/run-pipeline", response_model=PipelineResponse, tags=["Pipeline"])
+async def run_pipeline_endpoint():
+    """Execute the ETL pipeline.
+
+    This endpoint triggers a full ETL pipeline execution:
+    - Parses files from data/raw directory
+    - Validates data
+    - Loads data into database
+    - Creates extraction log entry
+
+    Returns:
+        PipelineResponse with execution status and message.
+    """
+    logger.info("Pipeline execution requested via API")
+    try:
+        # Run pipeline in background thread to avoid blocking
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+
+        executor = ThreadPoolExecutor(max_workers=1)
+        loop = asyncio.get_event_loop()
+        
+        # Run pipeline in executor
+        await loop.run_in_executor(executor, run_pipeline, None)
+        
+        return PipelineResponse(
+            status="success",
+            message="Pipeline executed successfully",
+            timestamp=datetime.now().isoformat(),
+        )
+    except Exception as e:
+        logger.error(f"Pipeline execution failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Pipeline execution failed: {str(e)}"
+        )
+
+
 @app.get("/", tags=["Root"])
 async def root():
     """Root endpoint with API information."""
@@ -294,6 +343,7 @@ async def root():
             "health": "/health",
             "ready": "/ready",
             "metrics": "/metrics",
+            "run-pipeline": "/run-pipeline (POST)",
         },
     }
 

@@ -43,7 +43,6 @@ class BrowserManager:
 
     def __enter__(self) -> "BrowserManager":
         """Enter context manager and launch browser."""
-        settings = get_settings()
         logger.info("Launching Playwright browser (headless={})", self.headless)
 
         self._playwright = sync_playwright().start()

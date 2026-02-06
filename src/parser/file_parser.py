@@ -2,10 +2,12 @@
 
 from pathlib import Path
 import polars as pl
+import pandas as pd
 from loguru import logger
 
 from .encoding import detect_encoding
 from .schemas import (
+    apply_column_mapping,
     validate_schema,
     validate_file_not_empty,
     SchemaValidationError,
@@ -68,6 +70,9 @@ def _parse_excel(path: Path, file_type: str) -> pl.DataFrame:
     # Read Excel file using Polars with openpyxl engine
     df = pl.read_excel(str(path), engine="openpyxl")
 
+    # Apply column mapping for known aliases
+    df = apply_column_mapping(df, file_type)
+
     # Validate not empty
     validate_file_not_empty(df, str(path))
 
@@ -94,8 +99,80 @@ def _parse_csv(path: Path, file_type: str) -> pl.DataFrame:
     encoding = detect_encoding(str(path))
     logger.debug(f"Detected encoding: {encoding} for {path}")
 
-    # Read CSV with detected encoding (eager mode for encoding support)
-    df = pl.read_csv(str(path), encoding=encoding)
+    # Read CSV - use pandas first (more tolerant with malformed CSVs)
+    # Then convert to Polars DataFrame
+    try:
+        # Try with pandas first (handles encoding and malformed CSVs better)
+        logger.debug(f"Reading CSV with pandas, encoding: {encoding}")
+        # Try common separators: semicolon (common in Brazilian CSVs), comma, tab
+        pandas_df = None
+        for sep in [';', ',', '\t']:
+            try:
+                test_df = pd.read_csv(
+                    str(path),
+                    encoding=encoding,
+                    dtype=str,  # Read all as strings to avoid type inference issues
+                    on_bad_lines='skip',  # Skip malformed lines
+                    engine='c',  # Use C engine (faster)
+                    sep=sep,  # Try this separator
+                    nrows=10,  # Read first 10 rows to test separator
+                )
+                logger.debug(f"Testing separator '{sep}': got {len(test_df.columns)} columns, shape: {test_df.shape}")
+                # Check if we got more than 1 column (indicates correct separator)
+                if len(test_df.columns) > 1:
+                    logger.info(f"Found correct separator '{sep}' with {len(test_df.columns)} columns, reading full file")
+                    # Read full file with correct separator
+                    pandas_df = pd.read_csv(
+                        str(path),
+                        encoding=encoding,
+                        dtype=str,
+                        on_bad_lines='skip',
+                        engine='c',
+                        sep=sep,
+                    )
+                    logger.info(f"Successfully read full file with separator '{sep}': {pandas_df.shape}")
+                    break
+            except Exception as e:
+                logger.debug(f"Failed to read CSV with separator '{sep}': {e}")
+                continue
+        
+        if pandas_df is None:
+            # If all separators failed, try without specifying separator (pandas will auto-detect)
+            logger.warning("Could not determine separator, trying auto-detect")
+            pandas_df = pd.read_csv(
+                str(path),
+                encoding=encoding,
+                dtype=str,
+                on_bad_lines='skip',
+                engine='c',
+            )
+        # Convert to Polars - ensure all columns are simple types for conversion
+        # Convert object columns to string explicitly
+        for col in pandas_df.columns:
+            if pandas_df[col].dtype == 'object':
+                pandas_df[col] = pandas_df[col].astype(str)
+        
+        # Convert to Polars
+        df = pl.from_pandas(pandas_df)
+        logger.debug(f"Successfully read CSV with pandas and converted to Polars: {df.shape}")
+    except Exception as e:
+        logger.warning(f"Failed to read CSV with pandas, trying Polars directly: {e}")
+        try:
+            # Fallback to Polars with minimal options
+            df = pl.read_csv(
+                str(path),
+                encoding=encoding,
+                truncate_ragged_lines=True,
+                infer_schema_length=0,  # All strings
+            )
+        except Exception as e2:
+            # Last resort: try without encoding
+            logger.warning(f"Failed to read CSV with Polars, trying without encoding: {e2}")
+            df = pl.read_csv(
+                str(path),
+                truncate_ragged_lines=True,
+                infer_schema_length=0,
+            )
 
     # Validate not empty
     validate_file_not_empty(df, str(path))
