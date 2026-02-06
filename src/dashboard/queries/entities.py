@@ -187,47 +187,42 @@ def get_emendas(limit: int = 1000, filters: dict = None) -> pd.DataFrame:
 def get_related_entities(proposta_id: str) -> dict:
     """Get all entities related to a specific proposta.
 
+    Uses CNPJ-based lookups since junction tables reference propostas
+    from all years but we only load 2025-2026 filtered data.
+
     Args:
         proposta_id: transfer_gov_id of the proposta
 
     Returns:
         Dictionary with:
-        - programas: DataFrame with related programas
-        - apoiadores: DataFrame with related apoiadores
-        - emendas: DataFrame with related emendas
+        - proponente: DataFrame with proponente details (including emenda stats)
+        - outras_propostas: DataFrame with other propostas from same proponente
     """
-    # Query programas (via proposta.programa_id)
-    programa_query = """
-        SELECT p.*
-        FROM programas p
-        INNER JOIN propostas pr ON pr.programa_id = p.transfer_gov_id
+    # Get proponente details via CNPJ
+    proponente_query = """
+        SELECT prop.*
+        FROM proponentes prop
+        INNER JOIN propostas pr ON pr.proponente_cnpj = prop.cnpj
         WHERE pr.transfer_gov_id = :proposta_id
-        LIMIT 100
+        LIMIT 1
     """
-    programas_df = run_query(programa_query, {"proposta_id": proposta_id})
+    proponente_df = run_query(proponente_query, {"proposta_id": proposta_id})
 
-    # Query apoiadores (via junction table)
-    apoiadores_query = """
-        SELECT a.*
-        FROM apoiadores a
-        INNER JOIN proposta_apoiadores pa ON pa.apoiador_transfer_gov_id = a.transfer_gov_id
-        WHERE pa.proposta_transfer_gov_id = :proposta_id
-        LIMIT 100
+    # Get other propostas from the same proponente
+    outras_query = """
+        SELECT p2.*
+        FROM propostas p2
+        WHERE p2.proponente_cnpj = (
+            SELECT p.proponente_cnpj FROM propostas p
+            WHERE p.transfer_gov_id = :proposta_id
+        )
+        AND p2.transfer_gov_id != :proposta_id
+        ORDER BY p2.created_at DESC
+        LIMIT 50
     """
-    apoiadores_df = run_query(apoiadores_query, {"proposta_id": proposta_id})
-
-    # Query emendas (via junction table)
-    emendas_query = """
-        SELECT e.*
-        FROM emendas e
-        INNER JOIN proposta_emendas pe ON pe.emenda_transfer_gov_id = e.transfer_gov_id
-        WHERE pe.proposta_transfer_gov_id = :proposta_id
-        LIMIT 100
-    """
-    emendas_df = run_query(emendas_query, {"proposta_id": proposta_id})
+    outras_df = run_query(outras_query, {"proposta_id": proposta_id})
 
     return {
-        "programas": programas_df,
-        "apoiadores": apoiadores_df,
-        "emendas": emendas_df,
+        "proponente": proponente_df,
+        "outras_propostas": outras_df,
     }

@@ -191,55 +191,45 @@ def render_propostas():
         related = get_related_entities(proposta_id)
 
         # Use tabs to organize related entities
-        tab1, tab2, tab3 = st.tabs(["Programas", "Apoiadores", "Emendas"])
+        tab1, tab2 = st.tabs(["Proponente", "Outras Propostas"])
 
         with tab1:
-            st.markdown("**Programas relacionados**")
-            df_programas = related["programas"]
-            if df_programas.empty:
-                st.info("Nenhum programa relacionado.")
+            st.markdown("**Dados do Proponente**")
+            df_proponente = related["proponente"]
+            if df_proponente.empty:
+                st.info("Proponente nao encontrado.")
             else:
-                st.dataframe(
-                    df_programas[
-                        [
-                            "transfer_gov_id",
-                            "nome",
-                            "orgao_superior",
-                            "modalidade",
-                        ]
-                    ],
-                    use_container_width=True,
-                    hide_index=True,
-                )
+                prop = df_proponente.iloc[0]
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    st.metric("Nome", prop.get("nome", "N/A"))
+                    st.metric("CNPJ", prop.get("cnpj", "N/A"))
+                    st.metric("Estado", prop.get("estado", "N/A"))
+                    st.metric("Municipio", prop.get("municipio", "N/A"))
+                with col_b:
+                    st.metric("Total Propostas", f"{prop.get('total_propostas', 0):,}")
+                    st.metric("Total Emendas", f"{prop.get('total_emendas', 0):,}")
+                    valor = prop.get("valor_total_emendas", 0) or 0
+                    st.metric("Valor Total Emendas", f"R$ {valor:,.2f}")
+                    st.metric("Natureza Juridica", prop.get("natureza_juridica", "N/A"))
 
         with tab2:
-            st.markdown("**Apoiadores relacionados**")
-            df_apoiadores = related["apoiadores"]
-            if df_apoiadores.empty:
-                st.info("Nenhum apoiador relacionado.")
+            st.markdown("**Outras propostas do mesmo proponente**")
+            df_outras = related["outras_propostas"]
+            if df_outras.empty:
+                st.info("Nenhuma outra proposta do mesmo proponente.")
             else:
-                st.dataframe(
-                    df_apoiadores[["transfer_gov_id", "nome", "tipo", "orgao"]],
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
-        with tab3:
-            st.markdown("**Emendas relacionadas**")
-            df_emendas = related["emendas"]
-            if df_emendas.empty:
-                st.info("Nenhuma emenda relacionada.")
-            else:
-                # Format valor as currency
-                df_emendas_display = df_emendas[
-                    ["transfer_gov_id", "numero", "autor", "valor", "tipo", "ano"]
-                ].copy()
-                if "valor" in df_emendas_display.columns:
-                    df_emendas_display["valor"] = df_emendas_display["valor"].apply(
+                display_cols = [
+                    col for col in ["transfer_gov_id", "titulo", "valor_global", "situacao", "estado"]
+                    if col in df_outras.columns
+                ]
+                df_outras_display = df_outras[display_cols].copy()
+                if "valor_global" in df_outras_display.columns:
+                    df_outras_display["valor_global"] = df_outras_display["valor_global"].apply(
                         lambda x: f"R$ {x:,.2f}" if pd.notna(x) else ""
                     )
                 st.dataframe(
-                    df_emendas_display,
+                    df_outras_display,
                     use_container_width=True,
                     hide_index=True,
                 )
