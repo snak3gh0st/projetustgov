@@ -114,15 +114,27 @@ def get_programas(limit: int = 1000, filters: dict = None) -> pd.DataFrame:
 
     Args:
         limit: Maximum number of rows to return (default: 1000)
-        filters: Optional dict with filter criteria
+        filters: Optional dict with filter criteria:
+            - year: int (filter by year extracted from transfer_gov_id positions 6-9)
 
     Returns:
         DataFrame with programa records
     """
     engine = get_db_engine()
+    filters = filters or {}
 
     with engine.connect() as conn:
-        query = select(Programa).order_by(Programa.created_at.desc()).limit(limit)
+        query = select(Programa)
+
+        # Apply year filter by extracting from transfer_gov_id (positions 6-9, 1-indexed)
+        # In PostgreSQL: SUBSTRING(transfer_gov_id FROM 6 FOR 4)
+        if filters.get("year"):
+            year_filter = text(
+                f"CAST(SUBSTRING(programas.transfer_gov_id FROM 6 FOR 4) AS INTEGER) = {filters['year']}"
+            )
+            query = query.where(year_filter)
+
+        query = query.order_by(Programa.created_at.desc()).limit(limit)
         result = conn.execute(query)
         rows = result.fetchall()
 

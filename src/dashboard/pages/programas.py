@@ -20,8 +20,11 @@ def render_programas():
     # Check if cross-filtering is active
     selected_proposta_id = st.session_state.get("selected_proposta_id")
 
-    # Fetch all programas (cached)
-    df_programas = get_programas(limit=10000, filters=None)
+    # Default to year 2026 for programas
+    filters = {"year": 2026}
+
+    # Fetch programas with year filter (cached)
+    df_programas = get_programas(limit=10000, filters=filters)
 
     if df_programas.empty:
         st.info("Nenhum programa disponível no momento.")
@@ -64,9 +67,24 @@ def render_programas():
     if not selected_proposta_id:
         st.subheader("Filtros")
 
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
 
         with col1:
+            # Year filter (extracted from programa ID positions 6-9)
+            ano_selected = st.selectbox(
+                "Ano",
+                options=[2026, 2025, 2024, 2021, 2018, 2016, 2013, 2012, 2011, 2009, 2008],
+                index=0,  # Default to 2026
+                key="programas_ano",
+                help="Filtro por ano extraído do código do programa (posições 6-9)",
+            )
+            # Update filters and reload if year changed
+            if ano_selected != filters.get("year"):
+                filters["year"] = ano_selected
+                df_programas = get_programas(limit=10000, filters=filters)
+                df = df_programas.copy()
+
+        with col2:
             # Text search across nome, orgao_superior
             search_term = st.text_input(
                 "Buscar",
@@ -75,7 +93,7 @@ def render_programas():
                 help="Busca por nome ou órgão superior",
             )
 
-        with col2:
+        with col3:
             # Modalidade filter
             modalidades_disponiveis = sorted(df["modalidade"].dropna().unique().tolist())
             modalidades_disponiveis.insert(0, "Todos")

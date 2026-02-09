@@ -66,7 +66,7 @@ COLUMN_ALIASES = {
         "estado": ["uf_proponente"],
         "municipio": ["munic_proponente"],
         "proponente": ["nm_proponente"],
-        "programa_id": ["id_programa", "cod_programa"],
+        "programa_id": ["cod_programa"],  # Use COD_PROGRAMA (13 digits) to match programas.transfer_gov_id
         "data_publicacao": ["dia_proposta", "dia_prop"],
         "data_inicio_vigencia": ["dia_inic_vigencia_proposta"],
         "data_fim_vigencia": ["dia_fim_vigencia_proposta"],
@@ -100,7 +100,7 @@ COLUMN_ALIASES = {
     },
     "programa_proposta": {},
     "programas": {
-        "transfer_gov_id": ["id_programa"],
+        "transfer_gov_id": ["cod_programa"],  # Use COD_PROGRAMA (13 digits with year) instead of ID_PROGRAMA (short numbers)
         "nome": ["nome_programa"],
         "orgao_superior": ["desc_orgao_sup_programa"],
         "orgao_vinculado": ["cod_orgao_sup_programa"],
