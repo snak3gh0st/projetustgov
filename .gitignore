@@ -71,3 +71,11 @@ logs/*
 
 # OS
 Thumbs.db
+
+# Large log files
+*.log
+pipeline_*.log
+reset_database.log
+reload_*.log
+load_*.log
+fix_*.log
