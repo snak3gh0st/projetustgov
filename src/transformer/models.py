@@ -136,6 +136,12 @@ class PropostaValidation(BaseModel):
     proponente: Optional[str] = Field(None, description="Entity proposing the project")
     programa_id: Optional[str] = Field(None, description="Associated program ID")
 
+    @field_validator("data_publicacao", "data_inicio_vigencia", "data_fim_vigencia", mode="before")
+    @classmethod
+    def parse_dates(cls, v):
+        """Parse Brazilian date format DD/MM/YYYY."""
+        return parse_brazilian_date(v)
+
     @field_validator("transfer_gov_id")
     @classmethod
     def transfer_gov_id_must_not_be_empty(cls, v: str) -> str:
@@ -144,13 +150,14 @@ class PropostaValidation(BaseModel):
             raise ValueError("transfer_gov_id cannot be empty")
         return v.strip()
 
-    @field_validator("valor_global", "valor_repasse", "valor_contrapartida")
+    @field_validator("valor_global", "valor_repasse", "valor_contrapartida", mode="before")
     @classmethod
-    def valores_must_not_be_negative(cls, v: Optional[float]) -> Optional[float]:
-        """Reject negative values for monetary fields."""
-        if v is not None and v < 0:
-            raise ValueError(f"valor cannot be negative: {v}")
-        return v
+    def parse_valores(cls, v):
+        """Parse Brazilian float format."""
+        parsed = parse_brazilian_float(v)
+        if parsed is not None and parsed < 0:
+            raise ValueError(f"valor cannot be negative: {parsed}")
+        return parsed
 
     @field_validator("estado")
     @classmethod

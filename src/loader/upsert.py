@@ -294,34 +294,96 @@ def extract_proponentes_from_propostas(
 
 
 def _enrich_proponentes(session: Session, proponentes_detalhado: list[dict]) -> None:
-    """Enrich existing proponentes with detailed data (email, telefone).
+    """Enrich existing proponentes with detailed data.
 
-    Matches by CNPJ and updates contact fields from siconv_proponentes.csv.
+    Matches by CNPJ and updates contact and address fields from siconv_proponentes.csv.
+    Uses raw SQL for maximum performance to avoid Railway statement timeout.
+    Only processes CNPJs that exist in database to minimize operations.
 
     Args:
         session: SQLAlchemy Session
-        proponentes_detalhado: List of validated proponente records with contact info
+        proponentes_detalhado: List of validated proponente records with detailed info
     """
-    updated = 0
+    from sqlalchemy import text
+
+    # First, get all CNPJs that exist in the database
+    logger.info("Fetching existing CNPJs from database...")
+    result = session.execute(text("SELECT cnpj FROM proponentes"))
+    existing_cnpjs = {row[0] for row in result}
+    logger.info(f"Found {len(existing_cnpjs):,} existing proponentes in database")
+
+    # Build dict: CNPJ -> detailed data, but only for CNPJs that exist in DB
+    enrichment_data = {}
     for record in proponentes_detalhado:
         cnpj = normalize_cnpj(record.get("cnpj", ""))
-        if not cnpj:
+        if not cnpj or cnpj not in existing_cnpjs:
             continue
 
-        update_fields = {}
-        if record.get("email"):
-            update_fields["email"] = str(record["email"]).strip()
-        if record.get("telefone"):
-            update_fields["telefone"] = str(record["telefone"]).strip()
+        # Extract all enrichment fields
+        email = str(record["email"]).strip() if record.get("email") else None
+        telefone = str(record["telefone"]).strip() if record.get("telefone") else None
+        endereco = str(record["endereco"]).strip() if record.get("endereco") else None
+        bairro = str(record["bairro"]).strip() if record.get("bairro") else None
+        cep = str(record["cep"]).strip() if record.get("cep") else None
 
-        if update_fields:
-            rows = session.query(Proponente).filter_by(cnpj=cnpj).update(
-                update_fields, synchronize_session=False
+        # Only add if at least one field has data
+        if email or telefone or endereco or bairro or cep:
+            enrichment_data[cnpj] = {
+                "email": email,
+                "telefone": telefone,
+                "endereco": endereco,
+                "bairro": bairro,
+                "cep": cep
+            }
+
+    logger.info(f"Found {len(enrichment_data):,} existing proponentes with enrichment data")
+
+    # Use PostgreSQL UPDATE FROM with VALUES for maximum efficiency
+    # This updates all records in a single SQL statement per batch
+    updated = 0
+    batch_size = 100  # Can use larger batches with single-statement approach
+
+    items = list(enrichment_data.items())
+    for i in range(0, len(items), batch_size):
+        batch = items[i:i+batch_size]
+
+        # Build VALUES clause for this batch
+        values_parts = []
+        params = {}
+        for idx, (cnpj, data) in enumerate(batch):
+            param_prefix = f"p{idx}"
+            values_parts.append(
+                f"(:{param_prefix}_cnpj, :{param_prefix}_email, :{param_prefix}_telefone, "
+                f":{param_prefix}_endereco, :{param_prefix}_bairro, :{param_prefix}_cep)"
             )
-            if rows:
-                updated += 1
+            params[f"{param_prefix}_cnpj"] = cnpj
+            params[f"{param_prefix}_email"] = data.get("email")
+            params[f"{param_prefix}_telefone"] = data.get("telefone")
+            params[f"{param_prefix}_endereco"] = data.get("endereco")
+            params[f"{param_prefix}_bairro"] = data.get("bairro")
+            params[f"{param_prefix}_cep"] = data.get("cep")
 
-    logger.info("Enriched %d proponentes with contact data (email, telefone)", updated)
+        values_clause = ", ".join(values_parts)
+
+        # Execute single UPDATE statement for entire batch
+        sql = f"""
+            UPDATE proponentes
+            SET
+                email = v.email,
+                telefone = v.telefone,
+                endereco = v.endereco,
+                bairro = v.bairro,
+                cep = v.cep
+            FROM (VALUES {values_clause}) AS v(cnpj, email, telefone, endereco, bairro, cep)
+            WHERE proponentes.cnpj = v.cnpj
+        """
+
+        session.execute(text(sql), params)
+        session.commit()
+        updated += len(batch)
+        logger.debug(f"Committed batch: {updated:,} records updated so far")
+
+    logger.info("Enriched %d proponentes with detailed data (email, telefone, endereco, bairro, cep)", updated)
 
 
 def _enrich_emendas_from_detalhado(
