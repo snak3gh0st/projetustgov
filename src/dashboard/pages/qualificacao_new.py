@@ -48,63 +48,65 @@ def render_qualificacao_nova():
     # --- KPI METRICS ROW ---
     stats = get_qualification_stats()
 
-    col1, col2, col3, col4 = st.columns(4)
+    # Detect which data is available
+    has_client_data = stats['existing_clients'] > 0
+    has_convenio_data = stats['total_convenios'] > 0
 
-    with col1:
+    # Row 1: Core KPIs (always shown)
+    kpi_cols = 4 if has_client_data else 3
+    cols = st.columns(kpi_cols)
+
+    with cols[0]:
         st.metric("Total Leads", f"{stats['total_leads']:,}")
 
-    with col2:
-        st.metric(
-            "Novos Leads",
-            f"{stats['new_leads']:,}",
-            help="Leads qualificados que ainda não são clientes",
-        )
-
-    with col3:
-        st.metric(
-            "Clientes Existentes",
-            f"{stats['existing_clients']:,}",
-            help="Leads que já são clientes atuais",
-        )
-
-    with col4:
+    with cols[1]:
         st.metric("Total Emendas", f"{stats['total_emendas']:,}")
 
-    col5, col6, col7 = st.columns(3)
-
-    with col5:
+    with cols[2]:
         st.metric(
             "Valor Emendas",
             f"R$ {stats['total_valor_emendas'] / 1_000_000:.1f}M",
         )
 
-    with col6:
-        st.metric(
-            "Total Convenios",
-            f"{stats['total_convenios']:,}",
-            help="Propostas que viraram convênios formalizados",
-        )
+    if has_client_data:
+        with cols[3]:
+            st.metric(
+                "Clientes Existentes",
+                f"{stats['existing_clients']:,}",
+                help="Leads que já são clientes atuais",
+            )
 
-    with col7:
-        st.metric(
-            "Valor Desembolsado",
-            f"R$ {stats['total_valor_desembolsos'] / 1_000_000:.1f}M",
-            help="Dinheiro efetivamente transferido via desembolsos",
-        )
+    # Row 2: Convenio KPIs (only when data exists)
+    if has_convenio_data:
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            st.metric(
+                "Total Convenios",
+                f"{stats['total_convenios']:,}",
+                help="Propostas que viraram convênios formalizados",
+            )
+        with col_c2:
+            st.metric(
+                "Valor Desembolsado",
+                f"R$ {stats['total_valor_desembolsos'] / 1_000_000:.1f}M",
+                help="Dinheiro efetivamente transferido via desembolsos",
+            )
 
     st.markdown("---")
 
     # --- FILTERS SIDEBAR ---
     st.sidebar.header("Filtros")
 
-    # Cliente status filter
-    cliente_status = st.sidebar.radio(
-        "Status do Lead",
-        options=["Todos", "Apenas Novos Leads", "Apenas Clientes Existentes"],
-        index=0,
-        key="qualif_cliente_status",
-        help="Filtrar por status de cliente",
-    )
+    # Cliente status filter (only when client data exists)
+    cliente_status = "Todos"
+    if has_client_data:
+        cliente_status = st.sidebar.radio(
+            "Status do Lead",
+            options=["Todos", "Apenas Novos Leads", "Apenas Clientes Existentes"],
+            index=0,
+            key="qualif_cliente_status",
+            help="Filtrar por status de cliente",
+        )
 
     # Estado filter
     estados = get_estados_disponiveis()
@@ -189,10 +191,11 @@ def render_qualificacao_nova():
         lambda x: f"R$ {x / 1_000:,.0f}K" if pd.notna(x) and x > 0 else "R$ 0"
     )
 
-    # Format valor_total_desembolsos as currency
-    df["valor_desembolsos_fmt"] = df["valor_total_desembolsos"].apply(
-        lambda x: f"R$ {x / 1_000:,.0f}K" if pd.notna(x) and x > 0 else "R$ 0"
-    )
+    # Format valor_total_desembolsos as currency (only when data exists)
+    if has_convenio_data:
+        df["valor_desembolsos_fmt"] = df["valor_total_desembolsos"].apply(
+            lambda x: f"R$ {x / 1_000:,.0f}K" if pd.notna(x) and x > 0 else "R$ 0"
+        )
 
     # Add value badge based on total_propostas
     def get_value_badge(n_propostas):
@@ -207,10 +210,11 @@ def render_qualificacao_nova():
 
     df["valor"] = df["total_propostas"].apply(get_value_badge)
 
-    # Add client status badge
-    df["status_cliente"] = df["is_existing_client"].apply(
-        lambda x: "✅ Cliente" if x else "🆕 Novo"
-    )
+    # Add client status badge (only when client data exists)
+    if has_client_data:
+        df["status_cliente"] = df["is_existing_client"].apply(
+            lambda x: "✅ Cliente" if x else "🆕 Novo"
+        )
 
     # Truncate ministerios for display
     df["ministerios_truncated"] = df["ministerios"].apply(
@@ -219,41 +223,26 @@ def render_qualificacao_nova():
         )
     )
 
-    # Prepare display DataFrame
-    display_columns = [
-        "rank",
-        "status_cliente",
-        "valor",
-        "nome",
-        "cnpj_formatado",
-        "estado",
-        "municipio",
-        "ministerios_truncated",
-        "total_propostas",
-        "total_emendas",
-        "valor_emendas_fmt",
-        "total_convenios",
-        "valor_desembolsos_fmt",
-    ]
+    # Prepare display DataFrame - columns depend on available data
+    display_columns = ["rank"]
+    column_names = ["#"]
+
+    if has_client_data:
+        display_columns.append("status_cliente")
+        column_names.append("Status")
+
+    display_columns += ["valor", "nome", "cnpj_formatado", "estado", "municipio",
+                        "ministerios_truncated", "total_propostas", "total_emendas",
+                        "valor_emendas_fmt"]
+    column_names += ["Valor", "Nome", "CNPJ", "UF", "Municipio",
+                     "Ministerios", "Propostas", "Emendas", "Valor Emendas"]
+
+    if has_convenio_data:
+        display_columns += ["total_convenios", "valor_desembolsos_fmt"]
+        column_names += ["Convenios", "Valor Desembolsado"]
 
     df_display = df[display_columns].copy()
-
-    # Rename columns for display
-    df_display.columns = [
-        "#",
-        "Status",
-        "Valor",
-        "Nome",
-        "CNPJ",
-        "UF",
-        "Município",
-        "Ministérios",
-        "Propostas",
-        "Emendas",
-        "Valor Emendas",
-        "Convênios",
-        "Valor Desembolsado",
-    ]
+    df_display.columns = column_names
 
     # Highlight high-value leads (<=3 propostas)
     def highlight_high_value(row):
@@ -273,11 +262,13 @@ def render_qualificacao_nova():
         height=400,
     )
 
-    st.caption(
-        "✨ **Verde destacado:** Leads de alto valor (≤3 propostas)\n\n"
-        "**Legenda de Status:** 🆕 Novo Lead | ✅ Cliente Existente\n\n"
-        "**Legenda de Valor:** 🌟 VERDE (0) | ⭐ ALTO (1-3) | ✓ BOM (4-10) | ○ REGULAR (11+)"
-    )
+    caption_parts = [
+        "**Verde destacado:** Leads de alto valor (<=3 propostas)",
+        "**Legenda de Valor:** VERDE (0) | ALTO (1-3) | BOM (4-10) | REGULAR (11+)",
+    ]
+    if has_client_data:
+        caption_parts.insert(1, "**Legenda de Status:** Novo Lead | Cliente Existente")
+    st.caption("\n\n".join(caption_parts))
 
     # --- LEAD DETAIL DRILL-DOWN ---
     st.markdown("---")
@@ -304,20 +295,22 @@ def render_qualificacao_nova():
 
             st.markdown(f"### {selected_nome}")
 
-            # Show proponente details
-            col1, col2, col3, col4, col5 = st.columns(5)
-            with col1:
+            # Show proponente details - core metrics
+            detail_cols = 5 if has_convenio_data else 3
+            cols = st.columns(detail_cols)
+            with cols[0]:
                 st.metric("Total Propostas", df.iloc[selected_lead_idx]["total_propostas"])
-            with col2:
+            with cols[1]:
                 st.metric("Total Emendas", df.iloc[selected_lead_idx]["total_emendas"])
-            with col3:
+            with cols[2]:
                 valor_emendas = df.iloc[selected_lead_idx]["valor_total_emendas"]
                 st.metric("Valor Emendas", f"R$ {valor_emendas / 1_000_000:.2f}M")
-            with col4:
-                st.metric("Convênios", df.iloc[selected_lead_idx].get("total_convenios", 0))
-            with col5:
-                valor_desemb = df.iloc[selected_lead_idx].get("valor_total_desembolsos", 0) or 0
-                st.metric("Valor Desembolsado", f"R$ {valor_desemb / 1_000_000:.2f}M")
+            if has_convenio_data:
+                with cols[3]:
+                    st.metric("Convenios", df.iloc[selected_lead_idx].get("total_convenios", 0))
+                with cols[4]:
+                    valor_desemb = df.iloc[selected_lead_idx].get("valor_total_desembolsos", 0) or 0
+                    st.metric("Valor Desembolsado", f"R$ {valor_desemb / 1_000_000:.2f}M")
 
             # Contact info if available
             email = df.iloc[selected_lead_idx].get("email")
@@ -331,219 +324,139 @@ def render_qualificacao_nova():
                 if contact_parts:
                     st.markdown(" | ".join(contact_parts))
 
-            # Emendas, Propostas, Convênios, Histórico tabs
-            tab1, tab2, tab3, tab4 = st.tabs([
-                "Emendas", "Propostas", "Convênios", "Histórico"
-            ])
+            # Build tabs based on available data
+            tab_names = ["Emendas", "Propostas"]
+            if has_convenio_data:
+                tab_names += ["Convenios", "Historico"]
 
-            with tab1:
+            tabs = st.tabs(tab_names)
+
+            with tabs[0]:
                 st.markdown("#### Emendas Parlamentares")
                 df_emendas = get_proponente_emendas(selected_cnpj)
 
                 if df_emendas.empty:
                     st.info("Nenhuma emenda encontrada para este lead.")
                 else:
-                    # Format emendas table
                     df_emendas_display = df_emendas.copy()
                     df_emendas_display["valor_fmt"] = df_emendas_display[
                         "valor_emenda"
                     ].apply(lambda x: f"R$ {x:,.2f}" if pd.notna(x) else "R$ 0,00")
 
-                    display_cols = [
-                        "numero_emenda",
-                        "parlamentar",
-                        "valor_fmt",
-                        "tipo_emenda",
-                    ]
+                    display_cols = ["numero_emenda", "parlamentar", "valor_fmt", "tipo_emenda"]
                     df_emendas_display = df_emendas_display[
                         [c for c in display_cols if c in df_emendas_display.columns]
                     ]
+                    df_emendas_display.columns = ["Numero", "Parlamentar", "Valor", "Tipo"]
 
-                    df_emendas_display.columns = ["Número", "Parlamentar", "Valor", "Tipo"]
+                    st.dataframe(df_emendas_display, use_container_width=True, hide_index=True)
 
-                    st.dataframe(
-                        df_emendas_display,
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-            with tab2:
-                st.markdown("#### Histórico de Propostas")
+            with tabs[1]:
+                st.markdown("#### Historico de Propostas")
                 df_propostas = get_proponente_propostas(selected_cnpj)
 
                 if df_propostas.empty:
-                    st.info("Nenhuma proposta histórica encontrada.")
+                    st.info("Nenhuma proposta historica encontrada.")
                 else:
-                    # Format propostas table
                     df_propostas_display = df_propostas.copy()
                     df_propostas_display["valor_global_fmt"] = df_propostas_display[
                         "valor_global"
                     ].apply(lambda x: f"R$ {x / 1_000:,.0f}K" if pd.notna(x) else "")
 
-                    display_cols = [
-                        "titulo",
-                        "situacao",
-                        "valor_global_fmt",
-                        "data_publicacao",
-                        "programa_nome",
-                    ]
+                    display_cols = ["titulo", "situacao", "valor_global_fmt", "data_publicacao", "programa_nome"]
                     df_propostas_display = df_propostas_display[
                         [c for c in display_cols if c in df_propostas_display.columns]
                     ]
+                    df_propostas_display.columns = ["Titulo", "Situacao", "Valor", "Data", "Programa"]
 
-                    df_propostas_display.columns = [
-                        "Título",
-                        "Situação",
-                        "Valor",
-                        "Data",
-                        "Programa",
-                    ]
+                    st.dataframe(df_propostas_display, use_container_width=True, hide_index=True, height=300)
 
-                    st.dataframe(
-                        df_propostas_display,
-                        use_container_width=True,
-                        hide_index=True,
-                        height=300,
-                    )
+            # Convenios and Historico tabs (only when data exists)
+            if has_convenio_data:
+                with tabs[2]:
+                    st.markdown("#### Convenios Formalizados")
+                    df_convenios = get_proponente_convenios(selected_cnpj)
 
-            with tab3:
-                st.markdown("#### Convênios Formalizados")
-                df_convenios = get_proponente_convenios(selected_cnpj)
+                    if df_convenios.empty:
+                        st.info("Nenhum convenio encontrado para este lead.")
+                    else:
+                        df_conv_display = df_convenios.copy()
+                        df_conv_display["valor_global_fmt"] = df_conv_display[
+                            "valor_global"
+                        ].apply(lambda x: f"R$ {x / 1_000:,.0f}K" if pd.notna(x) else "")
+                        df_conv_display["valor_desemb_fmt"] = df_conv_display[
+                            "valor_desembolsado"
+                        ].apply(lambda x: f"R$ {x / 1_000:,.0f}K" if pd.notna(x) else "")
 
-                if df_convenios.empty:
-                    st.info("Nenhum convênio encontrado para este lead.")
-                else:
-                    df_conv_display = df_convenios.copy()
-                    df_conv_display["valor_global_fmt"] = df_conv_display[
-                        "valor_global"
-                    ].apply(lambda x: f"R$ {x / 1_000:,.0f}K" if pd.notna(x) else "")
-                    df_conv_display["valor_desemb_fmt"] = df_conv_display[
-                        "valor_desembolsado"
-                    ].apply(lambda x: f"R$ {x / 1_000:,.0f}K" if pd.notna(x) else "")
+                        display_cols = ["nr_convenio", "situacao", "instrumento_ativo",
+                                        "valor_global_fmt", "valor_desemb_fmt",
+                                        "data_assinatura", "data_fim_vigencia"]
+                        df_conv_display = df_conv_display[
+                            [c for c in display_cols if c in df_conv_display.columns]
+                        ]
+                        df_conv_display.columns = ["Nr Convenio", "Situacao", "Ativo",
+                                                   "Valor Global", "Valor Desembolsado",
+                                                   "Data Assinatura", "Fim Vigencia"]
 
-                    display_cols = [
-                        "nr_convenio",
-                        "situacao",
-                        "instrumento_ativo",
-                        "valor_global_fmt",
-                        "valor_desemb_fmt",
-                        "data_assinatura",
-                        "data_fim_vigencia",
-                    ]
-                    df_conv_display = df_conv_display[
-                        [c for c in display_cols if c in df_conv_display.columns]
-                    ]
+                        st.dataframe(df_conv_display, use_container_width=True, hide_index=True, height=300)
 
-                    df_conv_display.columns = [
-                        "Nr Convênio",
-                        "Situação",
-                        "Ativo",
-                        "Valor Global",
-                        "Valor Desembolsado",
-                        "Data Assinatura",
-                        "Fim Vigência",
-                    ]
+                with tabs[3]:
+                    st.markdown("#### Historico de Situacoes")
+                    df_historico = get_proponente_historico(selected_cnpj)
 
-                    st.dataframe(
-                        df_conv_display,
-                        use_container_width=True,
-                        hide_index=True,
-                        height=300,
-                    )
+                    if df_historico.empty:
+                        st.info("Nenhum historico de situacao encontrado.")
+                    else:
+                        df_hist_display = df_historico.copy()
+                        display_cols = ["proposta_id", "proposta_titulo", "nr_convenio",
+                                        "situacao", "data_historico", "dias_historico"]
+                        df_hist_display = df_hist_display[
+                            [c for c in display_cols if c in df_hist_display.columns]
+                        ]
+                        df_hist_display.columns = ["Proposta ID", "Titulo", "Nr Convenio",
+                                                   "Situacao", "Data", "Dias"]
 
-            with tab4:
-                st.markdown("#### Histórico de Situações")
-                df_historico = get_proponente_historico(selected_cnpj)
-
-                if df_historico.empty:
-                    st.info("Nenhum histórico de situação encontrado.")
-                else:
-                    df_hist_display = df_historico.copy()
-
-                    display_cols = [
-                        "proposta_id",
-                        "proposta_titulo",
-                        "nr_convenio",
-                        "situacao",
-                        "data_historico",
-                        "dias_historico",
-                    ]
-                    df_hist_display = df_hist_display[
-                        [c for c in display_cols if c in df_hist_display.columns]
-                    ]
-
-                    df_hist_display.columns = [
-                        "Proposta ID",
-                        "Título",
-                        "Nr Convênio",
-                        "Situação",
-                        "Data",
-                        "Dias",
-                    ]
-
-                    st.dataframe(
-                        df_hist_display,
-                        use_container_width=True,
-                        hide_index=True,
-                        height=300,
-                    )
+                        st.dataframe(df_hist_display, use_container_width=True, hide_index=True, height=300)
 
     # --- CSV EXPORT SECTION ---
     st.markdown("---")
     st.subheader("Exportar Dados")
 
-    # Prepare export DataFrame
-    export_columns = [
-        "rank",
-        "nome",
-        "cnpj",
-        "is_existing_client",
-        "natureza_juridica",
-        "estado",
-        "municipio",
-        "cep",
-        "endereco",
-        "bairro",
-        "email",
-        "telefone",
-        "ministerios",
-        "total_propostas",
-        "total_emendas",
-        "valor_total_emendas",
-        "total_convenios",
-        "valor_total_desembolsos",
-    ]
+    # Prepare export DataFrame - include only columns with data
+    export_columns = ["rank", "nome", "cnpj"]
+    export_names = ["Rank", "Nome", "CNPJ"]
+
+    if has_client_data:
+        export_columns.append("is_existing_client")
+        export_names.append("Cliente Existente")
+
+    export_columns += ["natureza_juridica", "estado", "municipio", "cep",
+                       "endereco", "bairro"]
+    export_names += ["Natureza Juridica", "UF", "Municipio", "CEP",
+                     "Endereco", "Bairro"]
+
+    # Include contact info only if any lead has email/telefone
+    has_contact = df["email"].notna().any() or df["telefone"].notna().any()
+    if has_contact:
+        export_columns += ["email", "telefone"]
+        export_names += ["Email", "Telefone"]
+
+    export_columns += ["ministerios", "total_propostas", "total_emendas",
+                       "valor_total_emendas"]
+    export_names += ["Ministerios/Orgaos", "Total Propostas", "Total Emendas",
+                     "Valor Total Emendas"]
+
+    if has_convenio_data:
+        export_columns += ["total_convenios", "valor_total_desembolsos"]
+        export_names += ["Total Convenios", "Valor Total Desembolsos"]
 
     df_export = df[[col for col in export_columns if col in df.columns]].copy()
 
-    # Convert boolean to readable text
-    if "is_existing_client" in df_export.columns:
+    if has_client_data and "is_existing_client" in df_export.columns:
         df_export["is_existing_client"] = df_export["is_existing_client"].apply(
-            lambda x: "Sim" if x else "Não"
+            lambda x: "Sim" if x else "Nao"
         )
 
-    column_names = [
-        "Rank",
-        "Nome",
-        "CNPJ",
-        "Cliente Existente",
-        "Natureza Jurídica",
-        "UF",
-        "Município",
-        "CEP",
-        "Endereço",
-        "Bairro",
-        "Email",
-        "Telefone",
-        "Ministérios/Órgãos",
-        "Total Propostas",
-        "Total Emendas",
-        "Valor Total Emendas",
-        "Total Convênios",
-        "Valor Total Desembolsos",
-    ]
-
-    # Only use column names matching actual columns
-    df_export.columns = column_names[:len(df_export.columns)]
+    df_export.columns = export_names[:len(df_export.columns)]
 
     render_csv_export(df_export, "leads_qualificados.csv")
