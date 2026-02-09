@@ -71,9 +71,9 @@ def emendas_page():
 
 def qualificacao_page():
     """Qualificacao de Proponentes page for client discovery and prospecting."""
-    from src.dashboard.pages.qualificacao import render_qualificacao
+    from src.dashboard.pages.qualificacao_new import render_qualificacao_nova
 
-    render_qualificacao()
+    render_qualificacao_nova()
 
 
 # Define navigation structure with 6 tabs (5 entity pages + Qualificacao)

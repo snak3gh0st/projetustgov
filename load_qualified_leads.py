@@ -10,13 +10,22 @@ This script implements the correct filtering strategy based on the meeting notes
 
 from pathlib import Path
 from datetime import date, datetime
+import hashlib
 import polars as pl
 from loguru import logger
 from sqlalchemy import text
 
 from src.loader.database import get_engine, create_session_factory
 from src.loader.upsert import upsert_records, extract_proponentes_from_propostas
-from src.loader.db_models import Proposta, Programa
+from src.loader.db_models import (
+    Proposta,
+    Programa,
+    Proponente,
+    Apoiador,
+    Emenda,
+    PropostaApoiador,
+    PropostaEmenda,
+)
 
 
 def parse_brazilian_date(date_str: str) -> str | None:
@@ -201,7 +210,7 @@ def main():
     logger.info(f"Final propostas ready to load: {len(df_pd):,}")
 
     # Step 6: Load to database
-    logger.info("\n[6/6] Loading to database...")
+    logger.info("\n[6/8] Loading to database...")
 
     engine = get_engine()
     SessionLocal = create_session_factory(engine)
@@ -222,25 +231,248 @@ def main():
 
         session.commit()
 
-        # Extract proponentes
-        logger.info("Extracting proponentes...")
-        df_pl = pl.from_pandas(df_pd)
-        proponentes_data = extract_proponentes_from_propostas(records, df_pl)
+        # Extract proponentes from loaded propostas
+        logger.info("\n[7/8] Extracting and upserting proponentes...")
 
-        if proponentes_data:
-            from src.loader.db_models import Proponente
+        # Get unique proponentes from loaded propostas
+        df_proponentes_extract = df_pd[["proponente_cnpj", "proponente", "estado", "municipio"]].copy()
+        df_proponentes_extract = df_proponentes_extract[df_proponentes_extract["proponente_cnpj"].notna()]
+        df_proponentes_extract = df_proponentes_extract.drop_duplicates(subset=["proponente_cnpj"])
+
+        # Build proponente records
+        proponente_records = []
+        for _, row in df_proponentes_extract.iterrows():
+            proponente_records.append({
+                "cnpj": row["proponente_cnpj"],
+                "nome": row["proponente"],
+                "estado": row.get("estado"),
+                "municipio": row.get("municipio"),
+                "is_osc": True,  # All qualified leads are OSCs
+                "extraction_date": date.today(),
+                "total_propostas": 0,  # Will be recalculated below
+                "total_emendas": 0,  # Will be recalculated below
+                "valor_total_emendas": 0.0,  # Will be recalculated below
+            })
+
+        if proponente_records:
             result_prop = upsert_records(
                 session=session,
                 model_class=Proponente,
-                records=proponentes_data,
+                records=proponente_records,
                 conflict_column="cnpj",
                 batch_size=5000
             )
             logger.info(f"Proponentes upsert result: {result_prop}")
             session.commit()
-            logger.info("Proponentes extracted successfully")
+            logger.info(f"Upserted {len(proponente_records):,} proponentes")
         else:
             logger.warning("No proponentes data extracted")
+
+        # Step 7: Load emenda linkages
+        logger.info("\n[8/8] Loading emenda linkages...")
+
+        # Re-load apoiadores CSV to get emenda linkages for our qualified propostas
+        df_emendas_full = pl.read_csv(
+            str(data_dir / "sample_apoiadores.csv"),
+            separator=";",
+            infer_schema_length=0,
+        )
+
+        # Filter only emendas for our loaded propostas (by CNPJ + ID_PROGRAMA)
+        # First get the list of loaded propostas with their programa_id and CNPJ
+        df_loaded_propostas = pl.from_pandas(df_pd[["transfer_gov_id", "programa_id", "proponente_cnpj"]].copy())
+
+        # Map COD_PROGRAMA back to ID_PROGRAMA for the join
+        cod_to_id_map = {v: k for k, v in id_to_cod_map.items()}
+        df_loaded_propostas = df_loaded_propostas.with_columns(
+            pl.col("programa_id").replace(cod_to_id_map).alias("id_programa_original")
+        )
+
+        # Normalize CNPJ in apoiadores for matching
+        df_emendas_full = df_emendas_full.with_columns(
+            pl.col("CNPJ_PROPONENTE_APOIADORES_EMENDAS").str.replace_all(r"[^0-9]", "").alias("cnpj_normalized")
+        )
+
+        # Join with emendas data using ID_PROGRAMA and CNPJ
+        df_emendas_filtered = df_emendas_full.join(
+            df_loaded_propostas,
+            left_on=["ID_PROGRAMA", "cnpj_normalized"],
+            right_on=["id_programa_original", "proponente_cnpj"],
+            how="inner"
+        )
+
+        logger.info(f"Found {len(df_emendas_filtered):,} emenda linkages for qualified propostas")
+
+        # Extract unique apoiadores
+        apoiador_records = []
+        for row in df_emendas_filtered.to_dicts():
+            if row.get("NOME_PARLAMENTAR_APOIADORES_EMENDAS"):
+                # Create a simple hash for transfer_gov_id
+                apoiador_key = f"{row['NUMERO_EMENDA_APOIADORES_EMENDAS']}_{row['NOME_PARLAMENTAR_APOIADORES_EMENDAS']}"
+                transfer_gov_id = hashlib.md5(apoiador_key.encode()).hexdigest()[:16]
+
+                apoiador_records.append({
+                    "transfer_gov_id": transfer_gov_id,
+                    "nome": row["NOME_PARLAMENTAR_APOIADORES_EMENDAS"],
+                    "tipo": row.get("INDICACAO_APOIADORES_EMENDAS", ""),
+                    "orgao": "",  # Not available in this CSV
+                    "extraction_date": date.today(),
+                })
+
+        # Deduplicate apoiadores
+        seen_apoiadores = set()
+        unique_apoiador_records = []
+        for rec in apoiador_records:
+            key = rec["transfer_gov_id"]
+            if key not in seen_apoiadores:
+                seen_apoiadores.add(key)
+                unique_apoiador_records.append(rec)
+
+        if unique_apoiador_records:
+            result_apoiadores = upsert_records(
+                session=session,
+                model_class=Apoiador,
+                records=unique_apoiador_records,
+                conflict_column="transfer_gov_id",
+                batch_size=5000
+            )
+            logger.info(f"Apoiadores upsert result: {result_apoiadores}")
+            session.commit()
+
+        # Extract unique emendas
+        emenda_records = []
+        for row in df_emendas_filtered.to_dicts():
+            if row.get("NUMERO_EMENDA_APOIADORES_EMENDAS"):
+                # Parse valor
+                valor_str = row.get("VALOR_REPASSE_PROPOSTA_APOIADORES_EMENDAS", "0")
+                try:
+                    valor = float(str(valor_str).replace(",", ".")) if valor_str and valor_str != "nan" else 0.0
+                except:
+                    valor = 0.0
+
+                emenda_records.append({
+                    "transfer_gov_id": row["NUMERO_EMENDA_APOIADORES_EMENDAS"],
+                    "numero": row["NUMERO_EMENDA_APOIADORES_EMENDAS"],
+                    "autor": row.get("NOME_PARLAMENTAR_APOIADORES_EMENDAS", ""),
+                    "valor": valor,
+                    "tipo": row.get("INDICACAO_APOIADORES_EMENDAS", ""),
+                    "ano": None,  # Not available in this CSV
+                    "extraction_date": date.today(),
+                })
+
+        # Deduplicate emendas
+        seen_emendas = set()
+        unique_emenda_records = []
+        for rec in emenda_records:
+            key = rec["transfer_gov_id"]
+            if key not in seen_emendas:
+                seen_emendas.add(key)
+                unique_emenda_records.append(rec)
+
+        if unique_emenda_records:
+            result_emendas = upsert_records(
+                session=session,
+                model_class=Emenda,
+                records=unique_emenda_records,
+                conflict_column="transfer_gov_id",
+                batch_size=5000
+            )
+            logger.info(f"Emendas upsert result: {result_emendas}")
+            session.commit()
+
+        # Create junction table links
+        logger.info("Creating junction table links...")
+
+        proposta_apoiador_links = []
+        proposta_emenda_links = []
+
+        for row in df_emendas_filtered.to_dicts():
+            proposta_id = row["transfer_gov_id"]
+            emenda_numero = row.get("NUMERO_EMENDA_APOIADORES_EMENDAS")
+            parlamentar = row.get("NOME_PARLAMENTAR_APOIADORES_EMENDAS")
+
+            if emenda_numero:
+                proposta_emenda_links.append({
+                    "proposta_transfer_gov_id": proposta_id,
+                    "emenda_transfer_gov_id": emenda_numero,
+                    "extraction_date": date.today(),
+                })
+
+            if parlamentar:
+                apoiador_key = f"{emenda_numero}_{parlamentar}"
+                apoiador_id = hashlib.md5(apoiador_key.encode()).hexdigest()[:16]
+
+                proposta_apoiador_links.append({
+                    "proposta_transfer_gov_id": proposta_id,
+                    "apoiador_transfer_gov_id": apoiador_id,
+                    "extraction_date": date.today(),
+                })
+
+        if proposta_emenda_links:
+            # Deduplicate
+            seen_pe = set()
+            unique_pe = []
+            for link in proposta_emenda_links:
+                key = (link["proposta_transfer_gov_id"], link["emenda_transfer_gov_id"])
+                if key not in seen_pe:
+                    seen_pe.add(key)
+                    unique_pe.append(link)
+
+            result_pe = upsert_records(
+                session=session,
+                model_class=PropostaEmenda,
+                records=unique_pe,
+                conflict_column=["proposta_transfer_gov_id", "emenda_transfer_gov_id"],
+                batch_size=5000
+            )
+            logger.info(f"Proposta-Emenda links: {result_pe}")
+            session.commit()
+
+        if proposta_apoiador_links:
+            # Deduplicate
+            seen_pa = set()
+            unique_pa = []
+            for link in proposta_apoiador_links:
+                key = (link["proposta_transfer_gov_id"], link["apoiador_transfer_gov_id"])
+                if key not in seen_pa:
+                    seen_pa.add(key)
+                    unique_pa.append(link)
+
+            result_pa = upsert_records(
+                session=session,
+                model_class=PropostaApoiador,
+                records=unique_pa,
+                conflict_column=["proposta_transfer_gov_id", "apoiador_transfer_gov_id"],
+                batch_size=5000
+            )
+            logger.info(f"Proposta-Apoiador links: {result_pa}")
+            session.commit()
+
+        # Recalculate proponente aggregations
+        logger.info("Recalculating proponente aggregations...")
+        with engine.connect() as conn:
+            conn.execute(text("""
+                UPDATE proponentes SET
+                    total_propostas = subq.total_propostas,
+                    total_emendas = COALESCE(subq.total_emendas, 0),
+                    valor_total_emendas = COALESCE(subq.valor_total_emendas, 0.0)
+                FROM (
+                    SELECT
+                        p.cnpj,
+                        COUNT(DISTINCT prop.id) as total_propostas,
+                        COUNT(DISTINCT pe.emenda_transfer_gov_id) as total_emendas,
+                        SUM(DISTINCT e.valor) as valor_total_emendas
+                    FROM proponentes p
+                    LEFT JOIN propostas prop ON p.cnpj = prop.proponente_cnpj
+                    LEFT JOIN proposta_emendas pe ON prop.transfer_gov_id = pe.proposta_transfer_gov_id
+                    LEFT JOIN emendas e ON pe.emenda_transfer_gov_id = e.transfer_gov_id
+                    GROUP BY p.cnpj
+                ) subq
+                WHERE proponentes.cnpj = subq.cnpj
+            """))
+            conn.commit()
+
+        logger.info("Proponente aggregations recalculated")
 
     except Exception as e:
         logger.error(f"Error loading data: {e}")

@@ -73,12 +73,41 @@ def _parse_excel(path: Path, file_type: str) -> pl.DataFrame:
     # Apply column mapping for known aliases
     df = apply_column_mapping(df, file_type)
 
+    # Normalize Brazilian decimal format (comma to dot)
+    df = _normalize_brazilian_decimals(df)
+
     # Validate not empty
     validate_file_not_empty(df, str(path))
 
     # Validate schema
     validate_schema(df, file_type)
 
+    return df
+
+
+def _normalize_brazilian_decimals(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Convert Brazilian decimal format (comma) to standard format (dot).
+
+    Looks for columns with 'valor' in the name and replaces commas with dots.
+
+    Args:
+        df: Polars DataFrame
+
+    Returns:
+        DataFrame with normalized decimal values
+    """
+    for col in df.columns:
+        # Check if column name suggests it contains numeric values
+        if any(keyword in col.lower() for keyword in ['valor', 'preco', 'custo', 'montante']):
+            try:
+                # Replace comma with dot in string columns
+                df = df.with_columns(
+                    pl.col(col).str.replace_all(',', '.').alias(col)
+                )
+                logger.debug(f"Normalized decimal format for column: {col}")
+            except Exception as e:
+                logger.debug(f"Could not normalize column {col}: {e}")
     return df
 
 
@@ -173,6 +202,9 @@ def _parse_csv(path: Path, file_type: str) -> pl.DataFrame:
                 truncate_ragged_lines=True,
                 infer_schema_length=0,
             )
+
+    # Normalize Brazilian decimal format (comma to dot)
+    df = _normalize_brazilian_decimals(df)
 
     # Validate not empty
     validate_file_not_empty(df, str(path))
