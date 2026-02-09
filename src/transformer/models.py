@@ -2,7 +2,77 @@
 
 from pydantic import BaseModel, field_validator, Field, ConfigDict
 from typing import Optional
-from datetime import date
+from datetime import date, datetime
+
+
+def parse_brazilian_date(v) -> Optional[date]:
+    """Parse DD/MM/YYYY date format used in Brazilian government CSVs."""
+    if v is None or (isinstance(v, str) and not v.strip()):
+        return None
+    if isinstance(v, date):
+        return v
+    s = str(v).strip()
+    # Try DD/MM/YYYY
+    try:
+        parts = s.split("/")
+        if len(parts) == 3:
+            return date(int(parts[2]), int(parts[1]), int(parts[0]))
+    except (ValueError, IndexError):
+        pass
+    # Try YYYY-MM-DD (ISO)
+    try:
+        return date.fromisoformat(s[:10])
+    except (ValueError, IndexError):
+        pass
+    return None
+
+
+def parse_brazilian_datetime(v) -> Optional[datetime]:
+    """Parse DD/MM/YYYY HH:MM:SS datetime format used in Brazilian government CSVs."""
+    if v is None or (isinstance(v, str) and not v.strip()):
+        return None
+    if isinstance(v, datetime):
+        return v
+    s = str(v).strip()
+    # Try DD/MM/YYYY HH:MM:SS
+    try:
+        date_part, time_part = s.split(" ", 1)
+        parts = date_part.split("/")
+        time_parts = time_part.split(":")
+        if len(parts) == 3:
+            return datetime(
+                int(parts[2]), int(parts[1]), int(parts[0]),
+                int(time_parts[0]) if len(time_parts) > 0 else 0,
+                int(time_parts[1]) if len(time_parts) > 1 else 0,
+                int(time_parts[2]) if len(time_parts) > 2 else 0,
+            )
+    except (ValueError, IndexError):
+        pass
+    # Try DD/MM/YYYY (without time)
+    try:
+        parts = s.split("/")
+        if len(parts) == 3:
+            return datetime(int(parts[2]), int(parts[1]), int(parts[0]))
+    except (ValueError, IndexError):
+        pass
+    return None
+
+
+def parse_brazilian_float(v) -> Optional[float]:
+    """Parse number with comma decimal separator (e.g., '311762,4' → 311762.4)."""
+    if v is None:
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    s = str(v).strip()
+    if not s:
+        return None
+    # Replace comma with dot
+    s = s.replace(",", ".")
+    try:
+        return float(s)
+    except ValueError:
+        return None
 
 
 # Valid Brazilian UF codes
@@ -178,3 +248,160 @@ class ProgramaValidation(BaseModel):
         if not v or not v.strip():
             raise ValueError("transfer_gov_id cannot be empty")
         return v.strip()
+
+
+class ConvenioValidation(BaseModel):
+    """Validates a single convênio record from Transfer Gov."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    transfer_gov_id: str = Field(..., description="NR_CONVENIO unique identifier")
+    proposta_id: Optional[str] = Field(None, description="Linked proposal ID")
+    situacao: Optional[str] = Field(None, description="Current situation of convênio")
+    instrumento_ativo: Optional[str] = Field(None, description="Whether instrument is active")
+    valor_global: Optional[float] = Field(None, description="Total global value")
+    valor_repasse: Optional[float] = Field(None, description="Transfer value")
+    valor_contrapartida: Optional[float] = Field(None, description="Counterpart value")
+    valor_desembolsado: Optional[float] = Field(None, description="Amount disbursed")
+    data_assinatura: Optional[date] = Field(None, description="Signature date")
+    data_publicacao: Optional[date] = Field(None, description="Publication date")
+    data_inicio_vigencia: Optional[date] = Field(None, description="Start of validity")
+    data_fim_vigencia: Optional[date] = Field(None, description="End of validity")
+    ano: Optional[int] = Field(None, description="Year")
+
+    @field_validator("transfer_gov_id")
+    @classmethod
+    def transfer_gov_id_must_not_be_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("transfer_gov_id cannot be empty")
+        return v.strip()
+
+    @field_validator("valor_global", "valor_repasse", "valor_contrapartida", "valor_desembolsado", mode="before")
+    @classmethod
+    def parse_valor(cls, v):
+        return parse_brazilian_float(v)
+
+    @field_validator("data_assinatura", "data_publicacao", "data_inicio_vigencia", "data_fim_vigencia", mode="before")
+    @classmethod
+    def parse_date(cls, v):
+        return parse_brazilian_date(v)
+
+    @field_validator("ano", mode="before")
+    @classmethod
+    def parse_ano(cls, v):
+        if v is None or (isinstance(v, str) and (not v.strip() or v.strip() == "nan")):
+            return None
+        try:
+            return int(float(str(v)))
+        except (ValueError, TypeError):
+            return None
+
+
+class DesembolsoValidation(BaseModel):
+    """Validates a single desembolso record from Transfer Gov."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    transfer_gov_id: str = Field(..., description="ID_DESEMBOLSO unique identifier")
+    convenio_id: Optional[str] = Field(None, description="NR_CONVENIO link")
+    data_desembolso: Optional[date] = Field(None, description="Disbursement date")
+    valor_desembolsado: Optional[float] = Field(None, description="Amount disbursed")
+    nr_siafi: Optional[str] = Field(None, description="SIAFI reference number")
+    ano_desembolso: Optional[int] = Field(None, description="Disbursement year")
+
+    @field_validator("transfer_gov_id")
+    @classmethod
+    def transfer_gov_id_must_not_be_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("transfer_gov_id cannot be empty")
+        return v.strip()
+
+    @field_validator("valor_desembolsado", mode="before")
+    @classmethod
+    def parse_valor(cls, v):
+        return parse_brazilian_float(v)
+
+    @field_validator("data_desembolso", mode="before")
+    @classmethod
+    def parse_date(cls, v):
+        return parse_brazilian_date(v)
+
+    @field_validator("ano_desembolso", mode="before")
+    @classmethod
+    def parse_ano(cls, v):
+        if v is None or (isinstance(v, str) and (not v.strip() or v.strip() == "nan")):
+            return None
+        try:
+            return int(float(str(v)))
+        except (ValueError, TypeError):
+            return None
+
+
+class HistoricoSituacaoValidation(BaseModel):
+    """Validates a single histórico de situação record."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    proposta_id: Optional[str] = Field(None, description="ID_PROPOSTA link")
+    convenio_id: Optional[str] = Field(None, description="NR_CONVENIO link")
+    data_historico: Optional[datetime] = Field(None, description="Date of status change")
+    situacao: Optional[str] = Field(None, description="Situation code")
+    dias_historico: Optional[int] = Field(None, description="Days in this situation")
+    cod_historico: Optional[str] = Field(None, description="Situation code number")
+
+    @field_validator("data_historico", mode="before")
+    @classmethod
+    def parse_date(cls, v):
+        return parse_brazilian_datetime(v)
+
+    @field_validator("dias_historico", mode="before")
+    @classmethod
+    def parse_dias(cls, v):
+        if v is None or (isinstance(v, str) and (not v.strip() or v.strip() == "nan")):
+            return None
+        try:
+            return int(float(str(v)))
+        except (ValueError, TypeError):
+            return None
+
+
+class ProponenteDetalhadoValidation(BaseModel):
+    """Validates enriched proponente data from siconv_proponentes.csv."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    cnpj: str = Field(..., description="Proponente CNPJ")
+    nome: Optional[str] = Field(None, description="Proponente name")
+    municipio: Optional[str] = Field(None, description="Municipality")
+    estado: Optional[str] = Field(None, description="UF state code")
+    endereco: Optional[str] = Field(None, description="Address")
+    bairro: Optional[str] = Field(None, description="Neighborhood")
+    cep: Optional[str] = Field(None, description="CEP postal code")
+    email: Optional[str] = Field(None, description="Contact email")
+    telefone: Optional[str] = Field(None, description="Contact phone")
+
+    @field_validator("cnpj")
+    @classmethod
+    def cnpj_must_not_be_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("cnpj cannot be empty")
+        return v.strip()
+
+
+class EmendaDetalhadaValidation(BaseModel):
+    """Validates enriched emenda data from siconv_emenda.csv."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    proposta_id: Optional[str] = Field(None, description="Linked proposal ID")
+    numero: Optional[str] = Field(None, description="Emenda number")
+    autor: Optional[str] = Field(None, description="Parliamentary author")
+    beneficiario_cnpj: Optional[str] = Field(None, description="Beneficiary CNPJ")
+    tipo: Optional[str] = Field(None, description="Parliamentary type")
+    valor_repasse_proposta: Optional[float] = Field(None, description="Proposta transfer value")
+    valor_repasse_emenda: Optional[float] = Field(None, description="Emenda transfer value")
+
+    @field_validator("valor_repasse_proposta", "valor_repasse_emenda", mode="before")
+    @classmethod
+    def parse_valor(cls, v):
+        return parse_brazilian_float(v)

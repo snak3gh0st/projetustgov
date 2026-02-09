@@ -9,6 +9,11 @@ from .models import (
     ApoiadorValidation,
     EmendaValidation,
     ProgramaValidation,
+    ConvenioValidation,
+    DesembolsoValidation,
+    HistoricoSituacaoValidation,
+    ProponenteDetalhadoValidation,
+    EmendaDetalhadaValidation,
 )
 from src.parser.schemas import COLUMN_ALIASES, _normalize_column_name
 
@@ -19,6 +24,11 @@ VALIDATION_MODELS = {
     "apoiadores": ApoiadorValidation,
     "emendas": EmendaValidation,
     "programas": ProgramaValidation,
+    "convenios": ConvenioValidation,
+    "desembolsos": DesembolsoValidation,
+    "historico_situacao": HistoricoSituacaoValidation,
+    "proponentes_detalhado": ProponenteDetalhadoValidation,
+    "emendas_detalhado": EmendaDetalhadaValidation,
 }
 
 

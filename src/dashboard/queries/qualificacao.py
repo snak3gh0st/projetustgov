@@ -7,7 +7,7 @@ from sqlalchemy import text
 from src.dashboard.config import get_db_engine
 
 
-@st.cache_data(ttl="10m")
+@st.cache_data(ttl="30m")  # Increased cache from 10m to 30m
 def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame:
     """Get qualified leads (2025/2026 OSCs with emendas) with full details.
 
@@ -56,6 +56,8 @@ def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame
 
     where_clause = " AND ".join(where_conditions)
 
+    # OPTIMIZED: Removed expensive STRING_AGG + multiple JOINs
+    # Query proponentes directly, fetch ministerios separately for selected lead
     query = text(f"""
         SELECT
             p.id,
@@ -70,15 +72,14 @@ def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame
             p.total_propostas,
             p.total_emendas,
             p.valor_total_emendas,
+            p.total_convenios,
+            p.valor_total_desembolsos,
+            p.email,
+            p.telefone,
             p.is_osc,
-            p.is_existing_client,
-            STRING_AGG(DISTINCT a.orgao, ', ') FILTER (WHERE a.orgao IS NOT NULL AND a.orgao != '' AND a.orgao != 'nan') as ministerios
+            p.is_existing_client
         FROM proponentes p
-        LEFT JOIN propostas prop ON p.cnpj = prop.proponente_cnpj
-        LEFT JOIN proposta_apoiadores pa ON prop.transfer_gov_id = pa.proposta_transfer_gov_id
-        LEFT JOIN apoiadores a ON pa.apoiador_transfer_gov_id = a.transfer_gov_id
         WHERE {where_clause}
-        GROUP BY p.id, p.cnpj, p.nome, p.natureza_juridica, p.estado, p.municipio, p.cep, p.endereco, p.bairro, p.total_propostas, p.total_emendas, p.valor_total_emendas, p.is_osc, p.is_existing_client
         ORDER BY
             p.is_existing_client DESC,  -- Existing clients first (for reference)
             p.total_propostas ASC,      -- Then by value (fewer propostas = higher value)
@@ -90,10 +91,50 @@ def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame
     with engine.connect() as conn:
         df = pd.read_sql_query(query, conn, params={"limit": limit})
 
+    # Fetch ministerios separately for better performance
+    # Only fetch for displayed leads
+    if not df.empty:
+        ministerios_dict = _get_ministerios_batch(engine, df['cnpj'].tolist())
+        df['ministerios'] = df['cnpj'].map(lambda cnpj: ministerios_dict.get(cnpj, 'N/A'))
+    else:
+        df['ministerios'] = None
+
     return df
 
 
-@st.cache_data(ttl="10m")
+def _get_ministerios_batch(engine, cnpj_list: list[str]) -> dict[str, str]:
+    """Fetch ministerios for a batch of CNPJs efficiently.
+
+    Args:
+        engine: SQLAlchemy engine
+        cnpj_list: List of CNPJs to fetch ministerios for
+
+    Returns:
+        Dictionary mapping CNPJ to comma-separated ministerios
+    """
+    if not cnpj_list:
+        return {}
+
+    # Batch fetch with IN clause
+    placeholders = ','.join([f"'{cnpj}'" for cnpj in cnpj_list[:100]])  # Limit to 100 CNPJs
+
+    query = text(f"""
+        SELECT
+            prop.proponente_cnpj,
+            STRING_AGG(DISTINCT a.orgao, ', ') FILTER (WHERE a.orgao IS NOT NULL AND a.orgao != '' AND a.orgao != 'nan') as ministerios
+        FROM propostas prop
+        LEFT JOIN proposta_apoiadores pa ON prop.transfer_gov_id = pa.proposta_transfer_gov_id
+        LEFT JOIN apoiadores a ON pa.apoiador_transfer_gov_id = a.transfer_gov_id
+        WHERE prop.proponente_cnpj IN ({placeholders})
+        GROUP BY prop.proponente_cnpj
+    """)
+
+    with engine.connect() as conn:
+        result = conn.execute(query)
+        return {row[0]: row[1] or 'N/A' for row in result}
+
+
+@st.cache_data(ttl="30m")  # Increased cache
 def get_proponente_emendas(cnpj: str) -> pd.DataFrame:
     """Get all emendas for a specific proponente.
 
@@ -128,7 +169,7 @@ def get_proponente_emendas(cnpj: str) -> pd.DataFrame:
     return df
 
 
-@st.cache_data(ttl="10m")
+@st.cache_data(ttl="30m")  # Increased cache
 def get_proponente_propostas(cnpj: str) -> pd.DataFrame:
     """Get all propostas for a specific proponente.
 
@@ -163,19 +204,12 @@ def get_proponente_propostas(cnpj: str) -> pd.DataFrame:
     return df
 
 
-@st.cache_data(ttl="10m")
+@st.cache_data(ttl="30m")  # Increased cache
 def get_qualification_stats() -> dict:
     """Get overall qualification statistics.
 
     Returns:
-        Dictionary with:
-        - total_leads: Total qualified leads
-        - existing_clients: Existing clients count
-        - new_leads: New leads count
-        - total_emendas: Total emendas
-        - total_valor_emendas: Total emenda value
-        - avg_propostas: Average propostas per lead
-        - high_value_leads: Leads with <=3 propostas (high value)
+        Dictionary with stats including convenios and desembolsos.
     """
     engine = get_db_engine()
 
@@ -187,7 +221,9 @@ def get_qualification_stats() -> dict:
             SUM(total_emendas) as total_emendas,
             SUM(valor_total_emendas) as total_valor_emendas,
             AVG(total_propostas) as avg_propostas,
-            COUNT(CASE WHEN total_propostas <= 3 THEN 1 END) as high_value_leads
+            COUNT(CASE WHEN total_propostas <= 3 THEN 1 END) as high_value_leads,
+            SUM(total_convenios) as total_convenios,
+            SUM(valor_total_desembolsos) as total_valor_desembolsos
         FROM proponentes
         WHERE is_osc = true
     """)
@@ -204,10 +240,12 @@ def get_qualification_stats() -> dict:
         "total_valor_emendas": row[4] or 0.0,
         "avg_propostas": row[5] or 0.0,
         "high_value_leads": row[6] or 0,
+        "total_convenios": row[7] or 0,
+        "total_valor_desembolsos": row[8] or 0.0,
     }
 
 
-@st.cache_data(ttl="10m")
+@st.cache_data(ttl="30m")  # Increased cache
 def get_estados_disponiveis() -> list[str]:
     """Get list of available estados in qualified leads.
 
@@ -229,3 +267,72 @@ def get_estados_disponiveis() -> list[str]:
         estados = [row[0] for row in result]
 
     return estados
+
+
+@st.cache_data(ttl="30m")  # Increased cache
+def get_proponente_convenios(cnpj: str) -> pd.DataFrame:
+    """Get all convênios for a specific proponente.
+
+    Args:
+        cnpj: Proponente CNPJ
+
+    Returns:
+        DataFrame with convênio details
+    """
+    engine = get_db_engine()
+
+    query = text("""
+        SELECT
+            c.transfer_gov_id as nr_convenio,
+            c.situacao,
+            c.instrumento_ativo,
+            c.valor_global,
+            c.valor_repasse,
+            c.valor_desembolsado,
+            c.data_assinatura,
+            c.data_inicio_vigencia,
+            c.data_fim_vigencia,
+            c.ano
+        FROM convenios c
+        INNER JOIN propostas p ON c.proposta_id = p.transfer_gov_id
+        WHERE p.proponente_cnpj = :cnpj
+        ORDER BY c.data_assinatura DESC NULLS LAST
+    """)
+
+    with engine.connect() as conn:
+        df = pd.read_sql_query(query, conn, params={"cnpj": cnpj})
+
+    return df
+
+
+@st.cache_data(ttl="30m")  # Increased cache
+def get_proponente_historico(cnpj: str) -> pd.DataFrame:
+    """Get situation history for all proposals of a proponente.
+
+    Args:
+        cnpj: Proponente CNPJ
+
+    Returns:
+        DataFrame with historical situation changes
+    """
+    engine = get_db_engine()
+
+    query = text("""
+        SELECT
+            h.proposta_id,
+            h.convenio_id as nr_convenio,
+            h.data_historico,
+            h.situacao,
+            h.dias_historico,
+            p.titulo as proposta_titulo
+        FROM historico_situacao h
+        INNER JOIN propostas p ON h.proposta_id = p.transfer_gov_id
+        WHERE p.proponente_cnpj = :cnpj
+        ORDER BY h.data_historico DESC
+        LIMIT 100
+    """)
+
+    with engine.connect() as conn:
+        df = pd.read_sql_query(query, conn, params={"cnpj": cnpj})
+
+    return df

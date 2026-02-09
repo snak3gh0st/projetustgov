@@ -22,8 +22,11 @@ from sqlalchemy.orm import Session
 
 from src.loader.db_models import (
     Apoiador,
+    Convenio,
+    Desembolso,
     Emenda,
     ExtractionLog,
+    HistoricoSituacao,
     Programa,
     Proponente,
     Proposta,
@@ -290,6 +293,69 @@ def extract_proponentes_from_propostas(
     return list(proponentes_dict.values())
 
 
+def _enrich_proponentes(session: Session, proponentes_detalhado: list[dict]) -> None:
+    """Enrich existing proponentes with detailed data (email, telefone).
+
+    Matches by CNPJ and updates contact fields from siconv_proponentes.csv.
+
+    Args:
+        session: SQLAlchemy Session
+        proponentes_detalhado: List of validated proponente records with contact info
+    """
+    updated = 0
+    for record in proponentes_detalhado:
+        cnpj = normalize_cnpj(record.get("cnpj", ""))
+        if not cnpj:
+            continue
+
+        update_fields = {}
+        if record.get("email"):
+            update_fields["email"] = str(record["email"]).strip()
+        if record.get("telefone"):
+            update_fields["telefone"] = str(record["telefone"]).strip()
+
+        if update_fields:
+            rows = session.query(Proponente).filter_by(cnpj=cnpj).update(
+                update_fields, synchronize_session=False
+            )
+            if rows:
+                updated += 1
+
+    logger.info("Enriched %d proponentes with contact data (email, telefone)", updated)
+
+
+def _enrich_emendas_from_detalhado(
+    session: Session, emendas_detalhado: list[dict], cnpj_emenda_stats: dict
+) -> None:
+    """Enrich emenda stats per proponente CNPJ using detailed emenda data.
+
+    The siconv_emenda.csv has a BENEFICIARIO_EMENDA field (CNPJ) that directly
+    links emendas to proponentes. This enriches the cnpj_emenda_stats dict
+    with more accurate data.
+
+    Args:
+        session: SQLAlchemy Session (unused, kept for consistency)
+        emendas_detalhado: Validated emenda records from siconv_emenda.csv
+        cnpj_emenda_stats: Dict to update: cnpj → {count, total_valor}
+    """
+    enriched = 0
+    for record in emendas_detalhado:
+        cnpj = normalize_cnpj(record.get("beneficiario_cnpj", ""))
+        if not cnpj:
+            continue
+
+        if cnpj not in cnpj_emenda_stats:
+            cnpj_emenda_stats[cnpj] = {"count": 0, "total_valor": 0.0}
+
+        cnpj_emenda_stats[cnpj]["count"] += 1
+        valor = record.get("valor_repasse_proposta")
+        if valor and isinstance(valor, (int, float)):
+            cnpj_emenda_stats[cnpj]["total_valor"] += valor
+        enriched += 1
+
+    logger.info("Enriched emenda stats from detailed data: %d records processed", enriched)
+
+
 def compute_proponente_aggregations(session: Session, cnpj_emenda_stats: dict = None) -> None:
     """Compute aggregated metrics for proponentes from propostas and emendas.
 
@@ -337,6 +403,48 @@ def compute_proponente_aggregations(session: Session, cnpj_emenda_stats: dict = 
                 updated_emendas += 1
 
     logger.info(f"Updated emenda stats for {updated_emendas} proponentes")
+
+    # Count convenios per proponente CNPJ (via propostas → convenios link)
+    convenio_counts = (
+        session.query(
+            Proposta.proponente_cnpj,
+            func.count(func.distinct(Convenio.transfer_gov_id)).label('total_convenios'),
+        )
+        .join(Convenio, Proposta.transfer_gov_id == Convenio.proposta_id)
+        .filter(Proposta.proponente_cnpj.isnot(None))
+        .group_by(Proposta.proponente_cnpj)
+        .all()
+    )
+
+    for cnpj, count in convenio_counts:
+        session.query(Proponente).filter_by(cnpj=cnpj).update(
+            {"total_convenios": count},
+            synchronize_session=False
+        )
+
+    logger.info(f"Updated total_convenios for {len(convenio_counts)} proponentes")
+
+    # Sum desembolsos per proponente CNPJ (via propostas → convenios → desembolsos)
+    desembolso_sums = (
+        session.query(
+            Proposta.proponente_cnpj,
+            func.sum(Desembolso.valor_desembolsado).label('valor_total_desembolsos'),
+        )
+        .join(Convenio, Proposta.transfer_gov_id == Convenio.proposta_id)
+        .join(Desembolso, Convenio.transfer_gov_id == Desembolso.convenio_id)
+        .filter(Proposta.proponente_cnpj.isnot(None))
+        .filter(Desembolso.valor_desembolsado.isnot(None))
+        .group_by(Proposta.proponente_cnpj)
+        .all()
+    )
+
+    for cnpj, valor_total in desembolso_sums:
+        session.query(Proponente).filter_by(cnpj=cnpj).update(
+            {"valor_total_desembolsos": valor_total},
+            synchronize_session=False
+        )
+
+    logger.info(f"Updated valor_total_desembolsos for {len(desembolso_sums)} proponentes")
 
 
 def load_extraction_data(
@@ -488,9 +596,67 @@ def load_extraction_data(
             result["updated"],
         )
 
-    # 8. Compute aggregated metrics for proponentes
-    if validated_data.get("proponentes"):
-        cnpj_emenda_stats = validated_data.get("cnpj_emenda_stats", {})
+    # 8. Convenios (linked to propostas via proposta_id)
+    if validated_data.get("convenios"):
+        result = upsert_records(session, Convenio, validated_data["convenios"], batch_size=1000)
+        stats["convenios"] = result
+        logger.info(
+            "Loaded %d convenios records (inserted: %d, updated: %d)",
+            len(validated_data["convenios"]),
+            result["inserted"],
+            result["updated"],
+        )
+
+    # 9. Desembolsos (linked to convenios via convenio_id)
+    if validated_data.get("desembolsos"):
+        result = upsert_records(session, Desembolso, validated_data["desembolsos"], batch_size=1000)
+        stats["desembolsos"] = result
+        logger.info(
+            "Loaded %d desembolsos records (inserted: %d, updated: %d)",
+            len(validated_data["desembolsos"]),
+            result["inserted"],
+            result["updated"],
+        )
+
+    # 10. Historico de Situacao (compound unique on proposta+convenio+data+situacao)
+    if validated_data.get("historico_situacao"):
+        # Coalesce NULLs to empty strings for unique constraint columns
+        # PostgreSQL treats NULL != NULL, which would allow duplicate inserts
+        for record in validated_data["historico_situacao"]:
+            if not record.get("proposta_id"):
+                record["proposta_id"] = ""
+            if not record.get("convenio_id"):
+                record["convenio_id"] = ""
+            if not record.get("situacao"):
+                record["situacao"] = ""
+        result = upsert_records(
+            session,
+            HistoricoSituacao,
+            validated_data["historico_situacao"],
+            conflict_column=["proposta_id", "convenio_id", "data_historico", "situacao"],
+            batch_size=2000,
+        )
+        stats["historico_situacao"] = result
+        logger.info(
+            "Loaded %d historico_situacao records (inserted: %d, updated: %d)",
+            len(validated_data["historico_situacao"]),
+            result["inserted"],
+            result["updated"],
+        )
+
+    # 11. Enrich proponentes with detailed data (email, telefone)
+    if validated_data.get("proponentes_detalhado"):
+        _enrich_proponentes(session, validated_data["proponentes_detalhado"])
+
+    # 12. Enrich emenda stats with detailed emenda data (beneficiario CNPJ linkage)
+    cnpj_emenda_stats = validated_data.get("cnpj_emenda_stats", {})
+    if validated_data.get("emendas_detalhado"):
+        _enrich_emendas_from_detalhado(session, validated_data["emendas_detalhado"], cnpj_emenda_stats)
+
+    # 13. Compute aggregated metrics for proponentes
+    # Trigger when any data that affects aggregations was loaded
+    if (validated_data.get("proponentes") or validated_data.get("convenios")
+            or validated_data.get("desembolsos") or cnpj_emenda_stats):
         compute_proponente_aggregations(session, cnpj_emenda_stats)
 
     logger.info("Extraction data loading complete: %d tables processed", len(stats))

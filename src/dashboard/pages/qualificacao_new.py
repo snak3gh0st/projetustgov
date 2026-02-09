@@ -11,7 +11,9 @@ import streamlit as st
 from src.dashboard.components.export import render_csv_export
 from src.dashboard.queries.qualificacao import (
     get_estados_disponiveis,
+    get_proponente_convenios,
     get_proponente_emendas,
+    get_proponente_historico,
     get_proponente_propostas,
     get_qualification_stats,
     get_qualified_leads,
@@ -46,21 +48,21 @@ def render_qualificacao_nova():
     # --- KPI METRICS ROW ---
     stats = get_qualification_stats()
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         st.metric("Total Leads", f"{stats['total_leads']:,}")
 
     with col2:
         st.metric(
-            "🆕 Novos Leads",
+            "Novos Leads",
             f"{stats['new_leads']:,}",
             help="Leads qualificados que ainda não são clientes",
         )
 
     with col3:
         st.metric(
-            "✅ Clientes Existentes",
+            "Clientes Existentes",
             f"{stats['existing_clients']:,}",
             help="Leads que já são clientes atuais",
         )
@@ -68,10 +70,26 @@ def render_qualificacao_nova():
     with col4:
         st.metric("Total Emendas", f"{stats['total_emendas']:,}")
 
+    col5, col6, col7 = st.columns(3)
+
     with col5:
         st.metric(
             "Valor Emendas",
             f"R$ {stats['total_valor_emendas'] / 1_000_000:.1f}M",
+        )
+
+    with col6:
+        st.metric(
+            "Total Convenios",
+            f"{stats['total_convenios']:,}",
+            help="Propostas que viraram convênios formalizados",
+        )
+
+    with col7:
+        st.metric(
+            "Valor Desembolsado",
+            f"R$ {stats['total_valor_desembolsos'] / 1_000_000:.1f}M",
+            help="Dinheiro efetivamente transferido via desembolsos",
         )
 
     st.markdown("---")
@@ -171,6 +189,11 @@ def render_qualificacao_nova():
         lambda x: f"R$ {x / 1_000:,.0f}K" if pd.notna(x) and x > 0 else "R$ 0"
     )
 
+    # Format valor_total_desembolsos as currency
+    df["valor_desembolsos_fmt"] = df["valor_total_desembolsos"].apply(
+        lambda x: f"R$ {x / 1_000:,.0f}K" if pd.notna(x) and x > 0 else "R$ 0"
+    )
+
     # Add value badge based on total_propostas
     def get_value_badge(n_propostas):
         if n_propostas == 0:
@@ -209,6 +232,8 @@ def render_qualificacao_nova():
         "total_propostas",
         "total_emendas",
         "valor_emendas_fmt",
+        "total_convenios",
+        "valor_desembolsos_fmt",
     ]
 
     df_display = df[display_columns].copy()
@@ -226,6 +251,8 @@ def render_qualificacao_nova():
         "Propostas",
         "Emendas",
         "Valor Emendas",
+        "Convênios",
+        "Valor Desembolsado",
     ]
 
     # Highlight high-value leads (<=3 propostas)
@@ -278,7 +305,7 @@ def render_qualificacao_nova():
             st.markdown(f"### {selected_nome}")
 
             # Show proponente details
-            col1, col2, col3 = st.columns(3)
+            col1, col2, col3, col4, col5 = st.columns(5)
             with col1:
                 st.metric("Total Propostas", df.iloc[selected_lead_idx]["total_propostas"])
             with col2:
@@ -286,9 +313,28 @@ def render_qualificacao_nova():
             with col3:
                 valor_emendas = df.iloc[selected_lead_idx]["valor_total_emendas"]
                 st.metric("Valor Emendas", f"R$ {valor_emendas / 1_000_000:.2f}M")
+            with col4:
+                st.metric("Convênios", df.iloc[selected_lead_idx].get("total_convenios", 0))
+            with col5:
+                valor_desemb = df.iloc[selected_lead_idx].get("valor_total_desembolsos", 0) or 0
+                st.metric("Valor Desembolsado", f"R$ {valor_desemb / 1_000_000:.2f}M")
 
-            # Emendas tab and Propostas tab
-            tab1, tab2 = st.tabs(["📋 Emendas", "📄 Propostas Históricas"])
+            # Contact info if available
+            email = df.iloc[selected_lead_idx].get("email")
+            telefone = df.iloc[selected_lead_idx].get("telefone")
+            if email or telefone:
+                contact_parts = []
+                if email and pd.notna(email) and str(email).strip():
+                    contact_parts.append(f"**Email:** {email}")
+                if telefone and pd.notna(telefone) and str(telefone).strip():
+                    contact_parts.append(f"**Telefone:** {telefone}")
+                if contact_parts:
+                    st.markdown(" | ".join(contact_parts))
+
+            # Emendas, Propostas, Convênios, Histórico tabs
+            tab1, tab2, tab3, tab4 = st.tabs([
+                "Emendas", "Propostas", "Convênios", "Histórico"
+            ])
 
             with tab1:
                 st.markdown("#### Emendas Parlamentares")
@@ -360,6 +406,88 @@ def render_qualificacao_nova():
                         height=300,
                     )
 
+            with tab3:
+                st.markdown("#### Convênios Formalizados")
+                df_convenios = get_proponente_convenios(selected_cnpj)
+
+                if df_convenios.empty:
+                    st.info("Nenhum convênio encontrado para este lead.")
+                else:
+                    df_conv_display = df_convenios.copy()
+                    df_conv_display["valor_global_fmt"] = df_conv_display[
+                        "valor_global"
+                    ].apply(lambda x: f"R$ {x / 1_000:,.0f}K" if pd.notna(x) else "")
+                    df_conv_display["valor_desemb_fmt"] = df_conv_display[
+                        "valor_desembolsado"
+                    ].apply(lambda x: f"R$ {x / 1_000:,.0f}K" if pd.notna(x) else "")
+
+                    display_cols = [
+                        "nr_convenio",
+                        "situacao",
+                        "instrumento_ativo",
+                        "valor_global_fmt",
+                        "valor_desemb_fmt",
+                        "data_assinatura",
+                        "data_fim_vigencia",
+                    ]
+                    df_conv_display = df_conv_display[
+                        [c for c in display_cols if c in df_conv_display.columns]
+                    ]
+
+                    df_conv_display.columns = [
+                        "Nr Convênio",
+                        "Situação",
+                        "Ativo",
+                        "Valor Global",
+                        "Valor Desembolsado",
+                        "Data Assinatura",
+                        "Fim Vigência",
+                    ]
+
+                    st.dataframe(
+                        df_conv_display,
+                        use_container_width=True,
+                        hide_index=True,
+                        height=300,
+                    )
+
+            with tab4:
+                st.markdown("#### Histórico de Situações")
+                df_historico = get_proponente_historico(selected_cnpj)
+
+                if df_historico.empty:
+                    st.info("Nenhum histórico de situação encontrado.")
+                else:
+                    df_hist_display = df_historico.copy()
+
+                    display_cols = [
+                        "proposta_id",
+                        "proposta_titulo",
+                        "nr_convenio",
+                        "situacao",
+                        "data_historico",
+                        "dias_historico",
+                    ]
+                    df_hist_display = df_hist_display[
+                        [c for c in display_cols if c in df_hist_display.columns]
+                    ]
+
+                    df_hist_display.columns = [
+                        "Proposta ID",
+                        "Título",
+                        "Nr Convênio",
+                        "Situação",
+                        "Data",
+                        "Dias",
+                    ]
+
+                    st.dataframe(
+                        df_hist_display,
+                        use_container_width=True,
+                        hide_index=True,
+                        height=300,
+                    )
+
     # --- CSV EXPORT SECTION ---
     st.markdown("---")
     st.subheader("Exportar Dados")
@@ -376,20 +504,25 @@ def render_qualificacao_nova():
         "cep",
         "endereco",
         "bairro",
+        "email",
+        "telefone",
         "ministerios",
         "total_propostas",
         "total_emendas",
         "valor_total_emendas",
+        "total_convenios",
+        "valor_total_desembolsos",
     ]
 
     df_export = df[[col for col in export_columns if col in df.columns]].copy()
 
     # Convert boolean to readable text
-    df_export["is_existing_client"] = df_export["is_existing_client"].apply(
-        lambda x: "Sim" if x else "Não"
-    )
+    if "is_existing_client" in df_export.columns:
+        df_export["is_existing_client"] = df_export["is_existing_client"].apply(
+            lambda x: "Sim" if x else "Não"
+        )
 
-    df_export.columns = [
+    column_names = [
         "Rank",
         "Nome",
         "CNPJ",
@@ -400,10 +533,17 @@ def render_qualificacao_nova():
         "CEP",
         "Endereço",
         "Bairro",
+        "Email",
+        "Telefone",
         "Ministérios/Órgãos",
         "Total Propostas",
         "Total Emendas",
         "Valor Total Emendas",
+        "Total Convênios",
+        "Valor Total Desembolsos",
     ]
+
+    # Only use column names matching actual columns
+    df_export.columns = column_names[:len(df_export.columns)]
 
     render_csv_export(df_export, "leads_qualificados.csv")

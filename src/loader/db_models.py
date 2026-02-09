@@ -1,6 +1,6 @@
 """SQLAlchemy ORM models for the Transfer Gov data schema.
 
-This module defines all 8 tables for the PROJETUS database:
+This module defines all 11 tables for the PROJETUS database:
 - Programa (programas) - Government transfer programs
 - Proposta (propostas) - Transfer proposals/applications
 - Proponente (proponentes) - Proponent entities (dimension table)
@@ -8,6 +8,9 @@ This module defines all 8 tables for the PROJETUS database:
 - Emenda (emendas) - Budget amendments
 - PropostaApoiador (proposta_apoiadores) - Junction: proposals to supporters
 - PropostaEmenda (proposta_emendas) - Junction: proposals to amendments
+- Convenio (convenios) - Formalized agreements from proposals
+- Desembolso (desembolsos) - Actual disbursements for convênios
+- HistoricoSituacao (historico_situacao) - Timeline of situation changes
 - ExtractionLog (extraction_logs) - Pipeline execution audit trail
 
 Design decisions:
@@ -81,9 +84,14 @@ class Proponente(Base):
     endereco: Mapped[Optional[str]] = mapped_column(String)
     bairro: Mapped[Optional[str]] = mapped_column(String)
     is_osc: Mapped[bool] = mapped_column(default=False, index=True)
+    is_existing_client: Mapped[bool] = mapped_column(default=False, index=True)
     total_propostas: Mapped[int] = mapped_column(default=0)
     total_emendas: Mapped[int] = mapped_column(default=0)
     valor_total_emendas: Mapped[Optional[float]] = mapped_column(Float)
+    total_convenios: Mapped[int] = mapped_column(default=0)
+    valor_total_desembolsos: Mapped[Optional[float]] = mapped_column(Float)
+    email: Mapped[Optional[str]] = mapped_column(String)
+    telefone: Mapped[Optional[str]] = mapped_column(String)
 
     # Audit columns
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -219,6 +227,90 @@ class PropostaEmenda(Base):
             "proposta_transfer_gov_id",
             "emenda_transfer_gov_id",
             name="uq_proposta_emenda",
+        ),
+    )
+
+
+class Convenio(Base):
+    """Convênios (agreements) formalized from proposals."""
+
+    __tablename__ = "convenios"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    transfer_gov_id: Mapped[str] = mapped_column(
+        String, unique=True, index=True, nullable=False
+    )  # NR_CONVENIO
+    proposta_id: Mapped[Optional[str]] = mapped_column(String, index=True)  # ID_PROPOSTA
+    situacao: Mapped[Optional[str]] = mapped_column(String)
+    instrumento_ativo: Mapped[Optional[str]] = mapped_column(String)
+    valor_global: Mapped[Optional[float]] = mapped_column(Float)
+    valor_repasse: Mapped[Optional[float]] = mapped_column(Float)
+    valor_contrapartida: Mapped[Optional[float]] = mapped_column(Float)
+    valor_desembolsado: Mapped[Optional[float]] = mapped_column(Float)
+    data_assinatura: Mapped[Optional[date]] = mapped_column(Date)
+    data_publicacao: Mapped[Optional[date]] = mapped_column(Date)
+    data_inicio_vigencia: Mapped[Optional[date]] = mapped_column(Date)
+    data_fim_vigencia: Mapped[Optional[date]] = mapped_column(Date)
+    ano: Mapped[Optional[int]] = mapped_column()
+
+    # Audit columns
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+    extraction_date: Mapped[Optional[date]] = mapped_column(Date)
+
+
+class Desembolso(Base):
+    """Disbursements (actual money transferred) for convênios."""
+
+    __tablename__ = "desembolsos"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    transfer_gov_id: Mapped[str] = mapped_column(
+        String, unique=True, index=True, nullable=False
+    )  # ID_DESEMBOLSO
+    convenio_id: Mapped[Optional[str]] = mapped_column(String, index=True)  # NR_CONVENIO
+    data_desembolso: Mapped[Optional[date]] = mapped_column(Date)
+    valor_desembolsado: Mapped[Optional[float]] = mapped_column(Float)
+    nr_siafi: Mapped[Optional[str]] = mapped_column(String)
+    ano_desembolso: Mapped[Optional[int]] = mapped_column()
+
+    # Audit columns
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+    extraction_date: Mapped[Optional[date]] = mapped_column(Date)
+
+
+class HistoricoSituacao(Base):
+    """Timeline of situation changes for proposals/convênios."""
+
+    __tablename__ = "historico_situacao"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    proposta_id: Mapped[Optional[str]] = mapped_column(String, index=True)  # ID_PROPOSTA
+    convenio_id: Mapped[Optional[str]] = mapped_column(String, index=True)  # NR_CONVENIO
+    data_historico: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    situacao: Mapped[Optional[str]] = mapped_column(String)
+    dias_historico: Mapped[Optional[int]] = mapped_column()
+    cod_historico: Mapped[Optional[str]] = mapped_column(String)
+
+    # Audit columns
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+    extraction_date: Mapped[Optional[date]] = mapped_column(Date)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "proposta_id",
+            "convenio_id",
+            "data_historico",
+            "situacao",
+            name="uq_historico_situacao",
         ),
     )
 

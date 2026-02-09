@@ -43,10 +43,16 @@ def create_db_engine(database_url: str) -> Engine:
     
     engine = create_engine(
         database_url,
-        pool_size=5,  # Maintain 5 persistent connections
-        max_overflow=10,  # Allow up to 10 additional connections under load
+        pool_size=2,  # Reduced for Railway (avoid connection limits)
+        max_overflow=3,  # Reduced overflow (total max = 5 connections)
         pool_pre_ping=True,  # Verify connections before use (detects stale connections)
+        pool_recycle=300,  # Recycle connections every 5 minutes (Railway timeout)
+        pool_timeout=30,  # Wait up to 30 seconds for available connection
         echo=False,  # Don't log SQL by default (set True for debugging)
+        connect_args={
+            "connect_timeout": 10,  # Connection timeout for Railway latency
+            "options": "-c statement_timeout=30000"  # 30 second query timeout
+        }
     )
     return engine
 

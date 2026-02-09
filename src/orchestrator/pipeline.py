@@ -33,9 +33,19 @@ def infer_entity_type(filename: str) -> Optional[str]:
     """
     name = filename.lower()
 
-    # Check programa_proposta before programa (more specific first)
+    # Check more specific patterns first to avoid false matches
     if "programa_proposta" in name:
         return "programa_proposta"
+    elif "historico_situacao" in name:
+        return "historico_situacao"
+    elif "proponentes_detalhado" in name:
+        return "proponentes_detalhado"
+    elif "emendas_detalhado" in name:
+        return "emendas_detalhado"
+    elif "convenio" in name:
+        return "convenios"
+    elif "desembolso" in name:
+        return "desembolsos"
     elif "proposta" in name:
         return "propostas"
     elif "apoiador" in name:
@@ -102,6 +112,7 @@ def extract_relationships(
     - Junction records for proposta_apoiadores and proposta_emendas
     - Programa links (proposta_transfer_gov_id → programa_transfer_gov_id)
     - CNPJ-based emenda stats (for proponente aggregation)
+    - SYNTHETIC programas from ID_PROGRAMA (since programa CSV is incompatible)
 
     Results are appended directly into validated_data.
     """
@@ -121,6 +132,7 @@ def extract_relationships(
 
     seen_apoiadores: dict[str, dict] = {}
     seen_emendas: dict[str, dict] = {}
+    seen_programas: dict[str, dict] = {}  # Track unique programas from ID_PROGRAMA
     junction_apoiadores: set[tuple[str, str]] = set()
     junction_emendas: set[tuple[str, str]] = set()
     # Track emenda stats by CNPJ (for proponente aggregation)
@@ -131,11 +143,24 @@ def extract_relationships(
         if not proposta_id:
             continue
 
-        # Extract programa link
+        # Extract programa link and create synthetic programa
         if programa_col:
             prog_id = str(row.get(programa_col, "")).strip()
             if prog_id:
                 programa_links[proposta_id] = prog_id
+
+                # Create synthetic programa if not seen before
+                # (CSV programas.csv is incompatible with these IDs)
+                if prog_id not in seen_programas:
+                    seen_programas[prog_id] = {
+                        "transfer_gov_id": prog_id,
+                        "nome": f"Programa {prog_id}",  # Placeholder name
+                        "orgao_superior": None,
+                        "orgao_vinculado": None,
+                        "modalidade": None,
+                        "acao_orcamentaria": None,
+                        "natureza_juridica": None,
+                    }
 
         # Extract apoiador
         if parlamentar_col:
@@ -192,6 +217,7 @@ def extract_relationships(
     validated_data["cnpj_emenda_stats"] = cnpj_emenda_stats
 
     # Append to validated_data
+    validated_data["programas"].extend(seen_programas.values())  # Synthetic programas
     validated_data["apoiadores"].extend(seen_apoiadores.values())
     validated_data["emendas"].extend(seen_emendas.values())
 
@@ -208,9 +234,10 @@ def extract_relationships(
         })
 
     logger.info(
-        f"Extracted relationships: {len(seen_apoiadores)} apoiadores, "
-        f"{len(seen_emendas)} emendas, {len(junction_apoiadores)} proposta_apoiadores, "
-        f"{len(junction_emendas)} proposta_emendas, {len(programa_links)} programa links"
+        f"Extracted relationships: {len(seen_programas)} programas (synthetic), "
+        f"{len(seen_apoiadores)} apoiadores, {len(seen_emendas)} emendas, "
+        f"{len(junction_apoiadores)} proposta_apoiadores, {len(junction_emendas)} proposta_emendas, "
+        f"{len(programa_links)} programa links"
     )
 
 
@@ -299,6 +326,11 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
             "emendas": [],
             "proposta_apoiadores": [],
             "proposta_emendas": [],
+            "convenios": [],
+            "desembolsos": [],
+            "historico_situacao": [],
+            "proponentes_detalhado": [],
+            "emendas_detalhado": [],
         }
 
         extraction_date = date.today()
@@ -313,6 +345,16 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
                 logger.warning(f"Could not determine entity type for: {file_name}")
                 continue
 
+            # SKIP historico_situacao - 8.6M rows, not critical for lead qualification
+            if entity_type == "historico_situacao":
+                logger.info(f"SKIPPING {file_name} (historico_situacao - not needed for dashboard)")
+                continue
+
+            # SKIP programas CSV - IDs don't match apoiadores_emendas, using synthetic programas instead
+            if entity_type == "programas":
+                logger.info(f"SKIPPING {file_name} (programas - creating synthetic from apoiadores_emendas)")
+                continue
+
             logger.info(f"Processing {file_name} as {entity_type}")
 
             try:
@@ -321,18 +363,9 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
                 logger.info(f"Parsed {file_name}: {len(df)} rows")
 
                 if entity_type == "programa_proposta":
-                    # programa_proposta CSV: maps ID_PROPOSTA → ID_PROGRAMA
-                    id_programa_col = _col(df, "id_programa")
-                    id_proposta_col = _col(df, "id_proposta")
-                    if id_programa_col and id_proposta_col:
-                        for row in df.iter_rows(named=True):
-                            prop_id = str(row.get(id_proposta_col, "")).strip()
-                            prog_id = str(row.get(id_programa_col, "")).strip()
-                            if prop_id and prog_id:
-                                programa_links[prop_id] = prog_id
-                        logger.info(f"Loaded {len(programa_links)} programa_proposta links")
-                    else:
-                        logger.warning(f"Could not find ID columns in {file_name}")
+                    # SKIP programa_proposta - has bad data (1:1 instead of 1:N)
+                    # Use apoiadores_emendas_programas instead for programa links
+                    logger.info(f"SKIPPING {file_name} (programa_proposta - using apoiadores_emendas for programa links)")
                     continue
 
                 if entity_type in ("apoiadores", "emendas"):
@@ -340,6 +373,24 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
                     extract_relationships(df, validated_data, programa_links)
                     logger.info(
                         f"Extracted relationships from {file_name}"
+                    )
+                elif entity_type in ("convenios", "desembolsos", "historico_situacao",
+                                     "proponentes_detalhado", "emendas_detalhado"):
+                    # New entity types: validate and collect
+                    valid_records, errors = validate_dataframe(df, entity_type)
+
+                    if errors:
+                        for error in errors:
+                            validation_errors.append(
+                                f"{file_name}: {error.get('errors', 'Validation error')}"
+                            )
+                        logger.warning(
+                            f"Validation errors in {file_name}: {len(errors)} errors"
+                        )
+
+                    validated_data[entity_type].extend(valid_records)
+                    logger.info(
+                        f"Validated {file_name}: {len(valid_records)} valid records"
                     )
                 else:
                     # Standard entity: validate and collect
@@ -443,6 +494,9 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
                     proposta["programa_id"] = prog_id
                     linked += 1
             logger.info(f"Linked {linked} propostas to programa_id from relationship data")
+
+        # Note: Programas are now synthetic and auto-filtered (only created for propostas that exist)
+        # No need to filter separately
 
         # Determine status based on results
         total_valid = sum(len(records) for records in validated_data.values())
