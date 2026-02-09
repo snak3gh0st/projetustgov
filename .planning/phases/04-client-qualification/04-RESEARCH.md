@@ -1,4 +1,4 @@
-# Phase 5: Client Qualification Data Extraction - Research
+# Phase 4: Client Qualification Data Extraction - Research
 
 **Researched:** 2026-02-06
 **Domain:** Brazilian Government Data ETL / Entity Normalization / CNPJ Classification

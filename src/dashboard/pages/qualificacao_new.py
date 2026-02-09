@@ -46,30 +46,47 @@ def render_qualificacao_nova():
     # --- KPI METRICS ROW ---
     stats = get_qualification_stats()
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
 
     with col1:
-        st.metric("Total Leads Qualificados", f"{stats['total_leads']:,}")
+        st.metric("Total Leads", f"{stats['total_leads']:,}")
 
     with col2:
-        st.metric("Total Emendas", f"{stats['total_emendas']:,}")
+        st.metric(
+            "🆕 Novos Leads",
+            f"{stats['new_leads']:,}",
+            help="Leads qualificados que ainda não são clientes",
+        )
 
     with col3:
         st.metric(
-            "Valor Total Emendas",
-            f"R$ {stats['total_valor_emendas'] / 1_000_000:.1f}M",
+            "✅ Clientes Existentes",
+            f"{stats['existing_clients']:,}",
+            help="Leads que já são clientes atuais",
         )
 
     with col4:
+        st.metric("Total Emendas", f"{stats['total_emendas']:,}")
+
+    with col5:
         st.metric(
-            "Leads Alto Valor (≤3 propostas)",
-            f"{stats['high_value_leads']:,}",
+            "Valor Emendas",
+            f"R$ {stats['total_valor_emendas'] / 1_000_000:.1f}M",
         )
 
     st.markdown("---")
 
     # --- FILTERS SIDEBAR ---
     st.sidebar.header("Filtros")
+
+    # Cliente status filter
+    cliente_status = st.sidebar.radio(
+        "Status do Lead",
+        options=["Todos", "Apenas Novos Leads", "Apenas Clientes Existentes"],
+        index=0,
+        key="qualif_cliente_status",
+        help="Filtrar por status de cliente",
+    )
 
     # Estado filter
     estados = get_estados_disponiveis()
@@ -112,6 +129,11 @@ def render_qualificacao_nova():
 
     # Build filters dict
     filters = {}
+
+    if cliente_status == "Apenas Novos Leads":
+        filters["is_new_lead"] = True
+    elif cliente_status == "Apenas Clientes Existentes":
+        filters["is_existing_client"] = True
 
     if estado_selected != "Todos":
         filters["estado"] = estado_selected
@@ -162,14 +184,28 @@ def render_qualificacao_nova():
 
     df["valor"] = df["total_propostas"].apply(get_value_badge)
 
+    # Add client status badge
+    df["status_cliente"] = df["is_existing_client"].apply(
+        lambda x: "✅ Cliente" if x else "🆕 Novo"
+    )
+
+    # Truncate ministerios for display
+    df["ministerios_truncated"] = df["ministerios"].apply(
+        lambda x: (
+            x[:40] + "..." if pd.notna(x) and len(str(x)) > 40 else (x if pd.notna(x) else "N/A")
+        )
+    )
+
     # Prepare display DataFrame
     display_columns = [
         "rank",
+        "status_cliente",
         "valor",
         "nome",
         "cnpj_formatado",
         "estado",
         "municipio",
+        "ministerios_truncated",
         "total_propostas",
         "total_emendas",
         "valor_emendas_fmt",
@@ -180,11 +216,13 @@ def render_qualificacao_nova():
     # Rename columns for display
     df_display.columns = [
         "#",
+        "Status",
         "Valor",
         "Nome",
         "CNPJ",
         "UF",
         "Município",
+        "Ministérios",
         "Propostas",
         "Emendas",
         "Valor Emendas",
@@ -210,6 +248,7 @@ def render_qualificacao_nova():
 
     st.caption(
         "✨ **Verde destacado:** Leads de alto valor (≤3 propostas)\n\n"
+        "**Legenda de Status:** 🆕 Novo Lead | ✅ Cliente Existente\n\n"
         "**Legenda de Valor:** 🌟 VERDE (0) | ⭐ ALTO (1-3) | ✓ BOM (4-10) | ○ REGULAR (11+)"
     )
 
@@ -330,12 +369,14 @@ def render_qualificacao_nova():
         "rank",
         "nome",
         "cnpj",
+        "is_existing_client",
         "natureza_juridica",
         "estado",
         "municipio",
         "cep",
         "endereco",
         "bairro",
+        "ministerios",
         "total_propostas",
         "total_emendas",
         "valor_total_emendas",
@@ -343,16 +384,23 @@ def render_qualificacao_nova():
 
     df_export = df[[col for col in export_columns if col in df.columns]].copy()
 
+    # Convert boolean to readable text
+    df_export["is_existing_client"] = df_export["is_existing_client"].apply(
+        lambda x: "Sim" if x else "Não"
+    )
+
     df_export.columns = [
         "Rank",
         "Nome",
         "CNPJ",
+        "Cliente Existente",
         "Natureza Jurídica",
         "UF",
         "Município",
         "CEP",
         "Endereço",
         "Bairro",
+        "Ministérios/Órgãos",
         "Total Propostas",
         "Total Emendas",
         "Valor Total Emendas",

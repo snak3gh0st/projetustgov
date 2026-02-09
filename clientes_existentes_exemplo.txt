@@ -1,0 +1,11 @@
+# Lista de CNPJs de Clientes Existentes
+# Formato: Um CNPJ por linha
+# Pode ser formatado (XX.XXX.XXX/XXXX-XX) ou sem formatação (14 dígitos)
+# Linhas começando com # são ignoradas
+
+# Exemplos de formato aceito:
+12.345.678/0001-90
+12345678000190
+98.765.432/0001-10
+
+# Adicione os CNPJs dos 170 clientes existentes abaixo:

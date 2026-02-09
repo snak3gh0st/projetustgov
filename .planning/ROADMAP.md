@@ -15,8 +15,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 1: Foundation** - Complete ETL pipeline with zero data loss guarantee
 - [ ] **Phase 2: Operational Maturity** - Advanced monitoring, reconciliation, configuration management
 - [ ] **Phase 3: Production Excellence** - Optional enhancements triggered by operational need
-- [ ] **Phase 4: Data Dashboard** - Streamlit dashboard for visualizing extracted Transfer Gov data
-- [ ] **Phase 5: Client Qualification** - Intuitive interface for clients to find and contact the most valuable proponents
+- [ ] **Phase 4: Client Qualification** - **PRIORITY** - Intuitive interface for clients to find and contact the most valuable proponents
+- [ ] **Phase 5: Data Dashboard** - Streamlit dashboard for visualizing extracted Transfer Gov data
 
 ## Phase Details
 
@@ -94,10 +94,10 @@ Plans:
 Plans:
 - [ ] TBD when operational need emerges
 
-### Phase 4: Data Dashboard
+### Phase 5: Data Dashboard
 **Goal**: Build a Streamlit dashboard that visualizes all extracted Transfer Gov data — propostas, programas, apoiadores, and emendas — with row counts, extraction history, data freshness, and drill-down views. Provides operational visibility without writing SQL queries.
 
-**Depends on**: Phase 1 (needs data in PostgreSQL)
+**Depends on**: Phase 4 (can build on qualification interface foundation)
 
 **Success Criteria** (what must be TRUE):
   1. Dashboard displays row counts per entity table (programas, propostas, apoiadores, emendas)
@@ -111,15 +111,15 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Dashboard foundation: Streamlit app structure, DB queries, shared components, home overview page
-- [ ] 04-02-PLAN.md — Entity pages: Propostas, Programas, Apoiadores, Emendas with cross-filtering and CSV export
-- [ ] 04-03-PLAN.md — Extraction history page and Railway deployment configuration
-- [ ] 04-04-PLAN.md — Human verification of complete dashboard
+- [ ] 05-01-PLAN.md — Dashboard foundation: Streamlit app structure, DB queries, shared components, home overview page
+- [ ] 05-02-PLAN.md — Entity pages: Propostas, Programas, Apoiadores, Emendas with cross-filtering and CSV export
+- [ ] 05-03-PLAN.md — Extraction history page and Railway deployment configuration
+- [ ] 05-04-PLAN.md — Human verification of complete dashboard
 
-### Phase 5: Client Qualification
+### Phase 4: Client Qualification
 **Goal**: Create an intuitive interface that makes it easy for clients to discover and contact the most valuable proponents (those with fewer projects and new to the system). The interface should highlight proponent value metrics and streamline the qualification workflow. Consider alternatives to Streamlit for better UX.
 
-**Depends on**: Phase 4 (needs dashboard foundation)
+**Depends on**: Phase 1 (needs data in PostgreSQL)
 
 **Success Criteria** (what must be TRUE):
   1. Proponents are ranked by value metrics (fewer active projects = higher value, new/virgin proponents = highest value)
@@ -134,22 +134,22 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Proponente data model + ETL extraction (dimension table, CNPJ dedup, OSC classification, aggregations)
-- [ ] 05-02-PLAN.md — Qualification dashboard page (ranked table, filters, KPIs, CSV export)
-- [ ] 05-03-PLAN.md — Human verification of complete qualification feature
+- [ ] 04-01-PLAN.md — Proponente data model + ETL extraction (dimension table, CNPJ dedup, OSC classification, aggregations)
+- [ ] 04-02-PLAN.md — Qualification dashboard page (ranked table, filters, KPIs, CSV export)
+- [ ] 04-03-PLAN.md — Human verification of complete qualification feature
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 1 → 2 → 4 (PRIORITY) → 5 → 3 (optional)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 5/5 | Complete | 2026-02-05 |
 | 2. Operational Maturity | 4/4 | Complete | 2026-02-05 |
+| 4. Client Qualification (PRIORITY) | 0/3 | Planning complete | - |
+| 5. Data Dashboard | 0/4 | Planning complete | - |
 | 3. Production Excellence | 0/TBD | Not started | - |
-| 4. Data Dashboard | 0/4 | Planning complete | - |
-| 5. Client Qualification | 0/3 | Planning complete | - |
 
 ---
 *Roadmap created: 2026-02-04*

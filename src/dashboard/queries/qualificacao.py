@@ -21,6 +21,8 @@ def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame
             - max_propostas: int (filter proponentes with at most N propostas)
             - min_emendas: int (filter proponentes with at least N emendas)
             - search: str (search in nome or CNPJ)
+            - is_new_lead: bool (filter only new leads, not existing clients)
+            - is_existing_client: bool (filter only existing clients)
 
     Returns:
         DataFrame with qualified leads sorted by total_propostas ASC (fewer = better)
@@ -30,6 +32,12 @@ def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame
 
     # Build WHERE clause
     where_conditions = ["p.is_osc = true"]  # Only OSCs
+
+    if filters.get("is_new_lead"):
+        where_conditions.append("p.is_existing_client = false")
+
+    if filters.get("is_existing_client"):
+        where_conditions.append("p.is_existing_client = true")
 
     if filters.get("estado"):
         where_conditions.append(f"p.estado = '{filters['estado']}'")
@@ -62,12 +70,19 @@ def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame
             p.total_propostas,
             p.total_emendas,
             p.valor_total_emendas,
-            p.is_osc
+            p.is_osc,
+            p.is_existing_client,
+            STRING_AGG(DISTINCT a.orgao, ', ') FILTER (WHERE a.orgao IS NOT NULL AND a.orgao != '' AND a.orgao != 'nan') as ministerios
         FROM proponentes p
+        LEFT JOIN propostas prop ON p.cnpj = prop.proponente_cnpj
+        LEFT JOIN proposta_apoiadores pa ON prop.transfer_gov_id = pa.proposta_transfer_gov_id
+        LEFT JOIN apoiadores a ON pa.apoiador_transfer_gov_id = a.transfer_gov_id
         WHERE {where_clause}
+        GROUP BY p.id, p.cnpj, p.nome, p.natureza_juridica, p.estado, p.municipio, p.cep, p.endereco, p.bairro, p.total_propostas, p.total_emendas, p.valor_total_emendas, p.is_osc, p.is_existing_client
         ORDER BY
-            p.total_propostas ASC,  -- Fewer propostas = higher value
-            p.total_emendas DESC,   -- More emendas = better
+            p.is_existing_client DESC,  -- Existing clients first (for reference)
+            p.total_propostas ASC,      -- Then by value (fewer propostas = higher value)
+            p.total_emendas DESC,       -- More emendas = better
             p.nome ASC
         LIMIT :limit
     """)
@@ -155,6 +170,8 @@ def get_qualification_stats() -> dict:
     Returns:
         Dictionary with:
         - total_leads: Total qualified leads
+        - existing_clients: Existing clients count
+        - new_leads: New leads count
         - total_emendas: Total emendas
         - total_valor_emendas: Total emenda value
         - avg_propostas: Average propostas per lead
@@ -165,6 +182,8 @@ def get_qualification_stats() -> dict:
     query = text("""
         SELECT
             COUNT(*) as total_leads,
+            COUNT(CASE WHEN is_existing_client = true THEN 1 END) as existing_clients,
+            COUNT(CASE WHEN is_existing_client = false THEN 1 END) as new_leads,
             SUM(total_emendas) as total_emendas,
             SUM(valor_total_emendas) as total_valor_emendas,
             AVG(total_propostas) as avg_propostas,
@@ -179,10 +198,12 @@ def get_qualification_stats() -> dict:
 
     return {
         "total_leads": row[0] or 0,
-        "total_emendas": row[1] or 0,
-        "total_valor_emendas": row[2] or 0.0,
-        "avg_propostas": row[3] or 0.0,
-        "high_value_leads": row[4] or 0,
+        "existing_clients": row[1] or 0,
+        "new_leads": row[2] or 0,
+        "total_emendas": row[3] or 0,
+        "total_valor_emendas": row[4] or 0.0,
+        "avg_propostas": row[5] or 0.0,
+        "high_value_leads": row[6] or 0,
     }
 
 
