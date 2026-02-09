@@ -3,7 +3,7 @@
 **Automated ETL pipeline for Brazilian federal transfer data (Transfer.gov.br)**
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
@@ -198,18 +198,22 @@ alerting:
 
 ## License & Copyright
 
-**© 2024-2026 Sigma. All Rights Reserved.**
+**© 2024-2026 Sigma**
 
-This software is proprietary and confidential. Unauthorized copying, transfer, or reproduction of this software, via any medium, is strictly prohibited.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### Terms of Use
+### MIT License Summary
 
-- This software is the exclusive property of **Sigma**
-- Licensed for internal use only
-- No distribution, modification, or reverse engineering permitted without written authorization
-- All intellectual property rights reserved
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software.
 
-For licensing inquiries, contact: [legal@sigma.com](mailto:legal@sigma.com)
+**Key Points:**
+- ✅ Free to use, modify, and distribute
+- ✅ Commercial use permitted
+- ✅ Open source and transparent
+- ✅ Attribution required (copyright notice must be included)
+- ⚠️ Provided "as is" without warranty
+
+For more information, see the full [MIT License](LICENSE) text.
 
 ---
 
