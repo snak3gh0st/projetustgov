@@ -2,6 +2,8 @@
 
 import streamlit as st
 
+from src.dashboard.components._styles import get_iframe_styles
+
 
 def premium_kpi_card(
     label: str,
@@ -39,7 +41,9 @@ def premium_kpi_card(
         delta_class = f"delta-{delta_color}"
         delta_html = f'<div class="kpi-delta {delta_class}">{delta}</div>'
 
+    styles = get_iframe_styles()
     html = f"""
+    {styles}
     <div class="premium-kpi-card">
         <div class="kpi-label">{full_label}</div>
         <div class="kpi-value">{formatted_value}</div>
@@ -105,8 +109,10 @@ def kpi_row(cards: list[dict]) -> None:
         """
         card_htmls.append(card_html)
 
-    # Wrap all cards in a grid container
+    # Wrap all cards in a grid container with embedded styles
+    styles = get_iframe_styles()
     grid_html = f"""
+    {styles}
     <div style="display: grid; grid-template-columns: repeat({n}, 1fr); gap: 1rem; margin: 1rem 0;">
         {"".join(card_htmls)}
     </div>

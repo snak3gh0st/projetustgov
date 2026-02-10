@@ -2,6 +2,7 @@
 
 import streamlit as st
 
+from src.dashboard.components._styles import get_iframe_styles
 from src.dashboard.components.badges import freshness_badge
 from src.dashboard.components.kpi import kpi_row, premium_kpi_card
 
@@ -60,4 +61,5 @@ def render_metric_cards(counts: dict, freshness: dict) -> None:
 
         # Render freshness badge
         badge_html = freshness_badge(status)
-        st.html(f'<div style="margin-top: 1rem;">{badge_html}</div>')
+        styles = get_iframe_styles()
+        st.html(f'{styles}<div style="margin-top: 1rem;">{badge_html}</div>')

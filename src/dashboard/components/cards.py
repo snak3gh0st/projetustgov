@@ -2,6 +2,8 @@
 
 import streamlit as st
 
+from src.dashboard.components._styles import get_iframe_styles
+
 
 def glassmorphic_card(content: str, card_class: str = "glassmorphic-card") -> None:
     """Wrap content in a glassmorphic card with Sigma brand styling.
@@ -10,7 +12,9 @@ def glassmorphic_card(content: str, card_class: str = "glassmorphic-card") -> No
         content: Raw HTML string to wrap inside the card
         card_class: CSS class name for the card (default: "glassmorphic-card")
     """
+    styles = get_iframe_styles()
     html = f"""
+    {styles}
     <div class="{card_class}">
         {content}
     </div>
@@ -32,7 +36,9 @@ def glassmorphic_container(title: str | None = None) -> None:
     else:
         content = ""
 
+    styles = get_iframe_styles()
     html = f"""
+    {styles}
     <div class="glassmorphic-card">
         {content}
     </div>

@@ -33,7 +33,7 @@ def load_css():
         css_path = css_dir / css_file
         if css_path.exists():
             css_content = css_path.read_text()
-            st.html(f"<style>{css_content}</style>")
+            st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
 
 
 # Apply CSS immediately after set_page_config
