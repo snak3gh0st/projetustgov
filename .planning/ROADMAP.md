@@ -167,10 +167,11 @@ Plans:
   6. Consistent color system established for value badges (green/blue/amber/gray), status indicators, and severity levels
   7. Component wrappers tested on existing Home page (metrics replaced with glassmorphic cards)
 
-**Plans**: TBD (to be determined during plan-phase)
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD during planning
+- [ ] 06-01-PLAN.md — CSS foundation: config.toml dark theme, external CSS files (fonts, theme, components), CSS loader in entry point
+- [ ] 06-02-PLAN.md — Component wrappers (cards, KPI, badges) + Home page integration + visual verification
 
 ### Phase 7: Data Visualization & Charts
 **Goal**: Integrate interactive Plotly charts with Sigma brand theming for geographic distribution, value analysis, and trend visualization. Establishes themed chart wrapper used across dashboard.
@@ -255,7 +256,7 @@ Plans:
 | 5. Data Dashboard | 4/4 | Complete | 2026-02-08 |
 | 3. Production Excellence | 0/TBD | Optional | - |
 | **Milestone v2.0** | | | |
-| 6. Visual Foundation & Component System | 0/TBD | Planning | - |
+| 6. Visual Foundation & Component System | 0/2 | Planned | - |
 | 7. Data Visualization & Charts | 0/TBD | Planning | - |
 | 8. Lead Profile & Enhanced Navigation | 0/TBD | Planning | - |
 | 9. Polish & Production Readiness | 0/TBD | Planning | - |
