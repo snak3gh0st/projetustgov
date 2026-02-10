@@ -3,6 +3,7 @@ sqlalchemy==2.0.46
 psycopg[binary]==3.3.2
 loguru==0.7.3
 pandas==2.3.3
+plotly==6.0.0
 polars==1.19.0
 pydantic==2.12.5
 pydantic-settings==2.12.0
