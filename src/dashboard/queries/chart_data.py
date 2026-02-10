@@ -68,26 +68,28 @@ def get_value_distribution() -> pd.DataFrame:
     engine = get_db_engine()
 
     query = text("""
-        SELECT
-            CASE
-                WHEN total_propostas = 1 THEN '1 proposta (Alto Valor)'
-                WHEN total_propostas BETWEEN 2 AND 3 THEN '2-3 propostas (Bom Valor)'
-                WHEN total_propostas BETWEEN 4 AND 5 THEN '4-5 propostas (Medio)'
-                WHEN total_propostas BETWEEN 6 AND 10 THEN '6-10 propostas (Baixo)'
-                ELSE '10+ propostas (Muito Baixo)'
-            END as faixa,
-            COUNT(*) as quantidade
-        FROM proponentes
-        WHERE natureza_juridica NOT ILIKE '%Administra%'
-        GROUP BY faixa
-        ORDER BY
-            CASE
-                WHEN total_propostas = 1 THEN 1
-                WHEN total_propostas BETWEEN 2 AND 3 THEN 2
-                WHEN total_propostas BETWEEN 4 AND 5 THEN 3
-                WHEN total_propostas BETWEEN 6 AND 10 THEN 4
-                ELSE 5
-            END
+        SELECT faixa, quantidade FROM (
+            SELECT
+                CASE
+                    WHEN total_propostas = 1 THEN '1 proposta (Alto Valor)'
+                    WHEN total_propostas BETWEEN 2 AND 3 THEN '2-3 propostas (Bom Valor)'
+                    WHEN total_propostas BETWEEN 4 AND 5 THEN '4-5 propostas (Medio)'
+                    WHEN total_propostas BETWEEN 6 AND 10 THEN '6-10 propostas (Baixo)'
+                    ELSE '10+ propostas (Muito Baixo)'
+                END as faixa,
+                CASE
+                    WHEN total_propostas = 1 THEN 1
+                    WHEN total_propostas BETWEEN 2 AND 3 THEN 2
+                    WHEN total_propostas BETWEEN 4 AND 5 THEN 3
+                    WHEN total_propostas BETWEEN 6 AND 10 THEN 4
+                    ELSE 5
+                END as sort_order,
+                COUNT(*) as quantidade
+            FROM proponentes
+            WHERE natureza_juridica NOT ILIKE '%Administra%'
+            GROUP BY faixa, sort_order
+        ) sub
+        ORDER BY sort_order
     """)
 
     with engine.connect() as conn:
