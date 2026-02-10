@@ -8,17 +8,17 @@
 
 **Milestone Goal:** Transform the existing Streamlit dashboard from raw/functional to a premium, workflow-optimized tool that sales reps use daily to research leads and prospect proponents — styled after the Sigma brand identity (dark theme, neon blue accents, glassmorphic cards).
 
-**Current Focus:** Phase 7 - Data Visualization & Charts (building Sigma-themed Plotly charts for geographic distribution, value tiers, and time trends)
+**Current Focus:** Phase 8 - Lead Profile & Enhanced Navigation (building data layer for lead profile page and global search)
 
 ## Current Position
 
-**Phase:** 7 of 9 (Milestone v2.0)
-**Plan:** Phase 7 COMPLETE (3/3 plans done)
-**Status:** Ready for Phase 8 planning (requires research-phase)
-**Progress:** [█████████░] 90% (19/21 plans complete)
+**Phase:** 8 of 9 (Milestone v2.0)
+**Plan:** 1 of 3 complete
+**Status:** In progress (Plan 08-01 complete, ready for Plan 08-02)
+**Progress:** [████████░░] 77% (20/26 plans complete)
 
 **Milestone v1.0 Status:** Complete (Phases 1, 2, 4, 5 delivered; Phase 3 optional)
-**Milestone v2.0 Status:** In progress (Phase 6 COMPLETE, Phase 7 COMPLETE, remaining: Phases 8-9)
+**Milestone v2.0 Status:** In progress (Phase 6 COMPLETE, Phase 7 COMPLETE, Phase 8 in progress)
 
 ## Performance Metrics
 
@@ -33,17 +33,18 @@
 | Blockers | 0 | 0 | ✓ Clear |
 
 **Velocity:**
-- Total plans completed (all time): 21
-- Average duration (all time): ~5.8 min
-- Total execution time (all time): ~2.9 hours
-- v2.0 plans completed: 5
-- v2.0 average duration: 5 min
+- Total plans completed (all time): 22
+- Average duration (all time): ~5.5 min
+- Total execution time (all time): ~3.0 hours
+- v2.0 plans completed: 6
+- v2.0 average duration: ~3.7 min
 
 **Recent execution metrics:**
 | Phase | Duration | Tasks | Files |
 |-------|----------|-------|-------|
 | Phase 07-data-visualization-charts P02 | 8min | 2 tasks | 3 files |
 | Phase 07-data-visualization-charts P03 | 42s | 1 task | 1 file |
+| Phase 08-lead-profile-enhanced-navigation P01 | 122 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,9 @@
 | Consistent chart heights for layouts | Phase 7-02 | 420px side-by-side (map/trend), 300px distribution ensures balanced visual layout | 2026-02-10 |
 | Gradient fills on trend charts | Phase 7-02 | tozeroy fill with 8% alpha adds depth without overwhelming dark theme | 2026-02-10 |
 | Direct st.plotly_chart for sparklines | Phase 7-03 | Explicit control over compact 40px height vs render_plotly_chart wrapper | 2026-02-10 |
+| Virgin proponents (0 propostas) = HIGH tier | Phase 8-01 | Untapped market never competed for government transfers | 2026-02-10 |
+| 5-minute cache for search queries | Phase 8-01 | Lower than entity queries (30m) since search results change more frequently | 2026-02-10 |
+| Python-side tier computation | Phase 8-01 | Keeps SQL simple, allows complex business logic without database function deployment | 2026-02-10 |
 
 ### Open Questions
 
@@ -95,7 +99,9 @@
 - [x] Execute Phase 7 Plan 01: Chart Foundation (COMPLETE)
 - [x] Execute Phase 7 Plan 02: Dashboard Chart Integration (COMPLETE)
 - [x] Execute Phase 7 Plan 03: Sparkline Integration (COMPLETE)
-- [ ] Plan Phase 8: Lead Profile & Enhanced Navigation (run research-phase first)
+- [x] Execute Phase 8 Plan 01: Lead Profile Data Layer (COMPLETE)
+- [ ] Execute Phase 8 Plan 02: Lead Profile Page UI
+- [ ] Execute Phase 8 Plan 03: Global Search Component
 - [ ] Plan Phase 9: Polish & Production Readiness
 
 ### Known Blockers
@@ -104,75 +110,87 @@
 
 ### Recent Wins
 
+- **Phase 8 Plan 01 Complete** (2026-02-10): Created complete data layer for lead profile and global search - cross-entity search with UNION ALL, 5 lead profile query functions, centralized tier classification utility. 2 minutes execution, 4 files created, 2 commits.
 - **Phase 7 FULLY Complete** (2026-02-10): All 3 plans executed - Chart foundation, dashboard chart integration, and sparkline integration. Complete chart visualization layer with choropleth maps, value distribution, time trends, sparklines, premium KPIs, and visual polish. CHART-01 through CHART-05 requirements satisfied (42s execution for Plan 03)
 - **Phase 6 Complete** (2026-02-10): Sigma-branded visual foundation with dark theme, glassmorphic components, and premium KPI cards fully integrated into Home page
-- **CSS Isolation Fix** (2026-02-10): Solved st.html() iframe CSS inheritance issue with embedded styles pattern (_styles.py helper)
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-10
 **Milestone:** v2.0 Dashboard Premium Redesign
-**Activity:** Phase 7 Plan 03 execution (Sparkline Integration)
+**Activity:** Phase 8 Plan 01 execution (Lead Profile Data Layer)
 
 **Completed:**
-- Wired sparklines into Home page metrics section showing daily extraction volume trends (last 30 days)
-- Added create_sparkline and get_extraction_sparkline_data imports to home.py
-- Implemented graceful degradation: sparkline only renders when 3+ data points exist
-- CHART-05 requirement satisfied (KPI sparklines showing recent extraction volume evolution)
-- Committed 1 time: Task 1 sparkline integration (9381ad0)
-- Created 07-03-SUMMARY.md with complete frontmatter and dependency graph
-- Updated STATE.md with Phase 7 FULLY COMPLETE status (3/3 plans), decisions, metrics
+- Created cross-entity search module with UNION ALL query across proponentes/propostas/programas
+- Implemented search_entities() with parameterized ILIKE and relevance ranking (3-2-1)
+- Created tier classification utility with calculate_value_tier() (HIGH/MEDIUM/LOW)
+- Virgin proponents (0 propostas) classified as HIGH tier (untapped market)
+- Created 5 lead profile query functions: overview, emendas, propostas, ministerios, programas
+- All queries use run_query() pattern with 5m cache and parameterized SQL
+- Committed 2 times: Task 1 search/tier (9602856), Task 2 lead profile (001323a)
+- Created 08-01-SUMMARY.md with complete frontmatter and dependency graph
+- Updated STATE.md with Phase 8 in progress (1/3 plans), decisions, metrics
 
 **Decisions Made:**
-- Direct st.plotly_chart usage for sparklines (explicit control over compact 40px height)
-- Gap 2 (glassmorphic wrappers) accepted as-is per Phase 6 backdrop-filter performance limit
+- Virgin proponents = HIGH tier (untapped market strategy)
+- 5-minute cache for search (lower than 30m entity queries)
+- Python-side tier computation (keeps SQL simple)
+- Relevance ranking 3-2-1 (proponentes > propostas > programas)
 
 **Deviations Auto-Fixed:**
 - None - plan executed exactly as written
 
 **Next Actions:**
-- Phase 7 FULLY COMPLETE (3/3 plans done)
-- Next: Phase 8 planning (Lead Profile & Enhanced Navigation) - REQUIRES research-phase first
-- Watch: Global search architecture complexity flagged for research
+- Phase 8 Plan 01 complete (1/3 plans done)
+- Next: Plan 08-02 (Lead Profile Page UI) - will consume these queries
+- Watch: Global search component (Plan 08-03) ready with search_entities()
 
 ### Context for Next Session
 
 **Where we are:**
-Phase 7 (Data Visualization & Charts) FULLY COMPLETE (3/3 plans). Full chart visualization layer integrated:
-- Plotly charts integrated into Home (choropleth + trend + sparklines) and Qualificacao (distribution) pages
-- Sparklines show daily extraction volume trends (30 days) with graceful degradation
-- Premium KPI cards migrated throughout Qualificacao page (replacing raw st.metric())
-- Visual polish applied: gradient fills, transparent backgrounds, consistent heights, icon headers
-- All charts use Sigma theme (neon blue, dark backgrounds, Portuguese labels)
-- CHART-01 through CHART-05 requirements satisfied
+Phase 8 (Lead Profile & Enhanced Navigation) Plan 01 COMPLETE (1/3 plans). Data layer foundation built:
+- Cross-entity search with UNION ALL across proponentes/propostas/programas
+- search_entities() function with relevance ranking (3=proponente, 2=proposta, 1=programa)
+- Tier classification utility: calculate_value_tier() with HIGH/MEDIUM/LOW logic
+- 5 lead profile query functions ready: overview, emendas, propostas, ministerios, programas
+- All queries use parameterized SQL (SQL injection prevention)
+- All queries cached with 5-minute TTL
 
 **What's next:**
-Phase 8 planning (Lead Profile & Enhanced Navigation). **REQUIRES research-phase first** due to global search complexity:
-- Research-phase must investigate: PostgreSQL full-text search vs app-level search, relevance ranking patterns, cross-entity search architecture
-- Lead profile page design: consolidate proponent details with related propostas/emendas/convenios
-- Enhanced navigation: global search bar, breadcrumbs, cross-entity links
-- Integration with Phase 6 glassmorphic components and Phase 7 charts
+Plan 08-02 (Lead Profile Page UI):
+- Create dedicated page for proponente deep-dive
+- Display overview with tier badge, contact info, key metrics
+- Show related emendas, propostas, ministerios, programas in sections
+- Integrate Phase 6 glassmorphic components (premium KPI cards)
+- Integrate Phase 7 chart components (distribution charts, sparklines)
 
-Phase 8 will consume:
-- Premium KPI cards from Phase 6
-- Chart components from Phase 7 (for lead profile visualizations)
-- Existing entity queries (proponents, propostas, emendas, convenios)
-- Global search architecture (to be researched)
+Then Plan 08-03 (Global Search Component):
+- Build global search bar in sidebar/header
+- Use search_entities() for cross-entity results
+- Implement result navigation to entity pages
+- Add breadcrumbs for navigation context
+
+**Available for integration:**
+- Premium KPI cards from Phase 6 (kpi_row function)
+- Chart components from Phase 7 (choropleth, distribution, trend, sparklines)
+- New search queries from Plan 08-01 (search_entities, lead profile functions)
+- Tier classification from Plan 08-01 (calculate_value_tier, TIER_COLORS)
 
 **Watch out for:**
-- Phase 8 MUST start with research-phase (global search complexity flagged in decisions)
-- Lead profile may need sparklines (create_sparkline available from Phase 7)
+- Lead profile page should use tier colors for visual value indicators
 - Mobile performance with backdrop-filter limits (Phase 6 guidance: max 3-5 per page)
-- Cross-entity navigation patterns need UX design consideration
+- Lead profile may benefit from sparklines showing proposal trends over time
+- Global search needs clear entity type indicators in results
 
 **Files to reference:**
-- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/.planning/phases/07-data-visualization-charts/07-02-SUMMARY.md` — Chart integration outcomes
-- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/.planning/phases/07-data-visualization-charts/07-01-SUMMARY.md` — Chart foundation
-- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/src/dashboard/components/charts.py` — Chart wrapper functions
+- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/.planning/phases/08-lead-profile-enhanced-navigation/08-01-SUMMARY.md` — Data layer outcomes
+- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/src/dashboard/queries/search.py` — Cross-entity search
+- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/src/dashboard/queries/lead_profile.py` — Lead profile queries
+- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/src/dashboard/utils/tiers.py` — Tier classification
 - `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/src/dashboard/components/kpi.py` — Premium KPI cards
-- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/.planning/phases/06-visual-foundation-component-system/06-02-SUMMARY.md` — Component patterns
+- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/src/dashboard/components/charts.py` — Chart wrapper functions
 
 ---
 *State initialized: 2026-02-09 for milestone v2.0*
-*Last updated: 2026-02-10 (Phase 7 COMPLETE)*
+*Last updated: 2026-02-10 (Phase 8 Plan 01 COMPLETE)*
