@@ -189,10 +189,11 @@ Plans:
   6. All charts use consistent Sigma branding (colors, fonts, backgrounds match dark theme)
   7. Charts integrated into Home and Qualificação pages with glassmorphic card wrappers
 
-**Plans**: TBD (to be determined during plan-phase)
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD during planning
+- [ ] 07-01-PLAN.md — Plotly theme wrapper, chart functions (choropleth, distribution, trend, sparkline), data queries, GeoJSON setup
+- [ ] 07-02-PLAN.md — Chart integration into Home and Qualificacao pages + visual verification
 
 ### Phase 8: Lead Profile & Enhanced Navigation
 **Goal**: Build dedicated lead profile page for deep-dive proponent research and implement global search with enhanced navigation. Delivers core sales workflow optimization.
@@ -257,7 +258,7 @@ Plans:
 | 3. Production Excellence | 0/TBD | Optional | - |
 | **Milestone v2.0** | | | |
 | 6. Visual Foundation & Component System | 2/2 | Complete | 2026-02-09 |
-| 7. Data Visualization & Charts | 0/TBD | Planning | - |
+| 7. Data Visualization & Charts | 0/2 | Planning | - |
 | 8. Lead Profile & Enhanced Navigation | 0/TBD | Planning | - |
 | 9. Polish & Production Readiness | 0/TBD | Planning | - |
 
