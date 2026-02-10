@@ -10,6 +10,7 @@ import streamlit as st
 
 from src.dashboard.components.charts import create_value_distribution, render_plotly_chart
 from src.dashboard.components.export import render_csv_export
+from src.dashboard.components.kpi import kpi_row
 from src.dashboard.queries.chart_data import get_value_distribution
 from src.dashboard.queries.qualificacao import (
     get_estados_disponiveis,
@@ -55,62 +56,41 @@ def render_qualificacao_nova():
     has_client_data = stats['existing_clients'] > 0
     has_convenio_data = stats['total_convenios'] > 0
 
-    # Row 1: Core KPIs (always shown)
-    kpi_cols = 4 if has_client_data else 3
-    cols = st.columns(kpi_cols)
-
-    with cols[0]:
-        st.metric("Total Leads", f"{stats['total_leads']:,}")
-
-    with cols[1]:
-        st.metric("Total Emendas", f"{stats['total_emendas']:,}")
-
-    with cols[2]:
-        st.metric(
-            "Valor Emendas",
-            f"R$ {stats['total_valor_emendas'] / 1_000_000:.1f}M",
-        )
-
+    # Row 1: Core KPIs as premium cards
+    core_kpis = [
+        {"label": "Total Leads", "value": stats['total_leads']},
+        {"label": "Total Emendas", "value": stats['total_emendas']},
+        {"label": "Valor Emendas", "value": f"R$ {stats['total_valor_emendas'] / 1_000_000:.1f}M"},
+    ]
     if has_client_data:
-        with cols[3]:
-            st.metric(
-                "Clientes Existentes",
-                f"{stats['existing_clients']:,}",
-                help="Leads que já são clientes atuais",
-            )
+        core_kpis.append({"label": "Clientes Existentes", "value": stats['existing_clients']})
+
+    kpi_row(core_kpis)
 
     # Row 2: Convenio KPIs (only when data exists)
     if has_convenio_data:
-        col_c1, col_c2 = st.columns(2)
-        with col_c1:
-            st.metric(
-                "Total Convenios",
-                f"{stats['total_convenios']:,}",
-                help="Propostas que viraram convênios formalizados",
-            )
-        with col_c2:
-            st.metric(
-                "Valor Desembolsado",
-                f"R$ {stats['total_valor_desembolsos'] / 1_000_000:.1f}M",
-                help="Dinheiro efetivamente transferido via desembolsos",
-            )
+        kpi_row([
+            {"label": "Total Convênios", "value": stats['total_convenios']},
+            {"label": "Valor Desembolsado", "value": f"R$ {stats['total_valor_desembolsos'] / 1_000_000:.1f}M"},
+        ])
 
-    st.markdown("---")
+    st.markdown("")
 
     # --- VALUE DISTRIBUTION CHART ---
-    st.subheader("Distribuicao por Faixa de Valor")
+    st.markdown("### 📊 Distribuição por Faixa de Valor")
+    st.caption("Quantidade de proponentes qualificados em cada faixa — menos propostas = maior valor de prospecção")
 
     distribution_data = get_value_distribution()
     if not distribution_data.empty:
         fig_distribution = create_value_distribution(
             distribution_data,
-            title='Distribuicao de Proponentes por Faixa de Valor'
+            title=''
         )
         render_plotly_chart(fig_distribution, key='qualificacao_distribution')
     else:
-        st.info("Dados de distribuicao indisponiveis")
+        st.info("Dados de distribuição indisponíveis")
 
-    st.markdown("---")
+    st.markdown("")
 
     # --- FILTERS SIDEBAR ---
     st.sidebar.header("Filtros")
@@ -313,22 +293,20 @@ def render_qualificacao_nova():
 
             st.markdown(f"### {selected_nome}")
 
-            # Show proponente details - core metrics
-            detail_cols = 5 if has_convenio_data else 3
-            cols = st.columns(detail_cols)
-            with cols[0]:
-                st.metric("Total Propostas", df.iloc[selected_lead_idx]["total_propostas"])
-            with cols[1]:
-                st.metric("Total Emendas", df.iloc[selected_lead_idx]["total_emendas"])
-            with cols[2]:
-                valor_emendas = df.iloc[selected_lead_idx]["valor_total_emendas"]
-                st.metric("Valor Emendas", f"R$ {valor_emendas / 1_000_000:.2f}M")
+            # Show proponente details - core metrics as premium cards
+            lead_data = df.iloc[selected_lead_idx]
+            valor_emendas = lead_data["valor_total_emendas"]
+            detail_kpis = [
+                {"label": "Total Propostas", "value": lead_data["total_propostas"]},
+                {"label": "Total Emendas", "value": lead_data["total_emendas"]},
+                {"label": "Valor Emendas", "value": f"R$ {valor_emendas / 1_000_000:.2f}M"},
+            ]
             if has_convenio_data:
-                with cols[3]:
-                    st.metric("Convenios", df.iloc[selected_lead_idx].get("total_convenios", 0))
-                with cols[4]:
-                    valor_desemb = df.iloc[selected_lead_idx].get("valor_total_desembolsos", 0) or 0
-                    st.metric("Valor Desembolsado", f"R$ {valor_desemb / 1_000_000:.2f}M")
+                detail_kpis.append({"label": "Convênios", "value": lead_data.get("total_convenios", 0)})
+                valor_desemb = lead_data.get("valor_total_desembolsos", 0) or 0
+                detail_kpis.append({"label": "Valor Desembolsado", "value": f"R$ {valor_desemb / 1_000_000:.2f}M"})
+
+            kpi_row(detail_kpis)
 
             # Contact info if available
             email = df.iloc[selected_lead_idx].get("email")

@@ -187,10 +187,14 @@ def create_brasil_choropleth(
     fig.update_geos(
         fitbounds="locations",
         visible=False,  # Hide default map features
+        bgcolor="rgba(0,0,0,0)",
     )
 
     # Apply Sigma theme
     fig = apply_sigma_theme(fig, title)
+
+    # Consistent height for side-by-side layout
+    fig.update_layout(height=420, margin=dict(l=10, r=10, t=50, b=10))
 
     # Override colorscale to neon blue gradient
     fig.update_traces(
@@ -237,10 +241,19 @@ def create_value_distribution(
     # Apply Sigma theme
     fig = apply_sigma_theme(fig, title)
 
-    # Set bar color to Sigma accent
+    # Set bar color to Sigma accent with gradient effect
     fig.update_traces(
         marker_color=SIGMA_COLORS["accent"],
+        marker_line_color="rgba(0,212,255,0.3)",
+        marker_line_width=1,
         hovertemplate="<b>%{y}</b><br>Proponentes: %{x:,}<extra></extra>",
+    )
+
+    # Better layout for horizontal bars
+    fig.update_layout(
+        height=300,
+        margin=dict(l=10, r=40, t=40, b=40),
+        yaxis=dict(automargin=True),
     )
 
     return fig
@@ -295,10 +308,15 @@ def create_time_trend(
     # Apply Sigma theme
     fig = apply_sigma_theme(fig, title)
 
+    # Consistent height for side-by-side layout
+    fig.update_layout(height=420)
+
     # Set line color and markers
     fig.update_traces(
         line_color=SIGMA_COLORS["accent"],
         marker=dict(size=8, color=SIGMA_COLORS["accent"]),
+        fill="tozeroy",
+        fillcolor="rgba(0,212,255,0.08)",
         hovertemplate="<b>%{x}</b><br>Total: %{y:,}<extra></extra>",
     )
 

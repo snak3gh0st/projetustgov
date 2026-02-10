@@ -56,7 +56,7 @@ def render_home() -> None:
         st.session_state.time_range_days = 7
 
     # ===== TOP SECTION: METRIC CARDS =====
-    st.subheader("Métricas Gerais")
+    st.markdown("### 🔢 Métricas Gerais")
 
     # Fetch data
     counts = get_entity_counts()
@@ -65,13 +65,12 @@ def render_home() -> None:
     # Render metric cards
     render_metric_cards(counts, freshness)
 
-    st.divider()
-
     # ===== CHART SECTION: GEOGRAPHIC AND TRENDS =====
-    st.subheader("Visao Geografica e Tendencias")
+    st.markdown("### 📊 Visão Geográfica e Tendências")
+    st.caption("Distribuição de proponentes qualificados e evolução das propostas ao longo do tempo")
 
     # Two-column layout for charts
-    col_left, col_right = st.columns([1, 1])
+    col_left, col_right = st.columns([1, 1], gap="large")
 
     with col_left:
         # Brazil choropleth map
@@ -85,7 +84,7 @@ def render_home() -> None:
             )
             render_plotly_chart(fig_choropleth, key='home_choropleth')
         else:
-            st.info("Dados geograficos indisponiveis")
+            st.info("Dados geográficos indisponíveis")
 
     with col_right:
         # Time trend chart
@@ -100,12 +99,12 @@ def render_home() -> None:
             )
             render_plotly_chart(fig_trend, key='home_trend')
         else:
-            st.info("Dados de tendencia indisponiveis")
+            st.info("Dados de tendência indisponíveis")
 
-    st.divider()
+    st.markdown("")
 
     # ===== MIDDLE SECTION: RECENT PROPOSTAS =====
-    st.subheader("Propostas Recentes")
+    st.markdown("### 📋 Propostas Recentes")
 
     # Time range selector
     render_time_range_selector()
@@ -175,10 +174,10 @@ def render_home() -> None:
             f"propostas_recentes_{st.session_state.time_range_days}dias.csv",
         )
 
-    st.divider()
+    st.markdown("")
 
     # ===== BOTTOM SECTION: EXTRACTION HISTORY =====
-    st.subheader("Histórico de Extrações")
+    st.markdown("### ⚡ Histórico de Extrações")
 
     # Fetch extraction history (respects same time range selector)
     history_df = get_extraction_history(days=st.session_state.time_range_days)
