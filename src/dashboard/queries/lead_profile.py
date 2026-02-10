@@ -185,3 +185,74 @@ def get_lead_programas(cnpj: str) -> pd.DataFrame:
 
     df = run_query(query, params={"cnpj": cnpj})
     return df
+
+
+@st.cache_data(ttl="5m")
+def get_lead_instruments(cnpj: str) -> pd.DataFrame:
+    """Get all instruments (convenios) for a proponente with financial detail.
+
+    Joins convenios -> propostas (via proposta_id) -> propostas.proponente_cnpj
+    Also joins to proposta_emendas + emendas to get emenda info per instrument.
+
+    Args:
+        cnpj: Proponente CNPJ
+
+    Returns:
+        DataFrame with all instrument fields including financial data
+    """
+    query = """
+        SELECT
+            c.transfer_gov_id as nr_instrumento,
+            prop.modalidade,
+            c.situacao,
+            c.instrumento_ativo,
+            CASE WHEN pe.emenda_transfer_gov_id IS NOT NULL THEN 'SIM' ELSE 'NAO' END as tem_emenda,
+            e.autor as parlamentar,
+            c.valor_global,
+            e.valor as valor_emenda,
+            c.valor_empenhado,
+            c.valor_desembolsado as valor_liberado,
+            c.saldo_conta,
+            c.valor_repasse,
+            c.valor_contrapartida,
+            c.valor_global_original,
+            c.rendimento_aplicacao,
+            c.ingresso_contrapartida,
+            c.data_inicio_vigencia,
+            c.data_fim_vigencia
+        FROM convenios c
+        INNER JOIN propostas prop ON c.proposta_id = prop.transfer_gov_id
+        LEFT JOIN proposta_emendas pe ON prop.transfer_gov_id = pe.proposta_transfer_gov_id
+        LEFT JOIN emendas e ON pe.emenda_transfer_gov_id = e.transfer_gov_id
+        WHERE prop.proponente_cnpj = :cnpj
+        ORDER BY c.valor_global DESC NULLS LAST
+    """
+    return run_query(query, params={"cnpj": cnpj})
+
+
+@st.cache_data(ttl="5m")
+def get_lead_instrument_summary(cnpj: str) -> dict:
+    """Get aggregated financial summary across all instruments for a CNPJ.
+
+    Args:
+        cnpj: Proponente CNPJ
+
+    Returns:
+        Dictionary with total_instrumentos, total_valor_global, total_empenhado, etc.
+    """
+    query = """
+        SELECT
+            COUNT(DISTINCT c.transfer_gov_id) as total_instrumentos,
+            SUM(c.valor_global) as total_valor_global,
+            SUM(c.valor_empenhado) as total_empenhado,
+            SUM(c.valor_desembolsado) as total_liberado,
+            SUM(c.saldo_conta) as total_saldo_conta,
+            COUNT(DISTINCT CASE WHEN c.instrumento_ativo = 'SIM' THEN c.transfer_gov_id END) as instrumentos_ativos
+        FROM convenios c
+        INNER JOIN propostas prop ON c.proposta_id = prop.transfer_gov_id
+        WHERE prop.proponente_cnpj = :cnpj
+    """
+    df = run_query(query, params={"cnpj": cnpj})
+    if df.empty:
+        return {}
+    return df.iloc[0].to_dict()
