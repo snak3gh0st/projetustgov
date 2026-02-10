@@ -1,0 +1,59 @@
+/* Sigma Brand Color Variables */
+:root {
+  /* Primary Brand Colors */
+  --sigma-bg-primary: #050B1F;
+  --sigma-bg-secondary: #0A1628;
+  --sigma-text-primary: #E8F4FD;
+  --sigma-text-secondary: rgba(232, 244, 253, 0.7);
+  --sigma-accent-neon: #00D4FF;
+
+  /* Glassmorphic Surface Colors */
+  --sigma-glass-bg: rgba(255, 255, 255, 0.05);
+  --sigma-glass-border: rgba(0, 212, 255, 0.3);
+
+  /* Semantic Colors */
+  --color-success: #10B981;
+  --color-info: #3B82F6;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-neutral: #6B7280;
+}
+
+/* Global App Container Styles */
+[data-testid="stAppViewContainer"] {
+  background: var(--sigma-bg-primary);
+  color: var(--sigma-text-primary);
+  font-family: var(--font-body);
+}
+
+/* Sidebar Styling */
+[data-testid="stSidebar"] {
+  background: var(--sigma-bg-secondary);
+  border-right: 1px solid var(--sigma-glass-border);
+}
+
+/* Remove Default Header Background */
+[data-testid="stHeader"] {
+  background: transparent;
+}
+
+/* Glassmorphic Metric Cards */
+[data-testid="stMetric"] {
+  background: var(--sigma-glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--sigma-glass-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  position: relative;
+}
+
+/* Text Contrast Overlay for Glassmorphic Surfaces */
+[data-testid="stMetric"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 11, 31, 0.85);
+  border-radius: 12px;
+  z-index: -1;
+}
