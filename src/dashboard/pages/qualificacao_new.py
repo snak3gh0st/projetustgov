@@ -11,6 +11,7 @@ import streamlit as st
 from src.dashboard.components.charts import create_value_distribution, render_plotly_chart
 from src.dashboard.components.export import render_csv_export
 from src.dashboard.components.kpi import kpi_row
+from src.dashboard.components.ranking_cards import render_ranking_card_with_action
 from src.dashboard.queries.chart_data import get_value_distribution
 from src.dashboard.queries.qualificacao import (
     get_estados_disponiveis,
@@ -21,6 +22,7 @@ from src.dashboard.queries.qualificacao import (
     get_qualification_stats,
     get_qualified_leads,
 )
+from src.dashboard.utils.tiers import TIER_COLORS, calculate_value_tier
 
 
 def format_cnpj(cnpj: str) -> str:
@@ -89,6 +91,40 @@ def render_qualificacao_nova():
         render_plotly_chart(fig_distribution, key='qualificacao_distribution')
     else:
         st.info("Dados de distribuição indisponíveis")
+
+    st.markdown("")
+
+    # --- TOP LEADS SECTION ---
+    st.markdown("### Top Leads")
+    st.caption("Clique em um lead para ver o perfil completo")
+
+    # Fetch initial leads for top N display
+    df_leads_top = get_qualified_leads(limit=5, filters={})
+
+    if not df_leads_top.empty:
+        # Calculate tier for each lead
+        df_leads_top_display = df_leads_top.copy()
+        df_leads_top_display["tier"] = df_leads_top_display.apply(
+            lambda row: calculate_value_tier(
+                row["total_propostas"],
+                row["valor_total_emendas"] or 0,
+                row.get("total_convenios", 0)
+            ),
+            axis=1
+        )
+
+        # Render each card with action button
+        for idx, row in df_leads_top_display.iterrows():
+            rank = idx + 1 if isinstance(idx, int) else idx
+            proponente_dict = row.to_dict()
+
+            if render_ranking_card_with_action(rank, proponente_dict):
+                # Button clicked - navigate to lead profile
+                st.session_state.selected_lead_cnpj = row["cnpj"]
+                st.session_state.selected_lead_name = row["nome"]
+                st.switch_page("pages/lead_profile.py")
+    else:
+        st.info("Nenhum lead disponível no momento")
 
     st.markdown("")
 
@@ -175,6 +211,16 @@ def render_qualificacao_nova():
     # Make a copy to avoid modifying cached data
     df = df_leads.copy()
 
+    # Add tier column to dataframe
+    df["tier"] = df.apply(
+        lambda row: calculate_value_tier(
+            row["total_propostas"],
+            row["valor_total_emendas"] or 0,
+            row.get("total_convenios", 0)
+        ),
+        axis=1
+    )
+
     # --- MAIN TABLE SECTION ---
     st.subheader(f"Leads Qualificados Ranqueados ({len(df)} registros)")
 
@@ -195,7 +241,7 @@ def render_qualificacao_nova():
             lambda x: f"R$ {x / 1_000:,.0f}K" if pd.notna(x) and x > 0 else "R$ 0"
         )
 
-    # Add value badge based on total_propostas
+    # Add value badge based on total_propostas (kept for backward compatibility)
     def get_value_badge(n_propostas):
         if n_propostas == 0:
             return "🌟 VERDE"
@@ -207,6 +253,9 @@ def render_qualificacao_nova():
             return "○ REGULAR"
 
     df["valor"] = df["total_propostas"].apply(get_value_badge)
+
+    # Format tier for display
+    df["tier_display"] = df["tier"].apply(lambda t: f"{t}")
 
     # Add client status badge (only when client data exists)
     if has_client_data:
@@ -229,10 +278,10 @@ def render_qualificacao_nova():
         display_columns.append("status_cliente")
         column_names.append("Status")
 
-    display_columns += ["valor", "nome", "cnpj_formatado", "estado", "municipio",
+    display_columns += ["valor", "tier_display", "nome", "cnpj_formatado", "estado", "municipio",
                         "ministerios_truncated", "total_propostas", "total_emendas",
                         "valor_emendas_fmt"]
-    column_names += ["Valor", "Nome", "CNPJ", "UF", "Municipio",
+    column_names += ["Valor", "Tier", "Nome", "CNPJ", "UF", "Municipio",
                      "Ministerios", "Propostas", "Emendas", "Valor Emendas"]
 
     if has_convenio_data:
@@ -307,6 +356,14 @@ def render_qualificacao_nova():
                 detail_kpis.append({"label": "Valor Desembolsado", "value": f"R$ {valor_desemb / 1_000_000:.2f}M"})
 
             kpi_row(detail_kpis)
+
+            # Add "Ver Perfil" button to navigate to full lead profile
+            if st.button("📊 Ver Perfil Completo do Lead", key="detail_lead_profile", type="primary"):
+                st.session_state.selected_lead_cnpj = selected_cnpj
+                st.session_state.selected_lead_name = selected_nome
+                st.switch_page("pages/lead_profile.py")
+
+            st.markdown("")
 
             # Contact info if available
             email = df.iloc[selected_lead_idx].get("email")
