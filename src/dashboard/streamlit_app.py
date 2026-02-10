@@ -22,6 +22,23 @@ st.set_page_config(
     layout="wide",
 )
 
+
+# Load custom CSS files
+def load_css():
+    """Load external CSS files for Sigma brand theming."""
+    css_dir = Path(__file__).parent / "assets" / "styles"
+    css_files = ["fonts.css", "theme.css", "components.css"]
+
+    for css_file in css_files:
+        css_path = css_dir / css_file
+        if css_path.exists():
+            css_content = css_path.read_text()
+            st.html(f"<style>{css_content}</style>")
+
+
+# Apply CSS immediately after set_page_config
+load_css()
+
 # Initialize session state
 if "selected_proposta_id" not in st.session_state:
     st.session_state.selected_proposta_id = None
