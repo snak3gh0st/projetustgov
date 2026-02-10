@@ -60,7 +60,7 @@ def render_global_search():
                             # Set lead context and navigate to lead profile
                             st.session_state.selected_lead_cnpj = row["cnpj"]
                             st.session_state.selected_lead_name = row["nome"]
-                            st.switch_page("pages/lead_profile.py")
+                            st.switch_page(st.session_state._pages["Lead Profile"])
 
                 # Display proposta results
                 if not proposta_results.empty:
@@ -71,7 +71,7 @@ def render_global_search():
                         if st.button(label, key=f"search_result_proposta_{idx}"):
                             # Set proposta context and navigate to propostas page
                             st.session_state.selected_proposta_id = row["id"]
-                            st.switch_page("pages/propostas.py")
+                            st.switch_page(st.session_state._pages["Propostas"])
 
                 # Display programa results
                 if not programa_results.empty:
@@ -82,6 +82,6 @@ def render_global_search():
                         if st.button(label, key=f"search_result_programa_{idx}"):
                             # Set programa filter and navigate to programas page
                             st.session_state.active_entity_filter = row["id"]
-                            st.switch_page("pages/programas.py")
+                            st.switch_page(st.session_state._pages["Programas"])
         else:
             st.warning("Nenhum resultado encontrado.")

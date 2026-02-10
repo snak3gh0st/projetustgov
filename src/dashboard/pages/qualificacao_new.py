@@ -122,7 +122,7 @@ def render_qualificacao_nova():
                 # Button clicked - navigate to lead profile
                 st.session_state.selected_lead_cnpj = row["cnpj"]
                 st.session_state.selected_lead_name = row["nome"]
-                st.switch_page("pages/lead_profile.py")
+                st.switch_page(st.session_state._pages["Lead Profile"])
     else:
         st.info("Nenhum lead disponível no momento")
 
@@ -361,7 +361,7 @@ def render_qualificacao_nova():
             if st.button("📊 Ver Perfil Completo do Lead", key="detail_lead_profile", type="primary"):
                 st.session_state.selected_lead_cnpj = selected_cnpj
                 st.session_state.selected_lead_name = selected_nome
-                st.switch_page("pages/lead_profile.py")
+                st.switch_page(st.session_state._pages["Lead Profile"])
 
             st.markdown("")
 

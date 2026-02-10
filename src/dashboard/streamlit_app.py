@@ -119,15 +119,23 @@ with st.sidebar:
     render_global_search()
 
 # Define navigation structure with 7 tabs (5 entity pages + Qualificacao + Lead Profile)
-pages = [
-    st.Page(home_page, title="Home", icon="🏠"),
-    st.Page(propostas_page, title="Propostas", icon="📄"),
-    st.Page(programas_page, title="Programas", icon="📋"),
-    st.Page(apoiadores_page, title="Apoiadores", icon="👥"),
-    st.Page(emendas_page, title="Emendas", icon="💰"),
-    st.Page(qualificacao_page, title="Qualificacao", icon="🎯"),
-    st.Page(lead_profile_page, title="Lead Profile", icon="👤"),
-]
+_page_home = st.Page(home_page, title="Home", icon="🏠")
+_page_propostas = st.Page(propostas_page, title="Propostas", icon="📄")
+_page_programas = st.Page(programas_page, title="Programas", icon="📋")
+_page_apoiadores = st.Page(apoiadores_page, title="Apoiadores", icon="👥")
+_page_emendas = st.Page(emendas_page, title="Emendas", icon="💰")
+_page_qualificacao = st.Page(qualificacao_page, title="Qualificacao", icon="🎯")
+_page_lead_profile = st.Page(lead_profile_page, title="Lead Profile", icon="👤")
+
+pages = [_page_home, _page_propostas, _page_programas, _page_apoiadores, _page_emendas, _page_qualificacao, _page_lead_profile]
+
+# Store page objects in session_state for st.switch_page() from other modules
+st.session_state._pages = {
+    "Lead Profile": _page_lead_profile,
+    "Qualificacao": _page_qualificacao,
+    "Propostas": _page_propostas,
+    "Programas": _page_programas,
+}
 
 # Create navigation
 pg = st.navigation(pages)

@@ -144,7 +144,7 @@ def render_lead_profile():
     with action_col3:
         # Back to Qualificacao navigation
         if st.button("Voltar para Qualificacao"):
-            st.switch_page("src/dashboard/pages/qualificacao_new.py")
+            st.switch_page(st.session_state._pages["Qualificacao"])
 
     st.markdown("")
 
