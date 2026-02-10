@@ -57,3 +57,35 @@
   border-radius: 12px;
   z-index: -1;
 }
+
+/* Sidebar Navigation Styling - Phase 8 */
+[data-testid="stSidebarNav"] a {
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid transparent;
+  transition: all 0.3s ease;
+  border-radius: 0 8px 8px 0;
+  margin: 2px 0;
+}
+
+[data-testid="stSidebarNav"] a:hover {
+  background: rgba(0, 212, 255, 0.1);
+  border-left-color: var(--sigma-accent-neon);
+}
+
+[data-testid="stSidebarNav"] a[aria-current="page"] {
+  background: rgba(0, 212, 255, 0.15);
+  border-left-color: var(--sigma-accent-neon);
+  font-weight: 600;
+}
+
+/* Sidebar search input styling */
+[data-testid="stSidebar"] [data-testid="stTextInput"] input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--sigma-glass-border);
+  color: var(--sigma-text-primary);
+  border-radius: 8px;
+}
+
+[data-testid="stSidebar"] [data-testid="stTextInput"] input::placeholder {
+  color: var(--sigma-text-secondary);
+}

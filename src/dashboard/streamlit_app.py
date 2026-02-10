@@ -39,6 +39,10 @@ def load_css():
 # Apply CSS immediately after set_page_config
 load_css()
 
+# Import navigation components (lazy import pattern)
+from src.dashboard.components.search import render_global_search
+from src.dashboard.components.breadcrumb import render_breadcrumb
+
 # Initialize session state
 if "selected_proposta_id" not in st.session_state:
     st.session_state.selected_proposta_id = None
@@ -48,6 +52,15 @@ if "time_range_days" not in st.session_state:
 
 if "active_entity_filter" not in st.session_state:
     st.session_state.active_entity_filter = None
+
+if "breadcrumb_trail" not in st.session_state:
+    st.session_state.breadcrumb_trail = []
+
+if "selected_lead_cnpj" not in st.session_state:
+    st.session_state.selected_lead_cnpj = None
+
+if "selected_lead_name" not in st.session_state:
+    st.session_state.selected_lead_name = None
 
 
 # Define page functions (placeholders for pages not yet implemented)
@@ -93,6 +106,18 @@ def qualificacao_page():
     render_qualificacao_nova()
 
 
+def lead_profile_page():
+    """Dedicated lead profile page for deep-dive proponent research."""
+    from src.dashboard.pages.lead_profile import render_lead_profile
+
+    render_lead_profile()
+
+
+# Sidebar branding and global search
+with st.sidebar:
+    st.markdown("### PROJETUS")
+    render_global_search()
+
 # Define navigation structure with 6 tabs (5 entity pages + Qualificacao)
 pages = [
     st.Page(home_page, title="Home", icon="🏠"),
@@ -105,6 +130,9 @@ pages = [
 
 # Create navigation
 pg = st.navigation(pages)
+
+# Render breadcrumb context indicator
+render_breadcrumb()
 
 # Run the selected page
 pg.run()
