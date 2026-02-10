@@ -214,12 +214,14 @@ Plans:
   9. Breadcrumb or context indicator shows which lead/entity is currently selected
   10. All entity pages (Propostas, Programas, Apoiadores, Emendas) updated with consistent premium styling
 
-**Plans**: TBD (to be determined during plan-phase)
-
-**Research Flag**: Phase planning should research global cross-entity search architecture (search index structure, SQL query optimization, relevance ranking).
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD during planning
+- [ ] 08-01-PLAN.md — Search queries, lead profile queries, tier classification utility
+- [ ] 08-02-PLAN.md — Lead profile page with tabs, KPIs, contact info, quick actions
+- [ ] 08-03-PLAN.md — Global search bar, sidebar branding, breadcrumb component
+- [ ] 08-04-PLAN.md — Qualificacao ranking cards, entity page premium styling
+- [ ] 08-05-PLAN.md — Visual verification of complete Phase 8
 
 ### Phase 9: Polish & Production Readiness
 **Goal**: Apply final polish layer across all pages — mobile responsiveness, loading states, empty states, animations, and consistent styling. Ensures premium experience on all devices and edge cases.
@@ -259,7 +261,7 @@ Plans:
 | **Milestone v2.0** | | | |
 | 6. Visual Foundation & Component System | 2/2 | Complete | 2026-02-09 |
 | 7. Data Visualization & Charts | 0/2 | Planning | - |
-| 8. Lead Profile & Enhanced Navigation | 0/TBD | Planning | - |
+| 8. Lead Profile & Enhanced Navigation | 0/5 | Planning | - |
 | 9. Polish & Production Readiness | 0/TBD | Planning | - |
 
 ---
