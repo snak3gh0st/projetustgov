@@ -23,8 +23,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Milestone v2.0 — Dashboard Premium Redesign
 
 - [x] **Phase 6: Visual Foundation & Component System** - Sigma-branded dark theme, glassmorphic cards, CSS injection, typography
-- [ ] **Phase 7: Data Visualization & Charts** - Interactive Plotly charts with Sigma branding for trends, geographic, value distribution
-- [ ] **Phase 8: Lead Profile & Enhanced Navigation** - Dedicated lead deep-dive page, global search, visual ranking, streamlined navigation
+- [x] **Phase 7: Data Visualization & Charts** - Interactive Plotly charts with Sigma branding for trends, geographic, value distribution
+- [x] **Phase 8: Lead Profile & Enhanced Navigation** - Dedicated lead deep-dive page, global search, visual ranking, streamlined navigation
 - [ ] **Phase 9: Polish & Production Readiness** - Mobile responsive, loading states, animations, consistent styling across all pages
 
 ## Phase Details
@@ -189,11 +189,11 @@ Plans:
   6. All charts use consistent Sigma branding (colors, fonts, backgrounds match dark theme)
   7. Charts integrated into Home and Qualificação pages with glassmorphic card wrappers
 
-**Plans:** 2 plans
+**Status**: Complete (2026-02-10)
 
 Plans:
-- [ ] 07-01-PLAN.md — Plotly theme wrapper, chart functions (choropleth, distribution, trend, sparkline), data queries, GeoJSON setup
-- [ ] 07-02-PLAN.md — Chart integration into Home and Qualificacao pages + visual verification
+- [x] 07-01-PLAN.md — Plotly theme wrapper, chart functions (choropleth, distribution, trend, sparkline), data queries, GeoJSON setup
+- [x] 07-02-PLAN.md — Chart integration into Home and Qualificacao pages + visual verification
 
 ### Phase 8: Lead Profile & Enhanced Navigation
 **Goal**: Build dedicated lead profile page for deep-dive proponent research and implement global search with enhanced navigation. Delivers core sales workflow optimization.
@@ -214,14 +214,14 @@ Plans:
   9. Breadcrumb or context indicator shows which lead/entity is currently selected
   10. All entity pages (Propostas, Programas, Apoiadores, Emendas) updated with consistent premium styling
 
-**Plans:** 5 plans
+**Status**: Complete (2026-02-10)
 
 Plans:
-- [ ] 08-01-PLAN.md — Search queries, lead profile queries, tier classification utility
-- [ ] 08-02-PLAN.md — Lead profile page with tabs, KPIs, contact info, quick actions
-- [ ] 08-03-PLAN.md — Global search bar, sidebar branding, breadcrumb component
-- [ ] 08-04-PLAN.md — Qualificacao ranking cards, entity page premium styling
-- [ ] 08-05-PLAN.md — Visual verification of complete Phase 8
+- [x] 08-01-PLAN.md — Search queries, lead profile queries, tier classification utility
+- [x] 08-02-PLAN.md — Lead profile page with tabs, KPIs, contact info, quick actions
+- [x] 08-03-PLAN.md — Global search bar, sidebar branding, breadcrumb component
+- [x] 08-04-PLAN.md — Qualificacao ranking cards, entity page premium styling
+- [x] 08-05-PLAN.md — Visual verification of complete Phase 8
 
 ### Phase 9: Polish & Production Readiness
 **Goal**: Apply final polish layer across all pages — mobile responsiveness, loading states, empty states, animations, and consistent styling. Ensures premium experience on all devices and edge cases.
@@ -260,8 +260,8 @@ Plans:
 | 3. Production Excellence | 0/TBD | Optional | - |
 | **Milestone v2.0** | | | |
 | 6. Visual Foundation & Component System | 2/2 | Complete | 2026-02-09 |
-| 7. Data Visualization & Charts | 0/2 | Planning | - |
-| 8. Lead Profile & Enhanced Navigation | 0/5 | Planning | - |
+| 7. Data Visualization & Charts | 3/3 | Complete | 2026-02-10 |
+| 8. Lead Profile & Enhanced Navigation | 5/5 | Complete | 2026-02-10 |
 | 9. Polish & Production Readiness | 0/TBD | Planning | - |
 
 ---

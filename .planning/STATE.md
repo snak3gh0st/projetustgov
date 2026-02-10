@@ -8,17 +8,17 @@
 
 **Milestone Goal:** Transform the existing Streamlit dashboard from raw/functional to a premium, workflow-optimized tool that sales reps use daily to research leads and prospect proponents — styled after the Sigma brand identity (dark theme, neon blue accents, glassmorphic cards).
 
-**Current Focus:** Phase 8 - Lead Profile & Enhanced Navigation (building data layer for lead profile page and global search)
+**Current Focus:** Phase 9 - Polish & Production Readiness (final polish layer across all pages)
 
 ## Current Position
 
-**Phase:** 8 of 9 (Milestone v2.0)
-**Plan:** 4 of 5 complete (08-01, 08-02, 08-03, 08-04)
-**Status:** In progress (Plans 08-01, 08-02, 08-03, 08-04 complete, Plan 08-05 remaining)
-**Progress:** [█████████░] 88%
+**Phase:** 9 of 9 (Milestone v2.0)
+**Plan:** Ready for Phase 9 planning
+**Status:** Phase 8 COMPLETE, ready for Phase 9 planning
+**Progress:** [█████████░] 95% (24/25 plans complete)
 
 **Milestone v1.0 Status:** Complete (Phases 1, 2, 4, 5 delivered; Phase 3 optional)
-**Milestone v2.0 Status:** In progress (Phase 6 COMPLETE, Phase 7 COMPLETE, Phase 8 in progress)
+**Milestone v2.0 Status:** In progress (Phases 6, 7, 8 COMPLETE, Phase 9 remaining)
 
 ## Performance Metrics
 
@@ -26,18 +26,18 @@
 |--------|-------|--------|--------|
 | Milestone v1.0 Phases Complete | 4/4 | 4 | ✓ Complete |
 | Milestone v1.0 Plans Complete | 16/16 | 16 | ✓ Complete |
-| Milestone v2.0 Phases Complete | 2/4 | 4 | In progress |
-| Milestone v2.0 Plans Complete | 5/TBD | TBD | In progress |
+| Milestone v2.0 Phases Complete | 3/4 | 4 | In progress |
+| Milestone v2.0 Plans Complete | 10/TBD | TBD | In progress |
 | Requirements Coverage (v1.0) | 29/29 | 29 | ✓ 100% |
 | Requirements Coverage (v2.0) | 27/27 | 27 | ✓ 100% |
 | Blockers | 0 | 0 | ✓ Clear |
 
 **Velocity:**
-- Total plans completed (all time): 22
-- Average duration (all time): ~5.5 min
-- Total execution time (all time): ~3.0 hours
-- v2.0 plans completed: 6
-- v2.0 average duration: ~3.7 min
+- Total plans completed (all time): 26
+- Average duration (all time): ~5.0 min
+- Total execution time (all time): ~3.3 hours
+- v2.0 plans completed: 10
+- v2.0 average duration: ~3.5 min
 
 **Recent execution metrics:**
 | Phase | Duration | Tasks | Files |
@@ -90,6 +90,7 @@
 | Button-based search (not autocomplete) | Phase 8-03 | Fits Streamlit's rerun model better than autocomplete | 2026-02-10 |
 | Expander to contain search results | Phase 8-03 | Prevents results from pushing page content down, keeps UI stable | 2026-02-10 |
 | Prioritize proponente results in global search | Phase 8-03 | Lead research workflow prioritizes finding proponentes first | 2026-02-10 |
+| st.switch_page requires st.Page objects with st.navigation() | Phase 8-05 | File paths and title strings don't work; store Page refs in session_state._pages | 2026-02-10 |
 
 ### Open Questions
 
@@ -97,7 +98,7 @@
 |----------|---------|----------|-------|
 | CSS selector stability testing protocol? | Phase 6 needs to establish testing for Streamlit updates | Medium | Phase 6 planning |
 | Glassmorphic performance on target devices? | Backdrop-filter performance varies; need benchmark on sales team mobile browsers | Medium | Phase 6 planning |
-| Global search index structure? | Phase 8 research flag: PostgreSQL full-text search vs app-level, relevance ranking | High | Phase 8 research |
+| Global search index structure? | Resolved: ILIKE-based UNION ALL search implemented in Phase 8 | Resolved | Phase 8 |
 
 ### Active TODOs
 
@@ -109,7 +110,7 @@
 - [x] Execute Phase 8 Plan 02: Lead Profile Page UI (COMPLETE)
 - [x] Execute Phase 8 Plan 03: Global Search Component (COMPLETE)
 - [x] Execute Phase 8 Plan 04: Premium Styling & Lead Navigation (COMPLETE)
-- [ ] Execute Phase 8 Plan 05: Remaining Phase 8 items
+- [x] Execute Phase 8 Plan 05: Visual Verification (COMPLETE)
 - [ ] Plan Phase 9: Polish & Production Readiness
 
 ### Known Blockers
@@ -118,6 +119,7 @@
 
 ### Recent Wins
 
+- **Phase 8 COMPLETE** (2026-02-10): All 5 plans executed — data layer, lead profile page, global search, ranking cards, visual verification. Complete search-to-profile sales workflow with tier classification, premium styling across all pages. Fixed st.switch_page to use st.Page objects with st.navigation(). 15 commits total.
 - **Phase 8 Plan 02 Complete** (2026-02-10): Dedicated lead profile page with tier badge, KPI cards, contact info, tabbed data sections (emendas/propostas/ministerios/programas), and quick actions (CSV export, CNPJ copy). Registered in navigation. 3 minutes execution, 2 files (1 created, 1 modified), 2 commits.
 - **Phase 8 Plan 03 Complete** (2026-02-10): Global search bar with cross-entity results, breadcrumb context indicator, and Sigma-branded sidebar navigation. Button-based search with expander, prioritized proponente results, dark theme styling. 2 minutes execution, 4 files (2 created, 2 modified), 2 commits.
 - **Phase 8 Plan 01 Complete** (2026-02-10): Created complete data layer for lead profile and global search - cross-entity search with UNION ALL, 5 lead profile query functions, centralized tier classification utility. 2 minutes execution, 4 files created, 2 commits.
@@ -128,69 +130,51 @@
 ### Last Session Summary
 **Date:** 2026-02-10
 **Milestone:** v2.0 Dashboard Premium Redesign
-**Activity:** Phase 8 Plan 02 execution (Lead Profile Page UI)
+**Activity:** Phase 8 execution (all 5 plans) — Lead Profile & Enhanced Navigation
 
 **Completed:**
-- Created dedicated lead_profile.py page with render_lead_profile() function
-- Implemented tier badge with inline HTML styling using Sigma brand colors
-- Added KPI value summary row with 4 cards (Tier, Emendas value, Propostas count, Convenios)
-- Created contact info section with email, telefone, endereco (3-column layout)
-- Implemented quick actions: CSV export, CNPJ copy (st.code), back to Qualificacao navigation
-- Built tabbed content with 4 tabs: Emendas, Propostas, Ministerios/Orgaos, Programas
-- Registered lead_profile_page in streamlit_app.py navigation (7 pages total)
-- Committed 2 times: Task 1 page creation (529cbb6), Task 2 navigation (03fb2ff)
-- Created 08-02-SUMMARY.md with complete frontmatter and dependency graph
-- Updated STATE.md with Phase 8 progress (4/5 plans complete)
+- Executed all 5 Phase 8 plans across 3 waves (wave 1: data layer, wave 2: 3 parallel UI plans, wave 3: human verification)
+- Created cross-entity search, lead profile queries, tier classification (08-01)
+- Built lead profile page with tier badge, KPIs, tabs, contact info, quick actions (08-02)
+- Implemented global search bar, breadcrumb navigation, sidebar Sigma branding (08-03)
+- Added ranking cards on Qualificacao, premium styling on all entity pages (08-04)
+- Fixed st.switch_page navigation — requires st.Page objects with st.navigation() (08-05)
+- User visually verified all 10 ROADMAP Phase 8 success criteria
+- 15 commits total, ~15 min total execution
 
 **Decisions Made:**
-- Session state already initialized (selected_lead_cnpj/name exist from other process)
-- Guard clause for missing lead selection with helpful warning message
-- Tier badge in header with inline HTML for color customization
-- st.code() for CNPJ copy functionality (built-in copy button)
-
-**Deviations Auto-Fixed:**
-- Rule 3: Session state initialization already done, skipped and only added page function
+- st.switch_page() requires st.Page objects (not file paths/strings) with st.navigation()
+- Page refs stored in st.session_state._pages for cross-module access
+- Button-based search fits Streamlit rerun model; expander contains results
+- Virgin proponents (0 propostas) = HIGH tier for untapped market strategy
 
 **Next Actions:**
-- Phase 8 Plan 02 complete (3/5 plans done, but 08-03 and 08-04 also completed)
-- Next: Plan 08-05 (final Phase 8 plan)
-- Watch: Global search component already integrated, can navigate to lead profile page
+- Phase 9: Polish & Production Readiness (requires plan-phase first)
 
 ### Context for Next Session
 
 **Where we are:**
-Phase 8 (Lead Profile & Enhanced Navigation) - 4 of 5 plans COMPLETE (08-01, 08-02, 08-03, 08-04). Core sales workflow features built:
-- **Data layer** (Plan 08-01): Cross-entity search, lead profile queries, tier classification
-- **Lead profile page** (Plan 08-02): Dedicated proponente deep-dive with tier badge, KPIs, tabs, quick actions
-- **Global search** (Plan 08-03): Sidebar search bar with cross-entity results and breadcrumbs
-- **Premium styling** (Plan 08-04): Entity pages styled with premium KPI cards and lead navigation
+Phase 8 (Lead Profile & Enhanced Navigation) COMPLETE (5/5 plans). Full sales workflow implemented:
+- Search → select lead → deep-dive profile → action (export/copy/navigate)
+- 7-page navigation with Sigma branding, breadcrumbs, global search
+- Premium styling with glassmorphic cards, tier badges, icon headers across all pages
 
 **What's next:**
-Plan 08-05 (final Phase 8 plan):
-- Review plan details in 08-05-PLAN.md
-- Likely final polish, edge case handling, or additional navigation features
-- After completion, Phase 8 will be COMPLETE
-
-Then Phase 9 (Polish & Production Readiness):
-- Final production hardening
-- Performance optimization
-- Documentation updates
-- Launch preparation
-
-**Available features:**
-- Lead profile page with full proponent analysis (emendas, propostas, ministerios, programas)
-- Global search with cross-entity results (proponentes, propostas, programas)
-- Premium KPI cards and glassmorphic styling across all pages
-- Tier-based value classification (HIGH/MEDIUM/LOW)
-- Breadcrumb navigation for context awareness
+Phase 9 (Polish & Production Readiness) — requires planning:
+- Mobile responsive layouts
+- Loading states and skeleton cards
+- Empty state messages
+- CSS animations and hover effects
+- Final styling consistency pass
+- Performance validation
 
 **Files to reference:**
-- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/.planning/phases/08-lead-profile-enhanced-navigation/08-01-SUMMARY.md` — Data layer
-- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/.planning/phases/08-lead-profile-enhanced-navigation/08-02-SUMMARY.md` — Lead profile page
-- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/src/dashboard/pages/lead_profile.py` — Lead profile UI
-- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/src/dashboard/components/search.py` — Global search component
-- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/src/dashboard/components/breadcrumb.py` — Breadcrumb navigation
+- `.planning/phases/08-lead-profile-enhanced-navigation/08-*-SUMMARY.md` — All Phase 8 summaries
+- `src/dashboard/pages/lead_profile.py` — Lead profile page
+- `src/dashboard/components/search.py` — Global search
+- `src/dashboard/components/ranking_cards.py` — Ranking cards
+- `src/dashboard/utils/tiers.py` — Tier classification
 
 ---
 *State initialized: 2026-02-09 for milestone v2.0*
-*Last updated: 2026-02-10 (Phase 8 Plan 02 COMPLETE)*
+*Last updated: 2026-02-10 (Phase 8 COMPLETE)*
