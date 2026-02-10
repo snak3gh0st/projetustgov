@@ -2,21 +2,30 @@
 
 ## Overview
 
-PROJETUS delivers 100% reliable automated extraction of Transfer Gov data through three focused phases. Phase 1 establishes the complete ETL pipeline with all critical pitfall preventions (zero data loss guarantee). Phase 2 adds operational maturity with advanced monitoring and configuration management. Phase 3 provides optional production excellence features triggered by operational need. The journey prioritizes urgency (ASAP delivery) and reliability (no silent failures) over premature optimization.
+PROJETUS delivers 100% reliable automated extraction of Transfer Gov data through focused milestone delivery. **Milestone v1.0** (Phases 1-5) established the complete ETL pipeline, operational monitoring, client qualification, and data dashboard. **Milestone v2.0** (Phases 6-9) transforms the Streamlit dashboard from functional to premium — a Sigma-branded sales tool optimized for lead research workflow with dark theme, glassmorphic design, interactive charts, and streamlined navigation.
 
 ## Phases
 
 **Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
+- Integer phases (1, 2, 3, ...): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Complete ETL pipeline with zero data loss guarantee
-- [ ] **Phase 2: Operational Maturity** - Advanced monitoring, reconciliation, configuration management
+### Milestone v1.0 — Complete
+
+- [x] **Phase 1: Foundation** - Complete ETL pipeline with zero data loss guarantee
+- [x] **Phase 2: Operational Maturity** - Advanced monitoring, reconciliation, configuration management
+- [x] **Phase 4: Client Qualification** - Intuitive interface for clients to find and contact the most valuable proponents
+- [x] **Phase 5: Data Dashboard** - Streamlit dashboard for visualizing extracted Transfer Gov data
 - [ ] **Phase 3: Production Excellence** - Optional enhancements triggered by operational need
-- [ ] **Phase 4: Client Qualification** - **PRIORITY** - Intuitive interface for clients to find and contact the most valuable proponents
-- [ ] **Phase 5: Data Dashboard** - Streamlit dashboard for visualizing extracted Transfer Gov data
+
+### Milestone v2.0 — Dashboard Premium Redesign
+
+- [ ] **Phase 6: Visual Foundation & Component System** - Sigma-branded dark theme, glassmorphic cards, CSS injection, typography
+- [ ] **Phase 7: Data Visualization & Charts** - Interactive Plotly charts with Sigma branding for trends, geographic, value distribution
+- [ ] **Phase 8: Lead Profile & Enhanced Navigation** - Dedicated lead deep-dive page, global search, visual ranking, streamlined navigation
+- [ ] **Phase 9: Polish & Production Readiness** - Mobile responsive, loading states, animations, consistent styling across all pages
 
 ## Phase Details
 
@@ -39,10 +48,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   9. Re-running extraction does not duplicate data (idempotent operations via unique constraints)
   10. If validation fails at any stage, entire transaction rolls back (atomic operations, no partial data)
 
-**Plans**: TBD (to be determined during plan-phase)
+**Status**: Complete (2026-02-05)
 
 Plans:
-- [ ] TBD during planning
+- [x] 01-01-PLAN.md — Playwright crawler + Transfer Gov navigation
+- [x] 01-02-PLAN.md — File download and storage
+- [x] 01-03-PLAN.md — ETL parser (encoding, validation, transformation)
+- [x] 01-04-PLAN.md — PostgreSQL schema, relationships, upserts
+- [x] 01-05-PLAN.md — Scheduler, monitoring, health check
 
 ### Phase 2: Operational Maturity
 **Goal**: Add advanced monitoring, reconciliation checks, configuration management, and data lineage tracking. System becomes easier to debug, adapt to source changes, and audit for compliance. Delivers full confidence in data accuracy and maintainability.
@@ -61,7 +74,7 @@ Plans:
   7. Dry-run mode previews extraction without writing to database (safe testing of parser changes)
   8. Full upsert logic implemented with ON CONFLICT DO UPDATE (handles changing data gracefully)
 
-**Plans**: 4 plans created
+**Status**: Complete (2026-02-05)
 
 Plans:
 - [x] 02-01-PLAN.md — Configuration Externalization (YAML + Pydantic)
@@ -89,10 +102,32 @@ Plans:
 - Auto Recovery: When manual intervention becomes bottleneck (>5% of runs fail)
 - Parallel Processing: When runtime exceeds 30 minutes (unlikely at 11 proposals/day)
 
-**Plans**: TBD (only planned when triggered)
+**Status**: Not started (triggered by operational need)
 
 Plans:
 - [ ] TBD when operational need emerges
+
+### Phase 4: Client Qualification
+**Goal**: Create an intuitive interface that makes it easy for clients to discover and contact the most valuable proponents (those with fewer projects and new to the system). The interface should highlight proponent value metrics and streamline the qualification workflow.
+
+**Depends on**: Phase 1 (needs data in PostgreSQL)
+
+**Success Criteria** (what must be TRUE):
+  1. Proponents are ranked by value metrics (fewer active projects = higher value, new/virgin proponents = highest value)
+  2. Client can easily search and filter proponents by value criteria
+  3. Contact information is prominently displayed for each proponent
+  4. Interface is intuitive enough for non-technical clients to use without training
+  5. Value metrics are clearly explained (why fewer projects = more valuable)
+  6. Client can save/export their qualified proponent list
+  7. Interface performs well with the current data volume
+  8. Technology choice (Streamlit vs alternatives) is validated for client UX needs
+
+**Status**: Complete (2026-02-08)
+
+Plans:
+- [x] 04-01-PLAN.md — Proponente data model + ETL extraction (dimension table, CNPJ dedup, OSC classification, aggregations)
+- [x] 04-02-PLAN.md — Qualification dashboard page (ranked table, filters, KPIs, CSV export)
+- [x] 04-03-PLAN.md — Human verification of complete qualification feature
 
 ### Phase 5: Data Dashboard
 **Goal**: Build a Streamlit dashboard that visualizes all extracted Transfer Gov data — propostas, programas, apoiadores, and emendas — with row counts, extraction history, data freshness, and drill-down views. Provides operational visibility without writing SQL queries.
@@ -108,50 +143,128 @@ Plans:
   6. Dashboard is deployable on Railway alongside the existing API service
   7. Portuguese characters render correctly throughout the dashboard
 
-**Plans**: 4 plans
+**Status**: Complete (2026-02-08)
 
 Plans:
-- [ ] 05-01-PLAN.md — Dashboard foundation: Streamlit app structure, DB queries, shared components, home overview page
-- [ ] 05-02-PLAN.md — Entity pages: Propostas, Programas, Apoiadores, Emendas with cross-filtering and CSV export
-- [ ] 05-03-PLAN.md — Extraction history page and Railway deployment configuration
-- [ ] 05-04-PLAN.md — Human verification of complete dashboard
+- [x] 05-01-PLAN.md — Dashboard foundation: Streamlit app structure, DB queries, shared components, home overview page
+- [x] 05-02-PLAN.md — Entity pages: Propostas, Programas, Apoiadores, Emendas with cross-filtering and CSV export
+- [x] 05-03-PLAN.md — Extraction history page and Railway deployment configuration
+- [x] 05-04-PLAN.md — Human verification of complete dashboard
 
-### Phase 4: Client Qualification
-**Goal**: Create an intuitive interface that makes it easy for clients to discover and contact the most valuable proponents (those with fewer projects and new to the system). The interface should highlight proponent value metrics and streamline the qualification workflow. Consider alternatives to Streamlit for better UX.
+### Phase 6: Visual Foundation & Component System
+**Goal**: Establish Sigma-branded dark theme foundation with CSS injection infrastructure and reusable glassmorphic components. Creates premium visual identity and component system used by all subsequent phases.
 
-**Depends on**: Phase 1 (needs data in PostgreSQL)
+**Depends on**: Phase 5 (builds on existing Streamlit dashboard)
+
+**Requirements**: VIS-01, VIS-02, VIS-03, VIS-04, VIS-05, VIS-06
 
 **Success Criteria** (what must be TRUE):
-  1. Proponents are ranked by value metrics (fewer active projects = higher value, new/virgin proponents = highest value)
-  2. Client can easily search and filter proponents by value criteria
-  3. Contact information is prominently displayed for each proponent
-  4. Interface is intuitive enough for non-technical clients to use without training
-  5. Value metrics are clearly explained (why fewer projects = more valuable)
-  6. Client can save/export their qualified proponent list
-  7. Interface performs well with the current data volume
-  8. Technology choice (Streamlit vs alternatives) is validated for client UX needs
+  1. Dark theme applied globally with Sigma brand colors (background #050B1F, text #E8F4FD, accent #00D4FF)
+  2. Custom CSS loaded from external file at app entry point (no inline CSS strings scattered across pages)
+  3. Space Grotesk and Inter fonts loaded from Google Fonts and applied to headings and body text
+  4. Glassmorphic card component created with semi-transparent background, backdrop-filter blur, and neon border
+  5. Premium KPI cards display large numbers with labels, delta indicators, and subtle glow on hover
+  6. Consistent color system established for value badges (green/blue/amber/gray), status indicators, and severity levels
+  7. Component wrappers tested on existing Home page (metrics replaced with glassmorphic cards)
 
-**Plans**: 3 plans
+**Plans**: TBD (to be determined during plan-phase)
 
 Plans:
-- [ ] 04-01-PLAN.md — Proponente data model + ETL extraction (dimension table, CNPJ dedup, OSC classification, aggregations)
-- [ ] 04-02-PLAN.md — Qualification dashboard page (ranked table, filters, KPIs, CSV export)
-- [ ] 04-03-PLAN.md — Human verification of complete qualification feature
+- [ ] TBD during planning
+
+### Phase 7: Data Visualization & Charts
+**Goal**: Integrate interactive Plotly charts with Sigma brand theming for geographic distribution, value analysis, and trend visualization. Establishes themed chart wrapper used across dashboard.
+
+**Depends on**: Phase 6 (requires dark theme colors and card components)
+
+**Requirements**: CHART-01, CHART-02, CHART-03, CHART-04, CHART-05
+
+**Success Criteria** (what must be TRUE):
+  1. Plotly dark theme wrapper created with Sigma brand colors and transparent backgrounds
+  2. Geographic heatmap shows proponents by estado with value-based color coding
+  3. Value distribution chart displays histogram of proponent value tiers across dataset
+  4. Trend chart visualizes propostas/emendas over time with monthly/yearly view toggle
+  5. KPI sparklines render mini trend lines inside metric cards showing recent evolution
+  6. All charts use consistent Sigma branding (colors, fonts, backgrounds match dark theme)
+  7. Charts integrated into Home and Qualificação pages with glassmorphic card wrappers
+
+**Plans**: TBD (to be determined during plan-phase)
+
+Plans:
+- [ ] TBD during planning
+
+### Phase 8: Lead Profile & Enhanced Navigation
+**Goal**: Build dedicated lead profile page for deep-dive proponent research and implement global search with enhanced navigation. Delivers core sales workflow optimization.
+
+**Depends on**: Phase 7 (uses glassmorphic cards and charts for lead profile)
+
+**Requirements**: LEAD-01, LEAD-02, LEAD-03, LEAD-04, LEAD-05, LEAD-06, NAV-01, NAV-02, NAV-03, NAV-04
+
+**Success Criteria** (what must be TRUE):
+  1. Dedicated lead profile page shows single proponent with all data organized in tabs (emendas, propostas, convênios, histórico)
+  2. Global search bar visible on every page accepts CNPJ or nome and navigates to lead profile
+  3. Lead profile prominently displays contact info (email, telefone, endereço)
+  4. Lead profile shows value assessment summary (tier, total emendas value, propostas count, convênios)
+  5. Lead profile displays related ministérios and programas associations
+  6. Quick actions available from profile (export lead data, copy CNPJ, navigate to related entities)
+  7. Qualificação page enhanced with visual ranking cards instead of raw table and clear value tier indicators
+  8. Sidebar navigation styled with Sigma branding (logo, styled nav items)
+  9. Breadcrumb or context indicator shows which lead/entity is currently selected
+  10. All entity pages (Propostas, Programas, Apoiadores, Emendas) updated with consistent premium styling
+
+**Plans**: TBD (to be determined during plan-phase)
+
+**Research Flag**: Phase planning should research global cross-entity search architecture (search index structure, SQL query optimization, relevance ranking).
+
+Plans:
+- [ ] TBD during planning
+
+### Phase 9: Polish & Production Readiness
+**Goal**: Apply final polish layer across all pages — mobile responsiveness, loading states, empty states, animations, and consistent styling. Ensures premium experience on all devices and edge cases.
+
+**Depends on**: Phase 8 (applies polish to complete feature set)
+
+**Requirements**: POL-01, POL-02, POL-03, POL-04, POL-05, POL-06
+
+**Success Criteria** (what must be TRUE):
+  1. Mobile responsive layout implemented with metric cards stacking, tables scrolling horizontally, search remaining accessible
+  2. Loading states show skeleton cards or spinners while data loads (no blank screens during queries)
+  3. Empty states display friendly messages when no data matches filters (not blank tables)
+  4. Subtle CSS animations added for card hover effects, smooth transitions, fade-in on page load
+  5. All 6+ pages use consistent premium styling (no page looks like default Streamlit)
+  6. Status badges styled as pill badges for proposta situação, value tier, and data freshness
+  7. Performance validated on mobile devices (glassmorphic effects don't cause lag)
+
+**Plans**: TBD (to be determined during plan-phase)
+
+Plans:
+- [ ] TBD during planning
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 4 (PRIORITY) → 5 → 3 (optional)
+- **Milestone v1.0**: Phases 1 → 2 → 4 → 5 (complete), Phase 3 (optional, triggered by need)
+- **Milestone v2.0**: Phases 6 → 7 → 8 → 9
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
+| **Milestone v1.0** | | | |
 | 1. Foundation | 5/5 | Complete | 2026-02-05 |
 | 2. Operational Maturity | 4/4 | Complete | 2026-02-05 |
-| 4. Client Qualification (PRIORITY) | 0/3 | Planning complete | - |
-| 5. Data Dashboard | 0/4 | Planning complete | - |
-| 3. Production Excellence | 0/TBD | Not started | - |
+| 4. Client Qualification | 3/3 | Complete | 2026-02-08 |
+| 5. Data Dashboard | 4/4 | Complete | 2026-02-08 |
+| 3. Production Excellence | 0/TBD | Optional | - |
+| **Milestone v2.0** | | | |
+| 6. Visual Foundation & Component System | 0/TBD | Planning | - |
+| 7. Data Visualization & Charts | 0/TBD | Planning | - |
+| 8. Lead Profile & Enhanced Navigation | 0/TBD | Planning | - |
+| 9. Polish & Production Readiness | 0/TBD | Planning | - |
 
 ---
 *Roadmap created: 2026-02-04*
-*Depth: quick (3 phases)*
-*Coverage: 29/29 v1 requirements mapped*
+*Milestone v1.0 depth: quick (5 phases)*
+*Milestone v1.0 coverage: 29/29 v1 requirements mapped*
+
+*Milestone v2.0 added: 2026-02-09*
+*Milestone v2.0 depth: quick (4 phases)*
+*Milestone v2.0 coverage: 27/27 v2.0 requirements mapped*

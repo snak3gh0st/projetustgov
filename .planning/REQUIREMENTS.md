@@ -120,38 +120,53 @@
 
 ## Traceability
 
-**Coverage (v2.0):** 23 requirements — to be mapped to phases
+**Coverage (v1.0):** 29/29 requirements mapped ✓
+**Coverage (v2.0):** 27/27 requirements mapped ✓
+
+### v1.0 Requirements (Complete)
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VIS-01 | TBD | Pending |
-| VIS-02 | TBD | Pending |
-| VIS-03 | TBD | Pending |
-| VIS-04 | TBD | Pending |
-| VIS-05 | TBD | Pending |
-| VIS-06 | TBD | Pending |
-| CHART-01 | TBD | Pending |
-| CHART-02 | TBD | Pending |
-| CHART-03 | TBD | Pending |
-| CHART-04 | TBD | Pending |
-| CHART-05 | TBD | Pending |
-| LEAD-01 | TBD | Pending |
-| LEAD-02 | TBD | Pending |
-| LEAD-03 | TBD | Pending |
-| LEAD-04 | TBD | Pending |
-| LEAD-05 | TBD | Pending |
-| LEAD-06 | TBD | Pending |
-| NAV-01 | TBD | Pending |
-| NAV-02 | TBD | Pending |
-| NAV-03 | TBD | Pending |
-| NAV-04 | TBD | Pending |
-| POL-01 | TBD | Pending |
-| POL-02 | TBD | Pending |
-| POL-03 | TBD | Pending |
-| POL-04 | TBD | Pending |
-| POL-05 | TBD | Pending |
-| POL-06 | TBD | Pending |
+| EXTR-01 to EXTR-06 | Phase 1 | Complete |
+| ETL-01 to ETL-06 | Phase 1 | Complete |
+| DB-01 to DB-07 | Phase 1 | Complete |
+| SCHED-01 | Phase 1 | Complete |
+| MON-01, MON-02, MON-05, MON-07 | Phase 1 | Complete |
+| MON-03, MON-04, MON-06 | Phase 2 | Complete |
+
+### v2.0 Requirements (Pending)
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| VIS-01 | Phase 6 | Pending |
+| VIS-02 | Phase 6 | Pending |
+| VIS-03 | Phase 6 | Pending |
+| VIS-04 | Phase 6 | Pending |
+| VIS-05 | Phase 6 | Pending |
+| VIS-06 | Phase 6 | Pending |
+| CHART-01 | Phase 7 | Pending |
+| CHART-02 | Phase 7 | Pending |
+| CHART-03 | Phase 7 | Pending |
+| CHART-04 | Phase 7 | Pending |
+| CHART-05 | Phase 7 | Pending |
+| LEAD-01 | Phase 8 | Pending |
+| LEAD-02 | Phase 8 | Pending |
+| LEAD-03 | Phase 8 | Pending |
+| LEAD-04 | Phase 8 | Pending |
+| LEAD-05 | Phase 8 | Pending |
+| LEAD-06 | Phase 8 | Pending |
+| NAV-01 | Phase 8 | Pending |
+| NAV-02 | Phase 8 | Pending |
+| NAV-03 | Phase 8 | Pending |
+| NAV-04 | Phase 8 | Pending |
+| POL-01 | Phase 9 | Pending |
+| POL-02 | Phase 9 | Pending |
+| POL-03 | Phase 9 | Pending |
+| POL-04 | Phase 9 | Pending |
+| POL-05 | Phase 9 | Pending |
+| POL-06 | Phase 9 | Pending |
 
 ---
 *Requirements defined: 2026-02-04*
 *v2.0 requirements added: 2026-02-09 after milestone v2.0 initialization*
+*v2.0 traceability updated: 2026-02-09 after roadmap creation*
