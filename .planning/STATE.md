@@ -8,17 +8,17 @@
 
 **Milestone Goal:** Transform the existing Streamlit dashboard from raw/functional to a premium, workflow-optimized tool that sales reps use daily to research leads and prospect proponents — styled after the Sigma brand identity (dark theme, neon blue accents, glassmorphic cards).
 
-**Current Focus:** Phase 6 - Visual Foundation & Component System (establishing Sigma-branded dark theme with CSS injection and reusable glassmorphic components)
+**Current Focus:** Phase 7 - Data Visualization & Charts (building Sigma-themed Plotly charts for geographic distribution, value tiers, and time trends)
 
 ## Current Position
 
-**Phase:** 6 of 9 (Milestone v2.0)
-**Plan:** 02 of 02 complete (Phase 6 COMPLETE)
-**Status:** Ready for Phase 7 planning
-**Progress:** [█████████░] 89% (16/18 plans complete: milestone v1.0 complete, milestone v2.0 Phase 6 complete)
+**Phase:** 7 of 9 (Milestone v2.0)
+**Plan:** 01 of 02 complete (Phase 7 in progress)
+**Status:** Ready for Phase 7 Plan 02 execution
+**Progress:** [█████████░] 94% (17/18 plans complete: milestone v1.0 complete, milestone v2.0 Phase 6 complete + Phase 7 Plan 01 complete)
 
 **Milestone v1.0 Status:** Complete (Phases 1, 2, 4, 5 delivered; Phase 3 optional)
-**Milestone v2.0 Status:** In progress (Phase 6 COMPLETE, Phase 7-9 pending)
+**Milestone v2.0 Status:** In progress (Phase 6 COMPLETE, Phase 7 Plan 01 COMPLETE, remaining: Phase 7 Plan 02, Phases 8-9)
 
 ## Performance Metrics
 
@@ -27,17 +27,17 @@
 | Milestone v1.0 Phases Complete | 4/4 | 4 | ✓ Complete |
 | Milestone v1.0 Plans Complete | 16/16 | 16 | ✓ Complete |
 | Milestone v2.0 Phases Complete | 1/4 | 4 | In progress |
-| Milestone v2.0 Plans Complete | 2/TBD | TBD | In progress |
+| Milestone v2.0 Plans Complete | 3/TBD | TBD | In progress |
 | Requirements Coverage (v1.0) | 29/29 | 29 | ✓ 100% |
 | Requirements Coverage (v2.0) | 27/27 | 27 | ✓ 100% |
 | Blockers | 0 | 0 | ✓ Clear |
 
 **Velocity:**
-- Total plans completed (all time): 18
-- Average duration (all time): ~7 min
-- Total execution time (all time): ~2.6 hours
-- v2.0 plans completed: 2
-- v2.0 average duration: 6 min
+- Total plans completed (all time): 19
+- Average duration (all time): ~6.5 min
+- Total execution time (all time): ~2.7 hours
+- v2.0 plans completed: 3
+- v2.0 average duration: 5 min
 
 ## Accumulated Context
 
@@ -66,6 +66,9 @@
 | Fix st.html() iframe CSS isolation via embedded styles | Phase 6-02 | st.html() iframes don't inherit main page CSS; embed complete styles in each iframe | 2026-02-10 |
 | kpi_row() for multi-card layouts | Phase 6-02 | Single st.html() call with CSS grid avoids container proliferation | 2026-02-10 |
 | Dark-theme color auditing for legacy pages | Phase 6-02 | Replace light-mode hardcoded colors with dark-compatible rgba overlays | 2026-02-10 |
+| Plotly chart theming with Sigma brand | Phase 7-01 | Dark theme with transparent backgrounds, neon blue accents, Space Grotesk/Inter fonts for all charts | 2026-02-10 |
+| GeoJSON SIGLA property mapping | Phase 7-01 | Uppercase SIGLA property matches database estado codes (AC, SP, RJ) - no transformation needed | 2026-02-10 |
+| Horizontal bar charts for value distribution | Phase 7-01 | Improves readability of Portuguese tier labels vs vertical orientation | 2026-02-10 |
 
 ### Open Questions
 
@@ -78,7 +81,8 @@
 ### Active TODOs
 
 - [x] Plan Phase 6: Visual Foundation & Component System (COMPLETE)
-- [ ] Plan Phase 7: Data Visualization & Charts
+- [x] Execute Phase 7 Plan 01: Chart Foundation (COMPLETE)
+- [ ] Execute Phase 7 Plan 02: Dashboard Chart Integration
 - [ ] Plan Phase 8: Lead Profile & Enhanced Navigation (run research-phase first)
 - [ ] Plan Phase 9: Polish & Production Readiness
 
@@ -88,71 +92,79 @@
 
 ### Recent Wins
 
+- **Phase 7 Plan 01 Complete** (2026-02-10): Plotly chart foundation with Sigma theming, Brazilian GeoJSON, and chart-ready aggregation queries (4min execution)
 - **Phase 6 Complete** (2026-02-10): Sigma-branded visual foundation with dark theme, glassmorphic components, and premium KPI cards fully integrated into Home page
 - **CSS Isolation Fix** (2026-02-10): Solved st.html() iframe CSS inheritance issue with embedded styles pattern (_styles.py helper)
 - **Milestone v1.0 Complete** (2026-02-08): Full ETL pipeline, operational monitoring, client qualification, and data dashboard delivered and verified
-- **Milestone v2.0 Initialized** (2026-02-09): Requirements defined (27 v2.0 requirements), research completed (HIGH confidence), roadmap created (4 focused phases)
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-10
 **Milestone:** v2.0 Dashboard Premium Redesign
-**Activity:** Phase 6 Plan 02 execution (continuation after human verification checkpoint)
+**Activity:** Phase 7 Plan 01 execution (Chart Foundation)
 
 **Completed:**
-- Created 3 component modules: cards.py, kpi.py, badges.py with glassmorphic wrappers
-- Created _styles.py helper to embed CSS in st.html() iframes (fixes CSS isolation)
-- Replaced all st.metric() calls in metrics.py and home.py with premium KPI components
-- Fixed dark theme compatibility: embedded CSS in iframes, replaced light row highlighting
-- Human verification checkpoint APPROVED by user
-- Committed 4 times: 2 feature commits + 2 auto-fix commits (b155711, dc9a1ce, be273be, a3b7ecb)
-- Created 06-02-SUMMARY.md with complete frontmatter, deviation tracking, and dependency graph
-- Updated STATE.md with position, decisions, metrics, and Phase 6 COMPLETE status
+- Installed Plotly 6.0.0 and added to requirements.txt
+- Downloaded Brazilian estados GeoJSON (27 features with SIGLA property)
+- Created charts.py with 6 Sigma-themed chart wrapper functions
+- Created chart_data.py with 4 aggregation query functions
+- All charts use transparent backgrounds, neon blue accents, Space Grotesk/Inter fonts
+- All labels and tooltips in Portuguese (MESES_PT, hovertemplate strings)
+- Committed 2 times: Task 1 (8e17b0d), Task 2 (abff070)
+- Created 07-01-SUMMARY.md with complete frontmatter and dependency graph
+- Updated STATE.md with position, decisions, metrics, and Phase 7 Plan 01 COMPLETE status
 
 **Decisions Made:**
-- Fix st.html() iframe CSS isolation by embedding styles in each iframe via _styles.py helper
-- Use kpi_row() for multi-card layouts to avoid multiple st.html() calls
-- Replace light-mode hardcoded colors with dark-theme-compatible rgba overlays
-- Badge components return HTML strings (not render) for embedding in other components
+- Confirmed SIGLA property (uppercase) matches database estado codes - no transformation needed
+- Horizontal bar charts for value distribution improve readability of Portuguese labels
+- Sparklines return figures without rendering - caller controls display context
+- 30m cache TTL for aggregations, 10m for metrics (consistency with existing patterns)
 
 **Deviations Auto-Fixed:**
-- CSS isolation in st.html() iframes (Rule 1 - Bug): embedded complete styles in each iframe
-- Light green row highlighting incompatible with dark theme (Rule 1 - Bug): replaced with dark rgba
+- None - plan executed exactly as written
 
 **Next Actions:**
-- Phase 6 COMPLETE (2/2 plans done) - ready for Phase 7
-- Next: Plan Phase 7 (Data Visualization & Charts) to create Sigma-branded Plotly charts
-- Watch: Phase 8 will need research-phase before planning (global search complexity)
+- Phase 7 Plan 01 COMPLETE (1/2 plans done)
+- Next: Execute Phase 7 Plan 02 (Dashboard Chart Integration) to integrate charts into dashboard pages
+- Watch: Sparkline embedding with KPI card iframes may need get_iframe_styles() integration
 
 ### Context for Next Session
 
 **Where we are:**
-Phase 6 (Visual Foundation & Component System) COMPLETE. Both plans executed:
-- Plan 01: CSS foundation (dark theme, fonts, component classes)
-- Plan 02: Python component wrappers (cards, KPI, badges) + Home page integration
-
-All 6 VIS requirements (VIS-01 to VIS-06) fulfilled. Home page fully migrated to Sigma-branded premium components with zero st.metric() calls. CSS isolation issue solved with _styles.py embedded styles pattern.
+Phase 7 (Data Visualization & Charts) Plan 01 COMPLETE. Chart foundation established:
+- Plotly 6.0.0 installed with Sigma-themed wrapper functions
+- Brazilian estados GeoJSON (27 features with SIGLA property matching database)
+- 6 chart functions: apply_sigma_theme, render_plotly_chart, create_brasil_choropleth, create_value_distribution, create_time_trend, create_sparkline
+- 4 aggregation queries: get_proponentes_por_estado, get_value_distribution, get_propostas_trend, get_extraction_sparkline_data
+- All charts use transparent backgrounds, neon blue accents (#00D4FF), Space Grotesk/Inter fonts, Portuguese labels
 
 **What's next:**
-Plan Phase 7 (Data Visualization & Charts). This phase builds Sigma-branded Plotly charts (line, bar, heatmap) with dark theme integration, custom color palettes, and glassmorphic chart containers. Phase 7 consumes Phase 6 outputs:
-- CSS variables from theme.css (--sigma-accent-neon, --color-success, etc.)
-- Glassmorphic card wrappers (glassmorphic_card, glassmorphic_container)
-- Badge components for chart legends
-- Dark theme foundation
+Execute Phase 7 Plan 02 (Dashboard Chart Integration). This plan integrates charts into dashboard pages:
+- Add choropleth map to Home page (geographic proponent distribution)
+- Add value distribution bar chart to Qualificacao page
+- Add time trend charts to entity pages
+- Embed sparklines in KPI cards
+- Wrap charts in glassmorphic containers from Phase 6
+
+Phase 7 Plan 02 consumes:
+- Chart wrapper functions from charts.py (Plan 01)
+- Aggregation queries from chart_data.py (Plan 01)
+- Glassmorphic card wrappers from Phase 6
+- get_iframe_styles() pattern for chart embedding if needed
 
 **Watch out for:**
-- CSS selector stability (monitor Streamlit updates for data-testid changes)
-- Glassmorphic performance (benchmark on mobile if real-world usage shows issues)
+- Choropleth map height adjustment for optimal dashboard layout
+- Sparkline embedding with KPI card iframes may need get_iframe_styles() integration
+- Chart container responsiveness on mobile (glassmorphic performance)
 - Phase 8 will need research-phase before planning (global search complexity flagged)
-- st.html() iframe pattern established - use get_iframe_styles() for any custom chart components
 
 **Files to reference:**
-- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/.planning/PROJECT.md` — Milestone v2.0 goal and constraints
-- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/.planning/REQUIREMENTS.md` — CHART-01 to CHART-05 for Phase 7
-- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/.planning/research/SUMMARY.md` — Plotly theming patterns, layout.template guidance
-- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/.planning/ROADMAP.md` — Phase 7 success criteria
-- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/.planning/phases/06-visual-foundation-component-system/06-01-SUMMARY.md` — CSS variables available for charts
+- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/.planning/phases/07-data-visualization-charts/07-02-PLAN.md` — Next plan to execute
+- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/.planning/phases/07-data-visualization-charts/07-01-SUMMARY.md` — Chart foundation outputs
+- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/src/dashboard/components/charts.py` — Chart wrapper functions
+- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/src/dashboard/queries/chart_data.py` — Aggregation queries
+- `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/src/dashboard/components/_styles.py` — Iframe CSS embedding pattern
 
 ---
 *State initialized: 2026-02-09 for milestone v2.0*
