@@ -10,6 +10,7 @@ import streamlit as st
 
 from src.dashboard.components.charts import (
     create_brasil_choropleth,
+    create_sparkline,
     create_time_trend,
     render_plotly_chart,
 )
@@ -18,6 +19,7 @@ from src.dashboard.components.filters import render_time_range_selector
 from src.dashboard.components.kpi import kpi_row, premium_kpi_card
 from src.dashboard.components.metrics import render_metric_cards
 from src.dashboard.queries.chart_data import (
+    get_extraction_sparkline_data,
     get_proponentes_por_estado,
     get_propostas_trend,
 )
@@ -64,6 +66,20 @@ def render_home() -> None:
 
     # Render metric cards
     render_metric_cards(counts, freshness)
+
+    # ===== SPARKLINE: EXTRACTION TRENDS =====
+    sparkline_data = get_extraction_sparkline_data()
+    if sparkline_data:
+        st.caption("Tendencia de Extracoes (ultimos 30 dias)")
+        for metric_name, values in sparkline_data.items():
+            fig_spark = create_sparkline(values)
+            st.plotly_chart(
+                fig_spark,
+                use_container_width=True,
+                theme=None,
+                config={"displayModeBar": False, "displaylogo": False, "responsive": True},
+                key=f"sparkline_{metric_name}",
+            )
 
     # ===== CHART SECTION: GEOGRAPHIC AND TRENDS =====
     st.markdown("### 📊 Visão Geográfica e Tendências")
