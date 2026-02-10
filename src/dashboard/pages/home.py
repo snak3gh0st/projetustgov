@@ -1,308 +1,121 @@
-"""Home overview page with KPI metrics, recent data, and extraction history.
+"""Lead list page - shows CNPJ table ranked by opportunity with filters.
 
-Layout per user decision:
-- Top section: Metric cards (entity counts + data freshness)
-- Middle section: Recent propostas table (default 7-day filter)
-- Bottom section: Extraction history with pipeline run status
+Layout:
+- Title + description
+- Sidebar filters (UF, Com/Sem Emenda, Faixa de Valor)
+- Main area: Lead table (CNPJ, Nome, UF, Qtd Instrumentos, Valor Emendas, Tem Contato)
+- Row selection navigates to Lead Profile
 """
 
 import streamlit as st
 
-from src.dashboard.components.charts import (
-    create_brasil_choropleth,
-    create_sparkline,
-    create_time_trend,
-    render_plotly_chart,
-)
-from src.dashboard.components.export import render_csv_export
-from src.dashboard.components.filters import render_time_range_selector
-from src.dashboard.components.kpi import kpi_row, premium_kpi_card
-from src.dashboard.components.metrics import render_metric_cards
-from src.dashboard.queries.chart_data import (
-    get_extraction_sparkline_data,
-    get_proponentes_por_estado,
-    get_propostas_trend,
-)
-from src.dashboard.queries.entities import get_recent_propostas
-from src.dashboard.queries.history import get_extraction_history
-from src.dashboard.queries.metrics import get_data_freshness, get_entity_counts
-
-
-def format_duration(seconds: float) -> str:
-    """Format duration in seconds to human-readable string.
-
-    Args:
-        seconds: Duration in seconds
-
-    Returns:
-        Formatted string like "5s" or "2m 30s"
-    """
-    if seconds is None:
-        return "N/A"
-
-    if seconds < 60:
-        return f"{seconds:.0f}s"
-    else:
-        minutes = int(seconds // 60)
-        remaining_seconds = int(seconds % 60)
-        return f"{minutes}m {remaining_seconds}s"
+from src.dashboard.queries.entities import get_lead_list, get_uf_options
 
 
 def render_home() -> None:
-    """Render the home overview page."""
-    st.title("PROJETUS - Transfer Gov Dashboard")
-    st.markdown("Visão geral dos dados extraídos do Transfer Gov")
+    """Render the lead list page."""
+    st.title("PROJETUS - Leads TransfereGov")
+    st.markdown("Lista de leads qualificados com instrumentos ativos, ranqueados por oportunidade")
 
-    # Initialize session state
-    if "time_range_days" not in st.session_state:
-        st.session_state.time_range_days = 7
+    # ===== SIDEBAR FILTERS =====
+    with st.sidebar:
+        st.markdown("### Filtros")
 
-    # ===== TOP SECTION: METRIC CARDS =====
-    st.markdown("### 🔢 Métricas Gerais")
-
-    # Fetch data
-    counts = get_entity_counts()
-    freshness = get_data_freshness()
-
-    # Render metric cards
-    render_metric_cards(counts, freshness)
-
-    # ===== SPARKLINE: EXTRACTION TRENDS =====
-    sparkline_data = get_extraction_sparkline_data()
-    if sparkline_data:
-        st.caption("Tendencia de Extracoes (ultimos 30 dias)")
-        for metric_name, values in sparkline_data.items():
-            fig_spark = create_sparkline(values)
-            st.plotly_chart(
-                fig_spark,
-                use_container_width=True,
-                theme=None,
-                config={"displayModeBar": False, "displaylogo": False, "responsive": True},
-                key=f"sparkline_{metric_name}",
-            )
-
-    # ===== CHART SECTION: GEOGRAPHIC AND TRENDS =====
-    st.markdown("### 📊 Visão Geográfica e Tendências")
-    st.caption("Distribuição de proponentes qualificados e evolução das propostas ao longo do tempo")
-
-    # Two-column layout for charts
-    col_left, col_right = st.columns([1, 1], gap="large")
-
-    with col_left:
-        # Brazil choropleth map
-        geo_data = get_proponentes_por_estado()
-        if not geo_data.empty:
-            fig_choropleth = create_brasil_choropleth(
-                geo_data,
-                color_column='total_proponentes',
-                title='Proponentes por Estado',
-                hover_label='Total Proponentes'
-            )
-            render_plotly_chart(fig_choropleth, key='home_choropleth')
-        else:
-            st.info("Dados geográficos indisponíveis")
-
-    with col_right:
-        # Time trend chart
-        trend_data = get_propostas_trend(granularity='monthly')
-        if not trend_data.empty:
-            fig_trend = create_time_trend(
-                trend_data,
-                date_column='periodo',
-                value_column='total_propostas',
-                title='Propostas ao Longo do Tempo',
-                granularity='monthly'
-            )
-            render_plotly_chart(fig_trend, key='home_trend')
-        else:
-            st.info("Dados de tendência indisponíveis")
-
-    st.markdown("")
-
-    # ===== MIDDLE SECTION: RECENT PROPOSTAS =====
-    st.markdown("### 📋 Propostas Recentes")
-
-    # Time range selector
-    render_time_range_selector()
-
-    # Fetch recent propostas based on selected time range
-    recent_propostas = get_recent_propostas(days=st.session_state.time_range_days)
-
-    if recent_propostas.empty:
-        st.info(
-            f"Nenhuma proposta encontrada nos últimos {st.session_state.time_range_days} dias."
+        # UF multiselect
+        uf_options = get_uf_options()
+        selected_uf = st.selectbox(
+            "Estado (UF)",
+            options=["Todos"] + uf_options,
+            index=0,
         )
+        uf_filter = None if selected_uf == "Todos" else selected_uf
+
+        # Com/Sem Emenda radio
+        emenda_filter_option = st.radio(
+            "Emendas",
+            options=["Todos", "Com Emenda", "Sem Emenda"],
+            index=0,
+        )
+        if emenda_filter_option == "Com Emenda":
+            com_emenda = True
+        elif emenda_filter_option == "Sem Emenda":
+            com_emenda = False
+        else:
+            com_emenda = None
+
+        # Faixa de valor slider
+        st.markdown("**Faixa de Valor Emendas (R$)**")
+        valor_range = st.slider(
+            "Valor",
+            min_value=0,
+            max_value=10000000,
+            value=(0, 10000000),
+            step=100000,
+            format="R$ %d",
+            label_visibility="collapsed",
+        )
+        valor_min = valor_range[0] if valor_range[0] > 0 else None
+        valor_max = valor_range[1] if valor_range[1] < 10000000 else None
+
+    # ===== MAIN AREA: LEAD TABLE =====
+    leads_df = get_lead_list(
+        uf_filter=uf_filter,
+        com_emenda=com_emenda,
+        valor_min=valor_min,
+        valor_max=valor_max,
+        limit=500,
+    )
+
+    if leads_df.empty:
+        st.info("Nenhum lead encontrado com os filtros aplicados.")
     else:
         # Display count
-        st.caption(f"Mostrando {len(recent_propostas)} propostas")
+        st.caption(f"Mostrando {len(leads_df)} leads")
 
-        # Select columns to display (excluding internal IDs and timestamps)
-        display_columns = [
-            "transfer_gov_id",
-            "titulo",
-            "valor_global",
-            "situacao",
-            "estado",
-            "municipio",
-            "proponente",
-            "extraction_date",
-        ]
-        display_df = recent_propostas[
-            [col for col in display_columns if col in recent_propostas.columns]
-        ].copy()
-
-        # Format monetary values
-        if "valor_global" in display_df.columns:
-            display_df["valor_global"] = display_df["valor_global"].apply(
-                lambda x: f"R$ {x:,.2f}" if x is not None else "N/A"
+        # Format monetary columns
+        display_df = leads_df.copy()
+        if "valor_total_emendas" in display_df.columns:
+            display_df["valor_total_emendas_fmt"] = display_df["valor_total_emendas"].apply(
+                lambda x: f"R$ {x:,.0f}" if x is not None and x > 0 else "R$ 0"
             )
+        else:
+            display_df["valor_total_emendas_fmt"] = "R$ 0"
 
-        # Format dates
-        if "extraction_date" in display_df.columns:
-            display_df["extraction_date"] = display_df["extraction_date"].apply(
-                lambda x: x.strftime("%d/%m/%Y") if x is not None else "N/A"
-            )
-
-        # Rename columns for better display
-        column_config = {
-            "transfer_gov_id": "ID Transfer Gov",
-            "titulo": "Título",
-            "valor_global": "Valor Global",
-            "situacao": "Situação",
-            "estado": "UF",
-            "municipio": "Município",
-            "proponente": "Proponente",
-            "extraction_date": "Data Extração",
-        }
-
-        # Display dataframe with built-in search/sort/filter
-        st.dataframe(
-            display_df,
-            column_config=column_config,
-            use_container_width=True,
-            hide_index=True,
-        )
-
-        # CSV export
-        st.markdown("---")
-        render_csv_export(
-            recent_propostas,
-            f"propostas_recentes_{st.session_state.time_range_days}dias.csv",
-        )
-
-    st.markdown("")
-
-    # ===== BOTTOM SECTION: EXTRACTION HISTORY =====
-    st.markdown("### ⚡ Histórico de Extrações")
-
-    # Fetch extraction history (respects same time range selector)
-    history_df = get_extraction_history(days=st.session_state.time_range_days)
-
-    if history_df.empty:
-        st.warning("Nenhum histórico de extração disponível.")
-    else:
-        # Summary metrics
-        st.markdown("#### Resumo do Período")
-
-        total_runs = len(history_df)
-        success_count = len(history_df[history_df["status"] == "success"])
-        partial_count = len(history_df[history_df["status"] == "partial"])
-        failed_count = len(history_df[history_df["status"] == "failed"])
-
-        # Render extraction history metrics as premium KPI cards
-        kpi_row([
-            {
-                "label": "Total de Execuções",
-                "value": total_runs,
-            },
-            {
-                "label": "✅ Sucesso",
-                "value": success_count,
-                "delta": f"{(success_count/total_runs*100):.0f}%" if total_runs > 0 else "0%",
-                "delta_color": "green",
-            },
-            {
-                "label": "⚠️ Parcial",
-                "value": partial_count,
-                "delta": f"{(partial_count/total_runs*100):.0f}%" if total_runs > 0 else "0%",
-                "delta_color": "gray",
-            },
-            {
-                "label": "🔴 Falha",
-                "value": failed_count,
-                "delta": f"{(failed_count/total_runs*100):.0f}%" if total_runs > 0 else "0%",
-                "delta_color": "red",
-            },
-        ])
-
-        st.markdown("---")
-
-        # History table
-        st.markdown("#### Detalhes das Execuções")
-
-        # Prepare display dataframe
-        display_history = history_df.copy()
-
-        # Format run_date
-        display_history["run_date"] = display_history["run_date"].apply(
-            lambda x: x.strftime("%d/%m/%Y %H:%M") if x is not None else "N/A"
-        )
-
-        # Format duration
-        display_history["duration_formatted"] = display_history[
-            "duration_seconds"
-        ].apply(format_duration)
-
-        # Add status emoji
-        status_map = {"success": "✅ Sucesso", "partial": "⚠️ Parcial", "failed": "🔴 Falha"}
-        display_history["status_display"] = display_history["status"].apply(
-            lambda x: status_map.get(x, x)
-        )
-
-        # Select and reorder columns
-        table_columns = [
-            "run_date",
-            "status_display",
-            "total_records",
-            "records_inserted",
-            "records_updated",
-            "duration_formatted",
-        ]
-
-        display_table = display_history[table_columns]
+        # Select display columns
+        table_df = display_df[[
+            "cnpj",
+            "nome",
+            "uf",
+            "qtd_instrumentos_ativos",
+            "valor_total_emendas_fmt",
+            "tem_contato",
+        ]].copy()
 
         # Column configuration
         column_config = {
-            "run_date": "Data/Hora",
-            "status_display": "Status",
-            "total_records": "Total Registros",
-            "records_inserted": "Inseridos",
-            "records_updated": "Atualizados",
-            "duration_formatted": "Duração",
+            "cnpj": "CNPJ",
+            "nome": "Nome",
+            "uf": "UF",
+            "qtd_instrumentos_ativos": "Qtd Instrumentos",
+            "valor_total_emendas_fmt": "Valor Emendas",
+            "tem_contato": "Contato",
         }
 
-        # Display table
-        st.dataframe(
-            display_table,
+        # Display dataframe with row selection
+        event = st.dataframe(
+            table_df,
             column_config=column_config,
             use_container_width=True,
             hide_index=True,
+            on_select="rerun",
+            selection_mode="single-row",
         )
 
-        # Show error messages if any
-        errors = history_df[history_df["error_message"].notna()]
-        if not errors.empty:
-            st.markdown("---")
-            st.markdown("#### Mensagens de Erro")
-
-            for idx, row in errors.iterrows():
-                run_date = row["run_date"].strftime("%d/%m/%Y %H:%M")
-                with st.expander(f"🔴 {run_date} - {row['status']}"):
-                    st.code(row["error_message"], language=None)
-
-        # CSV export for extraction history
-        st.markdown("---")
-        render_csv_export(
-            history_df,
-            f"historico_extracoes_{st.session_state.time_range_days}dias.csv",
-        )
+        # Handle row selection
+        if event.selection and event.selection.rows:
+            selected_idx = event.selection.rows[0]
+            selected_lead = leads_df.iloc[selected_idx]
+            st.session_state.selected_lead_cnpj = selected_lead["cnpj"]
+            st.session_state.selected_lead_name = selected_lead["nome"]
+            # Navigate to Lead Profile
+            st.switch_page(st.session_state._pages["Lead Profile"])

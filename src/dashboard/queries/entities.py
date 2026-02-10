@@ -127,10 +127,10 @@ def get_programas(limit: int = 1000, filters: dict = None) -> pd.DataFrame:
         query = select(Programa)
 
         # Apply year filter by extracting from transfer_gov_id (positions 6-9, 1-indexed)
-        # In PostgreSQL: SUBSTRING(transfer_gov_id FROM 6 FOR 4)
+        # Guard against short IDs that would produce empty strings for CAST
         if filters.get("year"):
             year_filter = text(
-                f"CAST(SUBSTRING(programas.transfer_gov_id FROM 6 FOR 4) AS INTEGER) = {filters['year']}"
+                f"LENGTH(programas.transfer_gov_id) >= 9 AND CAST(SUBSTRING(programas.transfer_gov_id FROM 6 FOR 4) AS INTEGER) = {filters['year']}"
             )
             query = query.where(year_filter)
 
@@ -249,3 +249,63 @@ def get_related_entities(proposta_id: str) -> dict:
         "outras_propostas": outras_df,
         "programa": programa_df,
     }
+
+
+@st.cache_data(ttl="10m")
+def get_lead_list(uf_filter: str = None, modalidade_filter: str = None,
+                  com_emenda: bool = None, valor_min: float = None,
+                  valor_max: float = None, limit: int = 500) -> pd.DataFrame:
+    """Get lead list ranked by opportunity (most instruments + highest values)."""
+    engine = get_db_engine()
+
+    query = """
+        SELECT
+            p.cnpj,
+            p.nome,
+            p.estado as uf,
+            p.email,
+            p.telefone,
+            p.total_convenios as qtd_instrumentos_ativos,
+            p.total_emendas,
+            p.valor_total_emendas,
+            p.valor_total_desembolsos,
+            p.total_propostas,
+            CASE WHEN (p.email IS NOT NULL AND p.email != '') OR (p.telefone IS NOT NULL AND p.telefone != '') THEN 'Sim' ELSE 'Nao' END as tem_contato
+        FROM proponentes p
+        WHERE p.total_convenios > 0
+    """
+    params = {}
+
+    if uf_filter:
+        query += " AND p.estado = :uf"
+        params["uf"] = uf_filter
+    if com_emenda is True:
+        query += " AND p.total_emendas > 0"
+    elif com_emenda is False:
+        query += " AND p.total_emendas = 0"
+    if valor_min is not None:
+        query += " AND p.valor_total_emendas >= :valor_min"
+        params["valor_min"] = valor_min
+    if valor_max is not None:
+        query += " AND p.valor_total_emendas <= :valor_max"
+        params["valor_max"] = valor_max
+
+    query += " ORDER BY p.total_convenios DESC, p.valor_total_emendas DESC NULLS LAST"
+    query += " LIMIT :limit"
+    params["limit"] = limit
+
+    with engine.connect() as conn:
+        result = conn.execute(text(query), params)
+        rows = result.fetchall()
+        if not rows:
+            return pd.DataFrame()
+        return pd.DataFrame([row._asdict() for row in rows])
+
+
+@st.cache_data(ttl="30m")
+def get_uf_options() -> list[str]:
+    """Get distinct UF values from proponentes."""
+    engine = get_db_engine()
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT DISTINCT estado FROM proponentes WHERE estado IS NOT NULL ORDER BY estado"))
+        return [row[0] for row in result.fetchall()]
