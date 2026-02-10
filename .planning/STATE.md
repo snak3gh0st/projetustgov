@@ -13,12 +13,12 @@
 ## Current Position
 
 **Phase:** 6 of 9 (Milestone v2.0)
-**Plan:** 01 complete (Phase 6 has 1 plan)
-**Status:** Executing
-**Progress:** `[░░░░░░░░░░░░░░░░░░░░] 0%` (0/4 phases complete in milestone v2.0, Phase 6 plan 1/1 complete)
+**Plan:** 02 of 02 complete (Phase 6 COMPLETE)
+**Status:** Ready for Phase 7 planning
+**Progress:** [█████████░] 89% (16/18 plans complete: milestone v1.0 complete, milestone v2.0 Phase 6 complete)
 
 **Milestone v1.0 Status:** Complete (Phases 1, 2, 4, 5 delivered; Phase 3 optional)
-**Milestone v2.0 Status:** In progress (Phase 6 complete, Phase 7-9 pending)
+**Milestone v2.0 Status:** In progress (Phase 6 COMPLETE, Phase 7-9 pending)
 
 ## Performance Metrics
 
@@ -26,18 +26,18 @@
 |--------|-------|--------|--------|
 | Milestone v1.0 Phases Complete | 4/4 | 4 | ✓ Complete |
 | Milestone v1.0 Plans Complete | 16/16 | 16 | ✓ Complete |
-| Milestone v2.0 Phases Complete | 0/4 | 4 | In progress |
-| Milestone v2.0 Plans Complete | 1/TBD | TBD | In progress |
+| Milestone v2.0 Phases Complete | 1/4 | 4 | In progress |
+| Milestone v2.0 Plans Complete | 2/TBD | TBD | In progress |
 | Requirements Coverage (v1.0) | 29/29 | 29 | ✓ 100% |
 | Requirements Coverage (v2.0) | 27/27 | 27 | ✓ 100% |
 | Blockers | 0 | 0 | ✓ Clear |
 
 **Velocity:**
-- Total plans completed (all time): 17
-- Average duration (all time): ~8 min
-- Total execution time (all time): ~2.5 hours
-- v2.0 plans completed: 1
-- v2.0 average duration: 2 min
+- Total plans completed (all time): 18
+- Average duration (all time): ~7 min
+- Total execution time (all time): ~2.6 hours
+- v2.0 plans completed: 2
+- v2.0 average duration: 6 min
 
 ## Accumulated Context
 
@@ -63,6 +63,9 @@
 | Limit backdrop-filter to card components | Phase 6 | Mobile performance - max 3-5 elements per page | 2026-02-10 |
 | Semi-opaque overlay on glassmorphic surfaces | Phase 6 | WCAG contrast compliance for text readability | 2026-02-10 |
 | Use data-testid selectors for Streamlit overrides | Phase 6 | Emotion cache classes unstable across Streamlit updates | 2026-02-10 |
+| Fix st.html() iframe CSS isolation via embedded styles | Phase 6-02 | st.html() iframes don't inherit main page CSS; embed complete styles in each iframe | 2026-02-10 |
+| kpi_row() for multi-card layouts | Phase 6-02 | Single st.html() call with CSS grid avoids container proliferation | 2026-02-10 |
+| Dark-theme color auditing for legacy pages | Phase 6-02 | Replace light-mode hardcoded colors with dark-compatible rgba overlays | 2026-02-10 |
 
 ### Open Questions
 
@@ -74,7 +77,7 @@
 
 ### Active TODOs
 
-- [ ] Plan Phase 6: Visual Foundation & Component System
+- [x] Plan Phase 6: Visual Foundation & Component System (COMPLETE)
 - [ ] Plan Phase 7: Data Visualization & Charts
 - [ ] Plan Phase 8: Lead Profile & Enhanced Navigation (run research-phase first)
 - [ ] Plan Phase 9: Polish & Production Readiness
@@ -85,48 +88,64 @@
 
 ### Recent Wins
 
+- **Phase 6 Complete** (2026-02-10): Sigma-branded visual foundation with dark theme, glassmorphic components, and premium KPI cards fully integrated into Home page
+- **CSS Isolation Fix** (2026-02-10): Solved st.html() iframe CSS inheritance issue with embedded styles pattern (_styles.py helper)
 - **Milestone v1.0 Complete** (2026-02-08): Full ETL pipeline, operational monitoring, client qualification, and data dashboard delivered and verified
 - **Milestone v2.0 Initialized** (2026-02-09): Requirements defined (27 v2.0 requirements), research completed (HIGH confidence), roadmap created (4 focused phases)
-- **Research Complete** (2026-02-09): Validated Streamlit + CSS approach, identified pitfalls, confirmed stack (Plotly 6.5+, st.html, config.toml), flagged Phase 8 search complexity
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-10
 **Milestone:** v2.0 Dashboard Premium Redesign
-**Activity:** Phase 6 Plan 01 execution
+**Activity:** Phase 6 Plan 02 execution (continuation after human verification checkpoint)
 
 **Completed:**
-- Created .streamlit/config.toml with Sigma dark theme (base colors, accent, backgrounds)
-- Created 3 CSS files: fonts.css (Google Fonts), theme.css (CSS variables + global overrides), components.css (glassmorphic components)
-- Added load_css() function to streamlit_app.py to inject CSS via st.html()
-- Committed 2 tasks atomically (77b8368, e2564ff)
-- Created 06-01-SUMMARY.md with complete frontmatter and dependency graph
-- Updated STATE.md with position, decisions, and metrics
+- Created 3 component modules: cards.py, kpi.py, badges.py with glassmorphic wrappers
+- Created _styles.py helper to embed CSS in st.html() iframes (fixes CSS isolation)
+- Replaced all st.metric() calls in metrics.py and home.py with premium KPI components
+- Fixed dark theme compatibility: embedded CSS in iframes, replaced light row highlighting
+- Human verification checkpoint APPROVED by user
+- Committed 4 times: 2 feature commits + 2 auto-fix commits (b155711, dc9a1ce, be273be, a3b7ecb)
+- Created 06-02-SUMMARY.md with complete frontmatter, deviation tracking, and dependency graph
+- Updated STATE.md with position, decisions, metrics, and Phase 6 COMPLETE status
 
 **Decisions Made:**
-- Use st.html() with inline style tags (not file paths) to avoid Streamlit caching issues
-- Limit backdrop-filter to card components only for mobile performance
-- Add semi-opaque overlays on glassmorphic surfaces for WCAG contrast
-- Use data-testid selectors instead of emotion cache classes for stability
+- Fix st.html() iframe CSS isolation by embedding styles in each iframe via _styles.py helper
+- Use kpi_row() for multi-card layouts to avoid multiple st.html() calls
+- Replace light-mode hardcoded colors with dark-theme-compatible rgba overlays
+- Badge components return HTML strings (not render) for embedding in other components
+
+**Deviations Auto-Fixed:**
+- CSS isolation in st.html() iframes (Rule 1 - Bug): embedded complete styles in each iframe
+- Light green row highlighting incompatible with dark theme (Rule 1 - Bug): replaced with dark rgba
 
 **Next Actions:**
-- Phase 6 complete (1/1 plans done) - ready for Phase 7
+- Phase 6 COMPLETE (2/2 plans done) - ready for Phase 7
 - Next: Plan Phase 7 (Data Visualization & Charts) to create Sigma-branded Plotly charts
 - Watch: Phase 8 will need research-phase before planning (global search complexity)
 
 ### Context for Next Session
 
 **Where we are:**
-Phase 6 (Visual Foundation & Component System) complete. Sigma dark theme established with CSS custom properties, Google Fonts loaded, glassmorphic component library created. CSS injection via st.html() working at app entry point. All 6 VIS requirements (VIS-01 to VIS-06) fulfilled.
+Phase 6 (Visual Foundation & Component System) COMPLETE. Both plans executed:
+- Plan 01: CSS foundation (dark theme, fonts, component classes)
+- Plan 02: Python component wrappers (cards, KPI, badges) + Home page integration
+
+All 6 VIS requirements (VIS-01 to VIS-06) fulfilled. Home page fully migrated to Sigma-branded premium components with zero st.metric() calls. CSS isolation issue solved with _styles.py embedded styles pattern.
 
 **What's next:**
-Plan Phase 7 (Data Visualization & Charts). This phase builds Sigma-branded Plotly charts (line, bar, heatmap) with dark theme integration, custom color palettes, and glassmorphic chart containers. Phase 7 consumes Phase 6 outputs (CSS variables, glassmorphic cards, dark theme).
+Plan Phase 7 (Data Visualization & Charts). This phase builds Sigma-branded Plotly charts (line, bar, heatmap) with dark theme integration, custom color palettes, and glassmorphic chart containers. Phase 7 consumes Phase 6 outputs:
+- CSS variables from theme.css (--sigma-accent-neon, --color-success, etc.)
+- Glassmorphic card wrappers (glassmorphic_card, glassmorphic_container)
+- Badge components for chart legends
+- Dark theme foundation
 
 **Watch out for:**
 - CSS selector stability (monitor Streamlit updates for data-testid changes)
 - Glassmorphic performance (benchmark on mobile if real-world usage shows issues)
 - Phase 8 will need research-phase before planning (global search complexity flagged)
+- st.html() iframe pattern established - use get_iframe_styles() for any custom chart components
 
 **Files to reference:**
 - `/Users/pauloloureiro/Desktop/Work/Sigma/Projects/Projetus/.planning/PROJECT.md` — Milestone v2.0 goal and constraints
