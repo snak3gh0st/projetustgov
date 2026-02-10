@@ -239,10 +239,12 @@ Plans:
   6. Status badges styled as pill badges for proposta situação, value tier, and data freshness
   7. Performance validated on mobile devices (glassmorphic effects don't cause lag)
 
-**Plans**: TBD (to be determined during plan-phase)
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD during planning
+- [ ] 09-01-PLAN.md — Mobile responsive CSS, animations, and pill badge styling
+- [ ] 09-02-PLAN.md — Loading states and empty states across all 7 pages
+- [ ] 09-03-PLAN.md — Pill badge integration, consistency audit, and visual verification
 
 ## Progress
 
