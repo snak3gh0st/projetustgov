@@ -2,6 +2,9 @@
 
 import streamlit as st
 
+from src.dashboard.components.badges import freshness_badge
+from src.dashboard.components.kpi import kpi_row, premium_kpi_card
+
 
 def render_metric_cards(counts: dict, freshness: dict) -> None:
     """Render a row of metric cards for entity counts and data freshness.
@@ -10,36 +13,13 @@ def render_metric_cards(counts: dict, freshness: dict) -> None:
         counts: Dictionary with entity counts {"programas": N, "propostas": N, ...}
         freshness: Dictionary with data freshness info {"last_extraction": datetime, "hours_ago": float, "status": str}
     """
-    # Render 4 entity count cards in columns
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        st.metric(
-            label="Programas",
-            value=f"{counts.get('programas', 0):,}",
-            help="Total de programas no banco de dados",
-        )
-
-    with col2:
-        st.metric(
-            label="Propostas",
-            value=f"{counts.get('propostas', 0):,}",
-            help="Total de propostas no banco de dados",
-        )
-
-    with col3:
-        st.metric(
-            label="Apoiadores",
-            value=f"{counts.get('apoiadores', 0):,}",
-            help="Total de apoiadores no banco de dados",
-        )
-
-    with col4:
-        st.metric(
-            label="Emendas",
-            value=f"{counts.get('emendas', 0):,}",
-            help="Total de emendas no banco de dados",
-        )
+    # Render 4 entity count cards in a single row using premium KPI cards
+    kpi_row([
+        {"label": "Programas", "value": counts.get("programas", 0)},
+        {"label": "Propostas", "value": counts.get("propostas", 0)},
+        {"label": "Apoiadores", "value": counts.get("apoiadores", 0)},
+        {"label": "Emendas", "value": counts.get("emendas", 0)},
+    ])
 
     # Render data freshness indicator
     st.divider()
@@ -61,34 +41,23 @@ def render_metric_cards(counts: dict, freshness: dict) -> None:
 
         # Determine delta color based on status
         if status == "fresh":
-            delta_color = "normal"
+            delta_color = "green"
             status_emoji = "✅"
         elif status == "stale":
-            delta_color = "off"
+            delta_color = "gray"
             status_emoji = "⚠️"
         else:  # critical
-            delta_color = "off"
+            delta_color = "red"
             status_emoji = "🔴"
 
-        col1, col2, col3 = st.columns([1, 1, 2])
+        # Render premium KPI card for last extraction
+        premium_kpi_card(
+            label=f"{status_emoji} Última Extração",
+            value=formatted_date,
+            delta=delta_text,
+            delta_color=delta_color,
+        )
 
-        with col1:
-            st.metric(
-                label=f"{status_emoji} Última Extração",
-                value=formatted_date,
-                delta=delta_text,
-                delta_color=delta_color,
-                help="Data e hora da última execução do pipeline de extração",
-            )
-
-        with col2:
-            status_labels = {
-                "fresh": "Dados Atualizados",
-                "stale": "Dados Desatualizados",
-                "critical": "Dados Críticos",
-            }
-            st.metric(
-                label="Status",
-                value=status_labels.get(status, "Desconhecido"),
-                help="Fresh: <25h | Stale: <48h | Critical: >48h",
-            )
+        # Render freshness badge
+        badge_html = freshness_badge(status)
+        st.html(f'<div style="margin-top: 1rem;">{badge_html}</div>')

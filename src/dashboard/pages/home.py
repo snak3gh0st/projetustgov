@@ -10,6 +10,7 @@ import streamlit as st
 
 from src.dashboard.components.export import render_csv_export
 from src.dashboard.components.filters import render_time_range_selector
+from src.dashboard.components.kpi import kpi_row, premium_kpi_card
 from src.dashboard.components.metrics import render_metric_cards
 from src.dashboard.queries.entities import get_recent_propostas
 from src.dashboard.queries.history import get_extraction_history
@@ -147,34 +148,31 @@ def render_home() -> None:
         partial_count = len(history_df[history_df["status"] == "partial"])
         failed_count = len(history_df[history_df["status"] == "failed"])
 
-        col1, col2, col3, col4 = st.columns(4)
-
-        with col1:
-            st.metric(label="Total de Execuções", value=total_runs)
-
-        with col2:
-            st.metric(
-                label="✅ Sucesso",
-                value=success_count,
-                delta=f"{(success_count/total_runs*100):.0f}%" if total_runs > 0 else "0%",
-                delta_color="normal",
-            )
-
-        with col3:
-            st.metric(
-                label="⚠️ Parcial",
-                value=partial_count,
-                delta=f"{(partial_count/total_runs*100):.0f}%" if total_runs > 0 else "0%",
-                delta_color="off",
-            )
-
-        with col4:
-            st.metric(
-                label="🔴 Falha",
-                value=failed_count,
-                delta=f"{(failed_count/total_runs*100):.0f}%" if total_runs > 0 else "0%",
-                delta_color="inverse",
-            )
+        # Render extraction history metrics as premium KPI cards
+        kpi_row([
+            {
+                "label": "Total de Execuções",
+                "value": total_runs,
+            },
+            {
+                "label": "✅ Sucesso",
+                "value": success_count,
+                "delta": f"{(success_count/total_runs*100):.0f}%" if total_runs > 0 else "0%",
+                "delta_color": "green",
+            },
+            {
+                "label": "⚠️ Parcial",
+                "value": partial_count,
+                "delta": f"{(partial_count/total_runs*100):.0f}%" if total_runs > 0 else "0%",
+                "delta_color": "gray",
+            },
+            {
+                "label": "🔴 Falha",
+                "value": failed_count,
+                "delta": f"{(failed_count/total_runs*100):.0f}%" if total_runs > 0 else "0%",
+                "delta_color": "red",
+            },
+        ])
 
         st.markdown("---")
 
