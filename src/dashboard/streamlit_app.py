@@ -118,7 +118,7 @@ with st.sidebar:
     st.markdown("### PROJETUS")
     render_global_search()
 
-# Define navigation structure with 6 tabs (5 entity pages + Qualificacao)
+# Define navigation structure with 7 tabs (5 entity pages + Qualificacao + Lead Profile)
 pages = [
     st.Page(home_page, title="Home", icon="🏠"),
     st.Page(propostas_page, title="Propostas", icon="📄"),
@@ -126,6 +126,7 @@ pages = [
     st.Page(apoiadores_page, title="Apoiadores", icon="👥"),
     st.Page(emendas_page, title="Emendas", icon="💰"),
     st.Page(qualificacao_page, title="Qualificacao", icon="🎯"),
+    st.Page(lead_profile_page, title="Lead Profile", icon="👤"),
 ]
 
 # Create navigation
