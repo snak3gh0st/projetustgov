@@ -8,7 +8,9 @@ valiosos (indicam menor concorrência e maior receptividade).
 import pandas as pd
 import streamlit as st
 
+from src.dashboard.components.charts import create_value_distribution, render_plotly_chart
 from src.dashboard.components.export import render_csv_export
+from src.dashboard.queries.chart_data import get_value_distribution
 from src.dashboard.queries.qualificacao import (
     get_estados_disponiveis,
     get_proponente_convenios,
@@ -92,6 +94,21 @@ def render_qualificacao_nova():
                 f"R$ {stats['total_valor_desembolsos'] / 1_000_000:.1f}M",
                 help="Dinheiro efetivamente transferido via desembolsos",
             )
+
+    st.markdown("---")
+
+    # --- VALUE DISTRIBUTION CHART ---
+    st.subheader("Distribuicao por Faixa de Valor")
+
+    distribution_data = get_value_distribution()
+    if not distribution_data.empty:
+        fig_distribution = create_value_distribution(
+            distribution_data,
+            title='Distribuicao de Proponentes por Faixa de Valor'
+        )
+        render_plotly_chart(fig_distribution, key='qualificacao_distribution')
+    else:
+        st.info("Dados de distribuicao indisponiveis")
 
     st.markdown("---")
 

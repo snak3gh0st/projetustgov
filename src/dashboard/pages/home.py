@@ -8,10 +8,19 @@ Layout per user decision:
 
 import streamlit as st
 
+from src.dashboard.components.charts import (
+    create_brasil_choropleth,
+    create_time_trend,
+    render_plotly_chart,
+)
 from src.dashboard.components.export import render_csv_export
 from src.dashboard.components.filters import render_time_range_selector
 from src.dashboard.components.kpi import kpi_row, premium_kpi_card
 from src.dashboard.components.metrics import render_metric_cards
+from src.dashboard.queries.chart_data import (
+    get_proponentes_por_estado,
+    get_propostas_trend,
+)
 from src.dashboard.queries.entities import get_recent_propostas
 from src.dashboard.queries.history import get_extraction_history
 from src.dashboard.queries.metrics import get_data_freshness, get_entity_counts
@@ -55,6 +64,43 @@ def render_home() -> None:
 
     # Render metric cards
     render_metric_cards(counts, freshness)
+
+    st.divider()
+
+    # ===== CHART SECTION: GEOGRAPHIC AND TRENDS =====
+    st.subheader("Visao Geografica e Tendencias")
+
+    # Two-column layout for charts
+    col_left, col_right = st.columns([1, 1])
+
+    with col_left:
+        # Brazil choropleth map
+        geo_data = get_proponentes_por_estado()
+        if not geo_data.empty:
+            fig_choropleth = create_brasil_choropleth(
+                geo_data,
+                color_column='total_proponentes',
+                title='Proponentes por Estado',
+                hover_label='Total Proponentes'
+            )
+            render_plotly_chart(fig_choropleth, key='home_choropleth')
+        else:
+            st.info("Dados geograficos indisponiveis")
+
+    with col_right:
+        # Time trend chart
+        trend_data = get_propostas_trend(granularity='monthly')
+        if not trend_data.empty:
+            fig_trend = create_time_trend(
+                trend_data,
+                date_column='periodo',
+                value_column='total_propostas',
+                title='Propostas ao Longo do Tempo',
+                granularity='monthly'
+            )
+            render_plotly_chart(fig_trend, key='home_trend')
+        else:
+            st.info("Dados de tendencia indisponiveis")
 
     st.divider()
 
