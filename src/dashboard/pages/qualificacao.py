@@ -187,7 +187,7 @@ def render_qualificacao():
     def highlight_virgin_proponents(row):
         """Highlight rows where Propostas == 0 (virgin proponents)."""
         if row["Propostas"] == 0:
-            return ["background-color: #d4edda"] * len(row)  # Light green
+            return ["background-color: rgba(16, 185, 129, 0.15); color: #E8F4FD"] * len(row)
         return [""] * len(row)
 
     # Apply styling

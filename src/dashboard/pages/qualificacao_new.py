@@ -1,6 +1,6 @@
 """Dashboard de Qualificação - Qualified Leads com detalhes de emendas.
 
-Este dashboard apresenta os leads qualificados (OSCs 2025/2026 beneficiárias de emendas)
+Este dashboard apresenta os leads qualificados (CNPJs privados 2025/2026)
 ranqueados por valor de prospecção. Leads com menos propostas históricas são mais
 valiosos (indicam menor concorrência e maior receptividade).
 """
@@ -35,14 +35,15 @@ def format_cnpj(cnpj: str) -> str:
 
 def render_qualificacao_nova():
     """Render the enhanced qualification dashboard."""
-    st.title("🎯 Qualificação de Leads - OSCs 2025/2026")
+    st.title("🎯 Qualificação de Leads - CNPJ 2025/2026")
 
     # Info box
     st.info(
         "**Critério de Valor:** Leads com **menos propostas** são mais valiosos - "
         "indicam menor concorrência e maior receptividade a novas parcerias.\n\n"
-        "**Dados:** OSCs de 2025/2026 que são beneficiárias de emendas parlamentares. "
-        "Todos são leads **qualificados** com emendas aprovadas."
+        "**Dados:** CNPJs privados (OSCs, Empresas, Consórcios) com propostas em 2025/2026. "
+        "Exclui Administração Pública Municipal e Estadual. "
+        "Emendas parlamentares são dados de enriquecimento."
     )
 
     # --- KPI METRICS ROW ---
@@ -246,9 +247,9 @@ def render_qualificacao_nova():
 
     # Highlight high-value leads (<=3 propostas)
     def highlight_high_value(row):
-        """Highlight high-value leads."""
+        """Highlight high-value leads with dark-theme-compatible styling."""
         if row["Propostas"] <= 3:
-            return ["background-color: #d4edda"] * len(row)  # Light green
+            return ["background-color: rgba(16, 185, 129, 0.15); color: #E8F4FD"] * len(row)
         return [""] * len(row)
 
     # Apply styling
