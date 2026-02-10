@@ -125,6 +125,9 @@ class Proposta(Base):
     programa_id: Mapped[Optional[str]] = mapped_column(String)
     # Extracted from IDENTIF_PROPONENTE, links to proponentes.cnpj
     proponente_cnpj: Mapped[Optional[str]] = mapped_column(String(14), index=True)
+    modalidade: Mapped[Optional[str]] = mapped_column(String)
+    orgao_superior: Mapped[Optional[str]] = mapped_column(String)
+    orgao_vinculado: Mapped[Optional[str]] = mapped_column(String)
 
     # Audit columns
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -252,6 +255,13 @@ class Convenio(Base):
     data_inicio_vigencia: Mapped[Optional[date]] = mapped_column(Date)
     data_fim_vigencia: Mapped[Optional[date]] = mapped_column(Date)
     ano: Mapped[Optional[int]] = mapped_column()
+    valor_empenhado: Mapped[Optional[float]] = mapped_column(Float)
+    saldo_conta: Mapped[Optional[float]] = mapped_column(Float)
+    saldo_reman_tesouro: Mapped[Optional[float]] = mapped_column(Float)
+    saldo_reman_convenente: Mapped[Optional[float]] = mapped_column(Float)
+    rendimento_aplicacao: Mapped[Optional[float]] = mapped_column(Float)
+    ingresso_contrapartida: Mapped[Optional[float]] = mapped_column(Float)
+    valor_global_original: Mapped[Optional[float]] = mapped_column(Float)
 
     # Audit columns
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

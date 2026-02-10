@@ -135,6 +135,9 @@ class PropostaValidation(BaseModel):
     municipio: Optional[str] = Field(None, description="Municipality/city name")
     proponente: Optional[str] = Field(None, description="Entity proposing the project")
     programa_id: Optional[str] = Field(None, description="Associated program ID")
+    modalidade: Optional[str] = Field(None, description="Modality of the proposal")
+    orgao_superior: Optional[str] = Field(None, description="Superior government body")
+    orgao_vinculado: Optional[str] = Field(None, description="Linked government body")
 
     @field_validator("data_publicacao", "data_inicio_vigencia", "data_fim_vigencia", mode="before")
     @classmethod
@@ -275,6 +278,13 @@ class ConvenioValidation(BaseModel):
     data_inicio_vigencia: Optional[date] = Field(None, description="Start of validity")
     data_fim_vigencia: Optional[date] = Field(None, description="End of validity")
     ano: Optional[int] = Field(None, description="Year")
+    valor_empenhado: Optional[float] = Field(None, description="Committed value")
+    saldo_conta: Optional[float] = Field(None, description="Account balance")
+    saldo_reman_tesouro: Optional[float] = Field(None, description="Treasury remainder balance")
+    saldo_reman_convenente: Optional[float] = Field(None, description="Convenente remainder balance")
+    rendimento_aplicacao: Optional[float] = Field(None, description="Investment yield")
+    ingresso_contrapartida: Optional[float] = Field(None, description="Counterpart income")
+    valor_global_original: Optional[float] = Field(None, description="Original global value")
 
     @field_validator("transfer_gov_id")
     @classmethod
@@ -283,7 +293,9 @@ class ConvenioValidation(BaseModel):
             raise ValueError("transfer_gov_id cannot be empty")
         return v.strip()
 
-    @field_validator("valor_global", "valor_repasse", "valor_contrapartida", "valor_desembolsado", mode="before")
+    @field_validator("valor_global", "valor_repasse", "valor_contrapartida", "valor_desembolsado",
+                     "valor_empenhado", "saldo_conta", "saldo_reman_tesouro", "saldo_reman_convenente",
+                     "rendimento_aplicacao", "ingresso_contrapartida", "valor_global_original", mode="before")
     @classmethod
     def parse_valor(cls, v):
         return parse_brazilian_float(v)
