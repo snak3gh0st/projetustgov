@@ -11,13 +11,16 @@ import pandas as pd
 import streamlit as st
 
 from src.dashboard.components.export import render_csv_export
+from src.dashboard.components.kpi import kpi_row
 from src.dashboard.queries.entities import get_propostas, get_related_entities
 
 
 def render_propostas():
     """Render the Propostas page with interactive data table and cross-filtering."""
-    st.title("Propostas")
-    st.markdown("Explore todas as propostas de transferência registradas no sistema.")
+    st.markdown("### 📄 Propostas")
+    st.caption("Explore todas as propostas de transferência registradas no sistema.")
+
+    st.markdown("")
 
     # Add year filter at the top
     col_year, col_spacer = st.columns([1, 3])
@@ -45,8 +48,10 @@ def render_propostas():
     # Make a copy to avoid modifying cached data
     df = df_propostas.copy()
 
+    st.markdown("")
+
     # --- FILTER SECTION ---
-    st.subheader("Filtros")
+    st.markdown("#### Filtros")
 
     col1, col2, col3 = st.columns(3)
 
@@ -119,8 +124,10 @@ def render_propostas():
     if date_end:
         df = df[df["data_publicacao"] <= date_end]
 
+    st.markdown("")
+
     # --- DATA TABLE SECTION ---
-    st.subheader(f"Propostas ({len(df)} registros)")
+    st.markdown(f"#### Propostas ({len(df)} registros)")
 
     if df.empty:
         st.warning("Nenhuma proposta encontrada com os filtros aplicados.")
@@ -183,7 +190,9 @@ def render_propostas():
     # --- DRILL-DOWN SECTION (if proposta selected) ---
     if st.session_state.get("selected_proposta_id"):
         st.markdown("---")
-        st.subheader("Detalhes da Proposta Selecionada")
+        st.markdown("### 🔍 Detalhes da Proposta Selecionada")
+
+        st.markdown("")
 
         proposta_id = st.session_state.selected_proposta_id
 
@@ -194,43 +203,53 @@ def render_propostas():
         tab1, tab2, tab3 = st.tabs(["Proponente", "Programa", "Outras Propostas"])
 
         with tab1:
-            st.markdown("**Dados do Proponente**")
+            st.markdown("#### Dados do Proponente")
             df_proponente = related["proponente"]
             if df_proponente.empty:
                 st.info("Proponente nao encontrado.")
             else:
                 prop = df_proponente.iloc[0]
+
+                # Display key info as premium KPI cards
+                kpi_row([
+                    {"label": "Total Propostas", "value": prop.get('total_propostas', 0)},
+                    {"label": "Total Emendas", "value": prop.get('total_emendas', 0)},
+                    {"label": "Valor Emendas", "value": f"R$ {(prop.get('valor_total_emendas', 0) or 0) / 1_000_000:.2f}M"},
+                ])
+
+                st.markdown("")
+
+                # Display other details
                 col_a, col_b = st.columns(2)
                 with col_a:
-                    st.metric("Nome", prop.get("nome", "N/A"))
-                    st.metric("CNPJ", prop.get("cnpj", "N/A"))
-                    st.metric("Estado", prop.get("estado", "N/A"))
-                    st.metric("Municipio", prop.get("municipio", "N/A"))
+                    st.markdown(f"**Nome:** {prop.get('nome', 'N/A')}")
+                    st.markdown(f"**CNPJ:** {prop.get('cnpj', 'N/A')}")
                 with col_b:
-                    st.metric("Total Propostas", f"{prop.get('total_propostas', 0):,}")
-                    st.metric("Total Emendas", f"{prop.get('total_emendas', 0):,}")
-                    valor = prop.get("valor_total_emendas", 0) or 0
-                    st.metric("Valor Total Emendas", f"R$ {valor:,.2f}")
-                    st.metric("Natureza Juridica", prop.get("natureza_juridica", "N/A"))
+                    st.markdown(f"**Estado:** {prop.get('estado', 'N/A')}")
+                    st.markdown(f"**Municipio:** {prop.get('municipio', 'N/A')}")
+                    st.markdown(f"**Natureza Juridica:** {prop.get('natureza_juridica', 'N/A')}")
 
         with tab2:
-            st.markdown("**Programa vinculado**")
+            st.markdown("#### Programa vinculado")
             df_programa = related["programa"]
             if df_programa.empty:
                 st.info("Programa não encontrado.")
             else:
                 prog = df_programa.iloc[0]
-                st.metric("Nome", prog.get("nome", "N/A"))
+                st.markdown(f"**Nome:** {prog.get('nome', 'N/A')}")
+
+                st.markdown("")
+
                 col_p1, col_p2 = st.columns(2)
                 with col_p1:
-                    st.metric("Órgão Superior", prog.get("orgao_superior", "N/A"))
-                    st.metric("Modalidade", prog.get("modalidade", "N/A"))
+                    st.markdown(f"**Órgão Superior:** {prog.get('orgao_superior', 'N/A')}")
+                    st.markdown(f"**Modalidade:** {prog.get('modalidade', 'N/A')}")
                 with col_p2:
-                    st.metric("Natureza Jurídica", prog.get("natureza_juridica", "N/A"))
-                    st.metric("Ação Orçamentária", prog.get("acao_orcamentaria", "N/A"))
+                    st.markdown(f"**Natureza Jurídica:** {prog.get('natureza_juridica', 'N/A')}")
+                    st.markdown(f"**Ação Orçamentária:** {prog.get('acao_orcamentaria', 'N/A')}")
 
         with tab3:
-            st.markdown("**Outras propostas do mesmo proponente**")
+            st.markdown("#### Outras propostas do mesmo proponente")
             df_outras = related["outras_propostas"]
             if df_outras.empty:
                 st.info("Nenhuma outra proposta do mesmo proponente.")

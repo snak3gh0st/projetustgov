@@ -15,8 +15,10 @@ from src.dashboard.queries.entities import get_apoiadores
 
 def render_apoiadores():
     """Render the Apoiadores page with cross-filter awareness."""
-    st.title("Apoiadores")
-    st.markdown("Explore os apoiadores de propostas de transferência.")
+    st.markdown("### 🤝 Apoiadores")
+    st.caption("Explore os apoiadores de propostas de transferência.")
+
+    st.markdown("")
 
     # Check if cross-filtering is active
     selected_proposta_id = st.session_state.get("selected_proposta_id")
@@ -58,7 +60,7 @@ def render_apoiadores():
 
     # --- FILTER SECTION ---
     if not selected_proposta_id:
-        st.subheader("Filtros")
+        st.markdown("#### Filtros")
 
         col1, col2 = st.columns(2)
 
@@ -92,8 +94,10 @@ def render_apoiadores():
         if tipo_selected != "Todos":
             df = df[df["tipo"] == tipo_selected]
 
+        st.markdown("")
+
     # --- DATA TABLE SECTION ---
-    st.subheader(f"Apoiadores ({len(df)} registros)")
+    st.markdown(f"#### Apoiadores ({len(df)} registros)")
 
     if df.empty:
         st.warning("Nenhum apoiador encontrado com os filtros aplicados.")

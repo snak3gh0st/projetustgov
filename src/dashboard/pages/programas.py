@@ -14,16 +14,18 @@ from src.dashboard.queries.entities import get_programas
 
 def render_programas():
     """Render the Programas page with cross-filter awareness."""
-    st.title("Programas")
-    st.markdown("Explore os programas de transferência disponíveis.")
+    st.markdown("### 🏛️ Programas")
+    st.caption("Explore os programas de transferência disponíveis.")
+
+    st.markdown("")
 
     # Check if cross-filtering is active
     selected_proposta_id = st.session_state.get("selected_proposta_id")
 
-    # Default to year 2026 for programas
-    filters = {"year": 2026}
+    # No default year filter - most programas don't have year in transfer_gov_id
+    filters = {}
 
-    # Fetch programas with year filter (cached)
+    # Fetch programas (cached)
     df_programas = get_programas(limit=10000, filters=filters)
 
     if df_programas.empty:
@@ -65,21 +67,22 @@ def render_programas():
 
     # --- FILTER SECTION ---
     if not selected_proposta_id:
-        st.subheader("Filtros")
+        st.markdown("#### Filtros")
 
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            # Year filter (extracted from programa ID positions 6-9)
+            # Year filter (only works for 13-digit programa IDs)
+            ano_options = ["Todos", 2026, 2025, 2024, 2021, 2018, 2016, 2013, 2012, 2011, 2009, 2008]
             ano_selected = st.selectbox(
                 "Ano",
-                options=[2026, 2025, 2024, 2021, 2018, 2016, 2013, 2012, 2011, 2009, 2008],
-                index=0,  # Default to 2026
+                options=ano_options,
+                index=0,  # Default to Todos
                 key="programas_ano",
-                help="Filtro por ano extraído do código do programa (posições 6-9)",
+                help="Filtro por ano (apenas programas com código longo)",
             )
             # Update filters and reload if year changed
-            if ano_selected != filters.get("year"):
+            if ano_selected != "Todos":
                 filters["year"] = ano_selected
                 df_programas = get_programas(limit=10000, filters=filters)
                 df = df_programas.copy()
@@ -114,8 +117,10 @@ def render_programas():
         if modalidade_selected != "Todos":
             df = df[df["modalidade"] == modalidade_selected]
 
+        st.markdown("")
+
     # --- DATA TABLE SECTION ---
-    st.subheader(f"Programas ({len(df)} registros)")
+    st.markdown(f"#### Programas ({len(df)} registros)")
 
     if df.empty:
         st.warning("Nenhum programa encontrado com os filtros aplicados.")

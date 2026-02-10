@@ -15,8 +15,10 @@ from src.dashboard.queries.entities import get_emendas
 
 def render_emendas():
     """Render the Emendas page with cross-filter awareness."""
-    st.title("Emendas")
-    st.markdown("Explore as emendas orçamentárias vinculadas a propostas.")
+    st.markdown("### 💰 Emendas")
+    st.caption("Explore as emendas orçamentárias vinculadas a propostas.")
+
+    st.markdown("")
 
     # Check if cross-filtering is active
     selected_proposta_id = st.session_state.get("selected_proposta_id")
@@ -58,7 +60,7 @@ def render_emendas():
 
     # --- FILTER SECTION ---
     if not selected_proposta_id:
-        st.subheader("Filtros")
+        st.markdown("#### Filtros")
 
         col1, col2, col3 = st.columns(3)
 
@@ -105,8 +107,10 @@ def render_emendas():
         if ano_selected != "Todos":
             df = df[df["ano"] == ano_selected]
 
+        st.markdown("")
+
     # --- DATA TABLE SECTION ---
-    st.subheader(f"Emendas ({len(df)} registros)")
+    st.markdown(f"#### Emendas ({len(df)} registros)")
 
     if df.empty:
         st.warning("Nenhuma emenda encontrada com os filtros aplicados.")
