@@ -1,428 +1,273 @@
-# Feature Research
+# Feature Research: Premium Streamlit Dashboard UI/UX Redesign
 
-**Domain:** Web Scraping/ETL Automation System
-**Researched:** 2026-02-04
-**Confidence:** HIGH
+**Domain:** Sales-focused data dashboard (lead qualification)
+**Researched:** 2026-02-09
+**Confidence:** MEDIUM
+
+## Executive Summary
+
+Premium sales dashboards in 2026 are defined by three core pillars: real-time interactivity with visual analytics, AI-powered insights with predictive lead scoring, and mobile-first responsive design with glassmorphic aesthetics. For a Streamlit-based dashboard, success requires understanding what's table stakes (expected by all users), what differentiates (competitive advantage), and critically, what to avoid building given Streamlit's architectural constraints.
+
+The PROJETUS dashboard targets sales reps qualifying leads from Transfer Gov data. The primary workflow is research-driven: browse ranked leads, search for specific organizations, then drill into full profiles. The target aesthetic is dark cyberpunk-tech with neon blue on navy and glassmorphic cards (Sigma brand).
+
+**Key Finding:** Modern sales dashboards must balance visual polish with performance. Streamlit's re-run architecture makes certain "premium" features (real-time collaboration, complex animations, sub-second interactivity) either impossible or performance killers. Success means ruthlessly prioritizing features that Streamlit handles well (data viz, filtering, drill-down) while using CSS to create visual premium feel without fighting the framework.
 
 ## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
-Features users assume exist. Missing these = product feels incomplete or unreliable.
+Features users assume exist in any modern sales dashboard. Missing these = product feels incomplete or dated.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **Authentication & Login** | Required for accessing protected content (Transfer Gov portal) | MEDIUM | Session-based scraping with automatic re-authentication on expiry. Store session data in cache/DB. |
-| **Automated File Download** | Core capability - must download Excel/CSV files programmatically | LOW | Handle different file formats (XLS, XLSX, CSV). Verify download completion. |
-| **Data Parsing & Transformation** | Raw files are useless without structure - must parse into usable format | MEDIUM | Excel/CSV parsing with column mapping. Handle different file structures. Data type conversion. |
-| **PostgreSQL Storage** | Persist data with relationships for SQL exploration | MEDIUM | Schema design with proper relationships. Batch inserts for performance. |
-| **Retry Logic with Exponential Backoff** | Network failures happen - must handle transient errors gracefully | LOW | Handle status codes: 429, 500, 502, 503, 504. 3-5 retries with exponential delay. |
-| **Error Logging** | Essential for debugging failures in unattended execution | LOW | Structured logs with context (timestamp, error type, source). Log levels (INFO, WARNING, ERROR). |
-| **Scheduled Execution** | Daily 9am automation is the entire point of the system | LOW | Cron-style scheduling. Must be reliable and timezone-aware. |
-| **Basic Health Checks** | Unattended systems need self-monitoring to detect failures | LOW | Pre-run checks: credentials valid, network accessible, disk space available. Post-run: files downloaded, records inserted. |
-| **Alerting on Failure** | "100% reliable, no data loss" requirement demands immediate failure notification | MEDIUM | Email/Slack alerts on: extraction failure, parsing errors, database write failures. Include error context. |
-| **Data Validation (Schema)** | Catch breaking changes in source files before corrupt data enters DB | MEDIUM | Column presence checks. Data type validation. Required field verification. |
-| **Deduplication Logic** | Prevent duplicate records on re-runs or partial failures | MEDIUM | Unique constraint enforcement. Idempotent inserts using upsert patterns (INSERT...ON CONFLICT). |
-| **Atomic Transactions** | Partial data loads corrupt the database - all-or-nothing inserts | LOW | PostgreSQL transactions with rollback on error. Maintains data integrity. |
+| **Dark theme with professional aesthetics** | Dark mode is standard for 2026 data dashboards; light themes feel dated for sales tools | LOW | Streamlit native theming via config.toml. Fully supported, straightforward implementation. |
+| **Real-time data freshness indicators** | Sales teams need to know if data is current or stale; "as of [timestamp]" is expected | LOW | Already exists in PROJETUS (home page shows extraction history). Just needs visual prominence. |
+| **Mobile-responsive layout** | 60%+ of dashboard traffic is mobile in 2026; sales reps check leads on phones | MEDIUM | Streamlit layout="wide" + st.columns with responsive breakpoints. CSS media queries needed for polish. |
+| **Fast search/filtering** | Users expect sub-second search response for lead lookup by name/CNPJ | LOW | Already implemented. Performance depends on data size; OK for <10K rows. |
+| **Clear visual hierarchy (cards, sections)** | Flat layouts feel amateur; users expect grouped information in visual cards | MEDIUM | CSS-based card styling via st.markdown with unsafe_allow_html. Achievable with custom CSS. |
+| **Drill-down to detail views** | Users expect to click a lead and see full profile with tabs/sections | LOW | Already implemented in qualificacao_new.py. Standard Streamlit pattern with st.tabs. |
+| **Data export (CSV)** | Sales teams need to export lead lists for CRM import or offline analysis | LOW | Already implemented. Standard expectation for any B2B dashboard. |
+| **Loading states / progress indicators** | Users need feedback during data loads; blank screens feel broken | LOW | Streamlit native st.spinner, st.progress. Easy to implement. |
+| **Metric cards with KPIs** | Dashboard must show high-level metrics (total leads, value, etc.) at top | LOW | Already implemented with st.metric. Standard pattern. |
+| **Filtering with immediate visual feedback** | Filter changes must update results without page reload feel | MEDIUM | Streamlit native re-run handles this. Performance degrades with >5K rows. |
 
 ### Differentiators (Competitive Advantage)
 
-Features that set the product apart. Not required, but valuable for robustness and operability.
+Features that set PROJETUS apart from generic dashboards. Not required, but highly valued for premium positioning.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Data Quality Metrics** | Proactive issue detection before users notice | MEDIUM | Track completeness %, freshness, row counts vs baseline. Dashboard view of metrics over time. |
-| **Reconciliation Checks** | Verify source vs destination record counts - detect data loss early | LOW | Compare expected rows (from file) vs inserted rows (in DB). Alert on mismatch. |
-| **Automatic Failure Recovery** | Self-healing reduces manual intervention - "set and forget" | HIGH | Checkpoint mechanism to resume from last successful step. Retry entire pipeline vs individual steps. |
-| **Data Lineage Tracking** | Know where each record came from - critical for auditing | MEDIUM | Store metadata: source file, extraction timestamp, pipeline version. Track transformations applied. |
-| **Anomaly Detection** | Alert on unusual patterns (sudden volume drop, new data shape) | HIGH | ML-based or rule-based thresholds. Compare against historical moving average. |
-| **Version Control for Scrapers** | Track changes to extraction logic - rollback on issues | LOW | Git integration. Tag releases. Link pipeline runs to code version. |
-| **Dry Run Mode** | Test changes without affecting production database | LOW | Preview extracted data. Validate transformations. Check database writes without committing. |
-| **Historical Audit Trail** | Full history of every pipeline run for compliance/debugging | MEDIUM | Store run metadata: start/end time, records processed, errors encountered. Queryable history. |
-| **Multi-Stage Validation** | Catch errors at extraction, transformation, and load stages | MEDIUM | Layer checks: file structure validation → data type checks → business rule validation. |
-| **Smart Retry Strategy** | Different retry behavior for different error types | MEDIUM | Network errors: fast retry. Rate limits: exponential backoff. Auth errors: re-authenticate then retry. |
-| **Configuration Management** | Change behavior without code changes - adaptable to source changes | LOW | YAML/JSON config for: column mappings, validation rules, retry policies. Hot reload support. |
-| **Rate Limiting / Throttling** | Respectful scraping - avoid overwhelming source servers | LOW | Configurable delays between requests. Burst protection. |
-| **Session Management** | Maintain state across multi-step extraction flows | MEDIUM | Cookie persistence. Connection pooling. Automatic session refresh. |
-| **Parallel Processing** | Speed up extraction/transformation for large datasets | HIGH | Process multiple files concurrently. Batch inserts in parallel. Thread-safe operations. |
+| **Glassmorphic card design (dark theme)** | Creates premium "Sigma brand" aesthetic; signals quality and modernity | MEDIUM | CSS backdrop-filter + rgba backgrounds. Works in modern browsers. Performance cost is minimal (static elements). |
+| **Visual lead value indicators (color-coded badges)** | Instant recognition of high-value leads without reading numbers; faster decision-making | LOW | Already implemented with emoji badges. Enhance with color-coded visual pills via CSS. |
+| **Interactive charts for lead distribution** | Visual analytics reduce cognitive load; users understand patterns faster than tables | MEDIUM | Plotly/Altair integration. Streamlit native support. Interactive hover, zoom, filter. |
+| **Global search with smart filters** | Search across all entities (leads, emendas, propostas) from single input; reduces navigation friction | HIGH | Requires custom search index across multiple data tables. Complex state management in Streamlit. |
+| **Lead profile page (dedicated view)** | Deep-dive into single lead with all related data (emendas, propostas, convenios, contact); sales workflow optimization | MEDIUM | Separate page with URL parameters for lead ID. Streamlit st.query_params for routing. |
+| **Visual ranking indicators (1-10 visual scale)** | Progress bars or visual scales for lead quality; easier to scan than numbers | LOW | CSS-based progress bars or st.progress. Simple visual enhancement. |
+| **Comparison view (side-by-side leads)** | Compare 2-3 leads at once; faster qualification decisions | MEDIUM | st.columns with synchronized data. State management for selected leads. |
+| **Animated transitions (subtle)** | Smooth fade-ins for cards/metrics create polished feel | MEDIUM-HIGH | CSS animations work but Streamlit re-runs can cause flicker. Must be subtle to avoid janky UX. |
+| **Customizable dashboard layout** | Users can rearrange or hide KPI cards; personalization increases engagement | HIGH | Requires persistent state (database or cookies). Complex in Streamlit's stateless model. |
+| **Data freshness auto-refresh** | Dashboard auto-updates when new data is available (e.g., every 5 min) | MEDIUM | st.rerun() on timer. Works but can be jarring for users. Better with visual "new data available" banner. |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
-Features that seem good but create problems or unnecessary complexity.
+Features that seem good but create problems in Streamlit or sales dashboard context. Document why to avoid scope creep.
 
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| **Real-time Streaming** | "Want data instantly" | Transfer Gov updates daily, not continuously. Adds complexity (CDC, event streams) with no business value. | Stick to scheduled batch extraction at 9am. Simple, reliable, matches source update frequency. |
-| **Complex UI Dashboard** | "Need visibility into the system" | Premature - first use is SQL exploration. Building dashboards before validating data model is waste. | Start with structured logs and email alerts. Add Grafana/Metabase later if needed. |
-| **Multi-Source Support** | "Future-proof for other sources" | YAGNI - only one source (Transfer Gov) for now. Abstracting too early creates over-engineering. | Hard-code for Transfer Gov. Refactor when second source is actually required. |
-| **Custom Transformation Language** | "Need flexibility for complex rules" | Adds DSL complexity. SQL + Python are sufficient and well-understood. | Use SQL for data transformations. Python for parsing logic. No custom syntax. |
-| **Distributed Architecture** | "Need to scale" | 4 files/day doesn't need distributed systems. Microservices add operational overhead (networking, orchestration). | Single monolith service. Refactor to microservices only if hitting performance limits. |
-| **AI/ML-Powered Extraction** | "Handle layout changes automatically" | Transfer Gov structure is stable. AI adds cost and unpredictability. Vision-based extraction is overkill. | Explicit parsers with schema validation. Alert on breaking changes. Manual adaptation is fine. |
-| **Advanced Bot Detection Bypass** | "Avoid blocks" | Government portal likely has minimal protection. Starting with CAPTCHA solving is premature optimization. | Start with simple requests. Add Playwright/Selenium only if blocked. Monitor for 403/429. |
-| **Data Warehouse Integration** | "Enterprise data lake" | No downstream consumers yet. Building connectors before validating data utility is waste. | PostgreSQL is the warehouse for now. Export to Snowflake/BigQuery later if needed. |
-| **Multi-Tenant Architecture** | "Support multiple clients" | Single client (internal use). Multi-tenancy adds security complexity, data isolation, billing. | Single-tenant deployment. Duplicate infrastructure if second client appears. |
-| **Custom Alerting Rules Engine** | "Flexible alert configuration" | Simple email/Slack alerts are sufficient. Rule engines are complex to build and maintain. | Hard-code alert conditions in Python. Extract to config file if needed. |
+| Anti-Feature | Why Requested | Why Problematic | Alternative |
+|--------------|---------------|-----------------|-------------|
+| **Real-time collaboration (multi-user editing)** | "Like Google Docs - see what others are doing" | Streamlit's stateless architecture makes this nearly impossible without complex WebSocket custom components. Performance killer. | Use shared filters via URL parameters; export/import saved views. |
+| **Complex animations (loading, transitions)** | "Make it feel like a modern SPA" | Streamlit re-runs entire script on every interaction, causing flicker/jank with animations. CSS animations fight the framework. | Subtle fade-ins on static elements only. Embrace Streamlit's re-run model; optimize for speed over flash. |
+| **Infinite scroll** | "Load more leads as user scrolls" | Streamlit re-renders entire dataframe on scroll; performance degrades rapidly. Not natively supported. | Pagination with "Load More" button or configurable page size (25/50/100 rows). |
+| **Drag-and-drop dashboard customization** | "Let users build their own layout" | Requires custom JavaScript components; breaks on Streamlit re-runs. High maintenance burden. | Predefined layout variants (e.g., "Compact" vs "Detailed" view) via toggle. |
+| **Sub-second search with autocomplete** | "Search as you type with suggestions" | Every keystroke triggers full re-run in Streamlit. Laggy with large datasets. | Debounced search (search on Enter or after 500ms pause). Pre-computed search index. |
+| **Complex interactive charts (brushing/linking)** | "Select data on chart, filter dashboard" | Streamlit's Plotly/Altair integration has limited bidirectional interaction. Custom components needed. | Click to filter on simple categorical data (e.g., click state on chart). Avoid complex multi-chart linking. |
+| **Embedded video/multimedia** | "Add demo videos for leads" | Increases page load time; Streamlit isn't optimized for media. Distracts from data focus. | External links to videos; focus dashboard on data, not content. |
+| **Chat/comments on leads** | "Collaborate on lead notes" | Requires database writes, user auth, real-time sync. Out of scope for Streamlit dashboard. | Export lead data to CRM where collaboration happens. Dashboard is read-only analytics. |
+| **Email/CRM integration** | "Send email to lead from dashboard" | Streamlit dashboards are read-only analytics tools, not CRMs. Adding write operations increases complexity/security risks. | Provide email addresses for copy-paste; integrate at CRM level, not dashboard. |
+| **3D visualizations** | "3D charts look futuristic" | Novelty without value for sales data. Increases cognitive load, hurts performance. | Stick to 2D charts (bar, line, scatter). Use color/size for additional dimensions. |
 
 ## Feature Dependencies
 
 ```
-[Scheduled Execution]
-    └──requires──> [Authentication & Login]
-                       └──requires──> [Session Management]
+Dark Theme (config.toml)
+    └──requires──> Glassmorphic Cards (CSS with backdrop-filter)
+                       └──enhances──> Visual Hierarchy (cards + sections)
 
-[Automated File Download]
-    └──requires──> [Authentication & Login]
-    └──requires──> [Retry Logic with Exponential Backoff]
+Interactive Charts (Plotly/Altair)
+    └──requires──> Chart Theme Config (matching dark theme)
 
-[Data Parsing & Transformation]
-    └──requires──> [Automated File Download]
-    └──enhances──> [Data Validation (Schema)]
+Lead Profile Page
+    └──requires──> URL Parameter Routing (st.query_params)
+    └──enhances──> Visual Ranking Indicators (displayed on profile)
+    └──enhances──> Comparison View (link from profile to compare)
 
-[PostgreSQL Storage]
-    └──requires──> [Data Parsing & Transformation]
-    └──requires──> [Atomic Transactions]
-    └──enhances──> [Deduplication Logic]
+Global Search
+    └──requires──> Search Index (pre-computed)
+    └──requires──> Unified Data Model (across entities)
+    └──conflicts──> Real-time Autocomplete (performance)
 
-[Alerting on Failure]
-    └──requires──> [Error Logging]
-    └──requires──> [Basic Health Checks]
-
-[Reconciliation Checks]
-    └──requires──> [PostgreSQL Storage]
-    └──enhances──> [Alerting on Failure]
-
-[Data Lineage Tracking]
-    └──requires──> [PostgreSQL Storage]
-    └──enhances──> [Historical Audit Trail]
-
-[Automatic Failure Recovery]
-    └──requires──> [Error Logging]
-    └──requires──> [Retry Logic with Exponential Backoff]
-    └──conflicts──> [Distributed Architecture] (checkpointing harder in distributed systems)
-
-[Dry Run Mode]
-    └──requires──> [PostgreSQL Storage]
-    └──requires──> [Atomic Transactions]
+Mobile Responsive Layout
+    └──requires──> CSS Media Queries
+    └──requires──> Simplified Mobile Navigation
+    └──conflicts──> Complex Multi-column Layouts (too much on mobile)
 ```
 
 ### Dependency Notes
 
-- **Scheduled Execution requires Authentication:** Can't run unattended without automated login capability.
-- **Authentication requires Session Management:** Must maintain session state across pipeline steps.
-- **Alerting requires Health Checks:** Need structured health data to make alerting decisions.
-- **Reconciliation enhances Alerting:** Provides specific metric (record count mismatch) to alert on.
-- **Automatic Failure Recovery conflicts with Distributed Architecture:** Checkpointing and resumption are simpler in monolithic systems.
-- **Data Lineage enhances Audit Trail:** Together they provide complete visibility into data provenance and pipeline history.
+- **Dark Theme enables Glassmorphic Cards:** Glassmorphism (frosted glass effect) only works visually on dark backgrounds. Light theme + glassmorphism looks washed out. Must implement dark theme first.
 
-## MVP Definition
+- **Lead Profile Page enhances Comparison View:** Profile page can have "Compare with..." button. Comparison view links back to individual profiles. Bidirectional navigation.
 
-### Launch With (v1)
+- **Global Search conflicts with Real-time Autocomplete:** Global search requires querying multiple tables. Doing this on every keystroke (autocomplete) will lag. Must choose: debounced search or autocomplete on single entity.
 
-Minimum viable product - what's needed to achieve "100% reliable daily extraction."
+- **Mobile Responsive conflicts with Complex Layouts:** Multi-column layouts (4+ columns) don't fit on mobile. Must have simplified mobile view with collapsible sections.
 
-- [ ] **Authentication & Login** - Cannot access Transfer Gov without it. MUST be reliable and handle session expiry.
-- [ ] **Automated File Download** - Core extraction capability. Must download all 4 files (Excel/CSV) from consolidated report.
-- [ ] **Data Parsing & Transformation** - Transform files into structured data for PostgreSQL. Column mapping and data type conversion.
-- [ ] **PostgreSQL Storage** - Persist data with relationships. Schema must support SQL exploration use case.
-- [ ] **Retry Logic with Exponential Backoff** - Essential for reliability. Handle transient network/server errors gracefully.
-- [ ] **Error Logging** - Debugging unattended failures requires detailed logs. Structured format with context.
-- [ ] **Scheduled Execution** - Trigger at 9am daily via cron. Must be timezone-aware and reliable.
-- [ ] **Alerting on Failure** - Email alerts on extraction/parsing/DB errors. "100% reliable" means immediate notification of issues.
-- [ ] **Data Validation (Schema)** - Verify file structure before parsing. Catch breaking changes in source format.
-- [ ] **Deduplication Logic** - Prevent duplicate records on re-runs. Use upsert pattern (INSERT...ON CONFLICT).
-- [ ] **Atomic Transactions** - All-or-nothing inserts. Rollback on error to prevent partial data corruption.
+## MVP Recommendation (Milestone Scope)
 
-**Total: 11 table stakes features. All are MEDIUM complexity or below.**
+This milestone adds premium UI/UX to existing functional dashboard. Prioritize features that maximize visual impact with minimal Streamlit fighting.
 
-### Add After Validation (v1.x)
+### Phase 1: Visual Foundation (Week 1)
+Establish premium look-and-feel with CSS theming.
 
-Features to add once core is working and data is being used.
+- [ ] **Dark cyberpunk theme** - config.toml + custom CSS for navy/neon blue Sigma brand
+- [ ] **Glassmorphic card components** - Reusable CSS card wrapper for metrics, tables, filters
+- [ ] **Visual hierarchy refinement** - Spacing, typography, section headers with visual weight
+- [ ] **Loading state polish** - Branded st.spinner with Sigma colors
 
-- [ ] **Reconciliation Checks** - Add when: First data loss incident or auditing requirement emerges. Complexity: LOW.
-- [ ] **Data Lineage Tracking** - Add when: Users ask "where did this data come from?" or compliance requires audit trail. Complexity: MEDIUM.
-- [ ] **Historical Audit Trail** - Add when: Need to debug why pipeline behaved differently on specific date. Complexity: MEDIUM.
-- [ ] **Configuration Management** - Add when: Source structure changes and hard-coded logic needs updating frequently. Complexity: LOW.
-- [ ] **Dry Run Mode** - Add when: Making risky changes and want to test without affecting production. Complexity: LOW.
-- [ ] **Smart Retry Strategy** - Add when: Current retry logic is too aggressive or too passive for specific error types. Complexity: MEDIUM.
+**Rationale:** Visual impact is high, complexity is low. Pure CSS work. Sets foundation for all subsequent features. Users immediately see "premium" feel.
 
-### Future Consideration (v2+)
+### Phase 2: Data Visualization (Week 1-2)
+Add interactive charts to replace/enhance table-only views.
 
-Features to defer until product-market fit is established and scale/complexity demands it.
+- [ ] **Lead distribution charts** - Plotly bar charts for leads by state, ministry, value tier
+- [ ] **Trend visualization** - Line chart for proposals over time (if historical data available)
+- [ ] **Chart theming** - Match dark theme with Streamlit chart config
+- [ ] **Interactive tooltips** - Hover for details on chart elements
 
-- [ ] **Data Quality Metrics Dashboard** - Defer: Until users are actively monitoring data and asking "is the data good?" Build when SQL queries for metrics become tedious. Complexity: MEDIUM.
-- [ ] **Anomaly Detection** - Defer: Until there's historical baseline data (3+ months). Only valuable once patterns are established. Complexity: HIGH.
-- [ ] **Automatic Failure Recovery** - Defer: Until manual intervention becomes bottleneck. Checkpoint mechanism is complex - only build if failures are frequent. Complexity: HIGH.
-- [ ] **Parallel Processing** - Defer: Until pipeline runtime becomes problem (>30 minutes). 4 files/day is tiny - serial processing is fine. Complexity: HIGH.
-- [ ] **Version Control Integration** - Defer: Until team has multiple developers or production incidents require rollback. Complexity: LOW but low ROI early.
-- [ ] **Multi-Stage Validation** - Defer: Until simple schema validation misses too many issues. Build incrementally as edge cases emerge. Complexity: MEDIUM.
+**Rationale:** Charts reduce cognitive load for sales reps. Streamlit has native Plotly/Altair support. Interactive features come free with libraries. High value, medium-low effort.
+
+### Phase 3: Enhanced Navigation & Search (Week 2)
+Improve user flow for lead discovery.
+
+- [ ] **Lead profile dedicated page** - Deep-dive view with URL routing via st.query_params
+- [ ] **Enhanced search UI** - Visual search bar in sidebar with clear affordances
+- [ ] **Visual ranking indicators** - Color-coded value badges + progress bars for lead scores
+- [ ] **Breadcrumb navigation** - Show current location (e.g., "Qualificacao > Lead Profile > CNPJ 12.345.678/0001-90")
+
+**Rationale:** Sales workflow is search > browse > drill-down. Optimizing this flow has direct business impact. Medium complexity but core to UX.
+
+### Phase 4: Polish & Responsiveness (Week 2-3)
+Final touches for professional feel.
+
+- [ ] **Mobile responsive layout** - CSS media queries for tablet/phone
+- [ ] **Subtle animations** - Fade-in for cards (CSS only, no JavaScript)
+- [ ] **Data freshness prominence** - Visual indicator in header (e.g., "Updated 2h ago" with icon)
+- [ ] **Export UX improvement** - Better export button styling, add "Export filtered results" option
+
+**Rationale:** Polish features that don't affect core functionality but complete the premium feel. Mobile support is table stakes but can be added after desktop UX is solid.
+
+### Defer to Post-MVP
+
+Features that are valuable but out of scope for this milestone:
+
+- [ ] **Global cross-entity search** - Requires search index architecture. Complex. Defer until user feedback confirms need.
+- [ ] **Comparison view (side-by-side leads)** - Nice-to-have for power users. Not core workflow. Add if users request.
+- [ ] **Customizable dashboard layout** - High complexity for Streamlit. Only add if users actively complain about fixed layout.
+- [ ] **Auto-refresh on new data** - Can be jarring. Better to add "Check for updates" manual button first, auto-refresh only if users want it.
 
 ## Feature Prioritization Matrix
 
-| Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| Authentication & Login | HIGH | MEDIUM | P1 |
-| Automated File Download | HIGH | LOW | P1 |
-| Data Parsing & Transformation | HIGH | MEDIUM | P1 |
-| PostgreSQL Storage | HIGH | MEDIUM | P1 |
-| Retry Logic with Exponential Backoff | HIGH | LOW | P1 |
-| Error Logging | HIGH | LOW | P1 |
-| Scheduled Execution | HIGH | LOW | P1 |
-| Alerting on Failure | HIGH | MEDIUM | P1 |
-| Data Validation (Schema) | HIGH | MEDIUM | P1 |
-| Deduplication Logic | HIGH | MEDIUM | P1 |
-| Atomic Transactions | HIGH | LOW | P1 |
-| Reconciliation Checks | MEDIUM | LOW | P2 |
-| Data Lineage Tracking | MEDIUM | MEDIUM | P2 |
-| Configuration Management | MEDIUM | LOW | P2 |
-| Dry Run Mode | MEDIUM | LOW | P2 |
-| Historical Audit Trail | MEDIUM | MEDIUM | P2 |
-| Smart Retry Strategy | MEDIUM | MEDIUM | P2 |
-| Data Quality Metrics | MEDIUM | MEDIUM | P3 |
-| Anomaly Detection | LOW | HIGH | P3 |
-| Automatic Failure Recovery | MEDIUM | HIGH | P3 |
-| Parallel Processing | LOW | HIGH | P3 |
-| Version Control Integration | LOW | LOW | P3 |
-| Multi-Stage Validation | MEDIUM | MEDIUM | P3 |
+| Feature | User Value | Implementation Cost | Priority | Notes |
+|---------|------------|---------------------|----------|-------|
+| Dark cyberpunk theme | HIGH | LOW | **P1** | Foundation for brand identity. Pure CSS. |
+| Glassmorphic cards | HIGH | MEDIUM | **P1** | Signature visual style. CSS backdrop-filter. |
+| Interactive charts (lead distribution) | HIGH | MEDIUM | **P1** | Reduce cognitive load. Native Streamlit support. |
+| Visual ranking indicators | HIGH | LOW | **P1** | Faster lead qualification. Simple CSS enhancement. |
+| Lead profile page | HIGH | MEDIUM | **P1** | Core sales workflow. Medium routing complexity. |
+| Mobile responsive layout | HIGH | MEDIUM | **P1** | Table stakes for 2026. CSS media queries. |
+| Loading state polish | MEDIUM | LOW | **P2** | Professional feel. Low effort, nice-to-have. |
+| Data freshness visual indicator | MEDIUM | LOW | **P2** | Builds trust. Simple timestamp display. |
+| Enhanced search UI | MEDIUM | LOW | **P2** | Visual polish for existing feature. |
+| Subtle card animations | MEDIUM | MEDIUM | **P2** | Premium feel but must avoid flicker. Test carefully. |
+| Comparison view (side-by-side) | MEDIUM | MEDIUM | **P2** | Power user feature. Not essential. |
+| Breadcrumb navigation | MEDIUM | LOW | **P2** | Helpful but not critical. Easy to add. |
+| Global cross-entity search | HIGH | HIGH | **P3** | High value but complex. Defer until needed. |
+| Customizable layout | LOW | HIGH | **P3** | Low ROI for sales dashboard. Avoid unless requested. |
+| Auto-refresh | MEDIUM | MEDIUM | **P3** | Can be disruptive. Manual refresh better. |
+| Chart brushing/linking | LOW | HIGH | **P3** | Complex custom components. Avoid in Streamlit. |
 
 **Priority key:**
-- P1: Must have for launch (v1) - 11 features, all foundational for "100% reliable" requirement
-- P2: Should have, add when triggered by user need or incident (v1.x) - 6 features, incremental improvements
-- P3: Nice to have, future consideration (v2+) - 6 features, defer until scale/complexity demands
+- **P1:** Must have for milestone completion. Core premium redesign.
+- **P2:** Should have if time permits. Enhances polish.
+- **P3:** Nice to have, future consideration. Defer to later milestones.
 
-## Competitor Feature Analysis
+## Streamlit-Specific Constraints
 
-| Feature | Scrapy + ScrapyCloud | Airbyte + dbt | Our Approach (Transfer Gov) |
-|---------|----------------------|---------------|----------------------------|
-| **Authentication** | Manual session handling, middleware support | OAuth/API key connectors | Custom session-based login for Transfer Gov portal |
-| **File Download** | Download middleware, automatic retry | Native connector support for APIs | Direct file download from consolidated report page |
-| **Scheduling** | ScrapyCloud scheduler, cron integration | Airbyte scheduler with intervals | Simple cron job, 9am daily trigger |
-| **Data Validation** | Item pipelines with validation | dbt tests (not_null, unique, etc.) | Schema validation + business rule checks |
-| **Error Handling** | Retry middleware, custom error callbacks | Built-in retry, backoff policies | Exponential backoff, alert on persistent failure |
-| **Monitoring** | ScrapeOps dashboard, job health checks | Airbyte UI, sync logs | Email/Slack alerts, structured logging |
-| **Deduplication** | Custom pipeline logic | dbt incremental models | PostgreSQL upsert (INSERT...ON CONFLICT) |
-| **Failure Recovery** | Checkpoint via request fingerprints | Resume from last successful sync | Atomic transactions, re-run entire pipeline |
-| **Data Quality** | Manual checks in pipelines | dbt data quality tests, Great Expectations | Schema validation + reconciliation checks |
-| **Deployment** | Docker, ScrapyCloud hosting | Docker, Kubernetes, cloud managed | Simple Python app, systemd service or Docker |
+Critical limitations to acknowledge when planning features:
 
-**Key Insight:** Existing tools (Scrapy, Airbyte) are over-engineered for our use case. We need custom solution because:
-- Transfer Gov has non-standard authentication (not OAuth/API)
-- File download from web UI, not API endpoint
-- Simple daily schedule, not complex orchestration
-- Single source, not multi-connector platform
+### Architecture Constraints
 
-Our approach: Lightweight Python script with PostgreSQL. Avoid framework complexity.
+1. **Full re-run on every interaction** - Every button click, filter change, or search keystroke re-executes the entire Python script. This makes real-time interactions (autocomplete, live collaboration) laggy or impossible.
 
-## Implementation Phases
+2. **Stateless by default** - Session state must be explicitly managed. Complex multi-step workflows (wizards, multi-page forms) require careful state management.
 
-### Phase 1: Foundation (Week 1-2) - P1 Features
+3. **Limited CSS customization** - No direct CSS file support. Must inject via st.markdown with unsafe_allow_html=True (which may be deprecated). Custom styling is hacky.
 
-**Goal:** Unattended daily extraction with alerting.
+4. **Single-threaded per session** - Each user session runs in one Python process. Heavy computation blocks UI. Must use st.cache_data for performance.
 
-1. **Authentication Module** (2 days)
-   - Session-based login to Transfer Gov
-   - Credential storage (env vars or secrets manager)
-   - Session expiry handling
+### Performance Constraints
 
-2. **Extraction Module** (2 days)
-   - Navigate to consolidated report page
-   - Download 4 Excel/CSV files
-   - Retry logic with exponential backoff
-   - Error logging
+1. **Large dataframes (>5K rows) slow down** - Streamlit re-renders entire dataframe on every interaction. Pagination or virtual scrolling not natively supported.
 
-3. **Parsing Module** (2 days)
-   - Parse Excel/CSV files
-   - Column mapping to database schema
-   - Data type conversion and validation
-   - Schema validation checks
+2. **Chart rendering is blocking** - Complex Plotly charts can take 1-2 seconds to render, blocking other UI updates.
 
-4. **Database Module** (2 days)
-   - PostgreSQL schema design (tables + relationships)
-   - Atomic insert logic with transactions
-   - Deduplication via upsert (ON CONFLICT)
-   - Connection pooling
+3. **No incremental updates** - Can't update just one metric; entire page re-renders. Makes dashboards with many metrics feel slow.
 
-5. **Orchestration Module** (1 day)
-   - Coordinate extraction → parsing → storage pipeline
-   - Cron job configuration (9am daily)
-   - Email alerting on failures
-   - Health checks (pre-run and post-run)
+### UX Constraints
 
-**Deliverable:** Working end-to-end pipeline. Data flows daily from Transfer Gov to PostgreSQL with alerts on failure.
+1. **No true SPA feel** - Page "flickers" on re-run (though Streamlit tries to minimize this). Can't achieve buttery-smooth transitions like React apps.
 
-### Phase 2: Polish (Week 3-4) - P2 Features
+2. **Limited interactivity between components** - Can't easily do "click chart to filter table" without custom components. Plotly/Altair events have limited Streamlit integration.
 
-**Goal:** Operational improvements based on production experience.
+3. **Mobile UX is desktop-first** - Streamlit is optimized for desktop. Mobile works but requires extra CSS effort for polish.
 
-1. **Reconciliation Checks**
-   - Compare file row counts vs DB inserts
-   - Alert on mismatches
+### Browser Compatibility
 
-2. **Configuration Management**
-   - Externalize column mappings to YAML/JSON
-   - Make validation rules configurable
+1. **Glassmorphic backdrop-filter** - Requires modern browsers (Chrome 76+, Firefox 103+, Safari 15.4+). Fallback needed for older browsers.
 
-3. **Data Lineage**
-   - Add metadata columns: source_file, extracted_at, pipeline_version
-   - Track transformations applied
+2. **CSS Grid/Flexbox** - Streamlit uses modern CSS but must test on target browsers (sales teams often use corporate IT with older browsers).
 
-4. **Dry Run Mode**
-   - Preview extracted data without DB writes
-   - Test changes safely
+## Competitor Feature Analysis (Implicit Benchmarks)
 
-5. **Historical Audit Trail**
-   - Store pipeline run metadata (start/end, records processed, errors)
-   - Query interface for debugging
+Sales dashboard users have implicit expectations from tools they've used:
 
-**Deliverable:** More maintainable and debuggable system. Easier to adapt to source changes.
+| Feature Category | Standard Expectation (Salesforce, HubSpot, etc.) | PROJETUS Approach |
+|------------------|--------------------------------------------------|-------------------|
+| **Lead scoring** | Numeric score (0-100) with color coding | Value badges (Verde/Alto/Bom/Regular) + color highlights |
+| **Search** | Instant autocomplete, search history | Debounced search on Enter, no autocomplete (Streamlit limitation) |
+| **Filtering** | Multi-select filters with "Apply" button | Immediate filter application (Streamlit native) |
+| **Data visualization** | Interactive charts with drill-down | Plotly charts with hover, limited drill-down (Streamlit constraint) |
+| **Lead profiles** | Dedicated page with tabs (Activity, Contact, History) | Tabs for Emendas, Propostas, Convenios, Historico (matches pattern) |
+| **Mobile** | Native app with offline mode | Responsive web app, online-only (Streamlit limitation) |
+| **Collaboration** | Comments, tags, assignment | Export-only, no collaboration (out of scope for analytics dashboard) |
+| **Customization** | User-specific views, saved filters | No customization (Streamlit complexity, defer) |
 
-### Phase 3: Scale (Future) - P3 Features
-
-**Only build when:**
-- Runtime exceeds 30 minutes → Add parallel processing
-- Failures become frequent → Add automatic recovery
-- Manual monitoring is tedious → Add data quality dashboard
-- Historical patterns exist → Add anomaly detection
-
-**Trigger:** Actual operational pain, not anticipated need.
-
-## Anti-Pattern Warnings
-
-### 1. Over-Engineering Risk: Microservices
-
-**Symptom:** "Let's split extraction, parsing, and storage into separate services for 'modularity.'"
-
-**Problem:**
-- 4 files/day doesn't need distributed coordination
-- Networking overhead (HTTP calls between services)
-- Deployment complexity (orchestration, service discovery)
-- Failure modes multiply (network partitions, service unavailability)
-
-**Solution:** Monolithic Python script with modular functions. Extract to services only if hitting scale limits or need independent deployment.
-
-### 2. Premature Abstraction: Multi-Source Support
-
-**Symptom:** "What if we need to scrape other portals later? Let's build a plugin system."
-
-**Problem:**
-- YAGNI - no second source on roadmap
-- Abstract interfaces before understanding requirements leads to wrong abstractions
-- Maintenance burden for unused flexibility
-
-**Solution:** Hard-code Transfer Gov specifics. When second source appears, extract commonalities then (RULE OF THREE: abstract after 3rd instance).
-
-### 3. Complexity Creep: Real-Time Streaming
-
-**Symptom:** "Users want fresh data, let's use Kafka and CDC."
-
-**Problem:**
-- Transfer Gov updates daily, not continuously
-- Streaming adds infrastructure (Kafka, connectors), operational overhead, debugging complexity
-- No business value from sub-daily latency
-
-**Solution:** Batch extraction at 9am matches source update cadence. Simple cron job is sufficient and reliable.
-
-### 4. Dashboard Before Data: Building UI Too Early
-
-**Symptom:** "Let's build Grafana dashboards for data quality metrics."
-
-**Problem:**
-- First use case is SQL exploration - no users needing dashboards yet
-- Building UI before data model stabilizes = rework when schema changes
-- Time sink that doesn't deliver client value (they want data foundation, not UI)
-
-**Solution:** Structured logs + email alerts. Add dashboards in Phase 2/3 if monitoring becomes bottleneck.
-
-### 5. AI Hype: Vision-Based Extraction
-
-**Symptom:** "AI can handle layout changes automatically, let's use GPT-4 Vision."
-
-**Problem:**
-- Transfer Gov structure is stable (government portal, infrequent changes)
-- AI adds cost ($0.01+ per page), latency, unpredictability
-- Explicit parsers with schema validation are more reliable and debuggable
-
-**Solution:** Hard-coded parsers. Schema validation alerts on breaking changes. Manual adaptation when structure changes (likely rare).
-
-## Complexity Budget
-
-**Total complexity points available: 100**
-
-### Phase 1 (P1 Features): 60 points
-
-- Authentication & Login: 10 points
-- Automated File Download: 5 points
-- Data Parsing & Transformation: 10 points
-- PostgreSQL Storage: 10 points
-- Retry Logic: 5 points
-- Error Logging: 3 points
-- Scheduled Execution: 3 points
-- Alerting on Failure: 7 points
-- Data Validation: 7 points
-- Deduplication Logic: 7 points
-- Atomic Transactions: 3 points
-
-**Phase 1 Total: 70 points** (over budget - need to simplify or defer)
-
-### Simplification Strategy
-
-1. **Defer Alerting to Phase 2** (save 7 points) - Start with just error logging, add email alerts after core works
-2. **Simplify Authentication** (save 3 points) - Use requests.Session(), don't build complex session manager yet
-3. **Basic Deduplication** (save 3 points) - Simple PRIMARY KEY constraint, defer upsert logic to Phase 2
-
-**Revised Phase 1: 57 points** (under budget)
-
-### Phase 2 (P2 Features): 30 points
-
-- Alerting on Failure: 7 points (moved from Phase 1)
-- Reconciliation Checks: 3 points
-- Configuration Management: 3 points
-- Data Lineage: 7 points
-- Dry Run Mode: 3 points
-- Historical Audit Trail: 7 points
-
-**Phase 2 Total: 30 points** (at budget)
-
-### Phase 3 (P3 Features): Deferred
-
-Only build when operational pain justifies complexity investment.
+**Key Takeaway:** PROJETUS can match core expectations (search, filtering, charts, profiles) but must set different expectations for advanced features (collaboration, customization, real-time). Position as "analytics dashboard" not "CRM replacement."
 
 ## Sources
 
-### Web Scraping Production Best Practices
-- [State of Web Scraping 2026: Trends, Challenges & What's Next](https://www.browserless.io/blog/state-of-web-scraping-2026)
-- [Why Web Scraping Works in Testing but Fails in Production](https://www.grepsr.com/blog/web-scraping-testing-vs-production/)
-- [Best Web Scraping Tools in 2026](https://scrapfly.io/blog/posts/best-web-scraping-tools)
-- [DOs and DON'Ts of Web Scraping 2026: Best Practices](https://medium.com/@datajournal/dos-and-donts-of-web-scraping-in-2025-e4f9b2a49431)
-- [How to Fix Inaccurate Web Scraping Data: 2026 Best Practices](https://brightdata.com/blog/web-data/fix-inaccurate-web-scraping-data)
+### Dashboard Design Best Practices (2026)
+- [Curated Dashboard Design Examples for UI Inspiration (2026) | Muzli Blog](https://muz.li/blog/best-dashboard-design-examples-inspirations-for-2026/)
+- [9 Dashboard Design Principles (2026) | DesignRush](https://www.designrush.com/agency/ui-ux-design/dashboard/trends/dashboard-design-principles)
+- [Dashboard Design: Best Practices & How-Tos 2026](https://improvado.io/blog/dashboard-design-guide)
+- [Understanding data visualization dashboards in 2026](https://www.fanruan.com/en/blog/data-visualization-dashboard-key-metrics)
+- [Dashboard Design UX Patterns Best Practices - Pencil & Paper](https://www.pencilandpaper.io/articles/ux-pattern-analysis-data-dashboards)
 
-### ETL Automation & Data Quality
-- [Data Validation in ETL - 2026 Guide](https://www.integrate.io/blog/data-validation-etl/)
-- [4 Best Tools to Automate Data Quality Checks in ETL Pipelines 2026](https://airbyte.com/data-engineering-resources/tools-automate-data-quality-checks-etl)
-- [ETL Error Handling and Monitoring Metrics — 25 Statistics Every Data Leader Should Know in 2026](https://www.integrate.io/blog/etl-error-handling-and-monitoring-metrics/)
-- [7 Data Quality Checks In ETL Every Data Engineer Should Know](https://www.montecarlodata.com/blog-data-quality-checks-in-etl/)
-- [Data Quality Testing in ETL: Best Techniques & Tools](https://www.testingxperts.com/blog/data-quality-testing-in-etl/gb-en)
+### Sales Dashboard Specific
+- [Lead analytics dashboard: 7 metrics every sales team needs in 2026](https://monday.com/blog/crm-and-sales/lead-analytics-dashboard/)
+- [Sales Dashboard: Insights & Real-World Examples 2026](https://improvado.io/blog/sales-dashboard)
+- [UI Trends in 2026 for SaaS Companies - TFC](https://www.thefrontendcompany.com/posts/ui-trends)
 
-### Session Management & Authentication
-- [Advanced Use Cases for Session Management in Web Scraping](https://www.zyte.com/learn/advanced-use-cases-for-session-management-in-web-scraping/)
-- [How to Use Session-based Web Scraping for Authenticated Data](https://www.actowizsolutions.com/how-to-use-session-based-web-scraping-authenticated-data.php)
-- [Retry Failed Python Requests in 2026](https://decodo.com/blog/python-requests-retry)
+### Streamlit Capabilities & Limitations
+- [Theming - Streamlit Docs](https://docs.streamlit.io/develop/concepts/configuration/theming)
+- [Chart elements - Streamlit Docs](https://docs.streamlit.io/develop/api-reference/charts)
+- [A new Streamlit theme for Altair and Plotly charts](https://blog.streamlit.io/a-new-streamlit-theme-for-altair-and-plotly/)
+- [Streamlit Supports 5 Important Data Visualization Libraries](https://alanjones2.github.io/streamlit-chart-varieties/)
+- [How to Build a Minimalistic Streamlit Dashboard That Actually Looks Good — A Step-by-Step Guide | Medium](https://medium.com/data-science-collective/how-to-build-a-minimalistic-streamlit-dashboard-that-actually-looks-good-a-step-by-step-guide-ef5d803ae4a2)
+- [15 Pros & Cons of Streamlit [2026] - DigitalDefynd](https://digitaldefynd.com/IQ/pros-cons-of-streamlit/)
 
-### Monitoring & Deployment
-- [Powerful Job Monitoring & Scheduling for Web Scraping](https://scrapeops.io/monitoring-scheduling/)
-- [Scrapy Beginners Series Part 5 - Deploying & Scheduling Spiders](https://scrapeops.io/python-scrapy-playbook/scrapy-beginners-guide-deployment-scheduling-monitoring/)
-- [Airflow Monitoring: Proactive Alerts for Healthy Deployments](https://www.astronomer.io/blog/proactive-airflow-monitoring-how-to-prevent-infrastructure-issues-before-they-happen/)
+### Glassmorphism & Modern UI Design
+- [Dark Glassmorphism: The Aesthetic That Will Define UI in 2026 | Medium](https://medium.com/@developer_89726/dark-glassmorphism-the-aesthetic-that-will-define-ui-in-2026-93aa4153088f)
+- [Glassmorphism: What It Is and How to Use It in 2026 - The Inverness Design Studio](https://invernessdesignstudio.com/glassmorphism-what-it-is-and-how-to-use-it-in-2026)
+- [How to Create Glassmorphic UI Effects with Pure CSS](https://blog.openreplay.com/create-glassmorphic-ui-css/)
+- [64 CSS Glassmorphism Examples](https://freefrontend.com/css-glassmorphism/)
 
-### File Download & Data Extraction
-- [How to Scrape Website Data into Excel - 3 Methods](https://www.octoparse.com/blog/scraping-data-from-website-to-excel)
-- [Data Export - Web Scraper Documentation](https://webscraper.io/documentation/web-scraper-cloud/data-export)
-- [Extract data from websites and download it as excel](https://www.browse.ai/website-to-spreadsheet)
-
-### PostgreSQL ETL Tools
-- [10 PostgreSQL ETL Tools That You Can Follow in 2026](https://airbyte.com/top-etl-tools-for-sources/postgresql)
-- [Deep Dive into Database-to-Database Integration in 2026](https://www.integrate.io/blog/database-to-database-integration-in-2025/)
-- [Syncing with Postgres: Logical Replication vs. ETL](https://www.paradedb.com/blog/etl-vs-logical-replication)
+### Search & Navigation UX
+- [6 Essential Search UX Best Practices for 2026 | DesignRush](https://www.designrush.com/best-designs/websites/trends/search-ux-best-practices)
+- [Master Search UX in 2026: Best Practices, UI Tips & Design Patterns](https://www.designmonks.co/blog/search-ux-best-practices)
+- [st.navigation - Streamlit Docs](https://docs.streamlit.io/develop/api-reference/navigation/st.navigation)
+- [Build a custom navigation menu with st.page_link - Streamlit Docs](https://docs.streamlit.io/develop/tutorials/multipage/st.page_link-nav)
 
 ---
-*Feature research for: Web Scraping/ETL Automation (Transfer Gov)*
-*Researched: 2026-02-04*
-*Confidence: HIGH - based on production best practices from 15+ industry sources*
+*Feature research for: PROJETUS Premium Dashboard UI/UX Redesign*
+*Researched: 2026-02-09*
+*Confidence: MEDIUM (Web search + official Streamlit docs; no hands-on testing of all features)*

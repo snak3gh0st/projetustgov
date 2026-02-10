@@ -1,794 +1,861 @@
-# Architecture Research
+# Architecture Patterns: Streamlit Premium UI Integration
 
-**Domain:** Web Scraping/ETL System
-**Researched:** 2026-02-04
+**Domain:** Streamlit Dashboard Premium UI/UX Enhancement
+**Researched:** 2026-02-09
 **Confidence:** HIGH
 
-## Standard Architecture
+## Executive Summary
+
+Premium UI features (dark theme, glassmorphic cards, Plotly charts, global search, lead profiles) integrate with Streamlit's multi-page architecture through three complementary layers: **CSS injection** (theme and styling), **component enhancement** (custom HTML/CSS components), and **state management** (cross-page search and navigation). The architecture maintains Streamlit's reactive paradigm while pushing its boundaries through targeted HTML/CSS injection and custom components.
+
+**Key Architectural Decision:** Use external CSS files (not inline) for maintainability, inject once at app entry point, and leverage st.components.v2 for complex interactive elements only when native Streamlit is insufficient.
+
+## Recommended Architecture
 
 ### System Overview
 
-Production web scraping/ETL systems in 2026 follow a **microservices pattern** with clear separation between crawling, parsing, transformation, loading, and orchestration. The architecture prioritizes resilience, observability, and testability through component isolation.
-
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    ORCHESTRATION LAYER                       │
+│                   streamlit_app.py (Entry)                   │
+│  - st.set_page_config()                                      │
+│  - Load & inject theme CSS (dark + glassmorphic)             │
+│  - Initialize session state (search, navigation)             │
+│  - st.navigation() with 6 pages + lead profile               │
+├─────────────────────────────────────────────────────────────┤
+│                    Presentation Layer                        │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌──────────────┐   │
+│  │ Pages   │  │ Pages   │  │ Pages   │  │ Lead Profile │   │
+│  │ (home)  │  │(propostas│  │(programas│  │   (NEW)      │   │
+│  └────┬────┘  └────┬────┘  └────┬────┘  └──────┬───────┘   │
+│       │            │            │                │           │
+├───────┴────────────┴────────────┴────────────────┴───────────┤
+│                   Component Layer (NEW)                      │
+│  ┌──────────────┐  ┌─────────────┐  ┌──────────────────┐    │
+│  │ UI Components│  │   Charts    │  │  Search Widget   │    │
+│  │ (cards.py)   │  │(plotly.py)  │  │  (search.py)     │    │
+│  └──────┬───────┘  └──────┬──────┘  └────────┬─────────┘    │
+├─────────┴──────────────────┴──────────────────┴──────────────┤
+│                  Theme/Style Layer (NEW)                     │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │ assets/css/                                            │  │
+│  │  - theme_dark.css (dark mode base)                     │  │
+│  │  - glassmorphic_cards.css (card components)            │  │
+│  │  - plotly_theme.css (chart overrides)                  │  │
+│  └────────────────────────────────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────┤
+│               Existing Query/Data Layer                      │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐                   │
-│  │Scheduler │  │ Monitor  │  │  Alert   │                   │
-│  │ (Cron)   │  │ (Logs)   │  │(Telegram)│                   │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘                   │
-├───────┴──────────────┴──────────────┴───────────────────────┤
-│                    PROCESSING LAYER                          │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐        │
-│  │ Crawler │→ │ Parser  │→ │Transform│→ │ Loader  │        │
-│  │(Playwrgt│  │ (Excel/ │  │(Validate│  │(Postgres│        │
-│  │  +Auth) │  │  CSV)   │  │  +Link) │  │  +Dedupe│        │
-│  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘        │
-├───────┴─────────────┴─────────────┴─────────────┴───────────┤
-│                      STORAGE LAYER                           │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                   │
-│  │Raw Files │  │ Staging  │  │Production│                   │
-│  │  (Temp)  │  │  Tables  │  │   DB     │                   │
+│  │ queries/ │  │components│  │ config.py│                   │
+│  │ (cached) │  │ (export) │  │(db conn) │                   │
 │  └──────────┘  └──────────┘  └──────────┘                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### Component Responsibilities
 
-| Component | Responsibility | Typical Implementation |
-|-----------|----------------|------------------------|
-| **Scheduler** | Trigger jobs at intervals, manage job queue | Cron jobs, node-cron, AWS EventBridge |
-| **Crawler** | Navigate site, handle auth, download raw files | Playwright, Puppeteer, Selenium |
-| **Parser** | Extract structured data from raw files | xlsx, csv-parse, cheerio |
-| **Transformer** | Validate, establish relationships, deduplicate | Business logic layer, validation libraries |
-| **Loader** | Insert/update database with idempotency | Database client with upsert support |
-| **Monitor** | Track success/failure, collect metrics | Winston, Pino, Datadog |
-| **Alerter** | Notify on failures or anomalies | Telegram Bot API, email, Slack |
-| **State Manager** | Track sessions, checkpoints, retry state | Database table, Redis, filesystem |
+| Component | Responsibility | Integration Pattern |
+|-----------|----------------|---------------------|
+| **streamlit_app.py** | CSS injection, theme loading, session state init, navigation | Load CSS at top, inject via st.markdown with unsafe_allow_html |
+| **assets/css/theme_dark.css** | Dark theme base colors, typography, backgrounds | External CSS file, loaded once at app start |
+| **assets/css/glassmorphic_cards.css** | Card component styles (backdrop-filter, borders, shadows) | Targets Streamlit containers via CSS selectors |
+| **components/ui/cards.py** | Glassmorphic card wrapper component | Returns st.container with custom CSS class |
+| **components/ui/search.py** | Global search widget with autocomplete | Uses st.session_state for cross-page persistence |
+| **components/charts/plotly.py** | Plotly chart configuration and theming | Wraps st.plotly_chart with consistent theme |
+| **pages/lead_profile.py** | Detailed lead view with charts and history | New page, uses all UI components |
 
 ## Recommended Project Structure
 
 ```
-src/
-├── crawler/              # Browser automation & file download
-│   ├── auth.ts          # Login & session management
-│   ├── navigator.ts     # Page navigation logic
-│   ├── downloader.ts    # File download orchestration
-│   └── state.ts         # Checkpoint & resume logic
-├── parser/              # Raw file → structured data
-│   ├── excel-parser.ts  # .xlsx handling
-│   ├── csv-parser.ts    # .csv handling
-│   └── schemas.ts       # Expected data schemas
-├── transformer/         # Data validation & enrichment
-│   ├── validator.ts     # Data quality checks
-│   ├── linker.ts        # Establish relationships
-│   ├── deduplicator.ts  # Content-based deduplication
-│   └── normalizer.ts    # Standardize formats
-├── loader/              # Database persistence
-│   ├── db-client.ts     # Connection pool & queries
-│   ├── upsert.ts        # Idempotent writes
-│   └── transaction.ts   # Atomic operations
-├── orchestrator/        # Job coordination
-│   ├── scheduler.ts     # Cron trigger
-│   ├── pipeline.ts      # Component orchestration
-│   └── recovery.ts      # Failure handling & retry
-├── monitoring/          # Observability
-│   ├── logger.ts        # Structured logging
-│   ├── metrics.ts       # Success rates, timings
-│   └── alerter.ts       # Telegram notifications
-└── shared/              # Cross-cutting concerns
-    ├── config.ts        # Environment variables
-    ├── types.ts         # TypeScript definitions
-    └── utils.ts         # Common helpers
+src/dashboard/
+├── streamlit_app.py                # Entry point (CSS injection here)
+├── config.py                       # Database config (existing)
+├── assets/                         # NEW: Static assets
+│   └── css/
+│       ├── theme_dark.css          # Dark theme base
+│       ├── glassmorphic_cards.css  # Card components
+│       └── plotly_theme.css        # Chart styling
+├── components/
+│   ├── __init__.py
+│   ├── metrics.py                  # Existing metric cards
+│   ├── filters.py                  # Existing filters
+│   ├── export.py                   # Existing CSV export
+│   ├── ui/                         # NEW: Premium UI components
+│   │   ├── __init__.py
+│   │   ├── cards.py                # Glassmorphic card wrappers
+│   │   ├── search.py               # Global search widget
+│   │   └── theme.py                # CSS loader utility
+│   └── charts/                     # NEW: Chart components
+│       ├── __init__.py
+│       └── plotly.py               # Plotly theme wrapper
+├── pages/
+│   ├── __init__.py
+│   ├── home.py                     # Enhanced with charts
+│   ├── propostas.py                # Enhanced with cards
+│   ├── programas.py                # Enhanced with cards
+│   ├── apoiadores.py               # Enhanced with cards
+│   ├── emendas.py                  # Enhanced with cards
+│   ├── qualificacao_new.py         # Enhanced with charts
+│   └── lead_profile.py             # NEW: Detailed lead view
+└── queries/
+    ├── __init__.py
+    ├── metrics.py                  # Existing
+    ├── history.py                  # Existing
+    ├── entities.py                 # Existing
+    ├── qualificacao.py             # Existing
+    └── proponentes.py              # Existing
 ```
 
 ### Structure Rationale
 
-- **crawler/**: Isolated browser concerns. Testable with mock pages. Can be replaced with different automation tools without affecting downstream components.
-- **parser/**: Pure functions that transform bytes → objects. No I/O, fully unit testable.
-- **transformer/**: Business logic isolated from I/O. Easy to test with fixture data.
-- **loader/**: Database interface isolated. Can switch databases without touching business logic.
-- **orchestrator/**: Coordinates components but doesn't contain business logic. Handles cross-cutting concerns like retries.
-- **monitoring/**: Observability as first-class concern. All components emit structured logs and metrics.
+- **assets/css/**: External CSS files for maintainability (not inline). Loaded once at app start. Easier to edit, version control, and reuse.
+- **components/ui/**: Premium UI components isolated from existing components. Clean separation enables incremental migration.
+- **components/charts/**: Chart-specific logic separated from UI. Centralizes Plotly theming and configuration.
+- **pages/lead_profile.py**: New page for detailed lead view. Leverages all new components without disrupting existing pages.
 
 ## Architectural Patterns
 
-### Pattern 1: Store-Then-Transform (Raw Snapshots)
+### Pattern 1: CSS Injection via External Files
 
-**What:** Save raw downloaded files before parsing, then parse separately. Keep raw files for reprocessing.
+**What:** Load CSS files from assets/css/ and inject into Streamlit app via st.markdown with unsafe_allow_html=True.
 
-**When to use:** Always for production web scraping. Essential for surviving website redesigns and fixing parser bugs.
+**When to use:** For theme-wide styling (dark mode, glassmorphic cards, chart theming). Do this once at app entry point (streamlit_app.py).
 
 **Trade-offs:**
-- ✅ Can reprocess historical data when parsing logic changes
-- ✅ Audit trail for compliance
-- ✅ Parser failures don't require re-crawling (expensive)
-- ❌ Requires more storage (~temporary, can be cleaned after successful load)
+- **Pros:** Maintainable, version-controllable, reusable across pages, no performance hit (loaded once)
+- **Cons:** Requires unsafe_allow_html=True (security consideration, but standard practice), CSS selectors may break with Streamlit updates
 
 **Example:**
-```typescript
-// Bad: Parse immediately, lose raw data
-const data = await downloadAndParse(url);
+```python
+# streamlit_app.py (after st.set_page_config)
+from pathlib import Path
 
-// Good: Store raw, then parse
-const rawPath = await crawler.download(url, 'temp/raw/');
-const data = await parser.parse(rawPath);
-await loader.upsert(data);
-// Keep rawPath for 7 days for reprocessing
+def load_css(file_path: str) -> None:
+    """Load CSS file and inject into Streamlit app."""
+    with open(file_path) as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+# Load theme CSS files
+css_dir = Path(__file__).parent / "assets" / "css"
+load_css(css_dir / "theme_dark.css")
+load_css(css_dir / "glassmorphic_cards.css")
+load_css(css_dir / "plotly_theme.css")
 ```
 
-### Pattern 2: Checkpoint-Based Resumption
+### Pattern 2: Glassmorphic Card Component
 
-**What:** Track progress at each stage. On failure, resume from last successful checkpoint instead of restarting.
+**What:** Reusable card component using st.container with custom CSS classes for glassmorphic effect.
 
-**When to use:** Multi-step pipelines where any step can fail (network, parsing, database).
+**When to use:** For metric cards, KPI displays, section wrappers. Wraps existing Streamlit content with premium styling.
 
 **Trade-offs:**
-- ✅ Faster recovery from failures
-- ✅ Reduces load on source system (don't re-download)
-- ✅ Enables incremental processing
-- ❌ Requires state management (database or filesystem)
+- **Pros:** Consistent styling, minimal code change in pages, works with existing Streamlit widgets
+- **Cons:** Limited to CSS capabilities (no complex interactions), requires CSS targeting knowledge
 
 **Example:**
-```typescript
-interface JobState {
-  jobId: string;
-  stage: 'crawl' | 'parse' | 'transform' | 'load';
-  filesDownloaded: string[];
-  recordsProcessed: number;
-  lastCheckpoint: Date;
+```python
+# components/ui/cards.py
+import streamlit as st
+from typing import Optional
+
+def glassmorphic_card(
+    content_func,
+    key: Optional[str] = None,
+    height: Optional[str] = None
+):
+    """Render content inside a glassmorphic card container.
+
+    Args:
+        content_func: Callable that renders content inside the card
+        key: Unique key for the container
+        height: CSS height value (e.g., "200px", "auto")
+    """
+    # Use st.container with custom HTML wrapper for CSS targeting
+    container_html = f'<div class="glassmorphic-card" data-key="{key or ""}">'
+    st.markdown(container_html, unsafe_allow_html=True)
+
+    with st.container():
+        content_func()
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Usage in pages:
+# from components.ui.cards import glassmorphic_card
+#
+# def render_metrics():
+#     st.metric("Total Leads", "1,234")
+#     st.metric("Total Emendas", "567")
+#
+# glassmorphic_card(render_metrics, key="metrics_card")
+```
+
+**Corresponding CSS (assets/css/glassmorphic_cards.css):**
+```css
+.glassmorphic-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
 }
 
-async function runPipeline(jobId: string) {
-  const state = await loadState(jobId) || createInitialState(jobId);
-
-  if (state.stage === 'crawl') {
-    await crawler.run(state);
-    state.stage = 'parse';
-    await saveState(state);
-  }
-
-  if (state.stage === 'parse') {
-    await parser.run(state);
-    state.stage = 'transform';
-    await saveState(state);
-  }
-
-  // ... continue through stages
+/* Target Streamlit metric widgets inside cards */
+.glassmorphic-card [data-testid="stMetric"] {
+    background: transparent;
 }
 ```
 
-### Pattern 3: Idempotent Loads
+### Pattern 3: Plotly Chart Theming
 
-**What:** Use upserts with unique keys so running the same load multiple times produces the same result.
+**What:** Centralized Plotly chart configuration with dark theme and consistent styling.
 
-**When to use:** Always for database writes in ETL. Critical for retry logic.
-
-**Trade-offs:**
-- ✅ Safe to retry without data duplication
-- ✅ Simplifies error recovery (just re-run)
-- ✅ Enables incremental updates
-- ❌ Requires careful key design (what makes a record unique?)
-
-**Example:**
-```typescript
-// Bad: INSERT can create duplicates on retry
-await db.query('INSERT INTO propostas VALUES (?, ?, ?)', [id, data, timestamp]);
-
-// Good: UPSERT is idempotent
-await db.query(`
-  INSERT INTO propostas (id, data, updated_at)
-  VALUES (?, ?, ?)
-  ON CONFLICT (id) DO UPDATE SET
-    data = EXCLUDED.data,
-    updated_at = EXCLUDED.updated_at
-`, [id, data, timestamp]);
-```
-
-### Pattern 4: Content Hash Deduplication
-
-**What:** Generate hash of content (not just ID) to detect true duplicates even with different IDs.
-
-**When to use:** When same entity can appear multiple times with different identifiers.
+**When to use:** For all Plotly charts. Ensures consistent appearance and behavior.
 
 **Trade-offs:**
-- ✅ Prevents duplicate records from same content
-- ✅ Catches data quality issues
-- ✅ Reduces database bloat
-- ❌ Hash computation adds overhead
-- ❌ Requires careful selection of fields to hash
+- **Pros:** Consistent theming, reduces boilerplate, automatic responsiveness, integrates with Streamlit theme
+- **Cons:** Less flexibility for one-off customizations (can override via params)
 
 **Example:**
-```typescript
-import { createHash } from 'crypto';
+```python
+# components/charts/plotly.py
+import plotly.graph_objects as go
+import streamlit as st
+from typing import Optional
 
-function generateContentHash(proposal: Proposal): string {
-  // Hash semantic content, not metadata
-  const content = `${proposal.titulo}|${proposal.valor}|${proposal.parlamentar}`;
-  return createHash('sha256').update(content).digest('hex');
-}
+def render_themed_chart(
+    fig: go.Figure,
+    height: int = 400,
+    key: Optional[str] = None,
+    config: Optional[dict] = None
+):
+    """Render Plotly chart with consistent theming.
 
-async function loadWithDedup(proposals: Proposal[]) {
-  for (const p of proposals) {
-    const hash = generateContentHash(p);
-    const existing = await db.findByHash(hash);
-
-    if (existing) {
-      logger.warn('Duplicate detected', { id: p.id, existingId: existing.id });
-      continue; // Skip duplicate
+    Args:
+        fig: Plotly figure object
+        height: Chart height in pixels
+        key: Unique key for chart widget
+        config: Additional Plotly config options
+    """
+    # Default config (disable scroll zoom, keep modebar)
+    default_config = {
+        'scrollZoom': False,
+        'displayModeBar': True,
+        'displaylogo': False
     }
 
-    await db.insert({ ...p, content_hash: hash });
-  }
-}
+    if config:
+        default_config.update(config)
+
+    # Apply dark theme layout defaults
+    fig.update_layout(
+        template="plotly_dark",  # Use Plotly's dark template
+        paper_bgcolor='rgba(0,0,0,0)',  # Transparent background
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#FAFAFA', size=12),
+        margin=dict(l=40, r=40, t=40, b=40),
+        hovermode='x unified'
+    )
+
+    # Render with Streamlit
+    st.plotly_chart(
+        fig,
+        height=height,
+        width="stretch",  # Responsive width
+        config=default_config,
+        key=key
+    )
+
+# Usage in pages:
+# from components.charts.plotly import render_themed_chart
+# import plotly.express as px
+#
+# fig = px.line(df, x='date', y='value', title='Trend Analysis')
+# render_themed_chart(fig, height=350, key="trend_chart")
 ```
 
-### Pattern 5: Async Job Queue with Retry
+### Pattern 4: Global Search with Session State
 
-**What:** Decouple scheduler from execution using a job queue with exponential backoff retry.
+**What:** Global search widget in sidebar that persists across pages and filters data.
 
-**When to use:** For systems with multiple scheduled jobs or unpredictable execution times.
+**When to use:** For cross-page search functionality. User searches once, results available on any page.
 
 **Trade-offs:**
-- ✅ Prevents queue clog (jobs don't block scheduler)
-- ✅ Automatic retry with backoff
-- ✅ Enables parallel execution
-- ❌ More infrastructure complexity (Redis/database for queue)
-- ❌ Harder to debug (async execution)
+- **Pros:** Excellent UX, no page refreshes needed, leverages Streamlit's reactive model
+- **Cons:** Requires careful session state management, can cause unnecessary reruns if not optimized
 
 **Example:**
-```typescript
-// Simple approach for low-frequency jobs (your use case)
-// Just use cron with database-backed state
-cron.schedule('0 9 * * *', async () => {
-  const jobId = generateJobId();
-  try {
-    await runPipeline(jobId);
-  } catch (error) {
-    await alerter.send(`Job ${jobId} failed: ${error.message}`);
-    // Retry logic can be added here if needed
-  }
-});
+```python
+# components/ui/search.py
+import streamlit as st
+from typing import Optional, Callable
 
-// Advanced: Full job queue (overkill for 1 job/day)
-import Bull from 'bull';
-const queue = new Bull('scraping', redisConfig);
+def render_global_search(
+    placeholder: str = "Buscar leads, propostas...",
+    on_search: Optional[Callable] = None
+) -> str:
+    """Render global search widget in sidebar.
 
-queue.process(async (job) => {
-  await runPipeline(job.data.jobId);
-});
+    Args:
+        placeholder: Search input placeholder text
+        on_search: Optional callback when search changes
 
-queue.on('failed', (job, err) => {
-  alerter.send(`Job ${job.id} failed: ${err.message}`);
-});
+    Returns:
+        Current search term
+    """
+    # Initialize session state
+    if "global_search" not in st.session_state:
+        st.session_state.global_search = ""
 
-cron.schedule('0 9 * * *', () => {
-  queue.add({ jobId: generateJobId() }, {
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 60000 }
-  });
-});
+    # Render search input
+    search_term = st.sidebar.text_input(
+        "🔍 Busca Global",
+        value=st.session_state.global_search,
+        placeholder=placeholder,
+        key="global_search_input",
+        help="Busca em todas as páginas"
+    )
+
+    # Update session state
+    if search_term != st.session_state.global_search:
+        st.session_state.global_search = search_term
+        if on_search:
+            on_search(search_term)
+
+    return search_term
+
+# Usage in streamlit_app.py (before navigation):
+# from components.ui.search import render_global_search
+# search_term = render_global_search()
+
+# Usage in pages (access search term):
+# search_term = st.session_state.get("global_search", "")
+# if search_term:
+#     df = df[df['nome'].str.contains(search_term, case=False, na=False)]
+```
+
+### Pattern 5: Lead Profile Page with URL State
+
+**What:** Dedicated page for detailed lead view, accessible via navigation and direct URL.
+
+**When to use:** For drill-down from qualification page or direct access via URL parameters.
+
+**Trade-offs:**
+- **Pros:** Clean separation of concerns, deep-linkable, better UX than modals
+- **Cons:** Requires URL parameter handling, back button navigation considerations
+
+**Example:**
+```python
+# pages/lead_profile.py
+import streamlit as st
+from components.ui.cards import glassmorphic_card
+from components.charts.plotly import render_themed_chart
+from queries.qualificacao import get_proponente_details
+import plotly.express as px
+
+def render_lead_profile():
+    """Render detailed lead profile page."""
+    st.title("Perfil do Lead")
+
+    # Get selected CNPJ from session state or URL params
+    query_params = st.query_params
+    selected_cnpj = query_params.get("cnpj", st.session_state.get("selected_lead_cnpj"))
+
+    if not selected_cnpj:
+        st.warning("Selecione um lead na página de Qualificação.")
+        return
+
+    # Fetch lead details
+    lead = get_proponente_details(selected_cnpj)
+
+    if not lead:
+        st.error("Lead não encontrado.")
+        return
+
+    # Header with back button
+    col1, col2 = st.columns([1, 6])
+    with col1:
+        if st.button("← Voltar"):
+            st.session_state.selected_lead_cnpj = None
+            st.switch_page("pages/qualificacao_new.py")
+
+    with col2:
+        st.header(lead['nome'])
+
+    # KPI metrics in glassmorphic cards
+    def render_kpis():
+        cols = st.columns(4)
+        with cols[0]:
+            st.metric("Propostas", lead['total_propostas'])
+        with cols[1]:
+            st.metric("Emendas", lead['total_emendas'])
+        with cols[2]:
+            st.metric("Valor Emendas", f"R$ {lead['valor_total_emendas']/1_000_000:.1f}M")
+        with cols[3]:
+            st.metric("Convênios", lead.get('total_convenios', 0))
+
+    glassmorphic_card(render_kpis, key="lead_kpis")
+
+    # Charts section
+    st.subheader("Análise Temporal")
+
+    # Example: Proposals timeline chart
+    timeline_data = get_proponente_propostas_timeline(selected_cnpj)
+    fig = px.bar(
+        timeline_data,
+        x='data_publicacao',
+        y='valor_global',
+        title='Histórico de Propostas por Mês'
+    )
+    render_themed_chart(fig, height=300, key="timeline_chart")
+
+# In qualificacao_new.py, navigate to profile:
+# if st.button("Ver Perfil Completo"):
+#     st.session_state.selected_lead_cnpj = selected_cnpj
+#     st.switch_page("pages/lead_profile.py")
 ```
 
 ## Data Flow
 
-### Request Flow
+### CSS Loading and Application
 
 ```
-[Scheduler Trigger 9am]
+App Start (streamlit_app.py)
     ↓
-[Orchestrator] → Create Job ID → Save initial state
+st.set_page_config(layout="wide")
     ↓
-[Crawler]
-  → Playwright.launch()
-  → Navigate to login page
-  → Enter credentials
-  → Save session cookies
-  → Navigate to download page
-  → Download 4 files to temp/raw/{jobId}/
-  → Update state: crawl complete
+Load CSS files from assets/css/
     ↓
-[Parser]
-  → Read temp/raw/{jobId}/file1.xlsx
-  → Extract rows to Proposta[]
-  → Read temp/raw/{jobId}/file2.csv
-  → Extract rows to Apoiador[]
-  → ... (files 3, 4)
-  → Update state: parse complete
+Inject via st.markdown(<style>...</style>, unsafe_allow_html=True)
     ↓
-[Transformer]
-  → Validate data quality (required fields, types)
-  → Establish relationships (proposta_id → apoiador_id)
-  → Generate content hashes
-  → Detect duplicates
-  → Normalize formats (dates, currency)
-  → Update state: transform complete
+CSS rules apply to entire app (all pages)
     ↓
-[Loader]
-  → BEGIN TRANSACTION
-  → Upsert propostas (ON CONFLICT DO UPDATE)
-  → Upsert apoiadores
-  → Upsert emendas
-  → Upsert programas
-  → Insert relationships
-  → COMMIT
-  → Update state: load complete
+Pages render → Streamlit generates HTML with class names
     ↓
-[Monitor]
-  → Log metrics (duration, record counts, errors)
-  → Send Telegram success notification
-  → Clean up temp files (optional: keep for 7 days)
+CSS selectors target Streamlit elements (e.g., .stMetric, .stDataFrame)
+    ↓
+Glassmorphic effects applied via backdrop-filter, borders, shadows
 ```
 
-### Error Flow
+### Global Search Data Flow
 
 ```
-[Any Component Failure]
+User enters search term (sidebar)
     ↓
-[Orchestrator catches exception]
+st.session_state.global_search = search_term
     ↓
-[Logger] → Write structured error log
+Streamlit reruns current page
     ↓
-[Alerter] → Send Telegram alert with:
-  - Job ID
-  - Failed stage
-  - Error message
-  - Stack trace
+Page queries data with @st.cache_data (10-30 min TTL)
     ↓
-[State Manager] → Preserve state for manual retry
+Page filters cached data using search term
     ↓
-[Optional: Automatic Retry]
-  → Wait exponential backoff
-  → Resume from last checkpoint
-  → Max 3 retries before giving up
+Display filtered results
+    ↓
+User navigates to different page
+    ↓
+Session state persists (search term available)
+    ↓
+New page uses same search term for filtering
 ```
 
-### State Management Flow
+### Lead Profile Navigation Flow
 
 ```
-[Job State Table]
-    ↓ (read at start)
-[Each Component]
-    ↓ (write after completion)
-[Job State Table]
-    ↓ (read on resume)
-[Component Resume Logic]
+Qualification Page: User clicks "Ver Perfil" button
+    ↓
+Set st.session_state.selected_lead_cnpj = cnpj
+    ↓
+st.switch_page("pages/lead_profile.py")
+    ↓
+Lead Profile Page: Read session state for CNPJ
+    ↓
+Query lead details (cached)
+    ↓
+Render glassmorphic cards with metrics
+    ↓
+Render Plotly charts with themed wrapper
+    ↓
+User clicks "← Voltar"
+    ↓
+Clear session state, switch back to qualification page
+```
 
-Schema:
-CREATE TABLE job_state (
-  job_id UUID PRIMARY KEY,
-  stage VARCHAR(20), -- 'crawl' | 'parse' | 'transform' | 'load'
-  status VARCHAR(20), -- 'pending' | 'running' | 'completed' | 'failed'
-  files_downloaded JSONB,
-  records_processed INTEGER,
-  error_message TEXT,
-  created_at TIMESTAMP,
-  updated_at TIMESTAMP
-);
+### Chart Rendering Flow
+
+```
+Page imports render_themed_chart from components/charts/plotly
+    ↓
+Create Plotly figure (e.g., px.line(df, x='date', y='value'))
+    ↓
+Pass to render_themed_chart(fig, height=400, key="chart1")
+    ↓
+Function applies dark theme layout (plotly_dark template)
+    ↓
+Set transparent backgrounds (rgba(0,0,0,0))
+    ↓
+Configure responsiveness (width="stretch")
+    ↓
+Disable scroll zoom, keep modebar
+    ↓
+Call st.plotly_chart with config
+    ↓
+Streamlit renders chart with Plotly.js
+    ↓
+CSS overrides from plotly_theme.css apply
+```
+
+## Integration Points with Existing Architecture
+
+### 1. CSS Injection into streamlit_app.py
+
+**Current:**
+```python
+# streamlit_app.py (lines 19-23)
+st.set_page_config(
+    page_title="PROJETUS Dashboard",
+    page_icon="📊",
+    layout="wide",
+)
+```
+
+**Enhanced:**
+```python
+st.set_page_config(
+    page_title="PROJETUS Dashboard",
+    page_icon="📊",
+    layout="wide",
+)
+
+# Load premium theme CSS
+from components.ui.theme import load_theme_css
+load_theme_css()  # Loads all CSS files from assets/css/
+```
+
+### 2. Enhance Existing Metric Cards (components/metrics.py)
+
+**Current:** Plain st.metric calls
+**Enhanced:** Wrap in glassmorphic_card component
+
+```python
+# Before (components/metrics.py)
+def render_metric_cards(counts: dict, freshness: dict) -> None:
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric(label="Programas", value=f"{counts.get('programas', 0):,}")
+    # ... more metrics
+
+# After (with glassmorphic wrapper)
+from components.ui.cards import glassmorphic_card
+
+def render_metric_cards(counts: dict, freshness: dict) -> None:
+    def metrics_content():
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric(label="Programas", value=f"{counts.get('programas', 0):,}")
+        # ... more metrics
+
+    glassmorphic_card(metrics_content, key="home_metrics")
+```
+
+### 3. Add Global Search to Sidebar (streamlit_app.py)
+
+**Current:** No global search
+**Enhanced:** Add before navigation
+
+```python
+# After CSS loading, before st.navigation
+from components.ui.search import render_global_search
+search_term = render_global_search()
+
+# Navigation continues as normal
+pages = [
+    st.Page(home_page, title="Home", icon="🏠"),
+    # ... existing pages
+    st.Page(lead_profile_page, title="Perfil Lead", icon="👤"),  # NEW
+]
+pg = st.navigation(pages)
+pg.run()
+```
+
+### 4. Enhance Charts in Existing Pages
+
+**Current:** Direct Plotly/native chart usage
+**Enhanced:** Use themed wrapper
+
+```python
+# Example: qualificacao_new.py adding a chart
+from components.charts.plotly import render_themed_chart
+import plotly.express as px
+
+# After lead selection
+if selected_lead_idx is not None:
+    # ... existing lead details
+
+    # NEW: Add trend chart
+    st.subheader("Tendência de Propostas")
+    proposals_df = get_proponente_propostas_timeline(selected_cnpj)
+    fig = px.line(
+        proposals_df,
+        x='mes',
+        y='valor_total',
+        title='Valor de Propostas por Mês'
+    )
+    render_themed_chart(fig, height=300, key="proposals_trend")
+```
+
+### 5. Page-Level Search Integration
+
+**Current:** Local search via st.text_input
+**Enhanced:** Combine global + local search
+
+```python
+# pages/qualificacao_new.py
+# Access global search from session state
+global_search = st.session_state.get("global_search", "")
+
+# Local search in sidebar (more specific)
+local_search = st.sidebar.text_input(
+    "Buscar nesta página",
+    placeholder="Nome ou CNPJ...",
+    key="qualif_local_search",
+)
+
+# Combine searches (OR logic)
+search_term = local_search or global_search
+
+# Apply to dataframe filter
+if search_term:
+    filters["search"] = search_term
 ```
 
 ## Scaling Considerations
 
 | Scale | Architecture Adjustments |
 |-------|--------------------------|
-| **0-100 proposals/day** | Monolith is fine. Single process with cron. Everything in one Node.js app. |
-| **100-1,000 proposals/day** | Separate crawler from transformer. Run parser/transformer in parallel threads. Add connection pooling. |
-| **1,000+ proposals/day** | Microservices. Crawler → message queue → multiple parser workers. Dedicated database read replicas. |
+| 1-10 concurrent users (current) | Current architecture sufficient. CSS loaded once per session. st.cache_data (10-30 min TTL) handles query caching. No special optimizations needed. |
+| 10-50 concurrent users | Monitor cache hit rates. Consider reducing TTL if data staleness becomes issue. Glassmorphic effects perform well (CSS only). Plotly charts may need sampling for large datasets (>10k points). |
+| 50-100+ concurrent users | Increase cache TTL to reduce DB load. Implement server-side pagination for large tables (currently loading 5000 records). Consider CDN for CSS assets if network becomes bottleneck. Plotly WebGL traces for large datasets. |
 
-### Scaling Priorities for Transfer Gov (11 proposals/day)
+### Scaling Priorities
 
-**Your scale: ~11 proposals/day = tiny. Don't over-engineer.**
+1. **First bottleneck: Database query load**
+   - **Symptom:** Slow page loads, high DB CPU
+   - **Fix:** Increase st.cache_data TTL to 30-60 min, optimize SQL queries with indexes, implement query result pagination
 
-1. **First bottleneck (unlikely):** Database writes. Solution: Use upserts, batch inserts, connection pooling.
-2. **Second bottleneck (very unlikely):** Crawler blocked by anti-bot. Solution: Rotate user agents, add random delays, use residential proxies.
+2. **Second bottleneck: Large dataframe rendering**
+   - **Symptom:** Browser slowdown, high memory usage
+   - **Fix:** Implement server-side pagination (100-500 rows per page), use st.data_editor with on_select for interactivity, sample large datasets for charts
 
-**Recommendation:** Start with monolith. All components in one Node.js process. Cron triggers main orchestrator function. Only split into microservices if you add more data sources or need independent scaling.
+3. **Third bottleneck: CSS rendering performance**
+   - **Symptom:** Slow initial page load, laggy animations
+   - **Fix:** Minimize CSS file size, reduce backdrop-filter complexity, disable glassmorphic effects on low-end devices
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Parse and Discard Raw Files
+### Anti-Pattern 1: Inline CSS in Every Page
 
-**What people do:** Download → parse → save to DB → delete raw file immediately.
-
-**Why it's wrong:**
-- Website changes layout → parser breaks → can't reprocess historical data
-- Parser bug discovered → need to re-download (expensive, suspicious)
-- Compliance/audit requires proof of original data
-
-**Do this instead:**
-- Keep raw files for at least 7-30 days
-- Store in temp/ with cleanup cron
-- For compliance: permanent S3/object storage
-
-### Anti-Pattern 2: Synchronous Pipeline (No Checkpoints)
-
-**What people do:** `crawl() -> parse() -> transform() -> load()` in one try-catch. Failure at any step restarts everything.
+**What people do:** Copy-paste CSS strings into every page file with st.markdown
 
 **Why it's wrong:**
-- Network hiccup during load → re-download everything
-- Database deadlock → re-crawl (unnecessary load on source)
-- Wastes time and resources
+- Unmaintainable (changes require editing multiple files)
+- Increases page load time (CSS injected on every page render)
+- Inconsistent styling across pages
+- Version control nightmare (diffs show CSS noise)
 
-**Do this instead:**
-- Save state after each stage
-- Resume from last successful checkpoint
-- Example: If load fails, just re-run load with existing parsed data
+**Do this instead:** Load CSS once at app entry point (streamlit_app.py) from external files (assets/css/). CSS applies globally, pages stay clean.
 
-### Anti-Pattern 3: INSERT Without Deduplication
+### Anti-Pattern 2: Using st.components.v2 for Simple Styling
 
-**What people do:**
-```typescript
-for (const item of items) {
-  await db.query('INSERT INTO table VALUES (?)', [item]);
-}
-```
+**What people do:** Create custom components with HTML/CSS/JS for simple card styling
 
 **Why it's wrong:**
-- Re-running creates duplicates
-- Hard to clean up
-- Data quality degrades over time
+- Overkill for pure CSS effects (no JS needed for glassmorphic cards)
+- Adds complexity (component registration, mounting, cleanup)
+- Slower rendering (shadow DOM overhead)
+- Breaks Streamlit's reactive model (requires manual state sync)
 
-**Do this instead:**
-- Use UPSERT with unique constraints
-- Add content hashing for true duplicates
-- Implement database-level uniqueness
+**Do this instead:** Use CSS injection for styling, st.container for layout. Only use st.components.v2 when you need custom JavaScript interactions (e.g., D3.js charts, custom animations).
 
-### Anti-Pattern 4: Silent Failures
+### Anti-Pattern 3: Storing Large DataFrames in Session State
 
-**What people do:** Catch errors but don't alert. Check logs days later and discover pipeline has been broken.
+**What people do:** Put entire dataframes in st.session_state for cross-page access
 
 **Why it's wrong:**
-- Data becomes stale
-- Stakeholders make decisions on old data
-- Hard to debug after the fact
+- Memory bloat (session state persists until session ends)
+- Serialization overhead (Streamlit pickles session state on every rerun)
+- Stale data (no automatic refresh when DB updates)
+- Breaks caching (st.cache_data more efficient)
 
-**Do this instead:**
-- Alert on every failure (Telegram, email, PagerDuty)
-- Include job ID, stage, error message in alert
-- Set up success notifications too (daily "pipeline healthy" message)
+**Do this instead:** Use st.cache_data for queries (cached, auto-refreshed on TTL). Store only IDs/filters in session state (e.g., selected_lead_cnpj, not entire lead dataframe).
 
-### Anti-Pattern 5: Hardcoded Configuration
+### Anti-Pattern 4: Global Search with Unfiltered Queries
 
-**What people do:**
-```typescript
-const DB_HOST = 'localhost';
-const LOGIN_URL = 'https://transferegov.com.br/login';
-```
+**What people do:** Query all data, then filter in Python based on search term
 
 **Why it's wrong:**
-- Can't deploy to different environments
-- Secrets leak into git
-- Hard to test with different configurations
+- Loads unnecessary data from database
+- Slow filtering for large datasets (>10k rows)
+- Wastes memory (entire dataset in memory)
+- Poor UX (slow search response)
 
-**Do this instead:**
-- Environment variables for all config
-- Separate .env files for dev/staging/prod
-- Use secrets management (AWS Secrets Manager, Railway env vars)
+**Do this instead:** Pass search term to SQL query as WHERE clause. Let database handle filtering (indexed, optimized). Return only matching rows.
 
-## Integration Points
+Example:
+```python
+# BAD
+@st.cache_data
+def get_all_leads():
+    return pd.read_sql("SELECT * FROM leads", conn)
 
-### External Services
+leads = get_all_leads()
+if search_term:
+    leads = leads[leads['nome'].str.contains(search_term)]  # Slow!
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Transfer Gov Website | Playwright browser automation | Login → navigate → download. Handle session timeout. |
-| PostgreSQL | Connection pool via `pg` | Use transactions for atomicity. Connection limit: 20 |
-| Telegram Bot API | HTTP POST with retries | For alerts. Batch notifications to avoid rate limits. |
-| Railway/Oracle Cloud | Environment variables | Deploy as Docker container. Set DATABASE_URL, TELEGRAM_TOKEN. |
+# GOOD
+@st.cache_data
+def get_leads(search: str = ""):
+    query = "SELECT * FROM leads WHERE nome ILIKE %s"
+    return pd.read_sql(query, conn, params=(f"%{search}%",))
 
-### Internal Boundaries
-
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| Orchestrator ↔ Crawler | Function call | Pass job ID, return file paths |
-| Crawler ↔ Parser | Filesystem | Crawler writes to temp/, parser reads |
-| Parser ↔ Transformer | In-memory objects | Pass arrays of typed objects |
-| Transformer ↔ Loader | In-memory objects | Pass validated, linked objects |
-| All ↔ Monitor | Logger interface | Structured logs (JSON), centralized |
-| All ↔ State Manager | Database | Read/write job state via shared table |
-
-## Testing Strategy
-
-### Unit Tests (Fast, Isolated)
-
-**Parser:**
-- Given: Raw Excel file fixture
-- When: parser.parse(file)
-- Then: Returns expected array of objects
-- Mock: Nothing (pure function)
-
-**Transformer:**
-- Given: Array of parsed objects
-- When: transformer.validate(data)
-- Then: Returns only valid records
-- Mock: Nothing (pure function)
-
-**Loader:**
-- Given: Valid objects
-- When: loader.upsert(data)
-- Then: Database has correct records
-- Mock: Database (use in-memory SQLite or testcontainers)
-
-### Integration Tests (Slower, Real Dependencies)
-
-**Crawler + Parser:**
-- Given: Test credentials, staging environment
-- When: Run full crawl + parse
-- Then: Parsed data matches expected schema
-- Mock: Nothing (test against real staging site if available)
-
-**Transformer + Loader:**
-- Given: Sample parsed data
-- When: Run transform + load
-- Then: Database contains correct relationships
-- Mock: Nothing (use test database)
-
-### End-to-End Tests (Slowest, Full Pipeline)
-
-**Full Pipeline:**
-- Given: Scheduled job trigger
-- When: Orchestrator runs all components
-- Then: Database updated, Telegram sent, state marked complete
-- Mock: Use test environment, test Telegram chat
-
-### Suggested Test Coverage
-
-```
-src/
-├── crawler/
-│   ├── auth.test.ts         # Unit: Login logic
-│   ├── navigator.test.ts    # Unit: Page navigation
-│   └── integration.test.ts  # Integration: Full crawl
-├── parser/
-│   ├── excel-parser.test.ts # Unit: Excel → objects
-│   └── csv-parser.test.ts   # Unit: CSV → objects
-├── transformer/
-│   ├── validator.test.ts    # Unit: Validation rules
-│   ├── linker.test.ts       # Unit: Relationship logic
-│   └── deduplicator.test.ts # Unit: Hash generation
-├── loader/
-│   ├── upsert.test.ts       # Integration: DB writes
-│   └── transaction.test.ts  # Integration: Atomic ops
-└── orchestrator/
-    ├── pipeline.test.ts     # Integration: Stage coordination
-    └── e2e.test.ts          # E2E: Full job execution
+leads = get_leads(search_term)  # Fast, database-filtered
 ```
 
-## Suggested Build Order
+### Anti-Pattern 5: Mixing Plotly Themes Inconsistently
 
-### Phase 1: Foundation (Must build first)
+**What people do:** Set theme="streamlit" on some charts, theme=None on others, custom colors everywhere
 
-1. **Project setup** - TypeScript, dependencies, folder structure
-2. **Database schema** - Tables, relationships, indices
-3. **Configuration** - Environment variables, secrets management
-4. **Logger** - Structured logging to file/console
+**Why it's wrong:**
+- Inconsistent appearance (some charts dark, some light)
+- Breaks visual hierarchy
+- Confusing to users (looks like multiple dashboards)
+- Hard to maintain (every chart needs custom config)
 
-**Why first:** Everything depends on these. Can't test without DB schema. Can't debug without logging.
+**Do this instead:** Centralize theme in render_themed_chart wrapper. All charts get consistent dark theme, transparent backgrounds, fonts. Override only when needed via params.
 
-### Phase 2: Core Pipeline (Build in order, test each)
+## Build Order and Dependencies
 
-5. **Crawler** - Login, navigate, download files
-   - Depends on: Config
-   - Test: Can download files to temp/
-6. **Parser** - Excel/CSV → typed objects
-   - Depends on: Nothing (pure functions)
-   - Test: Sample files → correct objects
-7. **Transformer** - Validate, link, dedupe
-   - Depends on: Parser (for types)
-   - Test: Sample objects → validated output
-8. **Loader** - Upsert to database
-   - Depends on: Database schema
-   - Test: Objects → DB records
+### Phase 1: Foundation (CSS + Theme Components)
+**Goal:** Establish theme infrastructure without breaking existing functionality
 
-**Why this order:** Data flows crawler → parser → transformer → loader. Each depends on the previous component's output format.
+1. **Create directory structure**
+   - mkdir -p src/dashboard/assets/css
+   - mkdir -p src/dashboard/components/ui
+   - mkdir -p src/dashboard/components/charts
 
-### Phase 3: Orchestration (Ties components together)
+2. **Create CSS files**
+   - assets/css/theme_dark.css (dark theme base)
+   - assets/css/glassmorphic_cards.css (card component styles)
+   - assets/css/plotly_theme.css (chart overrides)
 
-9. **State Manager** - Track job progress
-   - Depends on: Database
-   - Test: Save/load state
-10. **Orchestrator** - Run pipeline with checkpoints
-    - Depends on: All core components, state manager
-    - Test: Full pipeline execution
+3. **Create theme loader utility**
+   - components/ui/theme.py (load_theme_css function)
 
-**Why now:** Can't orchestrate until individual components work. State management enables error recovery.
+4. **Integrate CSS loading**
+   - Modify streamlit_app.py to load CSS after st.set_page_config
 
-### Phase 4: Observability (Production readiness)
+**Dependencies:** None (standalone)
+**Risk:** Low (CSS is additive, doesn't break existing functionality)
+**Testing:** Visual inspection, check CSS applies to all pages
 
-11. **Monitor** - Metrics, success rates
-    - Depends on: Logger
-    - Test: Metrics are recorded
-12. **Alerter** - Telegram notifications
-    - Depends on: Config (Telegram token)
-    - Test: Alert sent on failure
+### Phase 2: UI Component Wrappers
+**Goal:** Create reusable components for glassmorphic cards and themed charts
 
-**Why last:** Components work without monitoring. Add observability before deploying to production.
+1. **Create glassmorphic card component**
+   - components/ui/cards.py (glassmorphic_card function)
 
-### Phase 5: Deployment (Production launch)
+2. **Create Plotly chart wrapper**
+   - components/charts/plotly.py (render_themed_chart function)
 
-13. **Scheduler** - Cron job trigger
-    - Depends on: Orchestrator
-    - Test: Job runs at 9am
-14. **Docker** - Containerization
-    - Depends on: Everything
-    - Test: Container runs pipeline
-15. **Deploy** - Railway/Oracle setup
-    - Depends on: Docker
-    - Test: Production job completes
+3. **Test components in isolation**
+   - Create test page with sample cards and charts
+   - Verify glassmorphic effects, chart theming
 
-**Why last:** Can test everything locally before deploying. Deployment is just packaging.
+**Dependencies:** Phase 1 (CSS must be loaded)
+**Risk:** Low (components are wrappers, don't change data flow)
+**Testing:** Visual inspection, test on multiple screen sizes
 
-### Parallel Tracks (Can build simultaneously)
+### Phase 3: Enhance Existing Pages
+**Goal:** Apply premium UI to existing pages incrementally
 
-- **Parser** and **Database schema** can be built in parallel (different people)
-- **Monitor** and **Alerter** can be built in parallel
-- **Unit tests** alongside each component
+1. **Enhance home page**
+   - Wrap metric cards in glassmorphic_card
+   - Add trend chart with render_themed_chart
 
-### Minimal Viable Pipeline (MVP)
+2. **Enhance qualification page**
+   - Wrap KPI metrics in glassmorphic_card
+   - Add lead selection chart
 
-If you need something working ASAP, build this subset first:
+3. **Enhance entity pages (propostas, programas, apoiadores, emendas)**
+   - Wrap content sections in glassmorphic_card
+   - Add relevant charts (distribution, trends)
 
-1. Crawler (no auth recovery, just basic login)
-2. Parser (basic parsing, no error handling)
-3. Loader (basic INSERT, no upserts)
-4. Orchestrator (run all 3, no checkpoints)
-5. Scheduler (simple cron)
+**Dependencies:** Phase 2 (components must exist)
+**Risk:** Medium (modifying existing pages, potential regressions)
+**Testing:** Full regression testing, verify existing functionality
 
-Then iterate to add:
-- Error handling & checkpoints
-- Deduplication & validation
-- Monitoring & alerts
+### Phase 4: Global Search
+**Goal:** Add cross-page search functionality
 
-## Component Interface Contracts
+1. **Create search component**
+   - components/ui/search.py (render_global_search function)
 
-### Crawler → Parser
+2. **Integrate into streamlit_app.py**
+   - Add search widget before navigation
 
-**Output:** List of file paths
-```typescript
-interface CrawlResult {
-  jobId: string;
-  files: {
-    propostas: string;    // Path: temp/raw/{jobId}/propostas.xlsx
-    apoiadores: string;   // Path: temp/raw/{jobId}/apoiadores.csv
-    emendas: string;
-    programas: string;
-  };
-  downloadedAt: Date;
-}
-```
+3. **Update query functions to accept search parameter**
+   - Modify queries/qualificacao.py, queries/entities.py
 
-### Parser → Transformer
+4. **Update pages to use global search**
+   - Read search term from session state
+   - Pass to query functions
 
-**Output:** Typed objects
-```typescript
-interface ParseResult {
-  propostas: Proposta[];
-  apoiadores: Apoiador[];
-  emendas: Emenda[];
-  programas: Programa[];
-}
+**Dependencies:** Phase 1 (CSS for search styling)
+**Risk:** Medium (requires session state management, query changes)
+**Testing:** Test search across all pages, verify persistence
 
-interface Proposta {
-  id_externo: string;     // From source system
-  titulo: string;
-  valor: number;
-  parlamentar: string;
-  data_apresentacao: Date;
-}
-```
+### Phase 5: Lead Profile Page
+**Goal:** Create dedicated lead detail page with charts and full data
 
-### Transformer → Loader
+1. **Create lead profile page**
+   - pages/lead_profile.py (render_lead_profile function)
 
-**Output:** Validated, linked objects
-```typescript
-interface TransformResult {
-  propostas: ValidatedProposta[];    // Has content_hash
-  apoiadores: ValidatedApoiador[];
-  relationships: PropostaApoiador[]; // Junction table records
-  stats: {
-    duplicatesRemoved: number;
-    invalidRecordsSkipped: number;
-  };
-}
-```
+2. **Add to navigation**
+   - Update streamlit_app.py to include lead profile page
 
-### All Components → Monitor
+3. **Add navigation from qualification page**
+   - Button to switch to lead profile with selected CNPJ
 
-**Output:** Structured log events
-```typescript
-interface LogEvent {
-  timestamp: Date;
-  level: 'info' | 'warn' | 'error';
-  component: string;      // 'crawler' | 'parser' | 'transformer' | 'loader'
-  jobId: string;
-  message: string;
-  metadata?: Record<string, any>;
-}
-```
+4. **Implement profile charts**
+   - Proposals timeline, emenda distribution, value trends
 
-## Deployment Model Recommendations
-
-### For Transfer Gov (Low Volume, Daily Job)
-
-**Recommended: Single Container on Railway/Oracle Free Tier**
-
-```
-One Node.js process:
-- Runs cron internally (node-cron)
-- Executes all components sequentially
-- Connects to managed PostgreSQL
-- Sends Telegram alerts
-- Lightweight: ~512MB RAM, 0.5 vCPU sufficient
-```
-
-**Why:**
-- Simple: One deploy, one log stream, one process to monitor
-- Cheap: Fits in free tier
-- Sufficient: 11 proposals/day doesn't need distribution
-- Easy to debug: Everything in one place
-
-### When to Upgrade Architecture
-
-**Multi-Container (Docker Compose)** - When:
-- Adding more data sources (need parallel scraping)
-- Different schedules for different sources
-- Want to scale components independently
-
-**Serverless (AWS Lambda/Cloud Functions)** - When:
-- Very intermittent (not daily)
-- Need automatic scaling (traffic spikes)
-- Want zero cost when idle
-
-**Microservices (Kubernetes)** - When:
-- 1000+ proposals/day
-- Multiple teams working on different components
-- Need independent deployment of services
-
-**Your case: Stick with single container.** Don't over-engineer for scale you won't hit.
+**Dependencies:** Phase 2 (cards, charts), Phase 3 (qualification page integration)
+**Risk:** Low (new page, doesn't affect existing pages)
+**Testing:** Test navigation, chart rendering, back button
 
 ## Sources
 
-**ETL Architecture & Patterns:**
-- [ETL Frameworks in 2026 for Future-Proof Data Pipelines | Integrate.io](https://www.integrate.io/blog/etl-frameworks-in-2025-designing-robust-future-proof-data-pipelines/)
-- [Building an ETL Pipeline for Web Scraping Using Python - DEV Community](https://dev.to/techwithqasim/building-an-etl-pipeline-for-web-scraping-using-python-2381)
-- [ETL Architecture and Design: Essential Steps and Patterns for Modern Data Pipelines | Matillion](https://www.matillion.com/blog/etl-architecture-design-patterns-modern-data-pipelines)
-- [Data pipeline architecture—Principles, patterns, and key considerations | Redpanda](https://www.redpanda.com/guides/fundamentals-of-data-engineering-data-pipeline-architecture)
+**HIGH Confidence (Official Documentation):**
+- [Streamlit Theming - Official Docs](https://docs.streamlit.io/develop/concepts/configuration/theming)
+- [st.plotly_chart API Reference](https://docs.streamlit.io/develop/api-reference/charts/st.plotly_chart)
+- [st.components.v2.component API Reference](https://docs.streamlit.io/develop/api-reference/custom-components/st.components.v2.component)
+- [Streamlit Session State](https://docs.streamlit.io/develop/concepts/architecture/session-state)
+- [Streamlit Multi-page Apps](https://docs.streamlit.io/develop/concepts/multipage-apps/page-and-navigation)
 
-**Web Scraping Infrastructure:**
-- [State of Web Scraping 2026: Trends, Challenges & What's Next | Browserless](https://www.browserless.io/blog/state-of-web-scraping-2026)
-- [Web Scraping Infrastructure That Doesn't Break Under Pressure | GroupBWT](https://groupbwt.com/blog/infrastructure-of-web-scraping/)
-- [Web Scraping in Data Science: Architecture & ML Pipelines | GroupBWT](https://groupbwt.com/blog/web-scraping-in-data-science/)
-- [Architecture overview — Scrapy 2.14.1 documentation](https://docs.scrapy.org/en/latest/topics/architecture.html)
+**MEDIUM Confidence (Verified Community Resources):**
+- [Microsoft Streamlit UI Template - GitHub](https://github.com/microsoft/Streamlit_UI_Template)
+- [How to Customize CSS in Streamlit - Medium](https://medium.com/pythoneers/how-to-customize-css-in-streamlit-a-step-by-step-guide-761375318e05)
+- [Streamlit Search Filtering and Pagination Widget - Streamlit Blog](https://medium.com/streamlit/streamlit-search-filtering-and-pagination-widget-64d390180a96)
+- [Best Practices for Streamlit Development - Medium](https://medium.com/@jashuamrita360/best-practices-for-streamlit-development-structuring-code-and-managing-session-state-0bdcfb91a745)
+- [How to Structure and Organise a Streamlit App - Towards Data Science](https://towardsdatascience.com/how-to-structure-and-organise-a-streamlit-app-e66b65ece369/)
 
-**Error Handling & Monitoring:**
-- [ETL Error Handling and Monitoring Metrics — 25 Statistics Every Data Leader Should Know in 2026 | Integrate.io](https://www.integrate.io/blog/etl-error-handling-and-monitoring-metrics/)
-- [Building a Production Ready Observability Stack: The Complete 2026 Guide | Medium](https://medium.com/@krishnafattepurkar/building-a-production-ready-observability-stack-the-complete-2026-guide-9ec6e7e06da2)
-- [How to Implement ETL Pipeline Design | OneUptime](https://oneuptime.com/blog/post/2026-01-30-etl-pipeline-design/view)
-
-**State Management & Idempotency:**
-- [Understanding Idempotency: A Key to Reliable and Scalable Data Pipelines | Airbyte](https://airbyte.com/data-engineering-resources/idempotency-in-data-pipelines)
-- [How to make your data pipeline idempotent | Medium](https://medium.com/@iamanjlikaur/ensuring-idempotency-in-data-ingestion-pipelines-33301cf917fb)
-- [Data Deduplication and Canonicalization in Scraped Knowledge Graphs | ScrapingAnt](https://scrapingant.com/blog/data-deduplication-and-canonicalization-in-scraped)
-- [How to Store and Manage Scraped Data Efficiently | Round Proxies](https://roundproxies.com/blog/store-scraped-data/)
-
-**Playwright & Browser Automation:**
-- [Building a Production-Grade Scraper with Playwright, Chromium, Kubernetes, and AWS - DEV Community](https://dev.to/nirberko/building-a-production-grade-scraper-with-playwright-chromium-kubernetes-and-aws-lo9)
-- [Web Scraping with Playwright [2026] | BrowserStack](https://www.browserstack.com/guide/playwright-web-scraping)
-
-**Testing Strategies:**
-- [ETL Testing Fundamentals | Integrate.io](https://www.integrate.io/blog/etl-testing-fundamentals/)
-- [The Basics of ETL Testing | Matillion](https://www.matillion.com/blog/what-are-the-basics-of-etl-testing)
-- [Testing Data Pipelines: Everything You Need to Know in 2024 | Atlan](https://atlan.com/testing-data-pipelines/)
-
-**Component Separation:**
-- [Best Web Scraping Tools in 2026 | Scrapfly](https://scrapfly.io/blog/posts/best-web-scraping-tools-in-2026)
-- [Why Most Enterprise Data Pipelines Break and How to Fix It | Forage AI](https://forage.ai/blog/enterprise-data-extraction-pipelines-break-and-how-to-fix-it/)
-
-**Deployment Architecture:**
-- [Monolithic vs Microservices vs Serverless Architecture | Zignuts](https://www.zignuts.com/blog/monolithic-vs-microservices-vs-serverless-architecture)
-- [Monoliths vs Microservices vs Serverless | Harness](https://www.harness.io/blog/monoliths-vs-microservices-vs-serverless)
+**MEDIUM Confidence (Glassmorphism Design Resources):**
+- [Dark Glassmorphism UI Trend 2026 - Medium](https://medium.com/@developer_89726/dark-glassmorphism-the-aesthetic-that-will-define-ui-in-2026-93aa4153088f)
+- [64 CSS Glassmorphism Examples](https://freefrontend.com/css-glassmorphism/)
+- [Glassmorphic Card Dashboard Grid - UISnips](https://uisnips.com/@prajwal/glassmorphic-card-dashboard-grid-with-hover-effects)
 
 ---
-*Architecture research for: Transfer Gov Web Scraping/ETL System*
-*Researched: 2026-02-04*
-*Confidence: HIGH - Based on current 2026 production practices, official documentation, and verified sources*
+*Architecture research for: Streamlit Premium UI Integration*
+*Researched: 2026-02-09*
+*Confidence: HIGH (official docs + verified community patterns + existing codebase analysis)*

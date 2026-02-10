@@ -1,313 +1,282 @@
 # Project Research Summary
 
-**Project:** PROJETUS — Transfer Gov Automation
-**Domain:** Web Scraping / ETL Automation for Government Data
-**Researched:** 2026-02-04
+**Project:** PROJETUS Premium Dashboard UI/UX Redesign
+**Domain:** Streamlit Dashboard Enhancement - Sales Analytics
+**Researched:** 2026-02-09
 **Confidence:** HIGH
 
 ## Executive Summary
 
-PROJETUS is a daily ETL pipeline that scrapes Brazilian government data from the Transfer Gov portal, processes 4 Excel/CSV files with complex relationships, and loads them into PostgreSQL for SQL exploration. The research reveals this is a classic production web scraping problem with well-established patterns: authenticated browser automation (Playwright), robust data processing (Polars), and reliable database persistence (PostgreSQL + SQLAlchemy). The recommended stack is modern Python 3.11+ with battle-tested libraries optimized for ETL workloads.
+The PROJETUS dashboard redesign transforms an existing functional Streamlit application into a premium, Sigma-branded sales tool using native Streamlit capabilities enhanced with strategic CSS injection and Plotly visualizations. Research confirms that premium sales dashboards in 2026 require dark themes with glassmorphic aesthetics, interactive data visualizations, and mobile-responsive layouts - all achievable within Streamlit's architectural constraints without custom components or heavy dependencies.
 
-The critical success factor is 100% reliability — "no data loss" is the core value proposition. Research identified 8 critical pitfalls that destroy reliability, with silent data loss from schema changes being the most dangerous (weeks of corrupt data before detection). The architecture must prioritize validation at every stage, implement idempotent operations for safe retries, and alert immediately on failures. The good news: at 11 proposals/day, this is a tiny-scale problem that doesn't need distributed systems, microservices, or complex orchestration — a simple monolithic Python script with proper error handling will suffice.
+The recommended approach leverages Streamlit's mature theming infrastructure (config.toml for foundation, st.html for CSS injection) combined with Plotly for interactive charts. This avoids fighting Streamlit's re-run architecture while achieving visual premium feel. The critical insight: success means embracing what Streamlit does well (data visualization, filtering, drill-down) while using CSS for visual polish, rather than attempting SPA-like features (real-time collaboration, complex animations) that conflict with the framework's reactive model.
 
-The biggest risk is over-engineering. Research shows 4 common anti-patterns: premature microservices, real-time streaming (when source updates daily), complex AI extraction (when government sites are stable), and dashboard-first development (when first use is SQL exploration). The winning strategy is to build a robust foundation with validation, retries, alerting, and deduplication in Phase 1, then add operational improvements (lineage tracking, dry-run mode, configuration management) only after production experience reveals actual pain points.
+Key risks center on maintaining CSS stability across Streamlit updates and avoiding performance degradation from heavy glassmorphic effects. Mitigation: use external CSS files (not inline), target stable Streamlit CSS classes, test visual regression on updates, and keep backdrop-filter complexity minimal for low-end devices. The existing codebase already handles data quality well (schema validation, graceful degradation), so the enhancement layer is purely additive with low technical risk.
 
 ## Key Findings
 
 ### Recommended Stack
 
-Modern Python ETL stack optimized for reliability and speed. All versions verified via web search (not training data). Key insight: Polars is 5-10x faster than Pandas for ETL workloads with 30-60% less memory usage, making it ideal for processing complex Excel relationships. Playwright beats Selenium on every metric: 80x faster setup, direct browser protocol, Microsoft-backed with native async support.
+For premium UI enhancement, the stack additions are minimal and strategic. **Plotly 6.5+** provides interactive charts with native Streamlit integration (st.plotly_chart), customizable color schemes for Sigma branding, and automatic WebGL rendering for performance. **Streamlit 1.54** (already in use) includes all needed capabilities: st.html for non-iframe CSS injection (added 1.38), config.toml theming (enhanced 1.44), and st.plotly_chart integration. **No additional UI frameworks needed** - native Streamlit + CSS accomplishes glassmorphic cards, dark theme, and visual hierarchy without external dependencies.
 
 **Core technologies:**
-- **Python 3.11+**: Industry standard for ETL (51% adoption), mature ecosystem, 10-60% performance improvements over 3.10
-- **Playwright 1.58+**: Browser automation for authenticated scraping, auto-downloads browsers, production-ready with async support
-- **Polars 2.x**: Data processing 5-10x faster than Pandas, 30-60% less memory, perfect for complex CSV/Excel relationships
-- **SQLAlchemy 2.0+**: Industry standard ORM with full ACID guarantees, async-ready, type-hinted, seamless PostgreSQL integration
-- **PostgreSQL 15+**: Rock-solid ACID compliance for zero data loss, free, open-source, excellent Python ecosystem
-- **Pydantic 2.13+**: Rust-core validation (fastest available), type-safe schemas, catches data anomalies before DB insertion
-- **Loguru 0.7+**: Zero-config production logging with automatic JSON output, faster than stdlib logging
-- **Tenacity 8.5+**: Exponential backoff retry logic for network failures, critical for production reliability
-- **APScheduler 3.11+**: Cron-style scheduling with persistent job store, lightweight alternative to Airflow for single daily job
+- **Plotly 6.5+**: Interactive charts with Sigma brand colors - native st.plotly_chart integration, WebGL for performance, theme inheritance from Streamlit config
+- **st.html (built-in)**: Glassmorphic CSS injection - direct DOM injection without iframe, DOMPurify-sanitized, accepts CSS files for clean separation
+- **config.toml (built-in)**: Dark theme foundation - native Streamlit theming, Sigma brand colors (navy #050B1F, neon blue #00D4FF), Google Fonts support
 
-**What NOT to use:**
-- Scrapy (overkill for 4-file download, built for massive crawling)
-- Beautiful Soup (cannot handle JavaScript-rendered content)
-- Pandas (5-10x slower than Polars, 2-3x more memory)
-- Airflow (distributed orchestration overkill for single job/day)
+**Optional enhancement:**
+- **orjson**: Faster Plotly chart serialization for large datasets (1,000+ points) - auto-detected by Plotly, no code changes needed
 
 ### Expected Features
 
-Research synthesized production best practices from 15+ industry sources. Key finding: 11 "table stakes" features are mandatory for "100% reliable daily extraction" — missing any creates data loss risk. The complexity budget is tight: need to simplify 3 features (defer alerting details, simplify auth, basic deduplication first) to stay under 60 complexity points in Phase 1.
+Research identified three feature tiers based on 2026 sales dashboard expectations and Streamlit capabilities.
 
 **Must have (table stakes):**
-- Authentication & Login — required for protected government portal, session-based with auto re-auth
-- Automated File Download — core capability, handle XLS/XLSX/CSV formats with verification
-- Data Parsing & Transformation — Excel/CSV to structured format with column mapping and type conversion
-- PostgreSQL Storage — persist with relationships for SQL exploration, batch inserts for performance
-- Retry Logic with Exponential Backoff — handle 429/500/502/503/504 errors, 3-5 retries with exponential delay
-- Error Logging — structured logs with context (timestamp, error type, source) and appropriate levels
-- Scheduled Execution — daily 9am automation, reliable and timezone-aware
-- Alerting on Failure — email/Slack/Telegram alerts on extraction, parsing, or DB failures with error context
-- Data Validation (Schema) — verify column presence, data types, required fields before DB write
-- Deduplication Logic — prevent duplicate records via unique constraints and upsert patterns (INSERT...ON CONFLICT)
-- Atomic Transactions — all-or-nothing inserts with rollback on error to maintain data integrity
+- **Dark cyberpunk theme** - users expect dark mode in 2026 data dashboards; light themes feel dated
+- **Glassmorphic card design** - creates premium Sigma brand aesthetic with backdrop-filter effects on dark backgrounds
+- **Interactive charts** - visual analytics reduce cognitive load; users understand patterns faster than tables (lead distribution, trends)
+- **Mobile responsive layout** - 60%+ dashboard traffic is mobile in 2026; sales reps check leads on phones
+- **Lead profile dedicated page** - deep-dive into single lead with charts, emendas, propostas, convenios; core sales workflow
+- **Visual ranking indicators** - color-coded badges and progress bars for lead quality; faster qualification decisions
 
-**Should have (after validation, v1.x):**
-- Reconciliation Checks — compare source row counts vs DB inserts, alert on mismatch
-- Data Lineage Tracking — store source file, extraction timestamp, pipeline version per record
-- Configuration Management — externalize column mappings and validation rules to YAML/JSON
-- Dry Run Mode — preview extracted data and validate transformations without affecting production
-- Historical Audit Trail — store run metadata (start/end, records processed, errors) for debugging
+**Should have (competitive):**
+- **Global search** - search across entities from single sidebar input; reduces navigation friction
+- **Comparison view** - side-by-side lead comparison; faster qualification for power users
+- **Subtle animations** - fade-ins for cards create polished feel (CSS only, avoid flicker)
+- **Data freshness visual indicator** - prominent "Updated 2h ago" builds trust
 
 **Defer (v2+):**
-- Data Quality Metrics Dashboard — only valuable after users are actively monitoring (3+ months of baseline)
-- Anomaly Detection — requires historical patterns, only build after scale/complexity demands it
-- Automatic Failure Recovery — checkpoint mechanism is complex, only build if failures become frequent
-- Parallel Processing — 4 files/day is tiny, serial processing is fine unless runtime exceeds 30 minutes
-
-**Anti-features (commonly requested but problematic):**
-- Real-time Streaming — Transfer Gov updates daily, not continuously; streaming adds complexity with no business value
-- Complex UI Dashboard — premature before data model stabilizes; start with structured logs and email alerts
-- Multi-Source Support — YAGNI, only one source now; hard-code for Transfer Gov, refactor when second source appears
-- AI/ML-Powered Extraction — government portal structure is stable; explicit parsers are more reliable and debuggable
+- **Real-time collaboration** - conflicts with Streamlit's stateless architecture; requires custom WebSocket components
+- **Complex animations** - Streamlit re-runs cause flicker/jank; embrace framework's re-run model instead
+- **Drag-and-drop customization** - high maintenance burden; offer predefined layout variants instead
+- **Sub-second autocomplete search** - every keystroke triggers full re-run; use debounced search or Enter-to-search
 
 ### Architecture Approach
 
-Production web scraping/ETL systems in 2026 follow microservices patterns with clear separation between crawling, parsing, transformation, loading, and orchestration. However, at 11 proposals/day (tiny scale), research strongly recommends starting with a monolithic Python service. Only split into microservices if adding more data sources or hitting performance limits (>30 min runtime).
+The architecture adds three non-invasive enhancement layers to existing Streamlit multi-page structure: **CSS injection** (theme + styling loaded once at app start via external files), **component wrappers** (reusable glassmorphic card and themed chart functions), and **state management** (cross-page search via session state). This maintains Streamlit's reactive paradigm while pushing boundaries through targeted HTML/CSS injection.
 
 **Major components:**
-1. **Crawler** — Playwright browser automation for login, navigation, and file download to temp/raw/{jobId}/. Handles session management and implements retry logic. Testable with mock pages.
-2. **Parser** — Pure functions transform Excel/CSV bytes to typed objects (Proposta[], Apoiador[], Emenda[], Programa[]). No I/O, fully unit testable. Uses Polars for 5-10x speed advantage.
-3. **Transformer** — Business logic layer for validation (Pydantic schemas), relationship linking (proposta_id → apoiador_id), deduplication (content hashing), and format normalization. Isolated from I/O.
-4. **Loader** — Database interface with connection pooling, idempotent upserts (ON CONFLICT DO UPDATE), atomic transactions. Can switch databases without touching business logic.
-5. **Orchestrator** — Coordinates components through stages (crawl → parse → transform → load) with checkpoint-based resumption. Handles retries and cross-cutting concerns. Triggered by APScheduler at 9am daily.
-6. **Monitor** — Structured logging (Loguru) and alerting (Telegram). All components emit JSON logs with context. Success/failure notifications.
+1. **Theme Layer (assets/css/)** - External CSS files for dark theme, glassmorphic cards, Plotly overrides; loaded once at streamlit_app.py entry point via st.html
+2. **Component Wrappers (components/ui/, components/charts/)** - Reusable functions: glassmorphic_card() wraps content, render_themed_chart() applies consistent Plotly styling
+3. **Enhanced Pages** - Existing pages (home, qualificacao, propostas, etc.) wrapped with glassmorphic cards, augmented with Plotly charts; NEW lead_profile.py for drill-down
+4. **Global Search Widget** - Sidebar search with st.session_state persistence; filters applied at query level (SQL WHERE clause) for performance
 
-**Key architectural patterns:**
-- **Store-Then-Transform**: Save raw downloaded files before parsing, keep for 7-30 days for reprocessing when parser changes
-- **Checkpoint-Based Resumption**: Track progress at each stage, resume from last successful checkpoint on failure
-- **Idempotent Loads**: Use upserts with unique keys so running same load multiple times produces same result
-- **Content Hash Deduplication**: Generate hash of content (not just ID) to detect true duplicates even with different identifiers
-
-**Anti-patterns to avoid:**
-- Parse and discard raw files (can't reprocess when parser breaks or site structure changes)
-- Synchronous pipeline without checkpoints (network hiccup forces re-download of everything)
-- INSERT without deduplication (re-running creates duplicates, hard to clean up)
-- Silent failures (discover pipeline broken days later when users complain)
-- Hardcoded configuration (can't deploy to different environments, secrets leak into git)
+**Integration with existing architecture:**
+- CSS loads after st.set_page_config in streamlit_app.py (no changes to page routing)
+- Metric cards wrapped with glassmorphic_card() (existing st.metric calls unchanged)
+- Charts added to pages using render_themed_chart() (new visualizations, not replacements)
+- Search integrated before st.navigation (query functions updated to accept search parameter)
 
 ### Critical Pitfalls
 
-Research identified 8 critical pitfalls from production systems, with 68% of ETL failures taking 4+ hours just to detect and 15-hour average resolution time. Top priority: prevent silent data loss and ensure immediate failure detection. All critical pitfalls must be addressed in Foundation (Phase 1) — retrofitting is expensive and error-prone.
+Research identified pitfalls from both web scraping/ETL domain (existing codebase handles well) and Streamlit UI domain (new risks for this redesign). Focus on Streamlit-specific pitfalls since data quality is already validated.
 
-1. **Silent Data Loss from Schema Changes** — Source system changes column name, pipeline continues without errors but maps wrong fields or defaults to NULL. Users discover weeks later. Prevention: pre-ingestion schema validation that fails loudly, schema fingerprinting with alerts on changes, row-level validation (critical fields NULL = fail batch), data quality checks (row counts, sum of values vs historical patterns).
+1. **CSS Brittleness Across Streamlit Updates** - Streamlit changes CSS class names in updates, breaking custom selectors. **Avoid:** Use minimal, stable CSS selectors (e.g., [data-testid="stMetric"] not .css-abc123), test visual regression on Streamlit updates, maintain fallback styles for core elements, document selector dependencies per Streamlit version.
 
-2. **No Alerting = Hours of Undetected Failures** — Scraper breaks (CAPTCHA added, network timeout, server error), pipeline exits with code 0 showing "success" with zero rows extracted. Users complain days later. Prevention: separate process success from data success (return exit 1 if rows = 0), multi-channel alerting (Slack/email/SMS), heartbeat monitoring, monitoring dashboard (last successful run, rows extracted, data quality scores).
+2. **Performance Degradation from Glassmorphic Effects** - Backdrop-filter on many elements causes browser lag, especially mobile. **Avoid:** Limit glassmorphic cards to 5-10 per page maximum, simplify blur radius (10-12px not 30px+), disable effects on low-end devices via CSS media queries, test on mobile browsers before deployment.
 
-3. **Website Structure Changes Break Everything** — Government site redesigns layout, changes CSS classes, moves DOM elements. Hardcoded selectors return nothing. Prevention: resilient selector strategies (multiple fallbacks: class → XPath → text-based), semantic selectors (find by label text not class name), structural validation after extraction, change detection (hash page structure, alert on deviation), version selectors for rollback.
+3. **Fighting Streamlit's Re-run Architecture** - Attempting SPA-like features (complex animations, real-time updates) creates janky UX due to full page re-renders. **Avoid:** Embrace Streamlit's reactive model, use CSS-only animations (fade-in on static elements), skip features requiring incremental DOM updates, optimize for speed over flash (sub-second re-run > smooth animation).
 
-4. **Duplicate Data from Non-Idempotent Processes** — Pipeline runs twice (manual re-run, cron misconfiguration, retry after failure), inserts duplicate records. Database grows with redundant data, analytics count same transaction multiple times. Prevention: use upsert operations (ON CONFLICT DO UPDATE), define natural/business keys as unique constraints, implement idempotency keys per batch, track processed batches in database.
+4. **Session State Memory Bloat** - Storing large DataFrames in st.session_state for cross-page access causes memory issues. **Avoid:** Use st.cache_data for queries (cached, auto-refreshed on TTL), store only IDs/filters in session state (e.g., selected_lead_cnpj not entire DataFrame), let database handle filtering via WHERE clause not Python filtering.
 
-5. **Encoding Hell from Excel/CSV Files** — Government provides files with UTF-8 data but parser assumes ISO-8859-1. Portuguese characters (ç, ã, õ, á) become garbage (Ã§, Ã£). Prevention: always explicitly specify encoding (utf-8), implement encoding detection (chardet library), add fallback chain (UTF-8 → UTF-8-sig → ISO-8859-1 → Windows-1252), validate after parsing for replacement characters (�), store raw files before parsing.
-
-6. **Credentials in Code or Config Files** — Developer hardcodes database password in config.py or .env, commits to Git. Credentials leak publicly or security breach exposes client data. Prevention: use managed secret stores (AWS Secrets Manager, Railway env vars), never commit secrets to Git (.env in .gitignore immediately), rotate credentials automatically (30-90 days), implement least-privilege access, add pre-commit hooks (git-secrets, detect-secrets).
-
-7. **Lack of Retry Logic for Transient Failures** — Network hiccup, temporary site downtime, or database timeout causes extraction to fail. Pipeline exits with error, no retry attempted. Overnight run fails, gaps appear in time-series. Prevention: exponential backoff retry (wait 1s, 2s, 4s, 8s, 16s max 5 attempts), distinguish failure types (retry 429/503/timeout, fail immediately on 401/404), circuit breaker pattern (if failure rate >50% over 10 requests, stop attempting), add jitter to prevent thundering herd.
-
-8. **No Data Validation = Garbage In, Garbage Out** — Scraper extracts malformed data (negative prices, future dates, missing required fields). No validation layer catches this. Garbage flows into PostgreSQL, triggers downstream failures or silently corrupts business metrics. Gartner estimates $12.9M/year organizational losses from bad data. Prevention: define strict schemas (Pydantic models), implement business rule validation (price > 0, date <= today), use database constraints (CHECK, NOT NULL, foreign keys), add pre-insert validation layer.
+5. **Inline CSS Maintenance Nightmare** - Copy-pasting CSS strings into every page creates inconsistency and makes updates painful. **Avoid:** Load CSS once at app entry from external files (assets/css/), use reusable component wrappers, never inject CSS per page, version control CSS separately from Python logic.
 
 ## Implications for Roadmap
 
-Based on combined research, I recommend a 3-phase structure with emphasis on getting the foundation absolutely right before adding operational improvements. The research is clear: 100% of critical pitfalls must be addressed in Phase 1, as they are architectural concerns that are expensive to retrofit.
+Based on research, premium UI redesign should follow incremental enhancement strategy with clear separation of concerns. Architecture patterns and pitfalls indicate building from foundation (CSS + theme) to wrappers (components) to integration (enhanced pages) to new features (lead profile, global search).
 
-### Phase 1: Foundation — Reliable Daily Extraction
-**Rationale:** All 11 table stakes features + all 8 critical pitfall preventions must be in place before production. This is not negotiable for "100% reliable daily extraction." Any missing piece creates data loss risk. Research shows 68% of ETL failures take 4+ hours to detect — monitoring is not a "nice to have."
+### Phase 1: Visual Foundation
+**Rationale:** CSS theming is foundational and non-breaking. Establishes premium look-and-feel before functional enhancements. Pure CSS work has immediate visual impact with minimal risk.
 
-**Delivers:** Working end-to-end pipeline that extracts 4 files from Transfer Gov daily at 9am, processes with validation, loads to PostgreSQL with relationships, and alerts on failures. Data flows reliably from source to database with zero data loss guarantee.
+**Delivers:**
+- Dark cyberpunk theme (Sigma navy #050B1F + neon blue #00D4FF)
+- Glassmorphic card component infrastructure
+- CSS loading mechanism at app entry
+- Visual hierarchy refinement (spacing, typography)
 
-**Addresses (from FEATURES.md):**
-- Authentication & Login with session management
-- Automated File Download with retry logic
-- Data Parsing & Transformation (Excel/CSV to typed objects)
-- PostgreSQL Storage with relationships and indices
-- Retry Logic with Exponential Backoff (5 attempts, 1-16s wait)
-- Error Logging (structured JSON with context)
-- Scheduled Execution (APScheduler at 9am daily)
-- Basic Alerting (Telegram on failure — simplified to stay under complexity budget)
-- Data Validation (Pydantic schemas, required fields, type checking)
-- Basic Deduplication (unique constraints on business keys)
-- Atomic Transactions (BEGIN/COMMIT/ROLLBACK)
+**Addresses Features:**
+- Dark cyberpunk theme (table stakes)
+- Glassmorphic card design (table stakes)
+- Visual hierarchy (table stakes)
 
-**Avoids (from PITFALLS.md):**
-- Silent data loss via schema validation that fails loudly on unexpected structure
-- Website structure changes via fallback selectors (CSS → XPath → text-based)
-- Duplicate data via unique constraints on business keys (full upsert in Phase 2)
-- Encoding corruption via explicit UTF-8 specification with chardet fallback
-- Credentials leaking via Railway env vars (or AWS Secrets Manager if Oracle Cloud)
-- Retry-less failures via tenacity with exponential backoff
-- Garbage data via Pydantic validation before DB write
-- Undetected failures via Telegram alerts on extraction/parsing/DB errors
+**Avoids Pitfalls:**
+- Inline CSS maintenance nightmare (external CSS files)
+- Performance degradation (minimal backdrop-filter complexity)
+- CSS brittleness (stable selectors, documented dependencies)
 
-**Uses (from STACK.md):**
-- Python 3.11+ as primary language
-- Playwright 1.58+ for browser automation
-- Polars 2.x for fast Excel/CSV parsing
-- SQLAlchemy 2.0+ for ORM layer
-- PostgreSQL 15+ for relational storage
-- Pydantic 2.13+ for validation
-- Loguru 0.7+ for logging
-- Tenacity 8.5+ for retries
-- APScheduler 3.11+ for scheduling
-- openpyxl 3.1.4+ for Excel parsing
-- psycopg 3.x for PostgreSQL driver
+**Research Flag:** Standard patterns, skip research-phase. Glassmorphism CSS well-documented.
 
-**Implements (from ARCHITECTURE.md):**
-- Crawler component (Playwright auth + download)
-- Parser component (Polars Excel/CSV → typed objects)
-- Transformer component (Pydantic validation + basic deduplication)
-- Loader component (SQLAlchemy upserts + transactions)
-- Orchestrator component (stage coordination, no checkpoints yet)
-- Monitor component (Loguru structured logs + Telegram alerts)
+### Phase 2: Data Visualization Enhancement
+**Rationale:** Charts reduce cognitive load for sales reps. Plotly has native Streamlit integration with free interactive features. Medium complexity but high value for analytics dashboard.
 
-**Complexity simplifications:**
-- Defer advanced alerting (email/Slack) to Phase 2 — start with basic Telegram notifications only
-- Simplify authentication — use Playwright's built-in session persistence, not custom session manager
-- Basic deduplication — PRIMARY KEY constraints, defer full upsert logic (ON CONFLICT) to Phase 2
+**Delivers:**
+- Interactive lead distribution charts (by state, ministry, value tier)
+- Trend visualizations (proposals over time if historical data available)
+- Plotly dark theme configuration matching Sigma brand
+- Themed chart wrapper component (render_themed_chart)
 
-**Estimated duration:** 1-2 weeks (research says 2 days per major component: auth, extraction, parsing, database, orchestration)
+**Uses Stack:**
+- Plotly 6.5+ for charts
+- st.plotly_chart native integration
+- Themed wrapper centralizes configuration
 
-### Phase 2: Polish — Operational Improvements
-**Rationale:** After 1-2 weeks of production experience, real pain points emerge. Research shows this is the right time to add: reconciliation checks (when first data loss incident or audit requirement appears), configuration management (when source structure changes require updating hard-coded logic), data lineage (when users ask "where did this data come from?"). Don't build these speculatively — wait for actual operational need.
+**Implements Architecture:**
+- components/charts/plotly.py wrapper
+- Integration into home, qualificacao pages
 
-**Delivers:** More maintainable and debuggable system. Easier to adapt to source changes. Full confidence in data accuracy via reconciliation. Complete audit trail for compliance.
+**Avoids Pitfalls:**
+- Inconsistent chart theming (centralized wrapper)
+- Performance issues (WebGL for large datasets, sampling if needed)
 
-**Addresses (from FEATURES.md):**
-- Advanced Alerting (email/Slack channels, escalation paths)
-- Reconciliation Checks (source row count vs DB inserts, alert on mismatch)
-- Configuration Management (externalize column mappings to YAML/JSON)
-- Data Lineage Tracking (source_file, extracted_at, pipeline_version metadata columns)
-- Dry Run Mode (preview extractions without affecting production DB)
-- Historical Audit Trail (job_state table: start/end, records processed, errors)
-- Smart Retry Strategy (different behavior for network errors vs rate limits vs auth errors)
-- Full Upsert Logic (ON CONFLICT DO UPDATE moved from Phase 1 simplification)
+**Research Flag:** Standard patterns, skip research-phase. Plotly integration well-documented in Streamlit docs.
 
-**Implements (from ARCHITECTURE.md):**
-- State Manager component (job_state table, checkpoint persistence)
-- Enhanced Orchestrator (checkpoint-based resumption, failure recovery)
-- Reconciliation module (compare expected vs actual row counts)
-- Configuration loader (YAML/JSON parsing, hot reload)
+### Phase 3: Enhanced Navigation & Lead Profile
+**Rationale:** Sales workflow is search > browse > drill-down. Optimizing this flow has direct business impact. Lead profile page leverages all previous components (cards, charts) for deep-dive view.
 
-**Estimated duration:** 1-2 weeks (incremental improvements based on production feedback)
+**Delivers:**
+- Dedicated lead profile page with URL routing (st.query_params)
+- Enhanced search UI in sidebar (visual prominence)
+- Visual ranking indicators (color-coded badges, progress bars)
+- Breadcrumb navigation showing current location
 
-### Phase 3: Scale — Future Enhancements
-**Rationale:** Only build when operational pain justifies complexity investment. Research is clear: DO NOT build these speculatively. Triggers: (1) Data Quality Dashboard when manual SQL queries for metrics become tedious, (2) Anomaly Detection when 3+ months of baseline exists, (3) Automatic Recovery when manual intervention becomes bottleneck, (4) Parallel Processing when runtime exceeds 30 minutes.
+**Addresses Features:**
+- Lead profile dedicated page (table stakes)
+- Visual ranking indicators (table stakes)
+- Enhanced search UI (competitive)
 
-**Delivers:** Advanced monitoring, self-healing capabilities, performance optimization.
+**Implements Architecture:**
+- pages/lead_profile.py (NEW)
+- components/ui/search.py for global search widget
+- Session state for selected lead (CNPJ only, not full data)
 
-**Addresses (from FEATURES.md):**
-- Data Quality Metrics Dashboard (completeness %, freshness, row counts vs baseline)
-- Anomaly Detection (rule-based thresholds, alert on volume drop, schema drift)
-- Automatic Failure Recovery (full checkpoint mechanism, resume from last successful step)
-- Parallel Processing (concurrent file processing, batch inserts in parallel)
-- Version Control Integration (link pipeline runs to code version, rollback capability)
-- Multi-Stage Validation (layered checks: file structure → data types → business rules)
+**Avoids Pitfalls:**
+- Session state memory bloat (store CNPJ ID only)
+- Fighting re-run architecture (use st.switch_page for navigation)
 
-**Trigger conditions:**
-- Dashboard when: Users actively monitoring data, SQL queries for metrics become tedious
-- Anomaly Detection when: 3+ months of historical baseline data exists
-- Auto Recovery when: Manual intervention becomes bottleneck, failures are frequent (>5% of runs)
-- Parallel Processing when: Runtime exceeds 30 minutes (currently 11 proposals/day won't hit this)
+**Research Flag:** Standard patterns, skip research-phase. Multi-page navigation documented.
 
-**Estimated duration:** Only as needed, not pre-scheduled
+### Phase 4: Global Search & Polish
+**Rationale:** Cross-page search improves UX but requires session state + query modifications. Final polish (mobile responsive, animations) completes premium feel without affecting core functionality.
+
+**Delivers:**
+- Global search across entities (leads, emendas, propostas)
+- Mobile responsive layout (CSS media queries)
+- Subtle card fade-in animations (CSS only)
+- Data freshness visual indicator (prominent timestamp)
+- Export UX improvements (better button styling)
+
+**Addresses Features:**
+- Global search (competitive)
+- Mobile responsive layout (table stakes)
+- Subtle animations (competitive)
+- Data freshness indicator (competitive)
+
+**Implements Architecture:**
+- components/ui/search.py integrated into streamlit_app.py
+- Query functions updated to accept search parameter (SQL WHERE clause)
+- CSS media queries for tablet/phone breakpoints
+
+**Avoids Pitfalls:**
+- Search performance (database-level filtering, not Python)
+- CSS animation flicker (CSS-only, subtle effects)
+- Mobile layout complexity (simplified view, collapsible sections)
+
+**Research Flag:** **Needs research-phase** for global cross-entity search architecture. Complex search index across multiple tables requires deeper investigation during phase planning.
+
+### Phase 5 (Optional/Future): Comparison View
+**Rationale:** Power user feature, not essential for MVP. Add only if users actively request side-by-side lead comparison.
+
+**Delivers:**
+- Side-by-side lead comparison (2-3 leads)
+- Synchronized scrolling for comparison sections
+- State management for selected leads (session state)
+
+**Addresses Features:**
+- Comparison view (competitive, defer if not requested)
+
+**Research Flag:** Standard patterns, skip research-phase. Uses st.columns with synchronized data.
 
 ### Phase Ordering Rationale
 
-**Why Foundation comes first:**
-- Research shows all 8 critical pitfalls must be addressed before production (they're architectural, not incremental)
-- 11 table stakes features are mandatory for "100% reliable" requirement
-- Without validation + retry + alerting, system creates data loss risk from day 1
-- Crawler → Parser → Transformer → Loader dependency chain requires sequential development
-- Can't test orchestration until individual components work
+- **Foundation first (Phase 1):** CSS theming is non-breaking, establishes brand identity, enables glassmorphic cards used in all subsequent phases. Pure additive layer with no data flow changes.
 
-**Why Polish comes second:**
-- Builds on working foundation with incremental improvements
-- Requires production experience to know which improvements matter (not speculative)
-- Features like reconciliation checks and lineage tracking are valuable but not launch-blocking
-- Configuration management becomes important after first source structure change
-- Full upsert logic (moved from Phase 1 for complexity budget) completes deduplication
+- **Visualization second (Phase 2):** Charts require themed foundation (dark colors, card backgrounds) to look cohesive. Component wrapper pattern established here applies to all future charts.
 
-**Why Scale is deferred:**
-- Current volume (11 proposals/day) doesn't justify these features
-- Anomaly detection requires 3+ months of baseline (can't build on day 1)
-- Data quality dashboard premature before users actively monitor (research: build when SQL queries tedious)
-- Automatic recovery complex (checkpoint mechanism), only build if failures frequent
-- Parallel processing unnecessary unless runtime >30 minutes (won't happen at current volume)
+- **Navigation third (Phase 3):** Lead profile page consumes components from Phase 1 & 2 (cards, charts). Navigation enhancements build on existing multi-page structure.
 
-**Grouping logic:**
-- Foundation: Everything needed for zero data loss guarantee (core value prop)
-- Polish: Everything that makes system easier to operate and debug (operational maturity)
-- Scale: Everything for advanced monitoring and performance (future optimization)
+- **Search last (Phase 4):** Most complex feature (cross-page state, query modifications). Benefits from stable component foundation. Can ship Phase 1-3 as MVP, add search later if needed.
+
+**Dependency chain:**
+```
+Phase 1 (CSS) → Phase 2 (Charts) → Phase 3 (Lead Profile) → Phase 4 (Search)
+     ↓              ↓                      ↓
+  All phases    Requires dark        Requires cards +
+                theme colors         charts components
+```
 
 ### Research Flags
 
-**Phases likely needing deeper research during planning:**
-
-- **Phase 1 (Foundation):** Minimal additional research needed. Stack, architecture, and pitfall prevention are well-documented with established patterns. Only potential gap: Transfer Gov's actual authentication flow (may need to inspect site during implementation to confirm login selectors and session management).
-
-- **Phase 2 (Polish):** No additional research expected. Configuration management, lineage tracking, and reconciliation are standard ETL patterns covered in architecture research. All features have clear implementation paths.
-
-- **Phase 3 (Scale):** Anomaly detection might need research if implemented (ML-based vs rule-based thresholds, time-series analysis libraries). But this phase is triggered by need, not pre-scheduled, so research can happen later.
+**Phases needing deeper research during planning:**
+- **Phase 4 (Global Search):** Complex search index architecture across multiple entities (leads, emendas, propostas, convenios). Need to research: search index structure, SQL query optimization for cross-entity search, autocomplete performance with large datasets, search relevance ranking.
 
 **Phases with standard patterns (skip research-phase):**
-
-- **All phases:** Architecture research covered all necessary patterns. Store-then-transform, checkpoint-based resumption, idempotent loads, and content hash deduplication are all well-documented. Stack research confirmed all library versions and compatibility. No esoteric domains or niche technologies requiring specialized research.
-
-**Single deep-dive needed:**
-- Transfer Gov authentication flow (inspect during Phase 1 implementation): Confirm login form fields, session cookie names, re-authentication triggers. This is site-specific, can't be researched generically. Budget 2-4 hours for this during crawler development.
+- **Phase 1 (Visual Foundation):** Glassmorphism CSS well-documented, Streamlit theming official docs, Google Fonts integration standard.
+- **Phase 2 (Visualization):** Plotly integration in Streamlit docs, theming patterns established, chart types documented.
+- **Phase 3 (Navigation):** Multi-page apps and st.query_params in official docs, lead profile pattern standard for dashboards.
+- **Phase 5 (Comparison):** st.columns for layout documented, state management for selection standard pattern.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All versions verified via web search (not training data). Playwright 1.58.0, Polars 2.x, SQLAlchemy 2.0+, PostgreSQL 15+, Pydantic 2.13+ all confirmed from official docs and PyPI. Compatibility matrix verified (SQLAlchemy 2.0 + psycopg 3.x, Polars + PyArrow 15+). |
-| Features | HIGH | Synthesized from 15+ production best practices sources. 11 table stakes features validated across multiple sources (web scraping production guides, ETL automation articles, data quality testing resources). Feature dependencies mapped and complexity budget calculated. |
-| Architecture | HIGH | Based on current 2026 production practices from official documentation (Scrapy architecture, Airbyte patterns, ETL frameworks). Component separation, interface contracts, and anti-patterns all verified from multiple sources. Scaling thresholds (0-100 proposals/day = monolith) grounded in real-world performance data. |
-| Pitfalls | HIGH | Drawn from production failure reports, industry statistics (68% of ETL failures need 4+ hours to detect, Gartner $12.9M/year bad data losses), and 2026 best practices guides. All 8 critical pitfalls have documented prevention strategies and recovery costs. |
+| Stack | **HIGH** | Minimal dependencies (Plotly only), all built-in Streamlit features verified in official docs, versions confirmed on PyPI, existing Streamlit 1.54 meets all requirements |
+| Features | **HIGH** | Based on 2026 sales dashboard benchmarks (Salesforce, HubSpot patterns), Streamlit capabilities validated, anti-features clearly identified to avoid scope creep |
+| Architecture | **HIGH** | Patterns verified in official Streamlit docs + Microsoft Streamlit UI Template, glassmorphism CSS documented, component wrapper pattern proven in community, existing codebase analyzed for integration points |
+| Pitfalls | **MEDIUM** | Streamlit-specific pitfalls identified from community resources and best practices, but CSS brittleness across versions needs testing, performance of glassmorphic effects needs validation on target devices |
 
-**Overall confidence:** HIGH
+**Overall confidence:** **HIGH**
 
-Research is comprehensive and grounded in verified 2026 sources. Stack recommendations based on official documentation and PyPI version verification. Feature priorities derived from production best practices across 15+ industry sources. Architecture patterns validated against current production systems. Pitfalls drawn from real failure reports with documented statistics.
+Research is comprehensive with strong foundation in official documentation and verified community patterns. Medium confidence on pitfalls reflects inherent uncertainty in CSS stability across future Streamlit updates and performance variability across user devices - both require testing during implementation.
 
 ### Gaps to Address
 
-**During implementation (not blocking):**
-- Transfer Gov's specific authentication flow (inspect during Phase 1): Confirm login form fields, session cookie persistence mechanism, re-authentication triggers. Budget 2-4 hours for site inspection during crawler development.
+**CSS Selector Stability:**
+- **Gap:** Streamlit CSS class names may change in updates (e.g., .css-abc123 hashes change)
+- **Mitigation:** Use data-testid attributes where possible (more stable), document Streamlit version dependencies in CSS files, test visual regression on Streamlit updates before deployment, maintain fallback styles
+- **Address:** Phase 1 implementation - establish testing protocol
 
-- Excel/CSV file structure from Transfer Gov (inspect actual files): Research describes general Excel/CSV parsing, but Transfer Gov's specific column names, sheet names, file formats need validation with real downloaded files. Can extract schema on first successful download.
+**Glassmorphic Performance on Low-End Devices:**
+- **Gap:** backdrop-filter performance varies by browser/device; may lag on older mobile devices
+- **Mitigation:** Test on target devices (sales team mobile browsers), implement CSS media query to disable effects on low-end devices (prefers-reduced-motion), provide fallback solid backgrounds
+- **Address:** Phase 1 testing - benchmark on representative devices
 
-- Relationship keys between 4 files (validate during parsing): Research assumes "IDs/chaves claros entre entidades" per PROJECT.md, but actual foreign key structure needs confirmation from real data. Likely: proposta_id, apoiador_id, emenda_id, programa_id. Verify during transformer development.
+**Global Search Index Design:**
+- **Gap:** Research didn't cover optimal search index structure for cross-entity search (leads + emendas + propostas + convenios)
+- **Mitigation:** Run /gsd:research-phase before Phase 4 planning, focus on PostgreSQL full-text search vs. application-level search, evaluate search relevance ranking strategies
+- **Address:** Phase 4 research-phase - dedicated search architecture investigation
 
-**None of these gaps block roadmap creation.** They're implementation details that emerge during development, not strategic decisions. Roadmap structure (3 phases, features per phase) is solid based on research.
+**Chart Data Volume Performance:**
+- **Gap:** Research mentions WebGL and sampling for large datasets but doesn't specify thresholds for PROJETUS data volume
+- **Mitigation:** Measure actual data sizes per chart during Phase 2 implementation, implement Plotly WebGL traces (automatic at 1,000+ points), add optional sampling if datasets exceed 10k points
+- **Address:** Phase 2 implementation - performance testing with production data
 
 ## Sources
 
-### Stack Research (STACK.md)
-- **Primary (HIGH confidence):** Playwright official docs, SQLAlchemy 2.0 docs, Polars GitHub releases, Pydantic PyPI, PostgreSQL docs — all versions verified
-- **Secondary (MEDIUM confidence):** Performance comparisons (Pandas vs Polars 5-10x benchmarks, Playwright vs Selenium 80x faster setup), stack pattern guides (Docker multi-stage builds, ETL best practices)
+### Primary (HIGH confidence)
+- **Streamlit Official Documentation** - Theming configuration, st.html API, st.plotly_chart integration, multi-page apps, session state, Google Fonts integration
+- **Plotly Python 6.5.2 PyPI** - Version verification, feature confirmation, WebGL rendering capabilities
+- **STACK.md, ARCHITECTURE.md, FEATURES.md, PITFALLS.md** - Synthesized from parallel research agents
 
-### Feature Research (FEATURES.md)
-- **Primary (HIGH confidence):** State of Web Scraping 2026 (Browserless), ETL error handling statistics (Integrate.io, 68% 4+ hour detection time), data quality guides (Monte Carlo Data, TestingXperts)
-- **Secondary (MEDIUM confidence):** Production best practices (ScrapingOps monitoring, Scrapy deployment guides), competitor analysis (Scrapy vs Airbyte patterns)
+### Secondary (MEDIUM confidence)
+- **Microsoft Streamlit UI Template (GitHub)** - Component wrapper patterns, CSS organization, best practices
+- **Streamlit Community Best Practices** - Session state management, code organization, performance optimization
+- **2026 Dashboard Design Resources** - Glassmorphism trends, dark theme UX, sales dashboard feature benchmarks (Salesforce, HubSpot patterns)
+- **Medium: Streamlit Development Best Practices** - Structuring code, managing session state, avoiding common pitfalls
 
-### Architecture Research (ARCHITECTURE.md)
-- **Primary (HIGH confidence):** Scrapy architecture docs (component separation), ETL frameworks 2026 guide (Integrate.io, Matillion), idempotency patterns (Airbyte)
-- **Secondary (MEDIUM confidence):** Web scraping infrastructure (GroupBWT, state management patterns), production observability (2026 observability stack guide)
-
-### Pitfalls Research (PITFALLS.md)
-- **Primary (HIGH confidence):** ETL error handling statistics (68% failures, 15-hour resolution), silent failure dangers (Medium, Airbyte), Gartner bad data cost ($12.9M/year), idempotency importance (Airbyte, Medium)
-- **Secondary (MEDIUM confidence):** Web scraping challenges (9 challenges Octoparse, 6 challenges AIMmultiple, 10 mistakes Firecrawl), encoding issues (CSV import errors Ingestro, Excel encoding fixes)
+### Tertiary (LOW confidence)
+- **CSS Glassmorphism Examples** - Visual inspiration, implementation patterns (needs validation for performance)
+- **Sales Dashboard UX Patterns** - Feature expectations from competitors (needs validation with PROJETUS users)
 
 ---
-*Research completed: 2026-02-04*
+*Research completed: 2026-02-09*
 *Ready for roadmap: yes*
