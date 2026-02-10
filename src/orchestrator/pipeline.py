@@ -98,6 +98,19 @@ def _col(df: pl.DataFrame, name: str) -> Optional[str]:
     return None
 
 
+def _extract_emenda_year(row: dict, cod_col: Optional[str]) -> Optional[int]:
+    """Extract year from COD_PROGRAMA_EMENDA (positions 5-8 contain year, 1-indexed)."""
+    if not cod_col:
+        return None
+    cod = str(row.get(cod_col, "")).strip()
+    if len(cod) >= 8:
+        try:
+            return int(cod[4:8])
+        except (ValueError, IndexError):
+            return None
+    return None
+
+
 def extract_relationships(
     raw_df: pl.DataFrame,
     validated_data: dict[str, list[dict]],
@@ -125,6 +138,7 @@ def extract_relationships(
     orgao_col = _col(raw_df, "nome_proponente_apoiadores_emendas")
     valor_col = _col(raw_df, "valor_repasse_proposta_apoiadores_emendas")
     cnpj_col = _col(raw_df, "cnpj_proponente_apoiadores_emendas")
+    cod_programa_emenda_col = _col(raw_df, "cod_programa_emenda")
 
     if not proposta_col:
         logger.warning("Could not find proposta ID column in relationship CSV")
@@ -199,7 +213,7 @@ def extract_relationships(
                         "autor": autor,
                         "valor": valor,
                         "tipo": tipo,
-                        "ano": None,
+                        "ano": _extract_emenda_year(row, cod_programa_emenda_col),
                     }
                 junction_emendas.add((proposta_id, emenda_id))
 
@@ -350,10 +364,7 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
                 logger.info(f"SKIPPING {file_name} (historico_situacao - not needed for dashboard)")
                 continue
 
-            # SKIP programas CSV - IDs don't match apoiadores_emendas, using synthetic programas instead
-            if entity_type == "programas":
-                logger.info(f"SKIPPING {file_name} (programas - creating synthetic from apoiadores_emendas)")
-                continue
+            # NOTE: Programas CSV now loaded - real data from CSV is upserted first, then synthetic programas update via ON CONFLICT
 
             logger.info(f"Processing {file_name} as {entity_type}")
 
@@ -405,47 +416,7 @@ def run_pipeline(config_path: Optional[str] = None) -> None:
                             f"Validation errors in {file_name}: {len(errors)} errors"
                         )
 
-                    # FILTER: Only 2025-2026 data and OSCs
-                    if entity_type == "propostas":
-                        # Get year, natureza_juridica, and ID columns from raw dataframe
-                        ano_col = _col(df, "ano_prop")
-                        nat_jur_col = _col(df, "natureza_juridica")
-                        id_col = _col(df, "id_proposta")
-
-                        if ano_col and nat_jur_col and id_col:
-                            # Build set of valid IDs (2025-2026 + OSC)
-                            valid_ids = set()
-                            for row in df.iter_rows(named=True):
-                                ano_raw = row.get(ano_col)
-                                # Convert ano to int for comparison (may be string from CSV)
-                                try:
-                                    ano = int(ano_raw) if ano_raw else None
-                                except (ValueError, TypeError):
-                                    ano = None
-
-                                nat_jur = str(row.get(nat_jur_col, "")).strip().lower()
-                                record_id = str(row.get(id_col, "")).strip()
-
-                                # Filter: year in [2025, 2026] AND natureza_juridica contains "sociedade civil" (OSC)
-                                # Use flexible matching to handle encoding issues
-                                is_osc = (
-                                    "sociedade civil" in nat_jur or
-                                    "socieda" in nat_jur or
-                                    "osc" in nat_jur or
-                                    "organiza" in nat_jur
-                                )
-                                if ano in (2025, 2026) and is_osc and record_id:
-                                    valid_ids.add(record_id)
-
-                            # Filter valid_records to only include matching IDs
-                            original_count = len(valid_records)
-                            valid_records = [
-                                record for record in valid_records
-                                if record.get("transfer_gov_id") in valid_ids
-                            ]
-                            logger.info(
-                                f"Filtered {file_name}: {original_count} → {len(valid_records)} records (2025-2026 + OSCs only)"
-                            )
+                    # NOTE: Year filter on propostas REMOVED - loading ALL propostas to preserve convenio-to-proposta links
 
                     validated_data[entity_type].extend(valid_records)
                     logger.info(
