@@ -117,6 +117,12 @@
 
 **None currently.**
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 1 | Fix data pipeline: add missing financial columns, capture all CSV fields, rebuild lead-focused dashboard | 2026-02-10 | 792047f | [1-fix-data-pipeline-add-missing-financial-](./quick/1-fix-data-pipeline-add-missing-financial-/) |
+
 ### Recent Wins
 
 - **Phase 8 COMPLETE** (2026-02-10): All 5 plans executed — data layer, lead profile page, global search, ranking cards, visual verification. Complete search-to-profile sales workflow with tier classification, premium styling across all pages. Fixed st.switch_page to use st.Page objects with st.navigation(). 15 commits total.
@@ -177,4 +183,4 @@ Phase 9 (Polish & Production Readiness) — requires planning:
 
 ---
 *State initialized: 2026-02-09 for milestone v2.0*
-*Last updated: 2026-02-10 (Phase 8 COMPLETE)*
+*Last updated: 2026-02-10 - Completed quick task 1: Fix data pipeline + rebuild lead dashboard*
