@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
     if (session.role === 'vendedor') {
       conditions.push(`vp.vendedor_id = $${paramIndex++}`)
       params.push(session.userId)
+    } else if (vendedorId === 'unassigned') {
+      conditions.push(`vp.vendedor_id IS NULL`)
     } else if (vendedorId) {
       conditions.push(`vp.vendedor_id = $${paramIndex++}`)
       params.push(vendedorId)

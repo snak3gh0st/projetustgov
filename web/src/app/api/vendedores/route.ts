@@ -11,14 +11,14 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Only gestor can list vendedores
-    if (session.role !== 'gestor') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
-    const rows = await query(
-      `SELECT id, nome, email, active FROM users WHERE role = 'vendedor' ORDER BY nome ASC`
-    )
+    const rows = await query(`
+      SELECT u.id, u.nome, u.email, u.active, COUNT(vp.id)::int as lead_count
+      FROM users u
+      LEFT JOIN vendedor_projetos vp ON u.id = vp.vendedor_id
+      WHERE u.role = 'vendedor' AND u.active = true
+      GROUP BY u.id, u.nome, u.email, u.active
+      ORDER BY u.nome
+    `)
 
     return NextResponse.json(rows)
   } catch (error) {
