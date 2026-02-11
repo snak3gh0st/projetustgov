@@ -1,42 +1,36 @@
-import { auth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export default auth((req) => {
-  const { pathname } = req.nextUrl
-  const isLoggedIn = !!req.auth
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
 
-  // Public routes
-  const publicRoutes = ['/login', '/api/auth', '/api/health', '/api/migrate']
-  if (publicRoutes.some(route => pathname.startsWith(route))) {
-    // If logged in and trying to access login, redirect to home
-    if (isLoggedIn && pathname.startsWith('/login')) {
-      return NextResponse.redirect(new URL('/', req.url))
-    }
+  // Public routes that don't need auth
+  const publicPaths = ['/login', '/api/auth', '/api/health', '/api/migrate']
+  const isPublic = publicPaths.some(path => pathname.startsWith(path))
+
+  if (isPublic) {
     return NextResponse.next()
   }
 
-  // Redirect to login if not authenticated
-  if (!isLoggedIn) {
-    // For API routes, return 401 instead of redirect
+  // Check for NextAuth session cookie
+  const sessionToken = request.cookies.get('authjs.session-token') ||
+                       request.cookies.get('__Secure-authjs.session-token')
+
+  if (!sessionToken) {
+    // No session - redirect to login or return 401 for API routes
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    return NextResponse.redirect(new URL('/login', req.url))
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Gestor-only routes
-  const gestorRoutes = ['/cadastro-vendedor', '/api/admin']
-  if (gestorRoutes.some(route => pathname.startsWith(route))) {
-    if ((req.auth?.user as any)?.role !== 'gestor') {
-      if (pathname.startsWith('/api/')) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-      }
-      return NextResponse.redirect(new URL('/', req.url))
-    }
+  // Has session - redirect away from login if trying to access it
+  if (pathname.startsWith('/login')) {
+    return NextResponse.redirect(new URL('/', request.url))
   }
 
   return NextResponse.next()
-})
+}
 
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)']
