@@ -2,7 +2,7 @@
 
 ## Overview
 
-PROJETUS delivers 100% reliable automated extraction of Transfer Gov data through focused milestone delivery. **Milestone v1.0** (Phases 1-5) established the complete ETL pipeline, operational monitoring, client qualification, and data dashboard. **Milestone v2.0** (Phases 6-9) transforms the Streamlit dashboard from functional to premium — a Sigma-branded sales tool optimized for lead research workflow with dark theme, glassmorphic design, interactive charts, and streamlined navigation.
+PROJETUS delivers 100% reliable automated extraction of Transfer Gov data through focused milestone delivery. **Milestone v1.0** (Phases 1-5) established the complete ETL pipeline, operational monitoring, client qualification, and data dashboard. **Milestone v2.0** (Phases 6-9) transformed the Streamlit dashboard into a premium Sigma-branded sales tool. **Milestone v3.0** (Phases 10-13) builds a full CRM de Vendas on Next.js — auth per vendedor, lead assignment, pipeline kanban, contact tracking, and commission control.
 
 ## Phases
 
@@ -230,27 +230,102 @@ Plans:
 
 **Requirements**: POL-01, POL-02, POL-03, POL-04, POL-05, POL-06
 
-**Success Criteria** (what must be TRUE):
-  1. Mobile responsive layout implemented with metric cards stacking, tables scrolling horizontally, search remaining accessible
-  2. Loading states show skeleton cards or spinners while data loads (no blank screens during queries)
-  3. Empty states display friendly messages when no data matches filters (not blank tables)
-  4. Subtle CSS animations added for card hover effects, smooth transitions, fade-in on page load
-  5. All 6+ pages use consistent premium styling (no page looks like default Streamlit)
-  6. Status badges styled as pill badges for proposta situação, value tier, and data freshness
-  7. Performance validated on mobile devices (glassmorphic effects don't cause lag)
-
-**Plans:** 3 plans
+**Status**: Superseded (Streamlit replaced by Next.js migration)
 
 Plans:
-- [ ] 09-01-PLAN.md — Mobile responsive CSS, animations, and pill badge styling
-- [ ] 09-02-PLAN.md — Loading states and empty states across all 7 pages
-- [ ] 09-03-PLAN.md — Pill badge integration, consistency audit, and visual verification
+- [ ] 09-01-PLAN.md — N/A (superseded by Next.js)
+
+### Milestone v3.0 — CRM de Vendas
+
+### Phase 10: Auth & CRM Foundation
+**Goal**: Establish authentication system with role-based access (gestor vs vendedor), create CRM database tables, and protect all existing API routes. Gestor sees all leads, vendedor sees only assigned leads.
+
+**Depends on**: Existing Next.js app (pages: /, /leads, /lead/[cnpj])
+
+**Requirements**: AUTH-01, AUTH-02, AUTH-03, AUTH-04, PLAT-01, PLAT-02, PLAT-03
+
+**Success Criteria** (what must be TRUE):
+  1. Vendedor can log in with email and password
+  2. Gestor can create and edit vendedor accounts
+  3. JWT-based session persists across browser refreshes
+  4. Vendedor sees only leads assigned to them (gestor sees all)
+  5. All API routes require authentication (return 401 if no valid token)
+  6. CRM tables created: users, lead_assignments, contact_notes, commissions
+  7. Existing pages (Pipeline, Leads, Lead Profile) work behind auth
+  8. Login page with Sigma branding matches existing dark theme
+
+**Status**: Not started
+
+Plans:
+- [ ] TBD (plan with `/gsd:plan-phase 10`)
+
+### Phase 11: Lead Management & Contact Tracking
+**Goal**: Enable gestor to assign leads to vendedores, track contact history per lead, and manage contact status. Vendedores can register notes, update contact info, and see timeline of interactions.
+
+**Depends on**: Phase 10 (requires auth + CRM tables)
+
+**Requirements**: LEAD-01, LEAD-02, LEAD-03, LEAD-04, CONT-01, CONT-02, CONT-03, CONT-04
+
+**Success Criteria** (what must be TRUE):
+  1. Gestor can assign a lead to a specific vendedor from the lead list or profile
+  2. System detects and alerts when same lead would be assigned to two vendedores
+  3. Lead shows visible "CLIENTE EXISTENTE" flag when already in client base
+  4. Lead shows direct link to programa de trabalho on TransferênciaGov
+  5. Vendedor can register contact note (date, type, observation)
+  6. Contact history visible as timeline on lead profile
+  7. Contact status tracking: "Não contactado", "Aguardando retorno", "Em conversa", "Fechado"
+  8. Vendedor can edit contact data (phone, email) on lead profile
+
+**Status**: Not started
+
+Plans:
+- [ ] TBD (plan with `/gsd:plan-phase 11`)
+
+### Phase 12: Pipeline Kanban
+**Goal**: Build visual kanban board for sales pipeline with drag-and-drop between 4 status columns. Vendedor drags leads through stages; gestor can filter by vendedor, UF, or tier.
+
+**Depends on**: Phase 11 (requires lead assignments + contact status)
+
+**Requirements**: PIPE-01, PIPE-02, PIPE-03, PIPE-04
+
+**Success Criteria** (what must be TRUE):
+  1. Visual kanban board with 4 columns: Novo → Contactado → Em negociação → Fechado
+  2. Vendedor can drag leads between columns to update status
+  3. Each kanban card shows: nome, CNPJ, valor emenda, tier, vendedor assigned
+  4. Pipeline filterable by vendedor, UF, and valor tier
+  5. Kanban updates persist immediately to database
+  6. Responsive layout works on desktop and tablet
+
+**Status**: Not started
+
+Plans:
+- [ ] TBD (plan with `/gsd:plan-phase 12`)
+
+### Phase 13: Comissões
+**Goal**: Implement commission tracking and calculation per vendedor. When lead is marked "Fechado", commission is calculated based on configurable percentage. Gestor sees global report, vendedor sees their own dashboard.
+
+**Depends on**: Phase 12 (requires pipeline with "Fechado" status)
+
+**Requirements**: COM-01, COM-02, COM-03, COM-04
+
+**Success Criteria** (what must be TRUE):
+  1. Vendedor automatically linked to lead commission when status changes to "Fechado"
+  2. Commission percentage configurable by gestor (default + per-lead exceptions)
+  3. Commission report filterable by vendedor and date period
+  4. Vendedor dashboard shows their leads, pipeline stats, and accumulated commissions
+  5. Commission calculated over contract/emenda value
+
+**Status**: Not started
+
+Plans:
+- [ ] TBD (plan with `/gsd:plan-phase 13`)
 
 ## Progress
 
 **Execution Order:**
 - **Milestone v1.0**: Phases 1 → 2 → 4 → 5 (complete), Phase 3 (optional, triggered by need)
-- **Milestone v2.0**: Phases 6 → 7 → 8 → 9
+- **Milestone v2.0**: Phases 6 → 7 → 8 (complete), Phase 9 (superseded by Next.js)
+- **Milestone v3.0**: Phases 10 → 11 → 12 → 13
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -264,7 +339,12 @@ Plans:
 | 6. Visual Foundation & Component System | 2/2 | Complete | 2026-02-09 |
 | 7. Data Visualization & Charts | 3/3 | Complete | 2026-02-10 |
 | 8. Lead Profile & Enhanced Navigation | 5/5 | Complete | 2026-02-10 |
-| 9. Polish & Production Readiness | 0/TBD | Planning | - |
+| 9. Polish & Production Readiness | - | Superseded | - |
+| **Milestone v3.0** | | | |
+| 10. Auth & CRM Foundation | 0/TBD | Not started | - |
+| 11. Lead Management & Contact Tracking | 0/TBD | Not started | - |
+| 12. Pipeline Kanban | 0/TBD | Not started | - |
+| 13. Comissões | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-04*
@@ -274,3 +354,7 @@ Plans:
 *Milestone v2.0 added: 2026-02-09*
 *Milestone v2.0 depth: quick (4 phases)*
 *Milestone v2.0 coverage: 27/27 v2.0 requirements mapped*
+
+*Milestone v3.0 added: 2026-02-11*
+*Milestone v3.0 depth: quick (4 phases)*
+*Milestone v3.0 coverage: 21/21 v3.0 requirements mapped*

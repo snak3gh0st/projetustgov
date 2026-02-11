@@ -98,24 +98,24 @@ Sistema automatizado de extração e armazenamento de dados do Transfer Gov. Ace
 | Scheduler diário desde v1 | Mesmo em desenvolvimento, validar automação cedo evita surpresas em produção. | — Pending |
 | Validação multicamada | Comparação manual inicial + alertas de volume + logs detalhados garante confiabilidade desde dia 1. | — Pending |
 
-## Current Milestone: v2.0 Dashboard Premium Redesign
+## Current Milestone: v3.0 CRM de Vendas
 
-**Goal:** Transform the existing Streamlit dashboard from raw/functional to a premium, workflow-optimized tool that sales reps use daily to research leads and prospect proponents — styled after the Sigma brand identity (dark theme, neon blue accents, glassmorphic cards).
+**Goal:** Transformar o dashboard de leads em um CRM funcional para vendedores, com autenticação por vendedor, atribuição manual de leads, pipeline visual kanban, tracking de contatos, e controle de comissão com cálculo.
 
 **Target features:**
-- Sigma-branded dark theme with custom CSS injection (colors: #050B1F background, #00D4FF accent, Space Grotesk / Inter typography)
-- Premium KPI cards with visual impact (glassmorphic cards, neon glow effects)
-- Lead profile page — the "killer view" for researching a specific proponent (all history, emendas, propostas, convênios in one place)
-- Global search bar (front & center) — type CNPJ/name to jump to lead profile
-- Improved Qualificação page with visual ranking indicators, better filtering UX
-- Data visualization — charts for trends, value distributions, geographic breakdown
-- Streamlined navigation — fewer clicks to key actions, better information hierarchy
-- Responsive metric cards, status badges, value indicators
-- Polished entity pages (Propostas, Programas, Apoiadores, Emendas) with consistent premium styling
+- Login por vendedor (gestor vê todos, vendedor vê seus leads)
+- Atribuição manual de leads pelo gestor (com controle de duplicatas)
+- Pipeline kanban: Novo → Contactado → Em negociação → Fechado
+- Registro de notas de contato com timeline
+- Cálculo de comissão por vendedor com relatório
+- Flag "Cliente existente" e link ao programa de trabalho
+- Dashboard individual do vendedor
 
-**Approach:** Max Streamlit — push Streamlit to the limit with custom CSS injection, Streamlit theme config, custom HTML components, Plotly charts. Keep Python stack, no framework migration.
+**Approach:** Next.js 14 App Router + PostgreSQL (Railway). Frontend já migrado de Streamlit para React/Next.js em `web/`. Autenticação via JWT. Tabelas CRM no mesmo banco PostgreSQL.
 
-**Primary workflow:** Sales rep opens dashboard → searches or browses ranked leads → opens lead profile → reviews all data → exports or takes action.
+**Primary workflow:** Vendedor faz login → vê pipeline kanban com seus leads → arrasta lead para nova coluna → registra nota de contato → marca como fechado → comissão calculada automaticamente.
+
+**Milestone v2.0 Note:** Dashboard Premium Redesign (Streamlit) foi superseded pela migração para Next.js. Phases 6-8 completas, Phase 9 (polish) não aplicável ao novo stack.
 
 ---
-*Last updated: 2026-02-09 after milestone v2.0 initialization*
+*Last updated: 2026-02-11 after milestone v3.0 initialization*
