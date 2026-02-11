@@ -43,10 +43,10 @@ def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame
         where_conditions.append(f"p.estado = '{filters['estado']}'")
 
     if filters.get("max_propostas") is not None:
-        where_conditions.append(f"p.total_propostas <= {filters['max_propostas']}")
+        where_conditions.append(f"COALESCE(agg.total_propostas, 0) <= {filters['max_propostas']}")
 
     if filters.get("min_emendas"):
-        where_conditions.append(f"p.total_emendas >= {filters['min_emendas']}")
+        where_conditions.append(f"COALESCE(agg.total_emendas, 0) >= {filters['min_emendas']}")
 
     if filters.get("search"):
         search_term = filters["search"].replace("'", "''")  # SQL escape

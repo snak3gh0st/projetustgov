@@ -34,16 +34,27 @@ def get_proponentes_por_estado() -> pd.DataFrame:
     """
     engine = get_db_engine()
 
+    # Compute aggregations live from source tables
     query = text("""
         SELECT
-            estado,
+            p.estado,
             COUNT(*) as total_proponentes,
-            SUM(total_emendas) as total_emendas,
-            SUM(valor_total_emendas) as total_valor_emendas
-        FROM proponentes
-        WHERE natureza_juridica NOT ILIKE '%Administra%'
-        AND estado IS NOT NULL
-        GROUP BY estado
+            SUM(COALESCE(agg.total_emendas, 0)) as total_emendas,
+            SUM(COALESCE(agg.valor_total_emendas, 0)) as total_valor_emendas
+        FROM proponentes p
+        LEFT JOIN (
+            SELECT
+                prop.proponente_cnpj,
+                COUNT(DISTINCT e.transfer_gov_id) as total_emendas,
+                COALESCE(SUM(DISTINCT e.valor), 0) as valor_total_emendas
+            FROM propostas prop
+            LEFT JOIN proposta_emendas pe ON prop.transfer_gov_id = pe.proposta_transfer_gov_id
+            LEFT JOIN emendas e ON pe.emenda_transfer_gov_id = e.transfer_gov_id
+            GROUP BY prop.proponente_cnpj
+        ) agg ON p.cnpj = agg.proponente_cnpj
+        WHERE p.natureza_juridica NOT ILIKE '%Administra%'
+        AND p.estado IS NOT NULL
+        GROUP BY p.estado
         ORDER BY total_proponentes DESC
     """)
 
@@ -67,26 +78,32 @@ def get_value_distribution() -> pd.DataFrame:
     """
     engine = get_db_engine()
 
+    # Compute total_propostas live from propostas table
     query = text("""
         SELECT faixa, quantidade FROM (
             SELECT
                 CASE
-                    WHEN total_propostas = 1 THEN '1 proposta (Alto Valor)'
-                    WHEN total_propostas BETWEEN 2 AND 3 THEN '2-3 propostas (Bom Valor)'
-                    WHEN total_propostas BETWEEN 4 AND 5 THEN '4-5 propostas (Medio)'
-                    WHEN total_propostas BETWEEN 6 AND 10 THEN '6-10 propostas (Baixo)'
+                    WHEN COALESCE(agg.total_propostas, 0) = 1 THEN '1 proposta (Alto Valor)'
+                    WHEN COALESCE(agg.total_propostas, 0) BETWEEN 2 AND 3 THEN '2-3 propostas (Bom Valor)'
+                    WHEN COALESCE(agg.total_propostas, 0) BETWEEN 4 AND 5 THEN '4-5 propostas (Medio)'
+                    WHEN COALESCE(agg.total_propostas, 0) BETWEEN 6 AND 10 THEN '6-10 propostas (Baixo)'
                     ELSE '10+ propostas (Muito Baixo)'
                 END as faixa,
                 CASE
-                    WHEN total_propostas = 1 THEN 1
-                    WHEN total_propostas BETWEEN 2 AND 3 THEN 2
-                    WHEN total_propostas BETWEEN 4 AND 5 THEN 3
-                    WHEN total_propostas BETWEEN 6 AND 10 THEN 4
+                    WHEN COALESCE(agg.total_propostas, 0) = 1 THEN 1
+                    WHEN COALESCE(agg.total_propostas, 0) BETWEEN 2 AND 3 THEN 2
+                    WHEN COALESCE(agg.total_propostas, 0) BETWEEN 4 AND 5 THEN 3
+                    WHEN COALESCE(agg.total_propostas, 0) BETWEEN 6 AND 10 THEN 4
                     ELSE 5
                 END as sort_order,
                 COUNT(*) as quantidade
-            FROM proponentes
-            WHERE natureza_juridica NOT ILIKE '%Administra%'
+            FROM proponentes p
+            LEFT JOIN (
+                SELECT proponente_cnpj, COUNT(*) as total_propostas
+                FROM propostas
+                GROUP BY proponente_cnpj
+            ) agg ON p.cnpj = agg.proponente_cnpj
+            WHERE p.natureza_juridica NOT ILIKE '%Administra%'
             GROUP BY faixa, sort_order
         ) sub
         ORDER BY sort_order
