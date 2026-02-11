@@ -99,15 +99,17 @@ def _col(df: pl.DataFrame, name: str) -> Optional[str]:
 
 
 def _extract_emenda_year(row: dict, cod_col: Optional[str]) -> Optional[int]:
-    """Extract year from COD_PROGRAMA_EMENDA (positions 5-8 contain year, 1-indexed)."""
+    """Extract year from COD_PROGRAMA_EMENDA (positions 6-9 contain year, 1-indexed / [5:9] 0-indexed)."""
     if not cod_col:
         return None
     cod = str(row.get(cod_col, "")).strip()
-    if len(cod) >= 8:
+    if len(cod) >= 9:
         try:
-            return int(cod[4:8])
+            year = int(cod[5:9])
+            if 1990 <= year <= 2030:
+                return year
         except (ValueError, IndexError):
-            return None
+            pass
     return None
 
 

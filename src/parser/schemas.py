@@ -95,6 +95,7 @@ EXPECTED_COLUMNS = {
         "tipo",
         "valor_repasse_proposta",
         "valor_repasse_emenda",
+        "cod_programa_emenda",
     ],
     "historico_situacao": [
         "proposta_id",
@@ -226,7 +227,7 @@ COLUMN_ALIASES = {
         "tipo": ["tipo_parlamentar"],
         "valor_repasse_proposta": ["valor_repasse_proposta_emenda"],
         "valor_repasse_emenda": ["valor_repasse_emenda"],
-        "programa_cod": ["cod_programa_emenda"],
+        "cod_programa_emenda": ["cod_programa_emenda"],
         "ind_impositivo": ["ind_impositivo"],
     },
     "historico_situacao": {

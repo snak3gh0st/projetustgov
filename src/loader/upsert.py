@@ -386,36 +386,67 @@ def _enrich_proponentes(session: Session, proponentes_detalhado: list[dict]) -> 
     logger.info("Enriched %d proponentes with detailed data (email, telefone, endereco, bairro, cep)", updated)
 
 
+def _extract_year_from_cod(cod: str) -> int | None:
+    """Extract year from COD_PROGRAMA_EMENDA (positions 6-9, 1-indexed = [5:9] 0-indexed)."""
+    cod = str(cod).strip()
+    if len(cod) >= 9:
+        try:
+            year = int(cod[5:9])
+            if 1990 <= year <= 2030:
+                return year
+        except (ValueError, IndexError):
+            pass
+    return None
+
+
 def _enrich_emendas_from_detalhado(
     session: Session, emendas_detalhado: list[dict], cnpj_emenda_stats: dict
 ) -> None:
-    """Enrich emenda stats per proponente CNPJ using detailed emenda data.
+    """Enrich emenda stats per proponente CNPJ and update emendas.ano using detailed emenda data.
 
     The siconv_emenda.csv has a BENEFICIARIO_EMENDA field (CNPJ) that directly
-    links emendas to proponentes. This enriches the cnpj_emenda_stats dict
-    with more accurate data.
+    links emendas to proponentes. Also extracts year from COD_PROGRAMA_EMENDA.
 
     Args:
-        session: SQLAlchemy Session (unused, kept for consistency)
+        session: SQLAlchemy Session
         emendas_detalhado: Validated emenda records from siconv_emenda.csv
         cnpj_emenda_stats: Dict to update: cnpj → {count, total_valor}
     """
     enriched = 0
+    # Collect emenda year by numero for bulk update
+    emenda_years: dict[str, int] = {}
+
     for record in emendas_detalhado:
         cnpj = normalize_cnpj(record.get("beneficiario_cnpj", ""))
-        if not cnpj:
-            continue
+        if cnpj:
+            if cnpj not in cnpj_emenda_stats:
+                cnpj_emenda_stats[cnpj] = {"count": 0, "total_valor": 0.0}
+            cnpj_emenda_stats[cnpj]["count"] += 1
+            valor = record.get("valor_repasse_proposta")
+            if valor and isinstance(valor, (int, float)):
+                cnpj_emenda_stats[cnpj]["total_valor"] += valor
+            enriched += 1
 
-        if cnpj not in cnpj_emenda_stats:
-            cnpj_emenda_stats[cnpj] = {"count": 0, "total_valor": 0.0}
-
-        cnpj_emenda_stats[cnpj]["count"] += 1
-        valor = record.get("valor_repasse_proposta")
-        if valor and isinstance(valor, (int, float)):
-            cnpj_emenda_stats[cnpj]["total_valor"] += valor
-        enriched += 1
+        # Extract year from cod_programa_emenda
+        cod = record.get("cod_programa_emenda", "")
+        numero = record.get("numero", "")
+        if cod and numero:
+            year = _extract_year_from_cod(cod)
+            if year and numero not in emenda_years:
+                emenda_years[numero] = year
 
     logger.info("Enriched emenda stats from detailed data: %d records processed", enriched)
+
+    # Bulk update emendas.ano
+    if emenda_years:
+        updated = 0
+        for numero, year in emenda_years.items():
+            rows = session.query(Emenda).filter_by(transfer_gov_id=numero).update(
+                {"ano": year}, synchronize_session=False
+            )
+            if rows:
+                updated += 1
+        logger.info("Updated emendas.ano for %d emendas from COD_PROGRAMA_EMENDA", updated)
 
 
 def compute_proponente_aggregations(session: Session, cnpj_emenda_stats: dict = None) -> None:

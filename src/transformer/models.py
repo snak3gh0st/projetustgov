@@ -419,6 +419,7 @@ class EmendaDetalhadaValidation(BaseModel):
     tipo: Optional[str] = Field(None, description="Parliamentary type")
     valor_repasse_proposta: Optional[float] = Field(None, description="Proposta transfer value")
     valor_repasse_emenda: Optional[float] = Field(None, description="Emenda transfer value")
+    cod_programa_emenda: Optional[str] = Field(None, description="Program code containing emenda year")
 
     @field_validator("valor_repasse_proposta", "valor_repasse_emenda", mode="before")
     @classmethod
