@@ -1,6 +1,6 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
-import bcrypt from 'bcrypt'
+import * as bcrypt from 'bcrypt'
 import { query } from './db'
 import { CRMUser } from './types'
 
@@ -58,15 +58,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // On sign-in, copy user.id and user.role to token
       if (user) {
         token.id = user.id as string
-        token.role = user.role as 'gestor' | 'vendedor'
+        token.role = (user as { role: 'gestor' | 'vendedor' }).role
       }
       return token
     },
     async session({ session, token }) {
       // Copy token.id and token.role to session.user
       if (session.user) {
-        session.user.id = token.id
-        session.user.role = token.role
+        session.user.id = token.id as string
+        session.user.role = token.role as 'gestor' | 'vendedor'
       }
       return session
     },

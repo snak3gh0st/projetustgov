@@ -3,7 +3,7 @@
 import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, auth } from './auth'
 import { LoginSchema, CreateVendedorSchema, type LoginInput, type CreateVendedorInput } from './validations'
 import { query } from './db'
-import bcrypt from 'bcrypt'
+import * as bcrypt from 'bcrypt'
 import { redirect } from 'next/navigation'
 import { AuthError } from 'next-auth'
 
@@ -46,7 +46,7 @@ export async function createVendedor(
     // Verify session and check if user is gestor
     const session = await auth()
 
-    if (!session?.user || session.user.role !== 'gestor') {
+    if (!session?.user || !('role' in session.user) || session.user.role !== 'gestor') {
       return { error: 'Apenas gestores podem criar vendedores' }
     }
 
