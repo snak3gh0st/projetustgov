@@ -30,6 +30,9 @@ def render_home() -> None:
         )
         uf_filter = None if selected_uf == "Todos" else selected_uf
 
+        # Sem contato filter (leads novos para o vendedor)
+        sem_contato = st.checkbox("Somente leads SEM contato", value=False)
+
         # Com/Sem Emenda radio
         emenda_filter_option = st.radio(
             "Emendas",
@@ -63,6 +66,7 @@ def render_home() -> None:
         com_emenda=com_emenda,
         valor_min=valor_min,
         valor_max=valor_max,
+        sem_contato=sem_contato,
         limit=500,
     )
 

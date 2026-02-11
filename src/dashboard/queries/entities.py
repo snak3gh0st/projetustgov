@@ -254,7 +254,8 @@ def get_related_entities(proposta_id: str) -> dict:
 @st.cache_data(ttl="10m")
 def get_lead_list(uf_filter: str = None, modalidade_filter: str = None,
                   com_emenda: bool = None, valor_min: float = None,
-                  valor_max: float = None, limit: int = 500) -> pd.DataFrame:
+                  valor_max: float = None, sem_contato: bool = False,
+                  limit: int = 500) -> pd.DataFrame:
     """Get lead list ranked by opportunity (most instruments + highest values)."""
     engine = get_db_engine()
 
@@ -289,6 +290,8 @@ def get_lead_list(uf_filter: str = None, modalidade_filter: str = None,
     if valor_max is not None:
         query += " AND p.valor_total_emendas <= :valor_max"
         params["valor_max"] = valor_max
+    if sem_contato:
+        query += " AND (p.email IS NULL OR p.email = '') AND (p.telefone IS NULL OR p.telefone = '')"
 
     query += " ORDER BY p.total_convenios DESC, p.valor_total_emendas DESC NULLS LAST"
     query += " LIMIT :limit"
