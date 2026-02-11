@@ -14,7 +14,22 @@ export async function GET() {
     }
 
     // Run all queries sequentially on one connection to avoid pool contention
+    // Use CTE to avoid repeating expensive subquery calculation
     const statsRows = await query(`
+      WITH proponente_agg AS (
+        SELECT
+          prop.proponente_cnpj,
+          COUNT(DISTINCT prop.id) as total_propostas,
+          COUNT(DISTINCT e.transfer_gov_id) as total_emendas,
+          COALESCE(SUM(DISTINCT e.valor), 0) as valor_total_emendas,
+          COUNT(DISTINCT c.transfer_gov_id) as total_convenios,
+          COALESCE(SUM(c.valor_desembolsado), 0) as valor_total_desembolsos
+        FROM propostas prop
+        LEFT JOIN proposta_emendas pe ON prop.transfer_gov_id = pe.proposta_transfer_gov_id
+        LEFT JOIN emendas e ON pe.emenda_transfer_gov_id = e.transfer_gov_id
+        LEFT JOIN convenios c ON prop.transfer_gov_id = c.proposta_id
+        GROUP BY prop.proponente_cnpj
+      )
       SELECT
         COUNT(*)::int as total_leads,
         COUNT(CASE WHEN p.is_existing_client = true THEN 1 END)::int as existing_clients,
@@ -26,7 +41,12 @@ export async function GET() {
         SUM(COALESCE(agg.total_convenios, 0))::int as total_convenios,
         SUM(COALESCE(agg.valor_total_desembolsos, 0))::float as total_valor_desembolsos
       FROM proponentes p
-      LEFT JOIN (
+      LEFT JOIN proponente_agg agg ON p.cnpj = agg.proponente_cnpj
+      WHERE p.natureza_juridica NOT ILIKE '%Administra%'
+    `)
+
+    const leadsRows = await query(
+      `WITH proponente_agg AS (
         SELECT
           prop.proponente_cnpj,
           COUNT(DISTINCT prop.id) as total_propostas,
@@ -39,12 +59,8 @@ export async function GET() {
         LEFT JOIN emendas e ON pe.emenda_transfer_gov_id = e.transfer_gov_id
         LEFT JOIN convenios c ON prop.transfer_gov_id = c.proposta_id
         GROUP BY prop.proponente_cnpj
-      ) agg ON p.cnpj = agg.proponente_cnpj
-      WHERE p.natureza_juridica NOT ILIKE '%Administra%'
-    `)
-
-    const leadsRows = await query(
-      `SELECT
+      )
+      SELECT
         p.id, p.cnpj, p.nome, p.natureza_juridica, p.estado, p.municipio,
         COALESCE(agg.total_propostas, 0)::int as total_propostas,
         COALESCE(agg.total_emendas, 0)::int as total_emendas,
@@ -53,41 +69,30 @@ export async function GET() {
         COALESCE(agg.valor_total_desembolsos, 0)::float as valor_total_desembolsos,
         p.email, p.telefone, p.is_osc, p.is_existing_client
       FROM proponentes p
-      LEFT JOIN (
-        SELECT
-          prop.proponente_cnpj,
-          COUNT(DISTINCT prop.id) as total_propostas,
-          COUNT(DISTINCT e.transfer_gov_id) as total_emendas,
-          COALESCE(SUM(DISTINCT e.valor), 0) as valor_total_emendas,
-          COUNT(DISTINCT c.transfer_gov_id) as total_convenios,
-          COALESCE(SUM(c.valor_desembolsado), 0) as valor_total_desembolsos
-        FROM propostas prop
-        LEFT JOIN proposta_emendas pe ON prop.transfer_gov_id = pe.proposta_transfer_gov_id
-        LEFT JOIN emendas e ON pe.emenda_transfer_gov_id = e.transfer_gov_id
-        LEFT JOIN convenios c ON prop.transfer_gov_id = c.proposta_id
-        GROUP BY prop.proponente_cnpj
-      ) agg ON p.cnpj = agg.proponente_cnpj
+      LEFT JOIN proponente_agg agg ON p.cnpj = agg.proponente_cnpj
       WHERE p.natureza_juridica NOT ILIKE '%Administra%'
       ORDER BY p.is_existing_client DESC, COALESCE(agg.total_propostas, 0) ASC, COALESCE(agg.total_emendas, 0) DESC
       LIMIT 10`
     )
 
     const estadosRows = await query(`
-      SELECT
-        p.estado,
-        COUNT(*)::int as total_proponentes,
-        SUM(COALESCE(agg.total_emendas, 0))::int as total_emendas,
-        SUM(COALESCE(agg.valor_total_emendas, 0))::float as total_valor_emendas
-      FROM proponentes p
-      LEFT JOIN (
-        SELECT prop.proponente_cnpj,
+      WITH estado_agg AS (
+        SELECT
+          prop.proponente_cnpj,
           COUNT(DISTINCT e.transfer_gov_id) as total_emendas,
           COALESCE(SUM(DISTINCT e.valor), 0) as valor_total_emendas
         FROM propostas prop
         LEFT JOIN proposta_emendas pe ON prop.transfer_gov_id = pe.proposta_transfer_gov_id
         LEFT JOIN emendas e ON pe.emenda_transfer_gov_id = e.transfer_gov_id
         GROUP BY prop.proponente_cnpj
-      ) agg ON p.cnpj = agg.proponente_cnpj
+      )
+      SELECT
+        p.estado,
+        COUNT(*)::int as total_proponentes,
+        SUM(COALESCE(agg.total_emendas, 0))::int as total_emendas,
+        SUM(COALESCE(agg.valor_total_emendas, 0))::float as total_valor_emendas
+      FROM proponentes p
+      LEFT JOIN estado_agg agg ON p.cnpj = agg.proponente_cnpj
       WHERE p.natureza_juridica NOT ILIKE '%Administra%' AND p.estado IS NOT NULL
       GROUP BY p.estado ORDER BY total_proponentes DESC
     `)
