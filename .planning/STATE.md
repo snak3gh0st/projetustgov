@@ -13,9 +13,9 @@
 ## Current Position
 
 **Phase:** 10 of 13 (Milestone v3.0)
-**Plan:** 02 of 03 (Phase 10)
+**Plan:** 03 of 03 (Phase 10)
 **Status:** Executing Phase 10
-**Progress:** [████████░░] 78%
+**Progress:** [█████████░] 80%
 
 **Milestone v1.0 Status:** Complete (Phases 1, 2, 4, 5 delivered)
 **Milestone v2.0 Status:** Superseded by Next.js migration (Phases 6-8 delivered in Streamlit, Phase 9 N/A)
@@ -37,6 +37,8 @@
 | Single /api/dashboard endpoint | v3.0 | Avoids parallel connection issues on Vercel serverless | 2026-02-11 |
 | JWT sessions for credentials auth | 10-01 | Auth.js v5 requires JWT for credentials provider | 2026-02-11 |
 | Bcrypt with 10 rounds | 10-01 | Industry standard for password hashing (~100ms per hash) | 2026-02-11 |
+| React 18 form patterns (useFormState) | 10-02 | Project uses React 18.3.0, not React 19 useActionState | 2026-02-11 |
+| Edge Runtime warnings acceptable | 10-02 | Middleware only validates JWT, DB queries run server-side | 2026-02-11 |
 
 ### Technical Context (Next.js Stack)
 
@@ -52,7 +54,7 @@
 
 - [x] Plan Phase 10: Auth & CRM Foundation
 - [x] Execute Phase 10 Plan 01: Install dependencies, create CRM tables, configure Auth.js
-- [ ] Execute Phase 10 Plan 02: Login UI and middleware
+- [x] Execute Phase 10 Plan 02: Login UI and middleware
 - [ ] Execute Phase 10 Plan 03: Vendedor management UI
 - [ ] Plan Phase 11: Lead Management & Contact Tracking
 - [ ] Plan Phase 12: Pipeline Kanban
@@ -67,20 +69,22 @@
 ### Last Session Summary
 **Date:** 2026-02-11
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Executed Phase 10 Plan 01 — Auth & CRM Foundation
+**Activity:** Executed Phase 10 Plan 02 — Login UI and Middleware
 
 **Completed:**
-- Installed Auth.js v5 dependencies (next-auth@beta, bcrypt, jose, zod)
-- Created CRM database schema: users, lead_assignments, contact_notes, commissions
-- Configured Auth.js with credentials provider and JWT sessions
-- Implemented server actions: login, createVendedor (gestor-only), logout
-- Created Zod validation schemas and TypeScript type augmentation
-- Fixed TypeScript compilation errors (bcrypt imports, role type assertions)
-- Migration endpoint ready at POST /api/migrate with seed capability
+- Created login page with Sigma dark theme branding (glassmorphic card, neon accents)
+- Implemented Auth.js middleware protecting all routes except /login and public APIs
+- Updated root layout to conditionally render Sidebar based on session
+- Fixed React 18 compatibility (useFormState/useFormStatus instead of useActionState)
+- Middleware returns 401 for unauthenticated API requests, 403 for gestor-only routes
+- Logged-in users accessing /login are redirected to home
+- Session persistence via JWT cookie with 7-day maxAge
 
 **Next Actions:**
-- Execute Phase 10 Plan 02 — Build login UI and protect routes with middleware
-- Deploy to Vercel and run POST /api/migrate to create CRM tables
+- Execute Phase 10 Plan 03 — Build vendedor management UI for gestor
+- Deploy to Vercel with NEXTAUTH_SECRET environment variable
+- Run POST /api/migrate with seed:true to create CRM tables and gestor user
+- Test login flow with gestor@sigma.com / sigma2026
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
