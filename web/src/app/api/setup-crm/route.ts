@@ -1,0 +1,130 @@
+import { NextResponse } from 'next/server'
+import { Pool } from 'pg'
+import bcrypt from 'bcryptjs'
+
+export const dynamic = 'force-dynamic'
+export const maxDuration = 30
+
+function getPool() {
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL
+  if (!url) throw new Error('No DB URL configured')
+  return new Pool({
+    connectionString: url,
+    max: 2,
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 10000,
+  })
+}
+
+export async function POST() {
+  const pool = getPool()
+
+  try {
+    // 1. Ensure users table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        nome VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(20) NOT NULL DEFAULT 'vendedor' CHECK (role IN ('gestor', 'vendedor')),
+        active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `)
+
+    // 2. Drop old table if exists (schema changed)
+    await pool.query(`DROP TABLE IF EXISTS vendedor_projetos CASCADE;`)
+
+    // 3. Create vendedor_projetos with expanded schema
+    await pool.query(`
+      CREATE TABLE vendedor_projetos (
+        id SERIAL PRIMARY KEY,
+        vendedor_id UUID REFERENCES users(id),
+        -- Programa
+        codigo_programa TEXT,
+        nome_programa TEXT,
+        link_externo TEXT,
+        orgao_concedente VARCHAR(255),
+        uf VARCHAR(5),
+        municipio VARCHAR(255),
+        qualificacao TEXT,
+        nr_emenda TEXT,
+        parlamentar TEXT,
+        -- Beneficiario
+        cnpj VARCHAR(20) NOT NULL,
+        nome TEXT NOT NULL,
+        natureza_juridica VARCHAR(255),
+        -- Financeiro
+        valor_emenda NUMERIC(15,2),
+        valor_global NUMERIC(15,2),
+        valor_empenhado NUMERIC(15,2),
+        valor_liberado NUMERIC(15,2),
+        -- Siconv extras
+        nr_convenio TEXT,
+        objeto TEXT,
+        modalidade VARCHAR(100),
+        situacao VARCHAR(100),
+        saldo_conta NUMERIC(15,2),
+        -- CRM
+        telefone VARCHAR(50),
+        email VARCHAR(500),
+        status_contato VARCHAR(50) DEFAULT 'Novo',
+        observacoes TEXT,
+        -- Metadata
+        importado_de TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+
+      CREATE INDEX idx_vp_vendedor ON vendedor_projetos(vendedor_id);
+      CREATE INDEX idx_vp_cnpj ON vendedor_projetos(cnpj);
+      CREATE INDEX idx_vp_status_contato ON vendedor_projetos(status_contato);
+      CREATE INDEX idx_vp_uf ON vendedor_projetos(uf);
+    `)
+
+    // 4. Create vendedores
+    const passwordHash = await bcrypt.hash('sigma2026', 10)
+    const vendedores = [
+      { nome: 'Wellington', email: 'wellington@sigma.com' },
+      { nome: 'Elisson', email: 'elisson@sigma.com' },
+      { nome: 'Gabriel', email: 'gabriel@sigma.com' },
+      { nome: 'Vitória', email: 'vitoria@sigma.com' },
+    ]
+
+    const created: string[] = []
+    for (const v of vendedores) {
+      const existing = await pool.query('SELECT id FROM users WHERE email = $1', [v.email])
+      if (existing.rows.length === 0) {
+        await pool.query(
+          'INSERT INTO users (nome, email, password_hash, role) VALUES ($1, $2, $3, $4)',
+          [v.nome, v.email, passwordHash, 'vendedor']
+        )
+        created.push(v.nome)
+      }
+    }
+
+    // Ensure gestor exists
+    const gestorExists = await pool.query('SELECT id FROM users WHERE email = $1', ['gestor@sigma.com'])
+    if (gestorExists.rows.length === 0) {
+      await pool.query(
+        'INSERT INTO users (nome, email, password_hash, role) VALUES ($1, $2, $3, $4)',
+        ['Gestor', 'gestor@sigma.com', passwordHash, 'gestor']
+      )
+      created.push('Gestor')
+    }
+
+    return NextResponse.json({
+      success: true,
+      tables: ['vendedor_projetos'],
+      vendedores_created: created,
+      message: `Setup complete. Created: ${created.join(', ') || 'all already existed'}`,
+    })
+  } catch (error) {
+    console.error('Setup CRM error:', error)
+    return NextResponse.json({ error: String(error), success: false }, { status: 500 })
+  } finally {
+    await pool.end()
+  }
+}

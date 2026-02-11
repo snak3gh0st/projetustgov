@@ -12,14 +12,13 @@ export async function GET() {
     }
 
     const rows = await query(`
-      SELECT DISTINCT estado
-      FROM proponentes
-      WHERE natureza_juridica NOT ILIKE '%Administra%'
-      AND estado IS NOT NULL
-      ORDER BY estado
+      SELECT DISTINCT uf
+      FROM vendedor_projetos
+      WHERE uf IS NOT NULL
+      ORDER BY uf
     `)
 
-    return NextResponse.json(rows.map((r: Record<string, unknown>) => r.estado))
+    return NextResponse.json(rows.map((r: Record<string, unknown>) => r.uf))
   } catch (error) {
     console.error('Estados filter error:', error)
     return NextResponse.json({ error: 'Failed to fetch estados' }, { status: 500 })

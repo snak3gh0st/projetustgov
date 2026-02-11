@@ -1,15 +1,16 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { formatCNPJ } from '@/lib/format'
+import { formatCNPJ, formatCompactCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
 
-const STATUS_OPTIONS = ['PROPOSTA', 'AINDA NÃO', 'RETORNO']
+const STATUS_OPTIONS = ['Novo', 'Contactado', 'Proposta', 'Retorno']
 const STATUS_COLORS: Record<string, string> = {
-  'PROPOSTA': 'bg-amber-500/20 text-amber-400',
-  'AINDA NÃO': 'bg-gray-500/20 text-gray-400',
-  'RETORNO': 'bg-purple-500/20 text-purple-400',
+  'Novo': 'bg-gray-500/20 text-gray-400',
+  'Contactado': 'bg-blue-500/20 text-blue-400',
+  'Proposta': 'bg-amber-500/20 text-amber-400',
+  'Retorno': 'bg-purple-500/20 text-purple-400',
 }
 
 export default function LeadsPage() {
@@ -23,7 +24,7 @@ export default function LeadsPage() {
     setLoading(true)
     const params = new URLSearchParams()
     if (search) params.set('search', search)
-    if (statusFilter) params.set('status_categoria', statusFilter)
+    if (statusFilter) params.set('status_contato', statusFilter)
     params.set('limit', '500')
 
     try {
@@ -60,10 +61,10 @@ export default function LeadsPage() {
   }
 
   function exportCSV() {
-    const headers = ['CNPJ', 'Nome', 'Nr Convênio', 'Saldo', '% Executado', 'Categoria', 'Órgão', 'UF', 'Telefone', 'Email', 'Vendedor', 'Observações']
+    const headers = ['CNPJ', 'Nome', 'Programa', 'Valor Global', 'Situacao', 'Status', 'Orgao', 'UF', 'Telefone', 'Email', 'Vendedor', 'Observacoes']
     const rows = leads.map(l => [
-      l.cnpj, l.nome, l.nr_convenio, l.saldo, l.perc_executado,
-      l.status_categoria, l.orgao_concedente || '', l.uf || '',
+      l.cnpj, l.nome, l.nome_programa || '', String(l.valor_global || 0),
+      l.situacao || '', l.status_contato, l.orgao_concedente || '', l.uf || '',
       l.telefone || '', l.email || '', l.vendedor_nome || '', l.observacoes || '',
     ])
     const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n')
@@ -91,7 +92,7 @@ export default function LeadsPage() {
 
       <div className="flex flex-wrap gap-3">
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="bg-sigma-navy-card border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-sigma-neon/50">
-          <option value="">Todas Categorias</option>
+          <option value="">Todos Status</option>
           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
@@ -108,11 +109,11 @@ export default function LeadsPage() {
                 <tr className="border-b border-white/5 bg-sigma-navy-light">
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">CNPJ</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Nome</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Nr Convênio</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Saldo</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">% Exec</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Categoria</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Órgão</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Programa</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor Global</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Situacao</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Orgao</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">UF</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Vendedor</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Obs</th>
@@ -127,15 +128,15 @@ export default function LeadsPage() {
                       </span>
                     </td>
                     <td className="px-3 py-2 text-white font-medium truncate max-w-[180px]">{lead.nome || '-'}</td>
-                    <td className="px-3 py-2 text-gray-300 text-xs">{lead.nr_convenio}</td>
-                    <td className="px-3 py-2 text-sigma-neon text-xs">{lead.saldo}</td>
-                    <td className="px-3 py-2 text-gray-300 text-xs">{lead.perc_executado}</td>
+                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[150px]">{lead.nome_programa || '-'}</td>
+                    <td className="px-3 py-2 text-sigma-neon text-xs">{formatCompactCurrency(lead.valor_global)}</td>
+                    <td className="px-3 py-2 text-gray-300 text-xs">{lead.situacao || '-'}</td>
                     <td className="px-3 py-2">
                       <select
-                        value={lead.status_categoria || 'AINDA NÃO'}
+                        value={lead.status_contato || 'Novo'}
                         onClick={e => e.stopPropagation()}
-                        onChange={e => updateLead(lead.id, 'status_categoria', e.target.value)}
-                        className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[lead.status_categoria] || STATUS_COLORS['AINDA NÃO']}`}
+                        onChange={e => updateLead(lead.id, 'status_contato', e.target.value)}
+                        className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[lead.status_contato] || STATUS_COLORS['Novo']}`}
                       >
                         {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
@@ -148,7 +149,6 @@ export default function LeadsPage() {
                         type="text"
                         defaultValue={lead.observacoes || ''}
                         placeholder="..."
-                        maxLength={100}
                         onClick={e => e.stopPropagation()}
                         onBlur={e => {
                           if (e.target.value !== (lead.observacoes || '')) {

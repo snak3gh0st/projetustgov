@@ -13,15 +13,14 @@ export async function GET() {
 
     const rows = await query(`
       SELECT DISTINCT natureza_juridica
-      FROM proponentes
-      WHERE natureza_juridica NOT ILIKE '%Administra%'
-      AND natureza_juridica IS NOT NULL
+      FROM vendedor_projetos
+      WHERE natureza_juridica IS NOT NULL
       ORDER BY natureza_juridica
     `)
 
     return NextResponse.json(rows.map((r: Record<string, unknown>) => r.natureza_juridica))
   } catch (error) {
-    console.error('Natureza juridica filter error:', error)
-    return NextResponse.json({ error: 'Failed to fetch natureza juridica' }, { status: 500 })
+    console.error('Filter error:', error)
+    return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 })
   }
 }

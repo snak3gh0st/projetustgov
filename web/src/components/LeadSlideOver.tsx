@@ -2,13 +2,14 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatCNPJ } from '@/lib/format'
+import { formatCNPJ, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 
 const STATUS_COLORS: Record<string, string> = {
-  'PROPOSTA': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  'AINDA NÃO': 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-  'RETORNO': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  'Novo': 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  'Contactado': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  'Proposta': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  'Retorno': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
 }
 
 interface LeadSlideOverProps {
@@ -31,7 +32,6 @@ export default function LeadSlideOver({ lead, onClose }: LeadSlideOverProps) {
   if (!lead) return null
 
   const phoneDigits = lead.telefone?.replace(/\D/g, '') || ''
-  const percNum = parseFloat(lead.perc_executado) || 0
 
   return (
     <div className="fixed inset-0 z-50">
@@ -64,9 +64,9 @@ export default function LeadSlideOver({ lead, onClose }: LeadSlideOverProps) {
             </div>
           </div>
 
-          {lead.status_categoria && (
-            <span className={`inline-block mt-3 text-xs font-medium rounded-full px-3 py-1 border ${STATUS_COLORS[lead.status_categoria] || STATUS_COLORS['AINDA NÃO']}`}>
-              {lead.status_categoria}
+          {lead.status_contato && (
+            <span className={`inline-block mt-3 text-xs font-medium rounded-full px-3 py-1 border ${STATUS_COLORS[lead.status_contato] || STATUS_COLORS['Novo']}`}>
+              {lead.status_contato}
             </span>
           )}
         </div>
@@ -75,12 +75,13 @@ export default function LeadSlideOver({ lead, onClose }: LeadSlideOverProps) {
         <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-4">
           {/* Info Grid */}
           <div className="grid grid-cols-2 gap-3">
-            <InfoCard label="Saldo" value={lead.saldo || 'R$ 0'} highlight />
+            <InfoCard label="Valor Global" value={formatCurrency(lead.valor_global || 0)} highlight />
             <InfoCard label="UF / Municipio" value={[lead.uf, lead.municipio].filter(Boolean).join(' / ') || '-'} />
             <InfoCard label="Vendedor" value={lead.vendedor_nome || '-'} />
             <InfoCard label="Orgao Concedente" value={lead.orgao_concedente || '-'} />
-            <InfoCard label="% Executado" value={`${lead.perc_executado || '0'}%`} progress={percNum} />
-            <InfoCard label="Nr Convenio" value={lead.nr_convenio || '-'} />
+            <InfoCard label="Situacao" value={lead.situacao || '-'} />
+            <InfoCard label="Programa" value={lead.nome_programa || '-'} />
+            <InfoCard label="Natureza Juridica" value={lead.natureza_juridica || '-'} />
           </div>
 
           {/* Contact */}
@@ -156,16 +157,11 @@ export default function LeadSlideOver({ lead, onClose }: LeadSlideOverProps) {
   )
 }
 
-function InfoCard({ label, value, highlight, progress }: { label: string; value: string; highlight?: boolean; progress?: number }) {
+function InfoCard({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div className="bg-white/5 rounded-xl p-3 border border-white/5">
       <p className="text-xs text-gray-500 mb-1">{label}</p>
       <p className={`text-sm font-medium truncate ${highlight ? 'text-sigma-neon font-bold' : 'text-gray-200'}`}>{value}</p>
-      {progress !== undefined && (
-        <div className="mt-2 h-1.5 bg-white/10 rounded-full overflow-hidden">
-          <div className="h-full bg-sigma-neon rounded-full transition-all" style={{ width: `${Math.min(progress, 100)}%` }} />
-        </div>
-      )}
     </div>
   )
 }

@@ -3,107 +3,164 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import TierBadge from '@/components/TierBadge'
-import { formatCNPJ, formatCompactCurrency, formatNumber } from '@/lib/format'
-import { calculateValueTier } from '@/lib/tiers'
-import type { Lead, InstrumentSummary, Emenda, Proposta, Ministerio, Programa, Instrument } from '@/lib/types'
-import LeadTabs from './LeadTabs'
+import { formatCNPJ, formatCurrency } from '@/lib/format'
+import type { VendedorProjeto } from '@/lib/types'
 
-export default function LeadProfilePage() {
+const STATUS_OPTIONS = ['Novo', 'Contactado', 'Proposta', 'Retorno']
+const STATUS_COLORS: Record<string, string> = {
+  'Novo': 'bg-gray-500/20 text-gray-400',
+  'Contactado': 'bg-blue-500/20 text-blue-400',
+  'Proposta': 'bg-amber-500/20 text-amber-400',
+  'Retorno': 'bg-purple-500/20 text-purple-400',
+}
+
+export default function LeadDetailPage() {
   const params = useParams()
   const cnpj = decodeURIComponent(params.cnpj as string)
-  const encoded = encodeURIComponent(cnpj)
 
-  const [lead, setLead] = useState<Lead | null>(null)
-  const [summary, setSummary] = useState<InstrumentSummary | null>(null)
-  const [emendas, setEmendas] = useState<Emenda[]>([])
-  const [propostas, setPropostas] = useState<Proposta[]>([])
-  const [ministerios, setMinisterios] = useState<Ministerio[]>([])
-  const [programas, setProgramas] = useState<Programa[]>([])
-  const [instruments, setInstruments] = useState<Instrument[]>([])
+  const [projetos, setProjetos] = useState<VendedorProjeto[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/leads/${encoded}`).then(r => r.json()),
-      fetch(`/api/leads/${encoded}/instrument-summary`).then(r => r.json()),
-      fetch(`/api/leads/${encoded}/emendas`).then(r => r.json()),
-      fetch(`/api/leads/${encoded}/propostas`).then(r => r.json()),
-      fetch(`/api/leads/${encoded}/ministerios`).then(r => r.json()),
-      fetch(`/api/leads/${encoded}/programas`).then(r => r.json()),
-      fetch(`/api/leads/${encoded}/instruments`).then(r => r.json()),
-    ]).then(([l, s, e, p, m, pg, i]) => {
-      setLead(l?.error ? null : l)
-      setSummary(s?.error ? null : s)
-      setEmendas(Array.isArray(e) ? e : [])
-      setPropostas(Array.isArray(p) ? p : [])
-      setMinisterios(Array.isArray(m) ? m : [])
-      setProgramas(Array.isArray(pg) ? pg : [])
-      setInstruments(Array.isArray(i) ? i : [])
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [encoded])
+    fetch(`/api/leads?search=${encodeURIComponent(cnpj)}&limit=100`)
+      .then(r => r.json())
+      .then(data => {
+        const filtered = (Array.isArray(data) ? data : []).filter(
+          (p: VendedorProjeto) => p.cnpj === cnpj
+        )
+        setProjetos(filtered)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [cnpj])
 
-  if (loading || !lead || !summary) {
+  async function updateProjeto(id: number, field: string, value: string) {
+    try {
+      await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, [field]: value }),
+      })
+      setProjetos(prev => prev.map(p =>
+        p.id === id ? { ...p, [field]: value } : p
+      ))
+    } catch (err) {
+      console.error('Update error:', err)
+    }
+  }
+
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-gray-500 animate-pulse">Carregando lead...</div>
+        <div className="text-gray-500 animate-pulse">Carregando...</div>
       </div>
     )
   }
 
-  const tier = calculateValueTier(lead.total_propostas, lead.valor_total_emendas, lead.total_convenios)
+  if (projetos.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="text-red-400">Nenhum projeto encontrado para este CNPJ</div>
+        <Link href="/leads" className="text-sigma-neon hover:underline text-sm">Voltar</Link>
+      </div>
+    )
+  }
 
-  const kpis = [
-    { title: 'Propostas', value: formatNumber(lead.total_propostas), icon: '📄' },
-    { title: 'Emendas', value: formatNumber(lead.total_emendas), icon: '📝', subtitle: formatCompactCurrency(lead.valor_total_emendas) },
-    { title: 'Instrumentos', value: formatNumber(summary.total_instrumentos), icon: '📋', subtitle: `${summary.instrumentos_ativos} ativos` },
-    { title: 'Valor Global', value: formatCompactCurrency(summary.total_valor_global), icon: '💰' },
-    { title: 'Empenhado', value: formatCompactCurrency(summary.total_empenhado), icon: '🔒' },
-    { title: 'Liberado', value: formatCompactCurrency(summary.total_liberado), icon: '✅' },
-  ]
+  const first = projetos[0]
+  const totalValorGlobal = projetos.reduce((sum, p) => sum + (Number(p.valor_global) || 0), 0)
 
   return (
-    <div className="space-y-6 max-w-7xl">
+    <div className="space-y-6 max-w-5xl">
       <Link href="/leads" className="text-gray-400 hover:text-white transition-colors text-sm">
-        ← Voltar
+        &#8592; Voltar para leads
       </Link>
 
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="font-heading text-2xl font-bold text-white">{lead.nome}</h1>
-            <TierBadge tier={tier} />
-          </div>
-          <p className="text-sm text-gray-400 font-mono">{formatCNPJ(lead.cnpj)}</p>
+      <div>
+        <h1 className="font-heading text-2xl font-bold text-white">{first.nome || 'Sem nome'}</h1>
+        <p className="text-sm text-gray-400 font-mono mt-1">{formatCNPJ(cnpj)}</p>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4">
+          <p className="text-xs text-gray-400 uppercase">Valor Global Total</p>
+          <p className="text-xl font-heading font-bold text-sigma-neon mt-1">
+            {formatCurrency(totalValorGlobal)}
+          </p>
         </div>
-        {lead.is_existing_client && (
-          <span className="px-3 py-1 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-medium">CLIENTE EXISTENTE</span>
-        )}
+        <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4">
+          <p className="text-xs text-gray-400 uppercase">Projetos</p>
+          <p className="text-xl font-heading font-bold text-white mt-1">{projetos.length}</p>
+        </div>
+        <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4">
+          <p className="text-xs text-gray-400 uppercase">UF</p>
+          <p className="text-xl font-heading font-bold text-white mt-1">{first.uf || '-'}</p>
+          <p className="text-xs text-gray-500">{first.municipio || ''}</p>
+        </div>
+        <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4">
+          <p className="text-xs text-gray-400 uppercase">Vendedor</p>
+          <p className="text-xl font-heading font-bold text-white mt-1">{first.vendedor_nome || '-'}</p>
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-6 bg-sigma-navy-card border border-white/5 rounded-xl p-4 text-sm">
-        <div><span className="text-gray-500 text-xs block">CNPJ</span><span className="text-gray-300 font-mono">{formatCNPJ(lead.cnpj)}</span></div>
-        <div><span className="text-gray-500 text-xs block">Email</span><span className="text-gray-300">{lead.email || '-'}</span></div>
-        <div><span className="text-gray-500 text-xs block">Telefone</span><span className="text-gray-300">{lead.telefone || '-'}</span></div>
-        <div><span className="text-gray-500 text-xs block">Local</span><span className="text-gray-300">{[lead.municipio, lead.estado].filter(Boolean).join(' - ') || '-'}</span></div>
-        <div><span className="text-gray-500 text-xs block">Natureza Juridica</span><span className="text-gray-300">{lead.natureza_juridica || '-'}</span></div>
+      <div className="bg-sigma-navy-card border border-white/5 rounded-xl overflow-hidden">
+        <div className="p-4 border-b border-white/5">
+          <h2 className="text-lg font-heading font-semibold text-white">Projetos ({projetos.length})</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/5 bg-sigma-navy-light">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Programa</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Orgao</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor Global</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Situacao</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Obs</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Link</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projetos.map(p => (
+                <tr key={p.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="px-4 py-3 text-white text-xs truncate max-w-[180px]">{p.nome_programa || p.nr_convenio || '-'}</td>
+                  <td className="px-4 py-3 text-gray-300 text-xs truncate max-w-[150px]">{p.orgao_concedente || '-'}</td>
+                  <td className="px-4 py-3 text-sigma-neon text-xs">{formatCurrency(Number(p.valor_global) || 0)}</td>
+                  <td className="px-4 py-3 text-gray-300 text-xs">{p.situacao || '-'}</td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={p.status_contato || 'Novo'}
+                      onChange={e => updateProjeto(p.id, 'status_contato', e.target.value)}
+                      className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[p.status_contato] || STATUS_COLORS['Novo']}`}
+                    >
+                      {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="text"
+                      defaultValue={p.observacoes || ''}
+                      placeholder="..."
+                      onBlur={e => {
+                        if (e.target.value !== (p.observacoes || '')) {
+                          updateProjeto(p.id, 'observacoes', e.target.value)
+                        }
+                      }}
+                      className="bg-transparent border-b border-white/10 text-xs text-gray-300 w-24 focus:outline-none focus:border-sigma-neon/50 placeholder-gray-600"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    {p.link_externo ? (
+                      <a href={p.link_externo} target="_blank" rel="noopener" className="text-blue-400 hover:text-blue-300 text-xs">
+                        Abrir
+                      </a>
+                    ) : '-'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {kpis.map((kpi) => (
-          <div key={kpi.title} className="bg-sigma-navy-card border border-white/5 rounded-xl p-4 flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400 uppercase tracking-wider">{kpi.title}</span>
-              <span className="text-lg">{kpi.icon}</span>
-            </div>
-            <span className="text-xl font-heading font-bold text-white">{kpi.value}</span>
-            {kpi.subtitle && <span className="text-xs text-gray-500">{kpi.subtitle}</span>}
-          </div>
-        ))}
-      </div>
-
-      <LeadTabs emendas={emendas} propostas={propostas} ministerios={ministerios} programas={programas} instruments={instruments} />
     </div>
   )
 }
