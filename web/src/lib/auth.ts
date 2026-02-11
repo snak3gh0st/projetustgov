@@ -1,6 +1,5 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
-import * as bcrypt from 'bcrypt'
 import { query } from './db'
 import { CRMUser } from './types'
 
@@ -29,7 +28,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null
         }
 
-        // Verify password
+        // Verify password (dynamic import to avoid Edge Runtime bundling)
+        const bcrypt = await import('bcrypt')
         const passwordMatch = await bcrypt.compare(
           credentials.password as string,
           user.password_hash

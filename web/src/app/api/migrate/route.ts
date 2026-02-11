@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Pool } from 'pg'
-import bcrypt from 'bcrypt'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300 // 5 min max for Vercel
@@ -233,7 +232,8 @@ export async function POST(request: NextRequest) {
 
     // Seed gestor user if requested
     if (seed) {
-      const passwordHash = await bcrypt.hash('sigma2026', 10)
+      const bcrypt = await import('bcrypt')
+      const passwordHash = await bcrypt.default.hash('sigma2026', 10)
 
       // Check if gestor already exists
       const existing = await target.query(
