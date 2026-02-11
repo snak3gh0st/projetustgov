@@ -10,7 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/ - Commented out to allow Next.js web/src/lib directory
+# Python lib dirs should be in venv/ which is already ignored
 lib64/
 parts/
 sdist/
@@ -79,3 +80,5 @@ reset_database.log
 reload_*.log
 load_*.log
 fix_*.log
+.vercel
+.env*.local
