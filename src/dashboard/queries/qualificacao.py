@@ -65,7 +65,7 @@ def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame
 
     where_clause = " AND ".join(where_conditions)
 
-    # Compute total_propostas live from propostas table (pre-computed column can be stale)
+    # Compute ALL aggregations live (pre-computed columns in proponentes can be stale)
     query = text(f"""
         SELECT
             p.id,
@@ -77,26 +77,35 @@ def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame
             p.cep,
             p.endereco,
             p.bairro,
-            COALESCE(pc.total_propostas, 0) as total_propostas,
-            p.total_emendas,
-            p.valor_total_emendas,
-            p.total_convenios,
-            p.valor_total_desembolsos,
+            COALESCE(agg.total_propostas, 0) as total_propostas,
+            COALESCE(agg.total_emendas, 0) as total_emendas,
+            COALESCE(agg.valor_total_emendas, 0) as valor_total_emendas,
+            COALESCE(agg.total_convenios, 0) as total_convenios,
+            COALESCE(agg.valor_total_desembolsos, 0) as valor_total_desembolsos,
             p.email,
             p.telefone,
             p.is_osc,
             p.is_existing_client
         FROM proponentes p
         LEFT JOIN (
-            SELECT proponente_cnpj, COUNT(*) as total_propostas
-            FROM propostas
-            GROUP BY proponente_cnpj
-        ) pc ON p.cnpj = pc.proponente_cnpj
+            SELECT
+                prop.proponente_cnpj,
+                COUNT(DISTINCT prop.id) as total_propostas,
+                COUNT(DISTINCT e.transfer_gov_id) as total_emendas,
+                COALESCE(SUM(DISTINCT e.valor), 0) as valor_total_emendas,
+                COUNT(DISTINCT c.transfer_gov_id) as total_convenios,
+                COALESCE(SUM(c.valor_desembolsado), 0) as valor_total_desembolsos
+            FROM propostas prop
+            LEFT JOIN proposta_emendas pe ON prop.transfer_gov_id = pe.proposta_transfer_gov_id
+            LEFT JOIN emendas e ON pe.emenda_transfer_gov_id = e.transfer_gov_id
+            LEFT JOIN convenios c ON prop.transfer_gov_id = c.proposta_id
+            GROUP BY prop.proponente_cnpj
+        ) agg ON p.cnpj = agg.proponente_cnpj
         WHERE {where_clause}
         ORDER BY
             p.is_existing_client DESC,
-            COALESCE(pc.total_propostas, 0) ASC,
-            p.total_emendas DESC,
+            COALESCE(agg.total_propostas, 0) ASC,
+            COALESCE(agg.total_emendas, 0) DESC,
             p.nome ASC
         LIMIT :limit
     """)
@@ -226,19 +235,34 @@ def get_qualification_stats() -> dict:
     """
     engine = get_db_engine()
 
+    # Compute all aggregations live from source tables
     query = text("""
         SELECT
             COUNT(*) as total_leads,
-            COUNT(CASE WHEN is_existing_client = true THEN 1 END) as existing_clients,
-            COUNT(CASE WHEN is_existing_client = false THEN 1 END) as new_leads,
-            SUM(total_emendas) as total_emendas,
-            SUM(valor_total_emendas) as total_valor_emendas,
-            AVG(total_propostas) as avg_propostas,
-            COUNT(CASE WHEN total_propostas <= 3 THEN 1 END) as high_value_leads,
-            SUM(total_convenios) as total_convenios,
-            SUM(valor_total_desembolsos) as total_valor_desembolsos
-        FROM proponentes
-        WHERE natureza_juridica NOT ILIKE '%Administra%'
+            COUNT(CASE WHEN p.is_existing_client = true THEN 1 END) as existing_clients,
+            COUNT(CASE WHEN p.is_existing_client = false THEN 1 END) as new_leads,
+            SUM(COALESCE(agg.total_emendas, 0)) as total_emendas,
+            SUM(COALESCE(agg.valor_total_emendas, 0)) as total_valor_emendas,
+            AVG(COALESCE(agg.total_propostas, 0)) as avg_propostas,
+            COUNT(CASE WHEN COALESCE(agg.total_propostas, 0) <= 3 THEN 1 END) as high_value_leads,
+            SUM(COALESCE(agg.total_convenios, 0)) as total_convenios,
+            SUM(COALESCE(agg.valor_total_desembolsos, 0)) as total_valor_desembolsos
+        FROM proponentes p
+        LEFT JOIN (
+            SELECT
+                prop.proponente_cnpj,
+                COUNT(DISTINCT prop.id) as total_propostas,
+                COUNT(DISTINCT e.transfer_gov_id) as total_emendas,
+                COALESCE(SUM(DISTINCT e.valor), 0) as valor_total_emendas,
+                COUNT(DISTINCT c.transfer_gov_id) as total_convenios,
+                COALESCE(SUM(c.valor_desembolsado), 0) as valor_total_desembolsos
+            FROM propostas prop
+            LEFT JOIN proposta_emendas pe ON prop.transfer_gov_id = pe.proposta_transfer_gov_id
+            LEFT JOIN emendas e ON pe.emenda_transfer_gov_id = e.transfer_gov_id
+            LEFT JOIN convenios c ON prop.transfer_gov_id = c.proposta_id
+            GROUP BY prop.proponente_cnpj
+        ) agg ON p.cnpj = agg.proponente_cnpj
+        WHERE p.natureza_juridica NOT ILIKE '%Administra%'
     """)
 
     with engine.connect() as conn:

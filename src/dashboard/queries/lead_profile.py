@@ -23,6 +23,7 @@ def get_lead_overview(cnpj: str) -> pd.DataFrame:
     Returns:
         Single-row DataFrame with all proponente fields plus tier_classification
     """
+    # Compute all aggregations live from source tables
     query = """
         SELECT
             p.id,
@@ -36,19 +37,28 @@ def get_lead_overview(cnpj: str) -> pd.DataFrame:
             p.estado,
             p.cep,
             p.natureza_juridica,
-            COALESCE(pc.total_propostas, 0) as total_propostas,
-            p.total_emendas,
-            p.valor_total_emendas,
-            p.total_convenios,
-            p.valor_total_desembolsos,
+            COALESCE(agg.total_propostas, 0) as total_propostas,
+            COALESCE(agg.total_emendas, 0) as total_emendas,
+            COALESCE(agg.valor_total_emendas, 0) as valor_total_emendas,
+            COALESCE(agg.total_convenios, 0) as total_convenios,
+            COALESCE(agg.valor_total_desembolsos, 0) as valor_total_desembolsos,
             p.is_existing_client,
             p.is_osc
         FROM proponentes p
         LEFT JOIN (
-            SELECT proponente_cnpj, COUNT(*) as total_propostas
-            FROM propostas
-            GROUP BY proponente_cnpj
-        ) pc ON p.cnpj = pc.proponente_cnpj
+            SELECT
+                prop.proponente_cnpj,
+                COUNT(DISTINCT prop.id) as total_propostas,
+                COUNT(DISTINCT e.transfer_gov_id) as total_emendas,
+                COALESCE(SUM(DISTINCT e.valor), 0) as valor_total_emendas,
+                COUNT(DISTINCT c.transfer_gov_id) as total_convenios,
+                COALESCE(SUM(c.valor_desembolsado), 0) as valor_total_desembolsos
+            FROM propostas prop
+            LEFT JOIN proposta_emendas pe ON prop.transfer_gov_id = pe.proposta_transfer_gov_id
+            LEFT JOIN emendas e ON pe.emenda_transfer_gov_id = e.transfer_gov_id
+            LEFT JOIN convenios c ON prop.transfer_gov_id = c.proposta_id
+            GROUP BY prop.proponente_cnpj
+        ) agg ON p.cnpj = agg.proponente_cnpj
         WHERE p.cnpj = :cnpj
     """
 
