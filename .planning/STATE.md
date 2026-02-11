@@ -64,12 +64,18 @@
 
 **None currently.**
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 2 | Leads clicáveis com card de info rápida e UI premium | 2026-02-11 | 1edb2b1 | [2-leads-clic-veis-com-card-de-info-r-pida-](./quick/2-leads-clic-veis-com-card-de-info-r-pida-/) |
+
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-11
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Executed Phase 10 Plan 02 — Login UI and Middleware
+**Activity:** Completed quick task 2: Leads clicáveis com card de info rápida e UI premium
 
 **Completed:**
 - Created login page with Sigma dark theme branding (glassmorphic card, neon accents)
