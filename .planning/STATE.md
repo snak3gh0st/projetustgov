@@ -39,6 +39,8 @@
 | Bcrypt with 10 rounds | 10-01 | Industry standard for password hashing (~100ms per hash) | 2026-02-11 |
 | React 18 form patterns (useFormState) | 10-02 | Project uses React 18.3.0, not React 19 useActionState | 2026-02-11 |
 | Edge Runtime warnings acceptable | 10-02 | Middleware only validates JWT, DB queries run server-side | 2026-02-11 |
+| NUMERIC(15,2) for financial columns | quick-3 | Proper arithmetic in SQL, no string parsing needed | 2026-02-11 |
+| Status contato: Novo/Contactado/Proposta/Retorno | quick-3 | Cleaner CRM pipeline stages replacing old PROPOSTA/AINDA NAO/RETORNO | 2026-02-11 |
 
 ### Technical Context (Next.js Stack)
 
@@ -69,28 +71,29 @@
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 2 | Leads clicáveis com card de info rápida e UI premium | 2026-02-11 | 1edb2b1 | [2-leads-clic-veis-com-card-de-info-r-pida-](./quick/2-leads-clic-veis-com-card-de-info-r-pida-/) |
+| 3 | Schema expansion + Siconv base bruta import + Upload UI | 2026-02-11 | 33fd78c | [3-schema-upload-base-bruta-import](./quick/3-schema-upload-base-bruta-import/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-11
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Completed quick task 2: Leads clicáveis com card de info rápida e UI premium
+**Activity:** Completed quick task 3: Schema expansion + base bruta import
 
 **Completed:**
-- Created login page with Sigma dark theme branding (glassmorphic card, neon accents)
-- Implemented Auth.js middleware protecting all routes except /login and public APIs
-- Updated root layout to conditionally render Sidebar based on session
-- Fixed React 18 compatibility (useFormState/useFormStatus instead of useActionState)
-- Middleware returns 401 for unauthenticated API requests, 403 for gestor-only routes
-- Logged-in users accessing /login are redirected to home
-- Session persistence via JWT cookie with 7-day maxAge
+- Expanded vendedor_projetos schema with NUMERIC financial columns (valor_global, valor_emenda, etc.)
+- Added program metadata fields (codigo_programa, nome_programa, qualificacao, parlamentar)
+- Rewrote import endpoint with Siconv vs CRM format auto-detection
+- Duplicate CNPJ detection (skip and report, not overwrite)
+- Created gestor-only upload page with drag-and-drop and results card
+- Updated all 13 files (dashboard, leads, slide-over, detail pages) for new schema
+- New status values: Novo, Contactado, Proposta, Retorno
 
 **Next Actions:**
-- Execute Phase 10 Plan 03 — Build vendedor management UI for gestor
-- Deploy to Vercel with NEXTAUTH_SECRET environment variable
-- Run POST /api/migrate with seed:true to create CRM tables and gestor user
-- Test login flow with gestor@sigma.com / sigma2026
+- Run POST /api/setup-crm to recreate vendedor_projetos with expanded schema
+- Upload Siconv base bruta .xlsx via /upload page
+- Execute Phase 10 Plan 03 -- Build vendedor management UI for gestor
+- Deploy to Vercel
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
