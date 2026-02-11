@@ -65,8 +65,7 @@ def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame
 
     where_clause = " AND ".join(where_conditions)
 
-    # OPTIMIZED: Removed expensive STRING_AGG + multiple JOINs
-    # Query proponentes directly, fetch ministerios separately for selected lead
+    # Compute total_propostas live from propostas table (pre-computed column can be stale)
     query = text(f"""
         SELECT
             p.id,
@@ -78,7 +77,7 @@ def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame
             p.cep,
             p.endereco,
             p.bairro,
-            p.total_propostas,
+            COALESCE(pc.total_propostas, 0) as total_propostas,
             p.total_emendas,
             p.valor_total_emendas,
             p.total_convenios,
@@ -88,11 +87,16 @@ def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame
             p.is_osc,
             p.is_existing_client
         FROM proponentes p
+        LEFT JOIN (
+            SELECT proponente_cnpj, COUNT(*) as total_propostas
+            FROM propostas
+            GROUP BY proponente_cnpj
+        ) pc ON p.cnpj = pc.proponente_cnpj
         WHERE {where_clause}
         ORDER BY
-            p.is_existing_client DESC,  -- Existing clients first (for reference)
-            p.total_propostas ASC,      -- Then by value (fewer propostas = higher value)
-            p.total_emendas DESC,       -- More emendas = better
+            p.is_existing_client DESC,
+            COALESCE(pc.total_propostas, 0) ASC,
+            p.total_emendas DESC,
             p.nome ASC
         LIMIT :limit
     """)

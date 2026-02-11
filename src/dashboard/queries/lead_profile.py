@@ -25,26 +25,31 @@ def get_lead_overview(cnpj: str) -> pd.DataFrame:
     """
     query = """
         SELECT
-            id,
-            cnpj,
-            nome,
-            email,
-            telefone,
-            endereco,
-            bairro,
-            municipio,
-            estado,
-            cep,
-            natureza_juridica,
-            total_propostas,
-            total_emendas,
-            valor_total_emendas,
-            total_convenios,
-            valor_total_desembolsos,
-            is_existing_client,
-            is_osc
-        FROM proponentes
-        WHERE cnpj = :cnpj
+            p.id,
+            p.cnpj,
+            p.nome,
+            p.email,
+            p.telefone,
+            p.endereco,
+            p.bairro,
+            p.municipio,
+            p.estado,
+            p.cep,
+            p.natureza_juridica,
+            COALESCE(pc.total_propostas, 0) as total_propostas,
+            p.total_emendas,
+            p.valor_total_emendas,
+            p.total_convenios,
+            p.valor_total_desembolsos,
+            p.is_existing_client,
+            p.is_osc
+        FROM proponentes p
+        LEFT JOIN (
+            SELECT proponente_cnpj, COUNT(*) as total_propostas
+            FROM propostas
+            GROUP BY proponente_cnpj
+        ) pc ON p.cnpj = pc.proponente_cnpj
+        WHERE p.cnpj = :cnpj
     """
 
     df = run_query(query, params={"cnpj": cnpj})
