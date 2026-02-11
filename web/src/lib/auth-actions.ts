@@ -3,6 +3,7 @@
 import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, auth } from './auth'
 import { LoginSchema, CreateVendedorSchema, type LoginInput, type CreateVendedorInput } from './validations'
 import { query } from './db'
+import * as bcrypt from 'bcrypt'
 import { redirect } from 'next/navigation'
 import { AuthError } from 'next-auth'
 
@@ -68,8 +69,7 @@ export async function createVendedor(
       return { error: 'Email ja cadastrado' }
     }
 
-    // Hash password (dynamic import for consistency)
-    const bcrypt = await import('bcrypt')
+    // Hash password
     const passwordHash = await bcrypt.hash(validatedData.password, 10)
 
     // Insert new vendedor
