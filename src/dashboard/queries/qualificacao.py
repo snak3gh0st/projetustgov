@@ -9,10 +9,10 @@ from src.dashboard.config import get_db_engine
 
 @st.cache_data(ttl="30m")  # Increased cache from 10m to 30m
 def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame:
-    """Get qualified leads (2025/2026 OSCs with emendas) with full details.
+    """Get qualified leads (2025/2026 private CNPJs) with full details.
 
     Returns proponentes ranked by value (fewer propostas = higher value).
-    Includes emenda aggregations and contact information.
+    Excludes public administration entities. Includes emenda aggregations and contact information.
 
     Args:
         limit: Maximum number of leads to return
@@ -31,7 +31,7 @@ def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame
     filters = filters or {}
 
     # Build WHERE clause
-    where_conditions = ["p.is_osc = true"]  # Only OSCs
+    where_conditions = ["p.natureza_juridica NOT ILIKE '%Administra%'"]  # Exclude public administration
 
     if filters.get("is_new_lead"):
         where_conditions.append("p.is_existing_client = false")
@@ -225,7 +225,7 @@ def get_qualification_stats() -> dict:
             SUM(total_convenios) as total_convenios,
             SUM(valor_total_desembolsos) as total_valor_desembolsos
         FROM proponentes
-        WHERE is_osc = true
+        WHERE natureza_juridica NOT ILIKE '%Administra%'
     """)
 
     with engine.connect() as conn:
@@ -257,7 +257,7 @@ def get_estados_disponiveis() -> list[str]:
     query = text("""
         SELECT DISTINCT estado
         FROM proponentes
-        WHERE is_osc = true
+        WHERE natureza_juridica NOT ILIKE '%Administra%'
         AND estado IS NOT NULL
         ORDER BY estado
     """)

@@ -15,7 +15,7 @@ from datetime import date
 from typing import Any, TypedDict
 
 import polars as pl
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Row
 from sqlalchemy.orm import Session
@@ -450,19 +450,36 @@ def compute_proponente_aggregations(session: Session, cnpj_emenda_stats: dict = 
 
     logger.info(f"Updated total_propostas for {len(proposta_counts)} proponentes")
 
-    # Update emenda stats from CNPJ-based aggregation (bypasses junction table)
+    # Update emenda stats from junction tables (reliable, no duplicates)
+    emenda_stats = (
+        session.execute(
+            text("""
+                SELECT sub.proponente_cnpj,
+                       COUNT(*) as total_emendas,
+                       SUM(sub.valor) as valor_total_emendas
+                FROM (
+                    SELECT DISTINCT p.proponente_cnpj, e.transfer_gov_id, e.valor
+                    FROM propostas p
+                    JOIN proposta_emendas pe ON p.transfer_gov_id = pe.proposta_transfer_gov_id
+                    JOIN emendas e ON pe.emenda_transfer_gov_id = e.transfer_gov_id
+                    WHERE p.proponente_cnpj IS NOT NULL
+                ) sub
+                GROUP BY sub.proponente_cnpj
+            """)
+        ).fetchall()
+    )
+
     updated_emendas = 0
-    if cnpj_emenda_stats:
-        for cnpj, stats in cnpj_emenda_stats.items():
-            rows_updated = session.query(Proponente).filter_by(cnpj=cnpj).update(
-                {
-                    "total_emendas": stats["count"],
-                    "valor_total_emendas": stats["total_valor"],
-                },
-                synchronize_session=False,
-            )
-            if rows_updated:
-                updated_emendas += 1
+    for cnpj, count, valor_total in emenda_stats:
+        rows_updated = session.query(Proponente).filter_by(cnpj=cnpj).update(
+            {
+                "total_emendas": count,
+                "valor_total_emendas": valor_total or 0.0,
+            },
+            synchronize_session=False,
+        )
+        if rows_updated:
+            updated_emendas += 1
 
     logger.info(f"Updated emenda stats for {updated_emendas} proponentes")
 
