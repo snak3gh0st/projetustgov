@@ -49,8 +49,8 @@
 - **Frontend:** React 18, Tailwind CSS (Sigma brand theme), Recharts
 - **Auth:** Auth.js v5 (next-auth@beta) with credentials provider and JWT sessions
 - **Working directory:** `web/` (deploy from here, NOT root)
-- **Existing pages:** Pipeline (/), Leads (/leads), Lead Profile (/lead/[cnpj]), Monitoramento (/monitoramento)
-- **Existing API routes:** /api/dashboard, /api/leads, /api/leads/[cnpj]/*, /api/chart/*, /api/filters/*, /api/monitoramento
+- **Existing pages:** CRM Dashboard (/), Leads (/leads), Lead Profile (/lead/[cnpj]), Monitoramento (/monitoramento)
+- **Existing API routes:** /api/dashboard, /api/dashboard-crm, /api/leads, /api/leads/[cnpj]/*, /api/chart/*, /api/filters/*, /api/monitoramento
 
 ### Active TODOs
 
@@ -74,19 +74,21 @@
 | 3 | Schema expansion + Siconv base bruta import + Upload UI | 2026-02-11 | 33fd78c | [3-schema-upload-base-bruta-import](./quick/3-schema-upload-base-bruta-import/) |
 | 4 | Distribuicao de leads + CRM vendedor (telefone/email inline) | 2026-02-11 | 489c1a4 | [4-distribuicao-leads-crm-vendedor](./quick/4-distribuicao-leads-crm-vendedor/) |
 | 5 | Monitoramento financeiro de convênios em execução | 2026-02-11 | a040061 | [5-monitoramento-financeiro](./quick/5-monitoramento-financeiro/) |
+| 6 | Dashboard CRM gestor (pipeline, vendedor cards, activity feed) | 2026-02-11 | 7cbcc44 | [6-dashboard-crm-gestor](./quick/6-dashboard-crm-gestor/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-11
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Completed quick task 5: Monitoramento financeiro de convênios
+**Activity:** Completed quick task 6: Dashboard CRM gestor
 
 **Completed:**
-- GET /api/monitoramento with priority calculation and filters
-- /monitoramento page with stats cards, filter bar, table, detail modal
-- Priority logic: Alta (<30% exec + >=500k saldo), Média, Baixa (>70% exec)
-- Debounced search and saldo filters, UF dropdown, priority pill buttons
+- GET /api/dashboard-crm with global stats, per-vendedor aggregations, recent activity
+- Replaced home page (/) with CRM admin dashboard
+- Status pipeline bar (Novo/Tentativa/Contactado/Negociacao/Sem Interesse)
+- Per-vendedor cards with status badges, valor, last activity
+- Recent activity feed with time-ago formatting
 
 **Next Actions:**
 - Execute Phase 10 Plan 03 -- Build vendedor management UI for gestor
