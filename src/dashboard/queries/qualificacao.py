@@ -54,6 +54,15 @@ def get_qualified_leads(limit: int = 5000, filters: dict = None) -> pd.DataFrame
             f"(p.nome ILIKE '%{search_term}%' OR p.cnpj LIKE '%{search_term}%')"
         )
 
+    if filters.get("natureza_juridica"):
+        nj = filters["natureza_juridica"].replace("'", "''")
+        where_conditions.append(f"p.natureza_juridica = '{nj}'")
+
+    if filters.get("sem_contato"):
+        where_conditions.append(
+            "(p.email IS NULL OR p.email = '') AND (p.telefone IS NULL OR p.telefone = '')"
+        )
+
     where_clause = " AND ".join(where_conditions)
 
     # OPTIMIZED: Removed expensive STRING_AGG + multiple JOINs
@@ -336,3 +345,25 @@ def get_proponente_historico(cnpj: str) -> pd.DataFrame:
         df = pd.read_sql_query(query, conn, params={"cnpj": cnpj})
 
     return df
+
+
+@st.cache_data(ttl="30m")
+def get_natureza_juridica_options() -> list[str]:
+    """Get distinct natureza_juridica values from qualified leads.
+
+    Returns:
+        Sorted list of natureza_juridica values (excluding public administration)
+    """
+    engine = get_db_engine()
+
+    query = text("""
+        SELECT DISTINCT natureza_juridica
+        FROM proponentes
+        WHERE natureza_juridica NOT ILIKE '%Administra%'
+        AND natureza_juridica IS NOT NULL
+        ORDER BY natureza_juridica
+    """)
+
+    with engine.connect() as conn:
+        result = conn.execute(query)
+        return [row[0] for row in result]

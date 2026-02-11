@@ -48,6 +48,12 @@ if "selected_lead_name" not in st.session_state:
 
 
 # Define page functions
+def pipeline_page():
+    """Pipeline overview page with KPIs, map, and top leads."""
+    from src.dashboard.pages.pipeline import render_pipeline
+    render_pipeline()
+
+
 def leads_page():
     """Lead list page showing CNPJs ranked by opportunity."""
     from src.dashboard.pages.home import render_home
@@ -63,16 +69,18 @@ def lead_profile_page():
 # Sidebar branding
 with st.sidebar:
     st.markdown("### PROJETUS")
-    st.markdown("Pipeline de Leads TransfereGov")
+    st.markdown("CRM de Leads TransfereGov")
 
-# Define navigation structure with 2 pages
-_page_leads = st.Page(leads_page, title="Leads", icon="🎯")
+# Define navigation structure with 3 pages
+_page_pipeline = st.Page(pipeline_page, title="Pipeline", icon="📊")
+_page_leads = st.Page(leads_page, title="Lista de Leads", icon="🎯")
 _page_lead_profile = st.Page(lead_profile_page, title="Lead Profile", icon="👤")
 
-pages = [_page_leads, _page_lead_profile]
+pages = [_page_pipeline, _page_leads, _page_lead_profile]
 
 # Store page objects in session_state for st.switch_page() from other modules
 st.session_state._pages = {
+    "Pipeline": _page_pipeline,
     "Lead Profile": _page_lead_profile,
     "Leads": _page_leads,
 }
