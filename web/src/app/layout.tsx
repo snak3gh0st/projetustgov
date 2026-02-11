@@ -18,7 +18,15 @@ export default async function RootLayout({
   return (
     <html lang="pt-BR">
       <body className="bg-sigma-navy text-gray-200 font-body">
-        {session && <Sidebar />}
+        {session?.user && (
+          <Sidebar
+            user={{
+              name: session.user.name,
+              role: session.user.role as 'gestor' | 'vendedor',
+              email: session.user.email,
+            }}
+          />
+        )}
         <main className={session ? "ml-56 min-h-screen p-6" : "min-h-screen p-6"}>
           {children}
         </main>
