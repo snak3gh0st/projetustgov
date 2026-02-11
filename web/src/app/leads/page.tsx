@@ -13,18 +13,52 @@ const STATUS_COLORS: Record<string, string> = {
   'Retorno': 'bg-purple-500/20 text-purple-400',
 }
 
+interface Vendedor {
+  id: string
+  nome: string
+  email: string
+  lead_count: number
+}
+
+interface SessionUser {
+  role: string
+  id: string
+}
+
 export default function LeadsPage() {
   const [leads, setLeads] = useState<VendedorProjeto[]>([])
   const [selectedLead, setSelectedLead] = useState<VendedorProjeto | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [vendedorFilter, setVendedorFilter] = useState('')
+  const [vendedores, setVendedores] = useState<Vendedor[]>([])
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null)
+
+  // Fetch session
+  useEffect(() => {
+    fetch('/api/auth/session').then(r => r.json()).then(s => {
+      if (s?.user) {
+        setSessionUser({ role: s.user.role, id: s.user.id })
+      }
+    }).catch(() => {})
+  }, [])
+
+  // Fetch vendedores for gestor filter
+  useEffect(() => {
+    if (sessionUser?.role === 'gestor') {
+      fetch('/api/vendedores').then(r => r.json()).then(data => {
+        if (Array.isArray(data)) setVendedores(data)
+      }).catch(() => {})
+    }
+  }, [sessionUser])
 
   const fetchLeads = useCallback(async () => {
     setLoading(true)
     const params = new URLSearchParams()
     if (search) params.set('search', search)
     if (statusFilter) params.set('status_contato', statusFilter)
+    if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
     params.set('limit', '500')
 
     try {
@@ -36,7 +70,7 @@ export default function LeadsPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, statusFilter])
+  }, [search, statusFilter, vendedorFilter])
 
   useEffect(() => {
     const timer = setTimeout(fetchLeads, 300)
@@ -79,7 +113,9 @@ export default function LeadsPage() {
     <div className="space-y-6 max-w-[1400px]">
       <div>
         <h1 className="font-heading text-2xl font-bold text-white">Lista de Leads</h1>
-        <p className="text-sm text-gray-400 mt-1">Todos os projetos dos vendedores</p>
+        <p className="text-sm text-gray-400 mt-1">
+          {sessionUser?.role === 'vendedor' ? 'Seus leads atribuídos' : 'Todos os projetos dos vendedores'}
+        </p>
       </div>
 
       <input
@@ -95,6 +131,13 @@ export default function LeadsPage() {
           <option value="">Todos Status</option>
           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
+        {sessionUser?.role === 'gestor' && (
+          <select value={vendedorFilter} onChange={e => setVendedorFilter(e.target.value)} className="bg-sigma-navy-card border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-sigma-neon/50">
+            <option value="">Todos Vendedores</option>
+            <option value="unassigned">Não atribuídos</option>
+            {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome} ({v.lead_count})</option>)}
+          </select>
+        )}
       </div>
 
       {loading ? (
@@ -111,10 +154,10 @@ export default function LeadsPage() {
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Nome</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Programa</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor Global</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Situacao</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Orgao</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">UF</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Telefone</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Email</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Vendedor</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Obs</th>
                 </tr>
@@ -130,7 +173,6 @@ export default function LeadsPage() {
                     <td className="px-3 py-2 text-white font-medium truncate max-w-[180px]">{lead.nome || '-'}</td>
                     <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[150px]">{lead.nome_programa || '-'}</td>
                     <td className="px-3 py-2 text-sigma-neon text-xs">{formatCompactCurrency(lead.valor_global)}</td>
-                    <td className="px-3 py-2 text-gray-300 text-xs">{lead.situacao || '-'}</td>
                     <td className="px-3 py-2">
                       <select
                         value={lead.status_contato || 'Novo'}
@@ -141,8 +183,35 @@ export default function LeadsPage() {
                         {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </td>
-                    <td className="px-3 py-2 text-gray-400 text-xs truncate max-w-[120px]">{lead.orgao_concedente || '-'}</td>
                     <td className="px-3 py-2 text-gray-300">{lead.uf || '-'}</td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="text"
+                        defaultValue={lead.telefone || ''}
+                        placeholder="..."
+                        onClick={e => e.stopPropagation()}
+                        onBlur={e => {
+                          if (e.target.value !== (lead.telefone || '')) {
+                            updateLead(lead.id, 'telefone', e.target.value)
+                          }
+                        }}
+                        className="bg-transparent border-b border-white/10 text-xs text-gray-300 w-24 focus:outline-none focus:border-sigma-neon/50 placeholder-gray-600"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="email"
+                        defaultValue={lead.email || ''}
+                        placeholder="..."
+                        onClick={e => e.stopPropagation()}
+                        onBlur={e => {
+                          if (e.target.value !== (lead.email || '')) {
+                            updateLead(lead.id, 'email', e.target.value)
+                          }
+                        }}
+                        className="bg-transparent border-b border-white/10 text-xs text-gray-300 w-28 focus:outline-none focus:border-sigma-neon/50 placeholder-gray-600"
+                      />
+                    </td>
                     <td className="px-3 py-2 text-gray-400 text-xs">{lead.vendedor_nome || '-'}</td>
                     <td className="px-3 py-2">
                       <input
