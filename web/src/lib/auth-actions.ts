@@ -3,7 +3,7 @@
 import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, auth } from './auth'
 import { LoginSchema, CreateVendedorSchema, type LoginInput, type CreateVendedorInput } from './validations'
 import { query } from './db'
-import * as bcrypt from 'bcrypt'
+import * as bcrypt from 'bcryptjs'
 import { redirect } from 'next/navigation'
 import { AuthError } from 'next-auth'
 

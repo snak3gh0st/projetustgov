@@ -1,6 +1,6 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
-import * as bcrypt from 'bcrypt'
+import * as bcrypt from 'bcryptjs'
 import { query } from './db'
 import { CRMUser } from './types'
 import { authConfig } from '@/auth.config'

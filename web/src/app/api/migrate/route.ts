@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Pool } from 'pg'
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300 // 5 min max for Vercel
