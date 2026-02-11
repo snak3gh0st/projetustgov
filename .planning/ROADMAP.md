@@ -254,10 +254,12 @@ Plans:
   7. Existing pages (Pipeline, Leads, Lead Profile) work behind auth
   8. Login page with Sigma branding matches existing dark theme
 
-**Status**: Not started
+**Status**: Planned (3 plans)
 
 Plans:
-- [ ] TBD (plan with `/gsd:plan-phase 10`)
+- [ ] 10-01-PLAN.md — Install deps, CRM database tables, Auth.js config with credentials + JWT
+- [ ] 10-02-PLAN.md — Login page with Sigma branding, middleware route protection
+- [ ] 10-03-PLAN.md — DAL with role-based filtering, protect API routes, gestor vendedor management
 
 ### Phase 11: Lead Management & Contact Tracking
 **Goal**: Enable gestor to assign leads to vendedores, track contact history per lead, and manage contact status. Vendedores can register notes, update contact info, and see timeline of interactions.
@@ -341,7 +343,7 @@ Plans:
 | 8. Lead Profile & Enhanced Navigation | 5/5 | Complete | 2026-02-10 |
 | 9. Polish & Production Readiness | - | Superseded | - |
 | **Milestone v3.0** | | | |
-| 10. Auth & CRM Foundation | 0/TBD | Not started | - |
+| 10. Auth & CRM Foundation | 0/3 | Planned | - |
 | 11. Lead Management & Contact Tracking | 0/TBD | Not started | - |
 | 12. Pipeline Kanban | 0/TBD | Not started | - |
 | 13. Comissões | 0/TBD | Not started | - |
