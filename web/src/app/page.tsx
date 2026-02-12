@@ -43,6 +43,7 @@ interface RecentActivity {
 }
 
 interface DashboardData {
+  role?: string
   global: GlobalStats
   vendedores: VendedorStats[]
   recent_activity: RecentActivity[]
@@ -118,7 +119,8 @@ export default function CRMDashboard() {
     )
   }
 
-  const { global: g, vendedores, recent_activity } = data
+  const { global: g, vendedores, recent_activity, role } = data
+  const isVendedor = role === 'vendedor'
   const totalForPipeline = Object.values(g.by_status).reduce((a, b) => a + b, 0) || 1
 
   return (
@@ -126,10 +128,10 @@ export default function CRMDashboard() {
       {/* 1. Page header */}
       <div>
         <h1 className="font-heading text-2xl font-bold text-white">
-          Dashboard CRM — Campanha Emendas 2026
+          {isVendedor ? 'Meu Pipeline — Campanha Emendas 2026' : 'Dashboard CRM — Campanha Emendas 2026'}
         </h1>
         <p className="text-sm text-gray-400 mt-1">
-          Visao administrativa do trabalho da equipe de vendas
+          {isVendedor ? 'Seus leads e desempenho pessoal' : 'Visao administrativa do trabalho da equipe de vendas'}
         </p>
       </div>
 
@@ -207,7 +209,7 @@ export default function CRMDashboard() {
       </div>
 
       {/* 4. Per-vendedor cards */}
-      {vendedores.length > 0 && (
+      {vendedores.length > 0 && !isVendedor && (
         <div>
           <h2 className="text-lg font-heading font-semibold text-white mb-3">
             Desempenho por Vendedor

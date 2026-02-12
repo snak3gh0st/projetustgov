@@ -155,45 +155,44 @@ async function runSetup() {
     `).catch(() => ({ rowCount: 0 }))
     const enrichedCount = enrichResult.rowCount || 0
 
-    // 9. Create vendedores
+    // 9. Migrate existing @sigma.com emails to @projetus.org
+    const emailMigrations = [
+      { old: 'wellington@sigma.com', new: 'wellington@projetus.org' },
+      { old: 'elisson@sigma.com', new: 'elisson@projetus.org' },
+      { old: 'gabriel@sigma.com', new: 'gabriel@projetus.org' },
+      { old: 'vitoria@sigma.com', new: 'vitoria@projetus.org' },
+      { old: 'gestor@sigma.com', new: 'philipe@projetus.org', nome: 'Philipe' },
+      { old: 'paulo@sigma.com', new: 'paulo@projetus.org' },
+    ]
+    for (const m of emailMigrations) {
+      await pool.query(
+        `UPDATE users SET email = $1${m.nome ? ', nome = $3' : ''} WHERE email = $2`,
+        m.nome ? [m.new, m.old, m.nome] : [m.new, m.old]
+      ).catch(() => {}) // ignore if old email doesn't exist or new already taken
+    }
+
+    // 10. Create/ensure users with @projetus.org emails
     const passwordHash = await bcrypt.hash('sigma2026', 10)
-    const vendedores = [
-      { nome: 'Wellington', email: 'wellington@sigma.com' },
-      { nome: 'Elisson', email: 'elisson@sigma.com' },
-      { nome: 'Gabriel', email: 'gabriel@sigma.com' },
-      { nome: 'Vitória', email: 'vitoria@sigma.com' },
+    const allUsers = [
+      { nome: 'Elisson', email: 'elisson@projetus.org', role: 'vendedor' },
+      { nome: 'Wellington', email: 'wellington@projetus.org', role: 'vendedor' },
+      { nome: 'Gabriel', email: 'gabriel@projetus.org', role: 'vendedor' },
+      { nome: 'Vitória', email: 'vitoria@projetus.org', role: 'vendedor' },
+      { nome: 'Philipe', email: 'philipe@projetus.org', role: 'gestor' },
+      { nome: 'Tito', email: 'tito@projetus.org', role: 'gestor' },
+      { nome: 'Paulo', email: 'paulo@projetus.org', role: 'visualizador' },
     ]
 
     const created: string[] = []
-    for (const v of vendedores) {
-      const existing = await pool.query('SELECT id FROM users WHERE email = $1', [v.email])
+    for (const u of allUsers) {
+      const existing = await pool.query('SELECT id FROM users WHERE email = $1', [u.email])
       if (existing.rows.length === 0) {
         await pool.query(
           'INSERT INTO users (nome, email, password_hash, role) VALUES ($1, $2, $3, $4)',
-          [v.nome, v.email, passwordHash, 'vendedor']
+          [u.nome, u.email, passwordHash, u.role]
         )
-        created.push(v.nome)
+        created.push(`${u.nome} (${u.role})`)
       }
-    }
-
-    // Ensure gestor exists
-    const gestorExists = await pool.query('SELECT id FROM users WHERE email = $1', ['gestor@sigma.com'])
-    if (gestorExists.rows.length === 0) {
-      await pool.query(
-        'INSERT INTO users (nome, email, password_hash, role) VALUES ($1, $2, $3, $4)',
-        ['Gestor', 'gestor@sigma.com', passwordHash, 'gestor']
-      )
-      created.push('Gestor')
-    }
-
-    // Ensure visualizador exists (Phase 11 Decision #6)
-    const visualizadorExists = await pool.query('SELECT id FROM users WHERE email = $1', ['paulo@sigma.com'])
-    if (visualizadorExists.rows.length === 0) {
-      await pool.query(
-        'INSERT INTO users (nome, email, password_hash, role) VALUES ($1, $2, $3, $4)',
-        ['Paulo', 'paulo@sigma.com', passwordHash, 'visualizador']
-      )
-      created.push('Paulo (Visualizador)')
     }
 
     // Diagnostics: check state of data

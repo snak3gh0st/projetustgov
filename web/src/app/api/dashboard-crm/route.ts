@@ -11,6 +11,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const isVendedor = session.role === 'vendedor'
+    const vendedorFilter = isVendedor ? ' WHERE vendedor_id = $1' : ''
+    const vendedorParams = isVendedor ? [session.userId] : []
+
     // 1. Global stats with status breakdown (Tito's 4 statuses)
     const globalRows = await query(`
       SELECT
@@ -22,8 +26,8 @@ export async function GET() {
         SUM(CASE WHEN status_contato = 'Retorno' THEN 1 ELSE 0 END)::int as status_retorno,
         SUM(CASE WHEN status_contato = 'Proposta' THEN 1 ELSE 0 END)::int as status_proposta,
         SUM(CASE WHEN status_contato = 'Fechado' THEN 1 ELSE 0 END)::int as status_fechado
-      FROM vendedor_projetos
-    `)
+      FROM vendedor_projetos${vendedorFilter}
+    `, vendedorParams)
 
     const g = globalRows[0] || {}
 
@@ -41,10 +45,10 @@ export async function GET() {
         MAX(vp.updated_at) as last_activity
       FROM vendedor_projetos vp
       JOIN users u ON u.id = vp.vendedor_id
-      WHERE vp.vendedor_id IS NOT NULL
+      WHERE vp.vendedor_id IS NOT NULL${isVendedor ? ' AND vp.vendedor_id = $1' : ''}
       GROUP BY vp.vendedor_id, u.nome
       ORDER BY total_leads DESC
-    `)
+    `, vendedorParams)
 
     // 3. Today's activity per vendedor (status changes today)
     const todayRows = await query(`
@@ -56,9 +60,9 @@ export async function GET() {
       FROM vendedor_projetos vp
       WHERE vp.vendedor_id IS NOT NULL
         AND vp.updated_at >= CURRENT_DATE
-        AND vp.status_contato IN ('Retorno', 'Proposta', 'Fechado')
+        AND vp.status_contato IN ('Retorno', 'Proposta', 'Fechado')${isVendedor ? ' AND vp.vendedor_id = $1' : ''}
       GROUP BY vp.vendedor_id
-    `)
+    `, vendedorParams)
     const todayByVendedor = new Map<string, { ligacoes: number; propostas: number; fechados: number }>()
     for (const t of todayRows) {
       todayByVendedor.set(t.vendedor_id as string, {
@@ -78,12 +82,13 @@ export async function GET() {
         vp.updated_at
       FROM vendedor_projetos vp
       LEFT JOIN users u ON u.id = vp.vendedor_id
-      WHERE vp.updated_at IS NOT NULL
+      WHERE vp.updated_at IS NOT NULL${isVendedor ? ' AND vp.vendedor_id = $1' : ''}
       ORDER BY vp.updated_at DESC
       LIMIT 10
-    `)
+    `, vendedorParams)
 
     return NextResponse.json({
+      role: session.role,
       global: {
         total_leads: Number(g.total_leads) || 0,
         total_assigned: Number(g.total_assigned) || 0,
