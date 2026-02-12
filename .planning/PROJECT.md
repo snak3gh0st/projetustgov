@@ -76,13 +76,13 @@ Sistema automatizado de extração e armazenamento de dados do Transfer Gov. Ace
 **Decisões já tomadas:**
 - Python 3.11+ (familiaridade, ecossistema ETL robusto)
 - Playwright para crawler (headless browser, mais robusto que requests para sites dinâmicos)
-- PostgreSQL (dados relacionais, queries complexas futuras)
+- PostgreSQL via Supabase (migrado de Railway em fev/2026)
 - Execução diária às 9h (timing alinhado com atualização do Transfer Gov)
 
 ## Constraints
 
 - **Timeline**: URGENTE — cliente precisa ASAP, prioridade máxima na fundação de dados
-- **Budget**: R$5.000/mês do cliente, infraestrutura deve ser low-cost (Oracle Free Tier ou Railway)
+- **Budget**: R$5.000/mês do cliente, infraestrutura Supabase (free tier)
 - **Credenciais**: Dependência de acesso ao Transfer Gov (mas JÁ disponível)
 - **Dados**: Transfer Gov pode mudar estrutura das planilhas (parser deve ser robusto)
 - **Escalabilidade**: 4.100 propostas/ano (~11/dia) não requer high-performance, mas deve ser confiável
@@ -97,6 +97,7 @@ Sistema automatizado de extração e armazenamento de dados do Transfer Gov. Ace
 | PostgreSQL vs SQLite | Queries complexas futuras (BI, análises), múltiplos relacionamentos, dados críticos precisam de ACID garantees. | — Pending |
 | Scheduler diário desde v1 | Mesmo em desenvolvimento, validar automação cedo evita surpresas em produção. | — Pending |
 | Validação multicamada | Comparação manual inicial + alertas de volume + logs detalhados garante confiabilidade desde dia 1. | — Pending |
+| Railway → Supabase (fev/2026) | Railway deletado. Supabase é o único banco. Migração cobriu 100% das tabelas usadas pelo CRM. 3 tabelas pipeline parciais (propostas 87%, proposta_apoiadores 0%, proposta_emendas 0%) não afetam CRM. | Done |
 
 ## Current Milestone: v3.0 CRM de Vendas
 
@@ -111,11 +112,19 @@ Sistema automatizado de extração e armazenamento de dados do Transfer Gov. Ace
 - Flag "Cliente existente" e link ao programa de trabalho
 - Dashboard individual do vendedor
 
-**Approach:** Next.js 14 App Router + PostgreSQL (Railway). Frontend já migrado de Streamlit para React/Next.js em `web/`. Autenticação via JWT. Tabelas CRM no mesmo banco PostgreSQL.
+**Approach:** Next.js 14 App Router + PostgreSQL (Supabase). Frontend já migrado de Streamlit para React/Next.js em `web/`. Deploy via Vercel. Autenticação via next-auth v5 JWT. Tabelas CRM no mesmo banco PostgreSQL Supabase.
 
 **Primary workflow:** Vendedor faz login → vê pipeline kanban com seus leads → arrasta lead para nova coluna → registra nota de contato → marca como fechado → comissão calculada automaticamente.
 
 **Milestone v2.0 Note:** Dashboard Premium Redesign (Streamlit) foi superseded pela migração para Next.js. Phases 6-8 completas, Phase 9 (polish) não aplicável ao novo stack.
 
+## Infrastructure
+
+| Service | Usage | Status |
+|---------|-------|--------|
+| **Supabase** | PostgreSQL database (all data) | Active |
+| **Vercel** | Next.js hosting, deploy from master | Active |
+| **Railway** | — | **Deleted 2026-02-12** (migrated to Supabase) |
+
 ---
-*Last updated: 2026-02-11 after milestone v3.0 initialization*
+*Last updated: 2026-02-12 — Railway deleted, Supabase is sole database*
