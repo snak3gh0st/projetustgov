@@ -90,13 +90,14 @@
 | 4 | Distribuicao de leads + CRM vendedor (telefone/email inline) | 2026-02-11 | 489c1a4 | [4-distribuicao-leads-crm-vendedor](./quick/4-distribuicao-leads-crm-vendedor/) |
 | 5 | Monitoramento financeiro de convênios em execução | 2026-02-11 | a040061 | [5-monitoramento-financeiro](./quick/5-monitoramento-financeiro/) |
 | 6 | Dashboard CRM gestor (pipeline, vendedor cards, activity feed) | 2026-02-11 | 7cbcc44 | [6-dashboard-crm-gestor](./quick/6-dashboard-crm-gestor/) |
+| 7 | Commission system, default status Não Contatado, parlamentar column reorder | 2026-02-12 | 3ae5f1c | [4-commission-system-default-status-n-o-con](./quick/4-commission-system-default-status-n-o-con/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-12
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Completed Phase 11 Plan 05: Contact edit UI gap closure
+**Activity:** Completed quick task 7: Commission system, default status Não Contatado, parlamentar column reorder
 
 **Completed:**
 - Added inline edit UI for phone/email on lead detail page
