@@ -1,36 +1,31 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { auth } from '@/lib/auth'
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
+export default auth((req) => {
+  const { pathname } = req.nextUrl
 
   // Public routes that don't need auth
   const publicPaths = ['/login', '/api/auth', '/api/health', '/api/migrate', '/api/setup-crm', '/api/import-spreadsheet']
   const isPublic = publicPaths.some(path => pathname.startsWith(path))
 
   if (isPublic) {
-    return NextResponse.next()
+    return
   }
 
-  // Check for NextAuth session cookie
-  const sessionToken = request.cookies.get('authjs.session-token') ||
-                       request.cookies.get('__Secure-authjs.session-token')
-
-  if (!sessionToken) {
+  // Check if user is authenticated
+  if (!req.auth) {
     // No session - redirect to login or return 401 for API routes
+    const url = new URL('/login', req.url)
     if (pathname.startsWith('/api/')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    return NextResponse.redirect(new URL('/login', request.url))
+    return Response.redirect(url)
   }
 
   // Has session - redirect away from login if trying to access it
   if (pathname.startsWith('/login')) {
-    return NextResponse.redirect(new URL('/', request.url))
+    return Response.redirect(new URL('/', req.url))
   }
-
-  return NextResponse.next()
-}
+})
 
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)']
