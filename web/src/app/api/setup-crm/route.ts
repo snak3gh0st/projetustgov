@@ -171,25 +171,31 @@ async function runSetup() {
       ).catch(() => {}) // ignore if old email doesn't exist or new already taken
     }
 
-    // 10. Create/ensure users with @projetus.org emails
-    const passwordHash = await bcrypt.hash('sigma2026', 10)
+    // 10. Create/ensure users with @projetus.org emails (password = nome123)
     const allUsers = [
-      { nome: 'Elisson', email: 'elisson@projetus.org', role: 'vendedor' },
-      { nome: 'Wellington', email: 'wellington@projetus.org', role: 'vendedor' },
-      { nome: 'Gabriel', email: 'gabriel@projetus.org', role: 'vendedor' },
-      { nome: 'Vitória', email: 'vitoria@projetus.org', role: 'vendedor' },
-      { nome: 'Philipe', email: 'philipe@projetus.org', role: 'gestor' },
-      { nome: 'Tito', email: 'tito@projetus.org', role: 'gestor' },
-      { nome: 'Paulo', email: 'paulo@projetus.org', role: 'visualizador' },
+      { nome: 'Elisson', email: 'elisson@projetus.org', role: 'vendedor', password: 'elisson123' },
+      { nome: 'Wellington', email: 'wellington@projetus.org', role: 'vendedor', password: 'wellington123' },
+      { nome: 'Gabriel', email: 'gabriel@projetus.org', role: 'vendedor', password: 'gabriel123' },
+      { nome: 'Vitória', email: 'vitoria@projetus.org', role: 'vendedor', password: 'vitoria123' },
+      { nome: 'Philipe', email: 'philipe@projetus.org', role: 'gestor', password: 'philipe123' },
+      { nome: 'Tito', email: 'tito@projetus.org', role: 'gestor', password: 'tito123' },
+      { nome: 'Paulo', email: 'paulo@projetus.org', role: 'visualizador', password: 'paulo123' },
     ]
+
+    // Update passwords for all existing users
+    for (const u of allUsers) {
+      const hash = await bcrypt.hash(u.password, 10)
+      await pool.query('UPDATE users SET password_hash = $1 WHERE email = $2', [hash, u.email])
+    }
 
     const created: string[] = []
     for (const u of allUsers) {
       const existing = await pool.query('SELECT id FROM users WHERE email = $1', [u.email])
       if (existing.rows.length === 0) {
+        const hash = await bcrypt.hash(u.password, 10)
         await pool.query(
           'INSERT INTO users (nome, email, password_hash, role) VALUES ($1, $2, $3, $4)',
-          [u.nome, u.email, passwordHash, u.role]
+          [u.nome, u.email, hash, u.role]
         )
         created.push(`${u.nome} (${u.role})`)
       }
