@@ -95,9 +95,9 @@ export default function LeadsPage() {
   }
 
   function exportCSV() {
-    const headers = ['CNPJ', 'Nome', 'Ministerio', 'UF', 'Municipio', 'Parlamentar', 'Telefone', 'Email', 'Status', 'Vendedor', 'Observacoes', 'Link']
+    const headers = ['CNPJ', 'Nome', 'Valor Emenda', 'Ministerio', 'UF', 'Municipio', 'Parlamentar', 'Telefone', 'Email', 'Status', 'Vendedor', 'Observacoes', 'Link']
     const rows = leads.map(l => [
-      l.cnpj, l.nome, l.orgao_concedente || '', l.uf || '', l.municipio || '',
+      l.cnpj, l.nome, l.valor_emenda || '', l.orgao_concedente || '', l.uf || '', l.municipio || '',
       l.parlamentar || '', l.telefone || '', l.email || '',
       l.status_contato, l.vendedor_nome || '', l.observacoes || '', l.link_externo || '',
     ])
@@ -152,6 +152,7 @@ export default function LeadsPage() {
                 <tr className="border-b border-white/5 bg-sigma-navy-light">
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">CNPJ</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Nome</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor Emenda</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Link</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Ministerio</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">UF</th>
@@ -175,6 +176,9 @@ export default function LeadsPage() {
                       </span>
                     </td>
                     <td className="px-3 py-2 text-white font-medium truncate max-w-[180px]">{lead.nome || '-'}</td>
+                    <td className="px-3 py-2 text-sigma-neon font-medium text-xs whitespace-nowrap">
+                      {lead.valor_emenda ? formatCompactCurrency(Number(lead.valor_emenda)) : '-'}
+                    </td>
                     <td className="px-3 py-2">
                       {lead.link_externo ? (
                         <a

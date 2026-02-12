@@ -67,7 +67,7 @@ export default function LeadDetailPage() {
   }
 
   const first = projetos[0]
-  const totalValorGlobal = projetos.reduce((sum, p) => sum + (Number(p.valor_global) || 0), 0)
+  const totalValorEmenda = projetos.reduce((sum, p) => sum + (Number(p.valor_emenda) || 0), 0)
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -82,9 +82,9 @@ export default function LeadDetailPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4">
-          <p className="text-xs text-gray-400 uppercase">Valor Global Total</p>
+          <p className="text-xs text-gray-400 uppercase">Valor Emenda Total</p>
           <p className="text-xl font-heading font-bold text-sigma-neon mt-1">
-            {formatCurrency(totalValorGlobal)}
+            {formatCurrency(totalValorEmenda)}
           </p>
         </div>
         <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4">
@@ -102,18 +102,39 @@ export default function LeadDetailPage() {
         </div>
       </div>
 
+      {/* Contact info */}
+      {(first.telefone || first.email) && (
+        <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4 flex flex-wrap gap-6">
+          {first.telefone && (
+            <div>
+              <p className="text-xs text-gray-400 uppercase">Telefone</p>
+              <a href={`https://wa.me/55${first.telefone.replace(/\D/g, '')}`} target="_blank" rel="noopener" className="text-sm text-green-400 hover:text-green-300 mt-1 block">
+                {first.telefone}
+              </a>
+            </div>
+          )}
+          {first.email && (
+            <div>
+              <p className="text-xs text-gray-400 uppercase">Email</p>
+              <a href={`mailto:${first.email}`} className="text-sm text-cyan-400 hover:text-cyan-300 mt-1 block">
+                {first.email}
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="bg-sigma-navy-card border border-white/5 rounded-xl overflow-hidden">
         <div className="p-4 border-b border-white/5">
-          <h2 className="text-lg font-heading font-semibold text-white">Projetos ({projetos.length})</h2>
+          <h2 className="text-lg font-heading font-semibold text-white">Emendas ({projetos.length})</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/5 bg-sigma-navy-light">
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Programa</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Parlamentar</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Orgao</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor Global</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Situacao</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor Emenda</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Obs</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Link</th>
@@ -122,10 +143,9 @@ export default function LeadDetailPage() {
             <tbody>
               {projetos.map(p => (
                 <tr key={p.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                  <td className="px-4 py-3 text-white text-xs truncate max-w-[180px]">{p.nome_programa || p.nr_convenio || '-'}</td>
+                  <td className="px-4 py-3 text-white text-xs truncate max-w-[180px]">{p.parlamentar || '-'}</td>
                   <td className="px-4 py-3 text-gray-300 text-xs truncate max-w-[150px]">{p.orgao_concedente || '-'}</td>
-                  <td className="px-4 py-3 text-sigma-neon text-xs">{formatCurrency(Number(p.valor_global) || 0)}</td>
-                  <td className="px-4 py-3 text-gray-300 text-xs">{p.situacao || '-'}</td>
+                  <td className="px-4 py-3 text-sigma-neon text-xs">{formatCurrency(Number(p.valor_emenda) || 0)}</td>
                   <td className="px-4 py-3">
                     <select
                       value={p.status_contato || 'Ainda Não'}

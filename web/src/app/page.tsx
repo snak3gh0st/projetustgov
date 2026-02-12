@@ -29,6 +29,9 @@ interface VendedorStats {
   fechado: number
   valor_total_emenda: number
   last_activity: string | null
+  ligacoes_hoje: number
+  propostas_hoje: number
+  fechados_hoje: number
 }
 
 interface RecentActivity {
@@ -236,6 +239,22 @@ export default function CRMDashboard() {
                     )
                   })}
                 </div>
+
+                {/* Today's activity */}
+                {(v.ligacoes_hoje > 0 || v.propostas_hoje > 0 || v.fechados_hoje > 0) && (
+                  <div className="flex gap-3 mb-3 text-xs">
+                    <span className="text-gray-500">Hoje:</span>
+                    {v.ligacoes_hoje > 0 && (
+                      <span className="text-amber-400">{v.ligacoes_hoje} ligacoes</span>
+                    )}
+                    {v.propostas_hoje > 0 && (
+                      <span className="text-blue-400">{v.propostas_hoje} propostas</span>
+                    )}
+                    {v.fechados_hoje > 0 && (
+                      <span className="text-green-400">{v.fechados_hoje} fechados</span>
+                    )}
+                  </div>
+                )}
 
                 {/* Valor and last activity */}
                 <div className="flex items-center justify-between pt-3 border-t border-gray-800">

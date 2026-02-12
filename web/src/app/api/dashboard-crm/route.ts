@@ -46,7 +46,29 @@ export async function GET() {
       ORDER BY total_leads DESC
     `)
 
-    // 3. Recent activity (last 10 updates)
+    // 3. Today's activity per vendedor (status changes today)
+    const todayRows = await query(`
+      SELECT
+        vp.vendedor_id,
+        SUM(CASE WHEN vp.status_contato = 'Retorno' THEN 1 ELSE 0 END)::int as ligacoes_hoje,
+        SUM(CASE WHEN vp.status_contato = 'Proposta' THEN 1 ELSE 0 END)::int as propostas_hoje,
+        SUM(CASE WHEN vp.status_contato = 'Fechado' THEN 1 ELSE 0 END)::int as fechados_hoje
+      FROM vendedor_projetos vp
+      WHERE vp.vendedor_id IS NOT NULL
+        AND vp.updated_at >= CURRENT_DATE
+        AND vp.status_contato IN ('Retorno', 'Proposta', 'Fechado')
+      GROUP BY vp.vendedor_id
+    `)
+    const todayByVendedor = new Map<string, { ligacoes: number; propostas: number; fechados: number }>()
+    for (const t of todayRows) {
+      todayByVendedor.set(t.vendedor_id as string, {
+        ligacoes: Number(t.ligacoes_hoje),
+        propostas: Number(t.propostas_hoje),
+        fechados: Number(t.fechados_hoje),
+      })
+    }
+
+    // 4. Recent activity (last 10 updates)
     const recentRows = await query(`
       SELECT
         vp.cnpj,
@@ -74,17 +96,23 @@ export async function GET() {
           'Fechado': Number(g.status_fechado) || 0,
         },
       },
-      vendedores: vendedorRows.map((v: Record<string, unknown>) => ({
-        vendedor_id: v.vendedor_id,
-        vendedor_nome: v.vendedor_nome,
-        total_leads: Number(v.total_leads),
-        ainda_nao: Number(v.ainda_nao),
-        retorno: Number(v.retorno),
-        proposta: Number(v.proposta),
-        fechado: Number(v.fechado),
-        valor_total_emenda: Number(v.valor_total_emenda),
-        last_activity: v.last_activity,
-      })),
+      vendedores: vendedorRows.map((v: Record<string, unknown>) => {
+        const today = todayByVendedor.get(v.vendedor_id as string)
+        return {
+          vendedor_id: v.vendedor_id,
+          vendedor_nome: v.vendedor_nome,
+          total_leads: Number(v.total_leads),
+          ainda_nao: Number(v.ainda_nao),
+          retorno: Number(v.retorno),
+          proposta: Number(v.proposta),
+          fechado: Number(v.fechado),
+          valor_total_emenda: Number(v.valor_total_emenda),
+          last_activity: v.last_activity,
+          ligacoes_hoje: today?.ligacoes || 0,
+          propostas_hoje: today?.propostas || 0,
+          fechados_hoje: today?.fechados || 0,
+        }
+      }),
       recent_activity: recentRows.map((r: Record<string, unknown>) => ({
         cnpj: r.cnpj,
         nome: r.nome,
