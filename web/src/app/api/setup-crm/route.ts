@@ -35,12 +35,21 @@ async function runSetup() {
         nome VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(20) NOT NULL DEFAULT 'vendedor' CHECK (role IN ('gestor', 'vendedor')),
+        role VARCHAR(20) NOT NULL DEFAULT 'vendedor' CHECK (role IN ('gestor', 'vendedor', 'visualizador')),
         active BOOLEAN DEFAULT true,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
     `)
+
+    // 1b. Update existing constraint to include visualizador (Phase 11 Plan 04)
+    await pool.query(`
+      DO $$
+      BEGIN
+        ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+        ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('gestor', 'vendedor', 'visualizador'));
+      END $$;
+    `).catch(() => {}) // Ignore if constraint doesn't exist or already updated
 
     // 2. Create vendedor_projetos if not exists (safe — never drops data)
     await pool.query(`
@@ -175,6 +184,16 @@ async function runSetup() {
         ['Gestor', 'gestor@sigma.com', passwordHash, 'gestor']
       )
       created.push('Gestor')
+    }
+
+    // Ensure visualizador exists (Phase 11 Decision #6)
+    const visualizadorExists = await pool.query('SELECT id FROM users WHERE email = $1', ['paulo@sigma.com'])
+    if (visualizadorExists.rows.length === 0) {
+      await pool.query(
+        'INSERT INTO users (nome, email, password_hash, role) VALUES ($1, $2, $3, $4)',
+        ['Paulo', 'paulo@sigma.com', passwordHash, 'visualizador']
+      )
+      created.push('Paulo (Visualizador)')
     }
 
     // Diagnostics: check state of data

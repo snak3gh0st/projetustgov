@@ -12,7 +12,7 @@ export const verifySession = cache(async () => {
   return {
     isAuth: true,
     userId: session.user.id,
-    role: session.user.role as 'gestor' | 'vendedor',
+    role: session.user.role as 'gestor' | 'vendedor' | 'visualizador',
     email: session.user.email,
     name: session.user.name
   }
@@ -24,7 +24,7 @@ export async function getApiSession() {
   if (!session?.user?.id) return null
   return {
     userId: session.user.id,
-    role: session.user.role as 'gestor' | 'vendedor',
+    role: session.user.role as 'gestor' | 'vendedor' | 'visualizador',
     email: session.user.email,
     name: session.user.name
   }
@@ -32,7 +32,10 @@ export async function getApiSession() {
 
 // Helper: build vendedor filter clause for leads queries
 export function buildVendedorFilter(role: string, userId: string, paramIndex: number) {
-  if (role === 'gestor') return { clause: '', params: [], nextIndex: paramIndex }
+  // Gestor and visualizador see all leads
+  if (role === 'gestor' || role === 'visualizador') {
+    return { clause: '', params: [], nextIndex: paramIndex }
+  }
   return {
     clause: `AND la.vendedor_id = $${paramIndex}`,
     params: [userId],
@@ -40,10 +43,15 @@ export function buildVendedorFilter(role: string, userId: string, paramIndex: nu
   }
 }
 
+// Helper: check if user can modify data (write permissions)
+export function canModifyData(role: string): boolean {
+  return role === 'gestor' || role === 'vendedor'
+}
+
 // Helper: verify vendedor has access to a specific lead
 export async function verifyLeadAccess(cnpj: string, userId: string, role: string): Promise<boolean> {
-  // Gestor has access to all leads
-  if (role === 'gestor') return true
+  // Gestor and visualizador have access to all leads
+  if (role === 'gestor' || role === 'visualizador') return true
 
   // Vendedor must have the lead assigned
   const assignments = await query(
