@@ -41,6 +41,16 @@ export default function LeadDetailPage() {
         setLoading(false)
       })
       .catch(() => setLoading(false))
+
+    // Fetch session to determine if user can modify
+    fetch('/api/auth/session')
+      .then(r => r.json())
+      .then(session => {
+        if (session?.user?.role) {
+          setCanModify(session.user.role !== 'visualizador')
+        }
+      })
+      .catch(() => {})
   }, [cnpj])
 
   async function updateProjeto(id: number, field: string, value: string) {
@@ -207,6 +217,9 @@ export default function LeadDetailPage() {
           </table>
         </div>
       </div>
+
+      {/* Contact notes timeline */}
+      <ContactNotesTimeline cnpj={cnpj} canModify={canModify} />
     </div>
   )
 }
