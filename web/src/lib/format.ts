@@ -44,3 +44,11 @@ export function formatCompactCurrency(value: number | null | undefined): string 
   if (value >= 1_000) return `R$ ${(value / 1_000).toFixed(0)}K`
   return formatCurrency(value)
 }
+
+export function formatParlamentarSummary(parlamentares: (string | null)[]): string {
+  const valid = parlamentares.filter(Boolean) as string[]
+  const unique = Array.from(new Set(valid))
+  if (unique.length === 0) return '-'
+  if (unique.length === 1) return unique[0]
+  return `${unique.length} parlamentares`
+}

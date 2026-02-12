@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { formatCNPJ, formatCompactCurrency } from '@/lib/format'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { formatCNPJ, formatCompactCurrency, formatParlamentarSummary } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
@@ -84,6 +84,27 @@ export default function LeadsPage() {
     return () => clearTimeout(timer)
   }, [fetchLeads])
 
+  // Group leads by CNPJ for display
+  const displayLeads = useMemo(() => {
+    const leadsByCnpj = leads.reduce((acc, lead) => {
+      if (!acc[lead.cnpj]) {
+        acc[lead.cnpj] = []
+      }
+      acc[lead.cnpj].push(lead)
+      return acc
+    }, {} as Record<string, VendedorProjeto[]>)
+
+    return Object.entries(leadsByCnpj).map(([cnpj, cnpjLeads]) => {
+      const first = cnpjLeads[0]
+      return {
+        ...first,
+        emenda_count: cnpjLeads.length,
+        total_valor_emendas: cnpjLeads.reduce((sum, l) => sum + (Number(l.valor_emenda) || 0), 0),
+        parlamentares: cnpjLeads.map(l => l.parlamentar)
+      }
+    })
+  }, [leads])
+
   async function updateLead(id: number, field: string, value: string) {
     try {
       const lead = leads.find(l => l.id === id)
@@ -157,14 +178,15 @@ export default function LeadsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/5 bg-sigma-navy-light">
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-400 uppercase w-8"></th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">CNPJ</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Nome</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor Emenda</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Parlamentar</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Link</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Ministerio</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">UF</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Municipio</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Parlamentar</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Telefone</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Email</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
@@ -178,8 +200,16 @@ export default function LeadsPage() {
                 </tr>
               </thead>
               <tbody>
-                {leads.map(lead => (
+                {displayLeads.map(lead => (
                   <tr key={lead.id} onClick={() => setSelectedLead(lead)} className="border-b border-white/5 hover:bg-white/5 hover:border-l-2 hover:border-l-sigma-neon transition-colors cursor-pointer">
+                    <td className="px-2 py-2">
+                      {lead.is_max_priority && (
+                        <div
+                          className="w-2 h-2 rounded-full bg-red-500 animate-pulse"
+                          title="MÁXIMA PRIORIDADE - Nunca executou convênio"
+                        />
+                      )}
+                    </td>
                     <td className="px-3 py-2">
                       <span className="font-mono text-xs text-gray-300">
                         {formatCNPJ(lead.cnpj)}
@@ -194,7 +224,13 @@ export default function LeadsPage() {
                       )}
                     </td>
                     <td className="px-3 py-2 text-sigma-neon font-medium text-xs whitespace-nowrap">
-                      {lead.valor_emenda ? formatCompactCurrency(Number(lead.valor_emenda)) : '-'}
+                      {formatCompactCurrency(lead.total_valor_emendas || 0)}
+                      {lead.emenda_count > 1 && (
+                        <span className="ml-1 text-gray-500 text-xs">({lead.emenda_count})</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[140px]">
+                      {formatParlamentarSummary(lead.parlamentares || [])}
                     </td>
                     <td className="px-3 py-2">
                       {lead.link_externo ? (
@@ -212,7 +248,6 @@ export default function LeadsPage() {
                     <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[140px]">{lead.orgao_concedente || '-'}</td>
                     <td className="px-3 py-2 text-gray-300 text-xs">{lead.uf || '-'}</td>
                     <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[120px]">{lead.municipio || '-'}</td>
-                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[120px]">{lead.parlamentar || '-'}</td>
                     <td className="px-3 py-2">
                       <input
                         type="text"
@@ -292,7 +327,7 @@ export default function LeadsPage() {
           </div>
 
           <div className="flex items-center justify-between mt-4 text-sm text-gray-400">
-            <span>{leads.length} leads encontrados</span>
+            <span>{displayLeads.length} CNPJs ({leads.length} emendas)</span>
             <button onClick={exportCSV} className="px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 transition-colors text-xs">
               Exportar CSV
             </button>
