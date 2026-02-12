@@ -25,6 +25,8 @@ export default function LeadDetailPage() {
   const [isPriority, setIsPriority] = useState(false)
   const [isExistingClient, setIsExistingClient] = useState(false)
   const [canModify, setCanModify] = useState(false)
+  const [editingField, setEditingField] = useState<'telefone' | 'email' | null>(null)
+  const [editValue, setEditValue] = useState('')
 
   useEffect(() => {
     fetch(`/api/leads?search=${encodeURIComponent(cnpj)}&limit=100`)
@@ -65,6 +67,20 @@ export default function LeadDetailPage() {
       ))
     } catch (err) {
       console.error('Update error:', err)
+    }
+  }
+
+  async function updateContact(field: 'telefone' | 'email', value: string) {
+    try {
+      await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: first.id, [field]: value })
+      })
+      setProjetos(prev => prev.map(p => p.cnpj === cnpj ? {...p, [field]: value} : p))
+      setEditingField(null)
+    } catch (err) {
+      console.error('Update contact error:', err)
     }
   }
 
@@ -139,22 +155,114 @@ export default function LeadDetailPage() {
       </div>
 
       {/* Contact info */}
-      {(first.telefone || first.email) && (
+      {(first.telefone || first.email || canModify) && (
         <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4 flex flex-wrap gap-6">
-          {first.telefone && (
+          {(first.telefone || canModify) && (
             <div>
-              <p className="text-xs text-gray-400 uppercase">Telefone</p>
-              <a href={`https://wa.me/55${first.telefone.replace(/\D/g, '')}`} target="_blank" rel="noopener" className="text-sm text-green-400 hover:text-green-300 mt-1 block">
-                {first.telefone}
-              </a>
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-xs text-gray-400 uppercase">Telefone</p>
+                {canModify && editingField !== 'telefone' && (
+                  <button
+                    onClick={() => {
+                      setEditingField('telefone')
+                      setEditValue(first.telefone || '')
+                    }}
+                    className="text-gray-500 hover:text-sigma-neon transition-colors"
+                    title="Editar telefone"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11.5 2.5a1.5 1.5 0 012 2L5 13l-4 1 1-4L11.5 2.5z"/>
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {editingField === 'telefone' ? (
+                <input
+                  type="text"
+                  value={editValue}
+                  onChange={e => setEditValue(e.target.value)}
+                  onBlur={() => {
+                    if (editValue !== (first.telefone || '')) {
+                      updateContact('telefone', editValue)
+                    } else {
+                      setEditingField(null)
+                    }
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      if (editValue !== (first.telefone || '')) {
+                        updateContact('telefone', editValue)
+                      } else {
+                        setEditingField(null)
+                      }
+                    } else if (e.key === 'Escape') {
+                      setEditingField(null)
+                    }
+                  }}
+                  autoFocus
+                  className="text-sm text-white bg-sigma-navy-light border border-white/20 rounded-md px-2 py-1 focus:outline-none focus:border-sigma-neon/50"
+                />
+              ) : first.telefone ? (
+                <a href={`https://wa.me/55${first.telefone.replace(/\D/g, '')}`} target="_blank" rel="noopener" className="text-sm text-green-400 hover:text-green-300 block">
+                  {first.telefone}
+                </a>
+              ) : (
+                <span className="text-sm text-gray-600">Sem telefone</span>
+              )}
             </div>
           )}
-          {first.email && (
+          {(first.email || canModify) && (
             <div>
-              <p className="text-xs text-gray-400 uppercase">Email</p>
-              <a href={`mailto:${first.email}`} className="text-sm text-cyan-400 hover:text-cyan-300 mt-1 block">
-                {first.email}
-              </a>
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-xs text-gray-400 uppercase">Email</p>
+                {canModify && editingField !== 'email' && (
+                  <button
+                    onClick={() => {
+                      setEditingField('email')
+                      setEditValue(first.email || '')
+                    }}
+                    className="text-gray-500 hover:text-sigma-neon transition-colors"
+                    title="Editar email"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11.5 2.5a1.5 1.5 0 012 2L5 13l-4 1 1-4L11.5 2.5z"/>
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {editingField === 'email' ? (
+                <input
+                  type="email"
+                  value={editValue}
+                  onChange={e => setEditValue(e.target.value)}
+                  onBlur={() => {
+                    if (editValue !== (first.email || '')) {
+                      updateContact('email', editValue)
+                    } else {
+                      setEditingField(null)
+                    }
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      if (editValue !== (first.email || '')) {
+                        updateContact('email', editValue)
+                      } else {
+                        setEditingField(null)
+                      }
+                    } else if (e.key === 'Escape') {
+                      setEditingField(null)
+                    }
+                  }}
+                  autoFocus
+                  className="text-sm text-white bg-sigma-navy-light border border-white/20 rounded-md px-2 py-1 focus:outline-none focus:border-sigma-neon/50"
+                />
+              ) : first.email ? (
+                <a href={`mailto:${first.email}`} className="text-sm text-cyan-400 hover:text-cyan-300 block">
+                  {first.email}
+                </a>
+              ) : (
+                <span className="text-sm text-gray-600">Sem email</span>
+              )}
             </div>
           )}
         </div>
