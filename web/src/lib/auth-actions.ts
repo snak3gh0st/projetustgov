@@ -20,17 +20,36 @@ export async function login(
 
     const validatedData = LoginSchema.parse(rawData) as LoginInput
 
+    console.log('[LOGIN] Attempting sign-in for:', validatedData.email)
+
     // Attempt sign-in
-    await nextAuthSignIn('credentials', {
+    const result = await nextAuthSignIn('credentials', {
       email: validatedData.email,
       password: validatedData.password,
       redirect: false,
     })
 
+    console.log('[LOGIN] Sign-in result:', result)
+
+    // Check if sign-in was successful
+    if (!result) {
+      console.log('[LOGIN] Sign-in failed - no result returned')
+      return { error: 'Email ou senha invalidos' }
+    }
+
+    // If there's an error in the result
+    if (result.error) {
+      console.log('[LOGIN] Sign-in failed with error:', result.error)
+      return { error: 'Email ou senha invalidos' }
+    }
+
+    console.log('[LOGIN] Sign-in successful, redirecting...')
     // If successful, redirect to home
     redirect('/')
   } catch (error) {
+    console.log('[LOGIN] Exception caught:', error)
     if (error instanceof AuthError) {
+      console.log('[LOGIN] AuthError detected')
       return { error: 'Email ou senha invalidos' }
     }
     // If it's a redirect, re-throw it
