@@ -8,14 +8,14 @@
 
 **Milestone Goal:** Transformar dashboard de leads em CRM com auth, pipeline kanban, tracking de contato, e comissões.
 
-**Current Focus:** Phase 11 - Lead Management & Contact Tracking (Plans 01-02 complete)
+**Current Focus:** Phase 11 - Lead Management & Contact Tracking (Plans 01-03 complete)
 
 ## Current Position
 
 **Phase:** 11 of 13 (Milestone v3.0)
-**Plan:** 03 of 04 (Phase 11)
+**Plan:** 04 of 04 (Phase 11)
 **Status:** Executing Phase 11
-**Progress:** [████████░░] 78%
+**Progress:** [████████░░] 80%
 
 **Milestone v1.0 Status:** Complete (Phases 1, 2, 4, 5 delivered)
 **Milestone v2.0 Status:** Superseded by Next.js migration (Phases 6-8 delivered in Streamlit, Phase 9 N/A)
@@ -67,7 +67,7 @@
 - [x] Plan Phase 11: Lead Management & Contact Tracking
 - [x] Execute Phase 11 Plan 01: Schema & backend for lead management
 - [x] Execute Phase 11 Plan 02: Lead assignment with duplicate detection
-- [ ] Execute Phase 11 Plan 03: Contact notes and timeline
+- [x] Execute Phase 11 Plan 03: Priority indicators & parlamentar repositioning
 - [ ] Execute Phase 11 Plan 04: Existing clients exclusion
 - [ ] Plan Phase 12: Pipeline Kanban
 - [ ] Plan Phase 13: Comissões
@@ -91,19 +91,18 @@
 ### Last Session Summary
 **Date:** 2026-02-12
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Completed Phase 11 Plan 01: Schema & backend for lead management
+**Activity:** Completed Phase 11 Plan 03: Priority indicators & parlamentar repositioning
 
 **Completed:**
-- Created existing_clients table with CNPJ unique constraint and index
-- Activated contact_notes table for timeline feature
-- Updated status_contato default to 'Não Contatado' (5th status)
-- Migrated 3,251 leads to 'Não Contatado' status
-- Updated leads API to filter existing clients (vendedores never see them)
-- Added 5-status frontend support with gray 'Não Contatado' badge
-- Added purple "CLIENTE EXISTENTE" badge for gestor view
+- Extended leads API with LEFT JOIN to proponentes for priority calculation
+- Added is_max_priority flag for CNPJs never registered in proponentes
+- Implemented CNPJ grouping with aggregated emenda counts and values
+- Added priority indicator column with red pulsing dot on leads page
+- Repositioned parlamentar column next to valor emenda (Decision #3)
+- Added priority and existing client badges to lead detail page
+- Created formatParlamentarSummary helper for consistent display
 
 **Next Actions:**
-- Execute Phase 11 Plan 03 - Contact notes and timeline
 - Execute Phase 11 Plan 04 - Existing clients exclusion (CSV import UI)
 
 ---
