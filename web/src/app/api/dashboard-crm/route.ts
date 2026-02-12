@@ -11,18 +11,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 1. Global stats with status breakdown
+    // 1. Global stats with status breakdown (Tito's 4 statuses)
     const globalRows = await query(`
       SELECT
         COUNT(*)::int as total_leads,
         COUNT(CASE WHEN vendedor_id IS NOT NULL THEN 1 END)::int as total_assigned,
         COUNT(CASE WHEN vendedor_id IS NULL THEN 1 END)::int as total_unassigned,
         COALESCE(SUM(valor_emenda::numeric), 0) as total_valor_emenda,
-        SUM(CASE WHEN COALESCE(status_contato, 'Novo') = 'Novo' THEN 1 ELSE 0 END)::int as status_novo,
-        SUM(CASE WHEN status_contato = 'Tentativa de Contato' THEN 1 ELSE 0 END)::int as status_tentativa,
-        SUM(CASE WHEN status_contato = 'Contactado' THEN 1 ELSE 0 END)::int as status_contactado,
-        SUM(CASE WHEN status_contato = 'Em Negociação' THEN 1 ELSE 0 END)::int as status_negociacao,
-        SUM(CASE WHEN status_contato = 'Sem Interesse' THEN 1 ELSE 0 END)::int as status_sem_interesse
+        SUM(CASE WHEN COALESCE(status_contato, 'Ainda Não') IN ('Ainda Não', 'Novo', 'Contactado') THEN 1 ELSE 0 END)::int as status_ainda_nao,
+        SUM(CASE WHEN status_contato = 'Retorno' THEN 1 ELSE 0 END)::int as status_retorno,
+        SUM(CASE WHEN status_contato = 'Proposta' THEN 1 ELSE 0 END)::int as status_proposta,
+        SUM(CASE WHEN status_contato = 'Fechado' THEN 1 ELSE 0 END)::int as status_fechado
       FROM vendedor_projetos
     `)
 
@@ -34,11 +33,10 @@ export async function GET() {
         vp.vendedor_id,
         u.nome as vendedor_nome,
         COUNT(*)::int as total_leads,
-        SUM(CASE WHEN COALESCE(vp.status_contato, 'Novo') = 'Novo' THEN 1 ELSE 0 END)::int as novo,
-        SUM(CASE WHEN vp.status_contato = 'Tentativa de Contato' THEN 1 ELSE 0 END)::int as tentativa,
-        SUM(CASE WHEN vp.status_contato = 'Contactado' THEN 1 ELSE 0 END)::int as contactado,
-        SUM(CASE WHEN vp.status_contato = 'Em Negociação' THEN 1 ELSE 0 END)::int as negociacao,
-        SUM(CASE WHEN vp.status_contato = 'Sem Interesse' THEN 1 ELSE 0 END)::int as sem_interesse,
+        SUM(CASE WHEN COALESCE(vp.status_contato, 'Ainda Não') IN ('Ainda Não', 'Novo', 'Contactado') THEN 1 ELSE 0 END)::int as ainda_nao,
+        SUM(CASE WHEN vp.status_contato = 'Retorno' THEN 1 ELSE 0 END)::int as retorno,
+        SUM(CASE WHEN vp.status_contato = 'Proposta' THEN 1 ELSE 0 END)::int as proposta,
+        SUM(CASE WHEN vp.status_contato = 'Fechado' THEN 1 ELSE 0 END)::int as fechado,
         COALESCE(SUM(vp.valor_emenda::numeric), 0) as valor_total_emenda,
         MAX(vp.updated_at) as last_activity
       FROM vendedor_projetos vp
@@ -54,7 +52,7 @@ export async function GET() {
         vp.cnpj,
         vp.nome,
         COALESCE(u.nome, 'Sem vendedor') as vendedor_nome,
-        COALESCE(vp.status_contato, 'Novo') as status_contato,
+        COALESCE(vp.status_contato, 'Ainda Não') as status_contato,
         vp.updated_at
       FROM vendedor_projetos vp
       LEFT JOIN users u ON u.id = vp.vendedor_id
@@ -70,22 +68,20 @@ export async function GET() {
         total_unassigned: Number(g.total_unassigned) || 0,
         total_valor_emenda: Number(g.total_valor_emenda) || 0,
         by_status: {
-          'Novo': Number(g.status_novo) || 0,
-          'Tentativa de Contato': Number(g.status_tentativa) || 0,
-          'Contactado': Number(g.status_contactado) || 0,
-          'Em Negociação': Number(g.status_negociacao) || 0,
-          'Sem Interesse': Number(g.status_sem_interesse) || 0,
+          'Ainda Não': Number(g.status_ainda_nao) || 0,
+          'Retorno': Number(g.status_retorno) || 0,
+          'Proposta': Number(g.status_proposta) || 0,
+          'Fechado': Number(g.status_fechado) || 0,
         },
       },
       vendedores: vendedorRows.map((v: Record<string, unknown>) => ({
         vendedor_id: v.vendedor_id,
         vendedor_nome: v.vendedor_nome,
         total_leads: Number(v.total_leads),
-        novo: Number(v.novo),
-        tentativa: Number(v.tentativa),
-        contactado: Number(v.contactado),
-        negociacao: Number(v.negociacao),
-        sem_interesse: Number(v.sem_interesse),
+        ainda_nao: Number(v.ainda_nao),
+        retorno: Number(v.retorno),
+        proposta: Number(v.proposta),
+        fechado: Number(v.fechado),
         valor_total_emenda: Number(v.valor_total_emenda),
         last_activity: v.last_activity,
       })),

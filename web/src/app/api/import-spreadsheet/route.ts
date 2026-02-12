@@ -127,8 +127,9 @@ const INSERT_SQL = `
     cnpj, nome, natureza_juridica,
     valor_emenda, valor_global, valor_empenhado, valor_liberado,
     nr_convenio, objeto, modalidade, situacao, saldo_conta,
+    telefone, email, observacoes,
     importado_de
-  ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+  ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
 `
 
 export async function POST(request: NextRequest) {
@@ -159,38 +160,97 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Could not detect format. Expected Siconv or CRM headers.' }, { status: 400 })
     }
 
-    // Get existing CNPJs for duplicate detection
-    const existingRes = await pool.query('SELECT DISTINCT cnpj FROM vendedor_projetos')
-    const existingCnpjs = new Set(existingRes.rows.map((r: { cnpj: string }) => r.cnpj))
+    // Get existing (cnpj, nr_emenda) pairs for dedup + CNPJ-to-vendedor for assignment
+    const existingRes = await pool.query('SELECT cnpj, nr_emenda, vendedor_id FROM vendedor_projetos')
+    const existingPairs = new Set<string>()
+    const cnpjToVendedor = new Map<string, string>()
+    for (const r of existingRes.rows) {
+      const key = `${r.cnpj}|${r.nr_emenda || ''}`
+      existingPairs.add(key)
+      if (r.vendedor_id) cnpjToVendedor.set(r.cnpj, r.vendedor_id)
+    }
 
-    // Get vendedor user IDs
-    const usersRes = await pool.query("SELECT id, email FROM users WHERE role = 'vendedor'")
+    // Get vendedor user IDs for round-robin auto-distribution
+    const usersRes = await pool.query("SELECT id, email, nome FROM users WHERE role = 'vendedor' AND active = true ORDER BY nome")
+    const vendedorIds: string[] = usersRes.rows.map((u: { id: string }) => u.id)
     const usersByEmail: Record<string, string> = {}
     for (const u of usersRes.rows) {
       usersByEmail[u.email] = u.id
     }
 
+    // Round-robin counter: start balanced by checking current distribution
+    const countRes = await pool.query(
+      `SELECT vendedor_id, COUNT(DISTINCT cnpj)::int as cnt
+       FROM vendedor_projetos WHERE vendedor_id IS NOT NULL
+       GROUP BY vendedor_id`
+    )
+    const vendedorCounts = new Map<string, number>()
+    for (const vid of vendedorIds) vendedorCounts.set(vid, 0)
+    for (const r of countRes.rows) {
+      if (vendedorCounts.has(r.vendedor_id)) vendedorCounts.set(r.vendedor_id, r.cnt)
+    }
+
+    // Pick the vendedor with fewest CNPJs assigned (least-loaded)
+    const pickNextVendedor = (): string | null => {
+      if (vendedorIds.length === 0) return null
+      let minId = vendedorIds[0]
+      let minCount = vendedorCounts.get(minId) ?? 0
+      for (const vid of vendedorIds) {
+        const c = vendedorCounts.get(vid) ?? 0
+        if (c < minCount) { minCount = c; minId = vid }
+      }
+      return minId
+    }
+
+    // Load proponentes contact data for enrichment (telefone, email)
+    const proponentesRes = await pool.query(
+      `SELECT identif_proponente as cnpj, nm_proponente as nome,
+              email_proponente as email, telefone_proponente as telefone
+       FROM proponentes
+       WHERE email_proponente IS NOT NULL OR telefone_proponente IS NOT NULL
+       LIMIT 100000`
+    ).catch(() => ({ rows: [] })) // graceful fallback if table doesn't exist
+    const contactByCnpj = new Map<string, { email: string | null; telefone: string | null }>()
+    for (const p of proponentesRes.rows) {
+      const pCnpj = cleanCNPJ(p.cnpj)
+      if (pCnpj) {
+        contactByCnpj.set(pCnpj, { email: p.email || null, telefone: p.telefone || null })
+      }
+    }
+
+    // Load existing clients for flagging
+    const clientsRes = await pool.query(
+      `SELECT identif_proponente as cnpj FROM proponentes WHERE is_existing_client = true`
+    ).catch(() => ({ rows: [] }))
+    const existingClients = new Set<string>()
+    for (const c of clientsRes.rows) {
+      const cCnpj = cleanCNPJ(c.cnpj)
+      if (cCnpj) existingClients.add(cCnpj)
+    }
+
     const columnMap = format === 'siconv' ? SICONV_COLUMN_MAP : CRM_COLUMN_MAP
-    const sheetResults: { sheet: string; vendedor: string | null; rows: number; duplicates: number; skipped: number }[] = []
+    const sheetResults: { sheet: string; vendedor: string | null; rows: number; duplicates: number; skipped: number; enriched: number; existing_clients: number }[] = []
     let totalInserted = 0
     let totalDuplicates = 0
     let totalErrors = 0
+    let totalEnriched = 0
+    let totalExistingClients = 0
 
     for (const sheetName of workbook.SheetNames) {
       const sheet = workbook.Sheets[sheetName]
       const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: '' }) as Record<string, unknown>[]
 
       if (rawRows.length === 0) {
-        sheetResults.push({ sheet: sheetName, vendedor: null, rows: 0, duplicates: 0, skipped: 0 })
+        sheetResults.push({ sheet: sheetName, vendedor: null, rows: 0, duplicates: 0, skipped: 0, enriched: 0, existing_clients: 0 })
         continue
       }
 
-      // Determine vendedor
-      let vendedorId: string | null = null
+      // For CRM format, use sheet name to determine vendedor
+      let sheetVendedorId: string | null = null
       if (format === 'crm') {
         const normalized = sheetName.toLowerCase().trim()
         const vendedorEmail = VENDEDOR_MAP[normalized]
-        vendedorId = vendedorEmail ? usersByEmail[vendedorEmail] || null : null
+        sheetVendedorId = vendedorEmail ? usersByEmail[vendedorEmail] || null : null
       }
 
       const sampleHeaders = Object.keys(rawRows[0])
@@ -199,6 +259,8 @@ export async function POST(request: NextRequest) {
       let inserted = 0
       let duplicates = 0
       let skipped = 0
+      let enriched = 0
+      let existingClientCount = 0
 
       for (const raw of rawRows) {
         const row: Record<string, unknown> = {}
@@ -209,14 +271,43 @@ export async function POST(request: NextRequest) {
         const cnpj = cleanCNPJ(row.cnpj)
         if (!cnpj) { skipped++; continue }
 
-        // Duplicate detection
-        if (existingCnpjs.has(cnpj)) {
+        // Duplicate detection by (cnpj, nr_emenda) pair
+        const nrEmenda = row.nr_emenda ? String(row.nr_emenda).trim() : ''
+        const dedupKey = `${cnpj}|${nrEmenda}`
+        if (existingPairs.has(dedupKey)) {
           duplicates++
           continue
         }
 
+        // Determine vendedor for this lead:
+        // 1. CRM format: use sheet-based vendedor
+        // 2. If CNPJ already assigned to a vendedor, use same vendedor
+        // 3. Otherwise: round-robin auto-distribute
+        let vendedorId = sheetVendedorId
+        if (!vendedorId && cnpjToVendedor.has(cnpj)) {
+          vendedorId = cnpjToVendedor.get(cnpj)!
+        }
+        if (!vendedorId) {
+          vendedorId = pickNextVendedor()
+          if (vendedorId) {
+            vendedorCounts.set(vendedorId, (vendedorCounts.get(vendedorId) ?? 0) + 1)
+            cnpjToVendedor.set(cnpj, vendedorId)
+          }
+        }
+
+        // Enrich contacts from proponentes table
+        const contact = contactByCnpj.get(cnpj)
+        const enrichedTelefone = contact?.telefone || null
+        const enrichedEmail = contact?.email || null
+        if (contact) enriched++
+
+        // Flag existing clients in observacoes
+        const isExistingClient = existingClients.has(cnpj)
+        if (isExistingClient) existingClientCount++
+        const obs = isExistingClient ? '⚠️ JA E CLIENTE PROJETUS' : null
+
         const str = (key: string) => row[key] ? String(row[key]).trim() : null
-        const num = (key: string) => format === 'siconv' ? parseNumeric(row[key]) : null
+        const num = (key: string) => parseNumeric(row[key])
 
         const values = [
           vendedorId,                    // vendedor_id
@@ -241,13 +332,16 @@ export async function POST(request: NextRequest) {
           str('modalidade'),               // modalidade
           str('situacao'),                 // situacao
           num('saldo_conta'),              // saldo_conta
+          enrichedTelefone,                // telefone
+          enrichedEmail,                   // email
+          obs,                             // observacoes
           format,                          // importado_de
         ]
 
         try {
           await pool.query(INSERT_SQL, values)
           inserted++
-          existingCnpjs.add(cnpj) // track within this import too
+          existingPairs.add(dedupKey) // track within this import too
         } catch (err) {
           console.error('Insert error for CNPJ', cnpj, err)
           skipped++
@@ -257,7 +351,9 @@ export async function POST(request: NextRequest) {
 
       totalInserted += inserted
       totalDuplicates += duplicates
-      sheetResults.push({ sheet: sheetName, vendedor: vendedorId, rows: inserted, duplicates, skipped })
+      totalEnriched += enriched
+      totalExistingClients += existingClientCount
+      sheetResults.push({ sheet: sheetName, vendedor: sheetVendedorId, rows: inserted, duplicates, skipped, enriched, existing_clients: existingClientCount })
     }
 
     return NextResponse.json({
@@ -267,6 +363,9 @@ export async function POST(request: NextRequest) {
       inserted: totalInserted,
       duplicates: totalDuplicates,
       errors: totalErrors,
+      enriched: totalEnriched,
+      existing_clients: totalExistingClients,
+      auto_distributed: format !== 'crm' ? totalInserted : 0,
       sheets: sheetResults,
     })
   } catch (error) {

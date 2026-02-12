@@ -36,10 +36,10 @@ export async function GET(request: NextRequest) {
     const volumeFinanceiro = projetos.reduce((sum, p) => sum + (Number(p.valor_global) || 0), 0)
 
     const porCategoria = {
-      'Novo': projetos.filter(p => p.status_contato === 'Novo' || !p.status_contato).length,
-      'Contactado': projetos.filter(p => p.status_contato === 'Contactado').length,
-      'Proposta': projetos.filter(p => p.status_contato === 'Proposta').length,
+      'Ainda Não': projetos.filter(p => !p.status_contato || p.status_contato === 'Ainda Não' || p.status_contato === 'Novo' || p.status_contato === 'Contactado').length,
       'Retorno': projetos.filter(p => p.status_contato === 'Retorno').length,
+      'Proposta': projetos.filter(p => p.status_contato === 'Proposta').length,
+      'Fechado': projetos.filter(p => p.status_contato === 'Fechado').length,
     }
 
     return NextResponse.json({

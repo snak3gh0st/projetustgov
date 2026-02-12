@@ -67,7 +67,7 @@ export async function POST() {
         -- CRM
         telefone VARCHAR(50),
         email VARCHAR(500),
-        status_contato VARCHAR(50) DEFAULT 'Novo',
+        status_contato VARCHAR(50) DEFAULT 'Ainda Não',
         observacoes TEXT,
         -- Metadata
         importado_de TEXT,

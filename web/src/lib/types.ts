@@ -52,14 +52,15 @@ export interface ClienteAgrupado {
 }
 
 export interface DashboardStats {
-  total_clientes: number
-  total_projetos: number
-  volume_financeiro: number
-  por_categoria: {
-    Novo: number
-    Contactado: number
-    Proposta: number
+  total_leads: number
+  total_assigned: number
+  total_unassigned: number
+  total_valor_emenda: number
+  by_status: {
+    'Ainda Não': number
     Retorno: number
+    Proposta: number
+    Fechado: number
   }
 }
 

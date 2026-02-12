@@ -10,7 +10,10 @@ interface ImportResult {
   inserted: number
   duplicates: number
   errors: number
-  sheets: { sheet: string; vendedor: string | null; rows: number; duplicates: number; skipped: number }[]
+  enriched: number
+  existing_clients: number
+  auto_distributed: number
+  sheets: { sheet: string; vendedor: string | null; rows: number; duplicates: number; skipped: number; enriched: number; existing_clients: number }[]
 }
 
 export default function UploadPage() {
@@ -211,6 +214,33 @@ export default function UploadPage() {
                 <p className="text-2xl font-bold text-red-400">{results.errors}</p>
               </div>
             </div>
+
+            {/* Auto-distribution + enrichment stats */}
+            {(results.auto_distributed > 0 || results.enriched > 0 || results.existing_clients > 0) && (
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                {results.auto_distributed > 0 && (
+                  <div className="bg-white/5 rounded-xl p-4 border border-emerald-500/20">
+                    <p className="text-xs text-gray-500">Auto-distribuidos</p>
+                    <p className="text-xl font-bold text-emerald-400">{results.auto_distributed.toLocaleString('pt-BR')}</p>
+                    <p className="text-xs text-gray-600 mt-1">Round-robin entre vendedores</p>
+                  </div>
+                )}
+                {results.enriched > 0 && (
+                  <div className="bg-white/5 rounded-xl p-4 border border-blue-500/20">
+                    <p className="text-xs text-gray-500">Contatos Enriquecidos</p>
+                    <p className="text-xl font-bold text-blue-400">{results.enriched.toLocaleString('pt-BR')}</p>
+                    <p className="text-xs text-gray-600 mt-1">Tel/email da base de proponentes</p>
+                  </div>
+                )}
+                {results.existing_clients > 0 && (
+                  <div className="bg-white/5 rounded-xl p-4 border border-orange-500/20">
+                    <p className="text-xs text-gray-500">Ja sao Clientes</p>
+                    <p className="text-xl font-bold text-orange-400">{results.existing_clients.toLocaleString('pt-BR')}</p>
+                    <p className="text-xs text-gray-600 mt-1">Sinalizados nas observacoes</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Per-sheet breakdown */}
             {results.sheets.length > 1 && (

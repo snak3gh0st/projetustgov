@@ -6,12 +6,12 @@ import Link from 'next/link'
 import { formatCNPJ, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 
-const STATUS_OPTIONS = ['Novo', 'Contactado', 'Proposta', 'Retorno']
+const STATUS_OPTIONS = ['Ainda Não', 'Retorno', 'Proposta', 'Fechado']
 const STATUS_COLORS: Record<string, string> = {
-  'Novo': 'bg-gray-500/20 text-gray-400',
-  'Contactado': 'bg-blue-500/20 text-blue-400',
-  'Proposta': 'bg-amber-500/20 text-amber-400',
-  'Retorno': 'bg-purple-500/20 text-purple-400',
+  'Ainda Não': 'bg-red-500/20 text-red-400',
+  'Retorno': 'bg-amber-500/20 text-amber-400',
+  'Proposta': 'bg-blue-500/20 text-blue-400',
+  'Fechado': 'bg-green-500/20 text-green-400',
 }
 
 export default function LeadDetailPage() {
@@ -128,9 +128,9 @@ export default function LeadDetailPage() {
                   <td className="px-4 py-3 text-gray-300 text-xs">{p.situacao || '-'}</td>
                   <td className="px-4 py-3">
                     <select
-                      value={p.status_contato || 'Novo'}
+                      value={p.status_contato || 'Ainda Não'}
                       onChange={e => updateProjeto(p.id, 'status_contato', e.target.value)}
-                      className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[p.status_contato] || STATUS_COLORS['Novo']}`}
+                      className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[p.status_contato] || STATUS_COLORS['Ainda Não']}`}
                     >
                       {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>

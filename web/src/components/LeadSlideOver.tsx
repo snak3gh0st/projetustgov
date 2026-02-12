@@ -6,10 +6,10 @@ import { formatCNPJ, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 
 const STATUS_COLORS: Record<string, string> = {
-  'Novo': 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-  'Contactado': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  'Proposta': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  'Retorno': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  'Ainda Não': 'bg-red-500/20 text-red-400 border-red-500/30',
+  'Retorno': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  'Proposta': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  'Fechado': 'bg-green-500/20 text-green-400 border-green-500/30',
 }
 
 interface LeadSlideOverProps {
@@ -65,7 +65,7 @@ export default function LeadSlideOver({ lead, onClose }: LeadSlideOverProps) {
           </div>
 
           {lead.status_contato && (
-            <span className={`inline-block mt-3 text-xs font-medium rounded-full px-3 py-1 border ${STATUS_COLORS[lead.status_contato] || STATUS_COLORS['Novo']}`}>
+            <span className={`inline-block mt-3 text-xs font-medium rounded-full px-3 py-1 border ${STATUS_COLORS[lead.status_contato] || STATUS_COLORS['Ainda Não']}`}>
               {lead.status_contato}
             </span>
           )}
@@ -74,14 +74,25 @@ export default function LeadSlideOver({ lead, onClose }: LeadSlideOverProps) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-4">
           {/* Info Grid */}
+          {/* Link do programa */}
+          {lead.link_externo && (
+            <a
+              href={lead.link_externo}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center px-4 py-2.5 rounded-xl text-sm font-medium text-cyan-400 border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 transition-colors"
+            >
+              Abrir no TransferGov &rarr;
+            </a>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
-            <InfoCard label="Valor Global" value={formatCurrency(lead.valor_global || 0)} highlight />
+            <InfoCard label="Ministerio" value={lead.orgao_concedente || '-'} />
+            <InfoCard label="Parlamentar" value={lead.parlamentar || '-'} />
             <InfoCard label="UF / Municipio" value={[lead.uf, lead.municipio].filter(Boolean).join(' / ') || '-'} />
-            <InfoCard label="Vendedor" value={lead.vendedor_nome || '-'} />
-            <InfoCard label="Orgao Concedente" value={lead.orgao_concedente || '-'} />
-            <InfoCard label="Situacao" value={lead.situacao || '-'} />
-            <InfoCard label="Programa" value={lead.nome_programa || '-'} />
+            <InfoCard label="Valor Emenda" value={formatCurrency(lead.valor_emenda || lead.valor_global || 0)} highlight />
             <InfoCard label="Natureza Juridica" value={lead.natureza_juridica || '-'} />
+            <InfoCard label="Vendedor" value={lead.vendedor_nome || '-'} />
           </div>
 
           {/* Contact */}

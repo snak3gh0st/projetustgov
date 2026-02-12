@@ -5,12 +5,12 @@ import { formatCNPJ, formatCompactCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
 
-const STATUS_OPTIONS = ['Novo', 'Contactado', 'Proposta', 'Retorno']
+const STATUS_OPTIONS = ['Ainda Não', 'Retorno', 'Proposta', 'Fechado']
 const STATUS_COLORS: Record<string, string> = {
-  'Novo': 'bg-gray-500/20 text-gray-400',
-  'Contactado': 'bg-blue-500/20 text-blue-400',
-  'Proposta': 'bg-amber-500/20 text-amber-400',
-  'Retorno': 'bg-purple-500/20 text-purple-400',
+  'Ainda Não': 'bg-red-500/20 text-red-400',
+  'Retorno': 'bg-amber-500/20 text-amber-400',
+  'Proposta': 'bg-blue-500/20 text-blue-400',
+  'Fechado': 'bg-green-500/20 text-green-400',
 }
 
 interface Vendedor {
@@ -95,11 +95,11 @@ export default function LeadsPage() {
   }
 
   function exportCSV() {
-    const headers = ['CNPJ', 'Nome', 'Programa', 'Valor Global', 'Situacao', 'Status', 'Orgao', 'UF', 'Telefone', 'Email', 'Vendedor', 'Observacoes']
+    const headers = ['CNPJ', 'Nome', 'Ministerio', 'UF', 'Municipio', 'Parlamentar', 'Telefone', 'Email', 'Status', 'Vendedor', 'Observacoes', 'Link']
     const rows = leads.map(l => [
-      l.cnpj, l.nome, l.nome_programa || '', String(l.valor_global || 0),
-      l.situacao || '', l.status_contato, l.orgao_concedente || '', l.uf || '',
-      l.telefone || '', l.email || '', l.vendedor_nome || '', l.observacoes || '',
+      l.cnpj, l.nome, l.orgao_concedente || '', l.uf || '', l.municipio || '',
+      l.parlamentar || '', l.telefone || '', l.email || '',
+      l.status_contato, l.vendedor_nome || '', l.observacoes || '', l.link_externo || '',
     ])
     const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
@@ -152,13 +152,17 @@ export default function LeadsPage() {
                 <tr className="border-b border-white/5 bg-sigma-navy-light">
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">CNPJ</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Nome</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Programa</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor Global</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Link</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Ministerio</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">UF</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Municipio</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Parlamentar</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Telefone</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Email</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Vendedor</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                  {sessionUser?.role === 'gestor' && (
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Vendedor</th>
+                  )}
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Obs</th>
                 </tr>
               </thead>
@@ -171,19 +175,23 @@ export default function LeadsPage() {
                       </span>
                     </td>
                     <td className="px-3 py-2 text-white font-medium truncate max-w-[180px]">{lead.nome || '-'}</td>
-                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[150px]">{lead.nome_programa || '-'}</td>
-                    <td className="px-3 py-2 text-sigma-neon text-xs">{formatCompactCurrency(lead.valor_global)}</td>
                     <td className="px-3 py-2">
-                      <select
-                        value={lead.status_contato || 'Novo'}
-                        onClick={e => e.stopPropagation()}
-                        onChange={e => updateLead(lead.id, 'status_contato', e.target.value)}
-                        className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[lead.status_contato] || STATUS_COLORS['Novo']}`}
-                      >
-                        {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
+                      {lead.link_externo ? (
+                        <a
+                          href={lead.link_externo}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          className="text-cyan-400 hover:text-cyan-300 text-xs underline"
+                        >
+                          Ver
+                        </a>
+                      ) : '-'}
                     </td>
-                    <td className="px-3 py-2 text-gray-300">{lead.uf || '-'}</td>
+                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[140px]">{lead.orgao_concedente || '-'}</td>
+                    <td className="px-3 py-2 text-gray-300 text-xs">{lead.uf || '-'}</td>
+                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[120px]">{lead.municipio || '-'}</td>
+                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[120px]">{lead.parlamentar || '-'}</td>
                     <td className="px-3 py-2">
                       <input
                         type="text"
@@ -212,7 +220,19 @@ export default function LeadsPage() {
                         className="bg-transparent border-b border-white/10 text-xs text-gray-300 w-28 focus:outline-none focus:border-sigma-neon/50 placeholder-gray-600"
                       />
                     </td>
-                    <td className="px-3 py-2 text-gray-400 text-xs">{lead.vendedor_nome || '-'}</td>
+                    <td className="px-3 py-2">
+                      <select
+                        value={lead.status_contato || 'Ainda Não'}
+                        onClick={e => e.stopPropagation()}
+                        onChange={e => updateLead(lead.id, 'status_contato', e.target.value)}
+                        className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[lead.status_contato] || STATUS_COLORS['Ainda Não']}`}
+                      >
+                        {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </td>
+                    {sessionUser?.role === 'gestor' && (
+                      <td className="px-3 py-2 text-gray-400 text-xs">{lead.vendedor_nome || '-'}</td>
+                    )}
                     <td className="px-3 py-2">
                       <input
                         type="text"

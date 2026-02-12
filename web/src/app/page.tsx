@@ -5,11 +5,10 @@ import { formatCNPJ, formatCompactCurrency, formatCurrency } from '@/lib/format'
 
 // --- Types ---
 interface StatusCounts {
-  'Novo': number
-  'Tentativa de Contato': number
-  'Contactado': number
-  'Em Negociação': number
-  'Sem Interesse': number
+  'Ainda Não': number
+  'Retorno': number
+  'Proposta': number
+  'Fechado': number
 }
 
 interface GlobalStats {
@@ -24,11 +23,10 @@ interface VendedorStats {
   vendedor_id: string
   vendedor_nome: string
   total_leads: number
-  novo: number
-  tentativa: number
-  contactado: number
-  negociacao: number
-  sem_interesse: number
+  ainda_nao: number
+  retorno: number
+  proposta: number
+  fechado: number
   valor_total_emenda: number
   last_activity: string | null
 }
@@ -49,14 +47,13 @@ interface DashboardData {
 
 // --- Status config ---
 const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; label: string }> = {
-  'Novo': { color: 'text-red-400', bg: 'bg-red-500/20 border-red-500/30', bar: 'bg-red-500', label: 'Novo' },
-  'Tentativa de Contato': { color: 'text-amber-400', bg: 'bg-amber-500/20 border-amber-500/30', bar: 'bg-amber-500', label: 'Tentativa' },
-  'Contactado': { color: 'text-blue-400', bg: 'bg-blue-500/20 border-blue-500/30', bar: 'bg-blue-500', label: 'Contactado' },
-  'Em Negociação': { color: 'text-emerald-400', bg: 'bg-emerald-500/20 border-emerald-500/30', bar: 'bg-emerald-500', label: 'Negociação' },
-  'Sem Interesse': { color: 'text-gray-400', bg: 'bg-gray-500/20 border-gray-500/30', bar: 'bg-gray-500', label: 'Sem Interesse' },
+  'Ainda Não': { color: 'text-red-400', bg: 'bg-red-500/20 border-red-500/30', bar: 'bg-red-500', label: 'Ainda Não' },
+  'Retorno': { color: 'text-amber-400', bg: 'bg-amber-500/20 border-amber-500/30', bar: 'bg-amber-500', label: 'Retorno' },
+  'Proposta': { color: 'text-blue-400', bg: 'bg-blue-500/20 border-blue-500/30', bar: 'bg-blue-500', label: 'Proposta' },
+  'Fechado': { color: 'text-green-400', bg: 'bg-green-500/20 border-green-500/30', bar: 'bg-green-500', label: 'Fechado' },
 }
 
-const STATUS_ORDER = ['Novo', 'Tentativa de Contato', 'Contactado', 'Em Negociação', 'Sem Interesse'] as const
+const STATUS_ORDER = ['Ainda Não', 'Retorno', 'Proposta', 'Fechado'] as const
 
 function timeAgo(date: string | null): string {
   if (!date) return 'nunca'
@@ -226,11 +223,10 @@ export default function CRMDashboard() {
                 {/* Status badges */}
                 <div className="flex flex-wrap gap-2 mb-3">
                   {[
-                    { key: 'novo' as const, status: 'Novo', count: v.novo },
-                    { key: 'tentativa' as const, status: 'Tentativa de Contato', count: v.tentativa },
-                    { key: 'contactado' as const, status: 'Contactado', count: v.contactado },
-                    { key: 'negociacao' as const, status: 'Em Negociação', count: v.negociacao },
-                    { key: 'sem_interesse' as const, status: 'Sem Interesse', count: v.sem_interesse },
+                    { key: 'ainda_nao' as const, status: 'Ainda Não', count: v.ainda_nao },
+                    { key: 'retorno' as const, status: 'Retorno', count: v.retorno },
+                    { key: 'proposta' as const, status: 'Proposta', count: v.proposta },
+                    { key: 'fechado' as const, status: 'Fechado', count: v.fechado },
                   ].map(({ status, count }) => {
                     const cfg = STATUS_CONFIG[status]
                     return (
@@ -265,7 +261,7 @@ export default function CRMDashboard() {
           </div>
           <div className="divide-y divide-gray-800/50">
             {recent_activity.map((a, i) => {
-              const cfg = STATUS_CONFIG[a.status_contato] || STATUS_CONFIG['Novo']
+              const cfg = STATUS_CONFIG[a.status_contato] || STATUS_CONFIG['Ainda Não']
               return (
                 <div key={`${a.cnpj}-${i}`} className={`px-4 py-3 text-sm ${i % 2 === 0 ? 'bg-gray-900/20' : ''}`}>
                   <div className="flex items-center gap-2 flex-wrap">

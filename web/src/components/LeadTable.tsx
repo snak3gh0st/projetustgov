@@ -48,7 +48,7 @@ export default function LeadTable({ data }: { data: VendedorProjeto[] }) {
       }),
       columnHelper.accessor('status_contato', {
         header: 'Status',
-        cell: (info) => info.getValue() || 'Novo',
+        cell: (info) => info.getValue() || 'Ainda Não',
       }),
       columnHelper.accessor('vendedor_nome', {
         header: 'Vendedor',

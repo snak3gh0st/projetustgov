@@ -57,10 +57,10 @@ export async function GET() {
       // By categoria (status_contato)
       query(`
         SELECT
-          COALESCE(status_contato, 'Novo') as categoria,
+          COALESCE(status_contato, 'Ainda Não') as categoria,
           COUNT(*) as count
         FROM vendedor_projetos
-        GROUP BY COALESCE(status_contato, 'Novo')
+        GROUP BY COALESCE(status_contato, 'Ainda Não')
       `),
       // Top 10 clients by valor_global
       query(`
