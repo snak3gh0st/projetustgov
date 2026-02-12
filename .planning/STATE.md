@@ -8,7 +8,7 @@
 
 **Milestone Goal:** Transformar dashboard de leads em CRM com auth, pipeline kanban, tracking de contato, e comissões.
 
-**Current Focus:** Phase 11 - Lead Management & Contact Tracking (All 4 plans complete)
+**Current Focus:** Phase 11 - Lead Management & Contact Tracking (All 5 plans complete)
 
 ## Current Position
 
@@ -49,6 +49,8 @@
 | HTTP 409 for duplicate assignment | 11-02 | Standard conflict status allows UI force override without separate endpoint | 2026-02-12 |
 | Visualizador read-only role for leadership | 11-04 | Leadership needs visibility without modification risk | 2026-02-12 |
 | Contact notes sorted DESC by created_at | 11-04 | Most recent interactions are most relevant for sales context | 2026-02-12 |
+| Inline edit pattern for contact fields | 11-05 | Cleaner UX than always-visible inputs, maintains read-only appearance | 2026-02-12 |
+| Optimistic updates in slide-over | 11-05 | Faster perceived performance, acceptable for MVP without parent refresh | 2026-02-12 |
 
 ### Technical Context (Next.js Stack)
 
@@ -71,6 +73,7 @@
 - [x] Execute Phase 11 Plan 02: Lead assignment with duplicate detection
 - [x] Execute Phase 11 Plan 03: Priority indicators & parlamentar repositioning
 - [x] Execute Phase 11 Plan 04: Contact notes timeline & visualizador role
+- [x] Execute Phase 11 Plan 05: Contact edit UI gap closure
 - [ ] Plan Phase 12: Pipeline Kanban
 - [ ] Plan Phase 13: Comissões
 
@@ -93,25 +96,27 @@
 ### Last Session Summary
 **Date:** 2026-02-12
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Completed Phase 11 Plan 04: Contact notes timeline & visualizador role
+**Activity:** Completed Phase 11 Plan 05: Contact edit UI gap closure
 
 **Completed:**
-- Added visualizador role to auth system (3-role model: gestor/vendedor/visualizador)
-- Created Paulo user as visualizador (paulo@sigma.com / sigma2026)
-- Implemented canModifyData() helper for write permission checks
-- Created contact notes API endpoints (GET, POST) with RBAC
-- Built ContactNotesTimeline component with tipo-based icons
-- Integrated timeline into lead detail page below emendas table
-- Visualizador can view all leads/notes but cannot modify
+- Added inline edit UI for phone/email on lead detail page
+- Added inline edit UI for phone/email in LeadSlideOver component
+- Pencil icons trigger edit mode (only visible when canModify=true)
+- Save on blur/Enter, cancel on Escape keyboard shortcuts
+- Optimistic updates in slide-over for better UX
+- Visualizador sees no edit controls (read-only maintained)
+- Both files compile without TypeScript errors
 
 **Phase 11 Complete:**
-- All 4 plans executed successfully
+- All 5 plans executed successfully (gap closure complete)
 - Schema & backend: existing_clients table, contact_notes table, 5-status system
 - Lead assignment: CNPJ-based with duplicate detection
 - Priority indicators: max priority flag for never-registered CNPJs
 - Contact tracking: timeline UI with visualizador read-only role
+- Contact editing: inline edit UI with permission-aware controls
 
 **Next Actions:**
+- Human verification of inline edit UI (vendedor vs visualizador)
 - Plan Phase 12 - Pipeline Kanban board
 - Plan Phase 13 - Commission tracking and reporting
 
