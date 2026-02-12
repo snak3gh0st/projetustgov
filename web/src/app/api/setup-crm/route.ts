@@ -93,7 +93,20 @@ async function runSetup() {
       ALTER TABLE vendedor_projetos ALTER COLUMN status_contato SET DEFAULT 'Ainda Não';
     `).catch(() => {}) // ignore if already set
 
-    // 5. Create vendedores
+    // 5. Enrich existing leads with telefone/email from proponentes table
+    const enrichResult = await pool.query(`
+      UPDATE vendedor_projetos vp
+      SET
+        telefone = COALESCE(NULLIF(vp.telefone, ''), p.telefone),
+        email = COALESCE(NULLIF(vp.email, ''), p.email)
+      FROM proponentes p
+      WHERE p.cnpj = vp.cnpj
+        AND (p.email IS NOT NULL OR p.telefone IS NOT NULL)
+        AND (vp.telefone IS NULL OR vp.telefone = '' OR vp.email IS NULL OR vp.email = '')
+    `).catch(() => ({ rowCount: 0 }))
+    const enrichedCount = enrichResult.rowCount || 0
+
+    // 6. Create vendedores
     const passwordHash = await bcrypt.hash('sigma2026', 10)
     const vendedores = [
       { nome: 'Wellington', email: 'wellington@sigma.com' },
@@ -128,7 +141,8 @@ async function runSetup() {
       success: true,
       tables: ['vendedor_projetos'],
       vendedores_created: created,
-      message: `Setup complete. Created: ${created.join(', ') || 'all already existed'}`,
+      enriched_contacts: enrichedCount,
+      message: `Setup complete. Created: ${created.join(', ') || 'all already existed'}. Enriched ${enrichedCount} leads with contacts.`,
     })
   } catch (error) {
     console.error('Setup CRM error:', error)

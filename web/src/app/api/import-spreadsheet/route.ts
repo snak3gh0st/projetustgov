@@ -204,10 +204,9 @@ export async function POST(request: NextRequest) {
 
     // Load proponentes contact data for enrichment (telefone, email)
     const proponentesRes = await pool.query(
-      `SELECT identif_proponente as cnpj, nm_proponente as nome,
-              email_proponente as email, telefone_proponente as telefone
+      `SELECT cnpj, nome, email, telefone
        FROM proponentes
-       WHERE email_proponente IS NOT NULL OR telefone_proponente IS NOT NULL
+       WHERE email IS NOT NULL OR telefone IS NOT NULL
        LIMIT 100000`
     ).catch(() => ({ rows: [] })) // graceful fallback if table doesn't exist
     const contactByCnpj = new Map<string, { email: string | null; telefone: string | null }>()
@@ -220,7 +219,7 @@ export async function POST(request: NextRequest) {
 
     // Load existing clients for flagging
     const clientsRes = await pool.query(
-      `SELECT identif_proponente as cnpj FROM proponentes WHERE is_existing_client = true`
+      `SELECT cnpj FROM proponentes WHERE is_existing_client = true`
     ).catch(() => ({ rows: [] }))
     const existingClients = new Set<string>()
     for (const c of clientsRes.rows) {
