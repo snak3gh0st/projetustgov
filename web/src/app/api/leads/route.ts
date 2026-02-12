@@ -21,15 +21,24 @@ export async function GET(request: NextRequest) {
     const params: unknown[] = []
     let paramIndex = 1
 
-    // Vendedor role -> only their projects
+    // Check for exclude_existing parameter (for gestor assignment view)
+    const excludeExisting = searchParams.get('exclude_existing')
+
+    // Vendedor role -> only their projects, ALWAYS exclude existing clients
     if (session.role === 'vendedor') {
       conditions.push(`vp.vendedor_id = $${paramIndex++}`)
       params.push(session.userId)
+      conditions.push('ec.cnpj IS NULL') // vendedores never see existing clients
     } else if (vendedorId === 'unassigned') {
       conditions.push(`vp.vendedor_id IS NULL`)
     } else if (vendedorId) {
       conditions.push(`vp.vendedor_id = $${paramIndex++}`)
       params.push(vendedorId)
+    }
+
+    // Optional filter for gestor to exclude existing clients
+    if (excludeExisting === 'true' && session.role !== 'vendedor') {
+      conditions.push('ec.cnpj IS NULL')
     }
 
     if (search) {
@@ -46,9 +55,13 @@ export async function GET(request: NextRequest) {
     params.push(Number(limit))
 
     const rows = await query(`
-      SELECT vp.*, u.nome as vendedor_nome
+      SELECT
+        vp.*,
+        u.nome as vendedor_nome,
+        ec.cnpj IS NOT NULL as is_existing_client
       FROM vendedor_projetos vp
       LEFT JOIN users u ON vp.vendedor_id = u.id
+      LEFT JOIN existing_clients ec ON vp.cnpj = ec.cnpj
       WHERE ${conditions.join(' AND ')}
       ORDER BY vp.cnpj, vp.valor_global DESC NULLS LAST
       LIMIT $${paramIndex}
