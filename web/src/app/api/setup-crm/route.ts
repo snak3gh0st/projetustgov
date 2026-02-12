@@ -137,12 +137,38 @@ async function runSetup() {
       created.push('Gestor')
     }
 
+    // Diagnostics: check state of data
+    const diag: Record<string, unknown> = {}
+    const propCount = await pool.query(
+      `SELECT COUNT(*) as total, COUNT(email) as with_email, COUNT(telefone) as with_phone FROM proponentes`
+    ).catch(() => ({ rows: [{ total: 'TABLE_NOT_FOUND', with_email: 0, with_phone: 0 }] }))
+    diag.proponentes = propCount.rows[0]
+
+    const vpCount = await pool.query(
+      `SELECT COUNT(*) as total, COUNT(NULLIF(telefone,'')) as with_phone, COUNT(NULLIF(email,'')) as with_email FROM vendedor_projetos`
+    )
+    diag.vendedor_projetos = vpCount.rows[0]
+
+    const overlap = await pool.query(
+      `SELECT COUNT(DISTINCT vp.cnpj) as matching FROM vendedor_projetos vp JOIN proponentes p ON p.cnpj = vp.cnpj`
+    ).catch(() => ({ rows: [{ matching: 0 }] }))
+    diag.cnpj_overlap = overlap.rows[0]
+
+    const sampleVp = await pool.query(`SELECT cnpj FROM vendedor_projetos LIMIT 3`)
+    const sampleP = await pool.query(`SELECT cnpj FROM proponentes LIMIT 3`).catch(() => ({ rows: [] }))
+    diag.sample_cnpj_vp = sampleVp.rows.map((r: { cnpj: string }) => r.cnpj)
+    diag.sample_cnpj_prop = sampleP.rows.map((r: { cnpj: string }) => r.cnpj)
+
+    const statusDist = await pool.query(
+      `SELECT status_contato, COUNT(*)::int as cnt FROM vendedor_projetos GROUP BY status_contato ORDER BY cnt DESC`
+    )
+    diag.status_distribution = statusDist.rows
+
     return NextResponse.json({
       success: true,
-      tables: ['vendedor_projetos'],
       vendedores_created: created,
       enriched_contacts: enrichedCount,
-      message: `Setup complete. Created: ${created.join(', ') || 'all already existed'}. Enriched ${enrichedCount} leads with contacts.`,
+      diagnostics: diag,
     })
   } catch (error) {
     console.error('Setup CRM error:', error)
