@@ -7,10 +7,9 @@ import { formatCNPJ, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import ContactNotesTimeline from '@/components/ContactNotesTimeline'
 
-const STATUS_OPTIONS = ['Não Contatado', 'Ainda Não', 'Retorno', 'Proposta', 'Fechado']
+const STATUS_OPTIONS = ['Não Contatado', 'Retorno', 'Proposta', 'Fechado']
 const STATUS_COLORS: Record<string, string> = {
-  'Não Contatado': 'bg-gray-500/20 text-gray-400',
-  'Ainda Não': 'bg-red-500/20 text-red-400',
+  'Não Contatado': 'bg-red-500/20 text-red-400',
   'Retorno': 'bg-amber-500/20 text-amber-400',
   'Proposta': 'bg-blue-500/20 text-blue-400',
   'Fechado': 'bg-green-500/20 text-green-400',
@@ -154,6 +153,32 @@ export default function LeadDetailPage() {
         </div>
       </div>
 
+      {/* Commission Info */}
+      {first.vendedor_id && first.comissao_valor && first.comissao_valor > 0 && (
+        <div className="bg-sigma-neon/10 border border-sigma-neon/30 rounded-xl p-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <p className="text-xs text-gray-400 uppercase">Tipo Vendedor</p>
+              <p className="text-lg font-semibold text-white mt-1">
+                {first.tipo_vendedor || 'SDR'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase">Percentual Comissão</p>
+              <p className="text-lg font-semibold text-white mt-1">
+                {first.comissao_percentual?.toFixed(1) || '0'}%
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase">Comissão Total</p>
+              <p className="text-2xl font-heading font-bold text-sigma-neon mt-1">
+                {formatCurrency(first.comissao_valor)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Contact info */}
       {(first.telefone || first.email || canModify) && (
         <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4 flex flex-wrap gap-6">
@@ -292,9 +317,9 @@ export default function LeadDetailPage() {
                   <td className="px-4 py-3 text-sigma-neon text-xs">{formatCurrency(Number(p.valor_emenda) || 0)}</td>
                   <td className="px-4 py-3">
                     <select
-                      value={p.status_contato || 'Ainda Não'}
+                      value={p.status_contato || 'Não Contatado'}
                       onChange={e => updateProjeto(p.id, 'status_contato', e.target.value)}
-                      className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[p.status_contato] || STATUS_COLORS['Ainda Não']}`}
+                      className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[p.status_contato] || STATUS_COLORS['Não Contatado']}`}
                     >
                       {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>

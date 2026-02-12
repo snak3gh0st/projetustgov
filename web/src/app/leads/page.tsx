@@ -6,10 +6,9 @@ import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
 
-const STATUS_OPTIONS = ['Não Contatado', 'Ainda Não', 'Retorno', 'Proposta', 'Fechado']
+const STATUS_OPTIONS = ['Não Contatado', 'Retorno', 'Proposta', 'Fechado']
 const STATUS_COLORS: Record<string, string> = {
-  'Não Contatado': 'bg-gray-500/20 text-gray-400',
-  'Ainda Não': 'bg-red-500/20 text-red-400',
+  'Não Contatado': 'bg-red-500/20 text-red-400',
   'Retorno': 'bg-amber-500/20 text-amber-400',
   'Proposta': 'bg-blue-500/20 text-blue-400',
   'Fechado': 'bg-green-500/20 text-green-400',
@@ -278,10 +277,10 @@ export default function LeadsPage() {
                     </td>
                     <td className="px-3 py-2">
                       <select
-                        value={lead.status_contato || 'Ainda Não'}
+                        value={lead.status_contato || 'Não Contatado'}
                         onClick={e => e.stopPropagation()}
                         onChange={e => updateLead(lead.id, 'status_contato', e.target.value)}
-                        className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[lead.status_contato] || STATUS_COLORS['Ainda Não']}`}
+                        className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[lead.status_contato] || STATUS_COLORS['Não Contatado']}`}
                       >
                         {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>

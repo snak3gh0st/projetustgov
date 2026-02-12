@@ -38,6 +38,10 @@ export default function LeadTable({ data }: { data: VendedorProjeto[] }) {
         header: 'Valor Global',
         cell: (info) => <span className="text-sigma-neon text-xs">{formatCompactCurrency(info.getValue())}</span>,
       }),
+      columnHelper.accessor('parlamentar', {
+        header: 'Parlamentar',
+        cell: (info) => <span className="text-xs">{info.getValue() || '-'}</span>,
+      }),
       columnHelper.accessor('situacao', {
         header: 'Situacao',
         cell: (info) => <span className="text-xs">{info.getValue() || '-'}</span>,
@@ -48,7 +52,7 @@ export default function LeadTable({ data }: { data: VendedorProjeto[] }) {
       }),
       columnHelper.accessor('status_contato', {
         header: 'Status',
-        cell: (info) => info.getValue() || 'Ainda Não',
+        cell: (info) => info.getValue() || 'Não Contatado',
       }),
       columnHelper.accessor('vendedor_nome', {
         header: 'Vendedor',

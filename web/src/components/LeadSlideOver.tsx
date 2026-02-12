@@ -6,7 +6,7 @@ import { formatCNPJ, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 
 const STATUS_COLORS: Record<string, string> = {
-  'Ainda Não': 'bg-red-500/20 text-red-400 border-red-500/30',
+  'Não Contatado': 'bg-red-500/20 text-red-400 border-red-500/30',
   'Retorno': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
   'Proposta': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
   'Fechado': 'bg-green-500/20 text-green-400 border-green-500/30',
@@ -96,7 +96,7 @@ export default function LeadSlideOver({ lead, onClose, canModify = false }: Lead
           </div>
 
           {lead.status_contato && (
-            <span className={`inline-block mt-3 text-xs font-medium rounded-full px-3 py-1 border ${STATUS_COLORS[lead.status_contato] || STATUS_COLORS['Ainda Não']}`}>
+            <span className={`inline-block mt-3 text-xs font-medium rounded-full px-3 py-1 border ${STATUS_COLORS[lead.status_contato] || STATUS_COLORS['Não Contatado']}`}>
               {lead.status_contato}
             </span>
           )}
@@ -125,6 +125,20 @@ export default function LeadSlideOver({ lead, onClose, canModify = false }: Lead
             <InfoCard label="Natureza Juridica" value={lead.natureza_juridica || '-'} />
             <InfoCard label="Vendedor" value={lead.vendedor_nome || '-'} />
           </div>
+
+          {/* Commission Info */}
+          {localLead.comissao_valor && localLead.comissao_valor > 0 && (
+            <div className="bg-sigma-neon/10 border border-sigma-neon/30 rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-400">
+                  Comissão ({localLead.tipo_vendedor || 'SDR'} - {localLead.comissao_percentual?.toFixed(1) || '0'}%)
+                </span>
+                <span className="text-sm font-semibold text-sigma-neon">
+                  {formatCurrency(localLead.comissao_valor)}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Contact */}
           {(localLead.telefone || localLead.email || canModify) && (
