@@ -278,13 +278,14 @@ Plans:
   7. Contact status tracking: "Não contactado", "Aguardando retorno", "Em conversa", "Fechado"
   8. Vendedor can edit contact data (phone, email) on lead profile
 
-**Status**: Planned (4 plans)
+**Status**: Complete (2026-02-12)
 
 Plans:
-- [ ] 11-01-PLAN.md — Schema updates: existing_clients table, contact_notes activation, 5th status "Não Contatado"
-- [ ] 11-02-PLAN.md — Lead assignment UI and API with duplicate detection
-- [ ] 11-03-PLAN.md — Priority indicators, parlamentar repositioning, existing client flags
-- [ ] 11-04-PLAN.md — Contact notes timeline component and visualizador role
+- [x] 11-01-PLAN.md — Schema updates: existing_clients table, contact_notes activation, 5th status "Não Contatado"
+- [x] 11-02-PLAN.md — Lead assignment UI and API with duplicate detection
+- [x] 11-03-PLAN.md — Priority indicators, parlamentar repositioning, existing client flags
+- [x] 11-04-PLAN.md — Contact notes timeline component and visualizador role
+- [x] 11-05-PLAN.md — Contact edit UI gap closure (phone/email inline editing)
 
 ### Phase 12: Pipeline Kanban
 **Goal**: Build visual kanban board for sales pipeline with drag-and-drop between 4 status columns. Vendedor drags leads through stages; gestor can filter by vendedor, UF, or tier.
@@ -347,7 +348,7 @@ Plans:
 | 9. Polish & Production Readiness | - | Superseded | - |
 | **Milestone v3.0** | | | |
 | 10. Auth & CRM Foundation | 0/3 | Planned | - |
-| 11. Lead Management & Contact Tracking | 0/TBD | Not started | - |
+| 11. Lead Management & Contact Tracking | 5/5 | Complete | 2026-02-12 |
 | 12. Pipeline Kanban | 0/TBD | Not started | - |
 | 13. Comissões | 0/TBD | Not started | - |
 
