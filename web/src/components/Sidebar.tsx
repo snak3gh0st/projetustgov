@@ -22,7 +22,7 @@ export default function Sidebar({ user }: SidebarProps) {
 
   // Add gestor-only nav items
   const navItems = user.role === 'gestor'
-    ? [...BASE_NAV_ITEMS, { href: '/cadastro-vendedor', label: 'Cadastrar Vendedor', icon: '👤' }]
+    ? [...BASE_NAV_ITEMS, { href: '/upload', label: 'Importar Planilha', icon: '📤' }, { href: '/cadastro-vendedor', label: 'Cadastrar Vendedor', icon: '👤' }]
     : BASE_NAV_ITEMS
 
   return (

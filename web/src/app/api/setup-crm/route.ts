@@ -81,7 +81,18 @@ export async function POST() {
       CREATE INDEX idx_vp_uf ON vendedor_projetos(uf);
     `)
 
-    // 4. Create vendedores
+    // 3. Migrate old statuses to Tito's 4 statuses
+    await pool.query(`
+      UPDATE vendedor_projetos SET status_contato = 'Ainda Não'
+      WHERE status_contato IN ('Novo', 'Contactado') OR status_contato IS NULL;
+    `)
+
+    // 4. Update default for status_contato column
+    await pool.query(`
+      ALTER TABLE vendedor_projetos ALTER COLUMN status_contato SET DEFAULT 'Ainda Não';
+    `).catch(() => {}) // ignore if already set
+
+    // 5. Create vendedores
     const passwordHash = await bcrypt.hash('sigma2026', 10)
     const vendedores = [
       { nome: 'Wellington', email: 'wellington@sigma.com' },
