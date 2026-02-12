@@ -15,6 +15,7 @@ interface SidebarProps {
 const BASE_NAV_ITEMS = [
   { href: '/', label: 'Pipeline', icon: '📊' },
   { href: '/leads', label: 'Leads', icon: '👥' },
+  { href: '/comissoes', label: 'Comissões', icon: '💰' },
 ]
 
 export default function Sidebar({ user }: SidebarProps) {
