@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { auth } from '@/auth.config'
 
 export default auth((req) => {
   const { pathname } = req.nextUrl
@@ -14,11 +14,10 @@ export default auth((req) => {
   // Check if user is authenticated
   if (!req.auth) {
     // No session - redirect to login or return 401 for API routes
-    const url = new URL('/login', req.url)
     if (pathname.startsWith('/api/')) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    return Response.redirect(url)
+    return Response.redirect(new URL('/login', req.url))
   }
 
   // Has session - redirect away from login if trying to access it
