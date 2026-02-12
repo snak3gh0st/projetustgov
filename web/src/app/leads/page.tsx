@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { formatCNPJ, formatCompactCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
+import LeadAssignmentModal from '@/components/LeadAssignmentModal'
 
 const STATUS_OPTIONS = ['Ainda Não', 'Retorno', 'Proposta', 'Fechado']
 const STATUS_COLORS: Record<string, string> = {
@@ -34,6 +35,11 @@ export default function LeadsPage() {
   const [vendedorFilter, setVendedorFilter] = useState('')
   const [vendedores, setVendedores] = useState<Vendedor[]>([])
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null)
+  const [assignmentModal, setAssignmentModal] = useState<{
+    cnpj: string
+    nome: string
+    currentVendedor: string | null
+  } | null>(null)
 
   // Fetch session
   useEffect(() => {
@@ -165,6 +171,9 @@ export default function LeadsPage() {
                     <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Vendedor</th>
                   )}
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Obs</th>
+                  {sessionUser?.role === 'gestor' && (
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Ações</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -251,6 +260,23 @@ export default function LeadsPage() {
                         className="bg-transparent border-b border-white/10 text-xs text-gray-300 w-24 focus:outline-none focus:border-sigma-neon/50 placeholder-gray-600"
                       />
                     </td>
+                    {sessionUser?.role === 'gestor' && (
+                      <td className="px-3 py-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setAssignmentModal({
+                              cnpj: lead.cnpj,
+                              nome: lead.nome,
+                              currentVendedor: lead.vendedor_nome || null
+                            })
+                          }}
+                          className="text-xs px-2 py-1 rounded bg-sigma-neon/20 text-sigma-neon hover:bg-sigma-neon/30 transition-colors"
+                        >
+                          Atribuir
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -267,6 +293,17 @@ export default function LeadsPage() {
       )}
 
       <LeadSlideOver lead={selectedLead} onClose={() => setSelectedLead(null)} />
+
+      <LeadAssignmentModal
+        cnpj={assignmentModal?.cnpj || null}
+        leadNome={assignmentModal?.nome || null}
+        currentVendedor={assignmentModal?.currentVendedor || null}
+        onClose={() => setAssignmentModal(null)}
+        onAssigned={() => {
+          setAssignmentModal(null)
+          fetchLeads() // refresh list
+        }}
+      />
     </div>
   )
 }
