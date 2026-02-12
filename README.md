@@ -1,24 +1,40 @@
-# PROJETUS - Transfer Gov Automation Platform
+# PROJETUS - Transfer Gov Automation Platform & CRM
 
-**Automated ETL pipeline for Brazilian federal transfer data (Transfer.gov.br)**
+**Automated ETL pipeline + Sales CRM for Brazilian federal transfer data (Transfer.gov.br)**
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Next.js 14](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
 ## Overview
 
-PROJETUS is an enterprise-grade data pipeline that automates the extraction, transformation, and loading (ETL) of Brazilian federal government transfer data from the Transfer.gov.br platform. The system provides enriched, validated, and analysis-ready data for business intelligence and strategic decision-making.
+PROJETUS is an integrated platform combining:
+1. **ETL Pipeline** - Enterprise-grade data pipeline that automates the extraction, transformation, and loading (ETL) of Brazilian federal government transfer data
+2. **Sales CRM** - Next.js web application for managing leads, tracking contacts, and monitoring sales pipeline for government contract opportunities
+
+The system provides enriched, validated, and analysis-ready data while enabling sales teams to efficiently qualify and pursue federal funding opportunities.
 
 ### Key Features
 
+#### ETL Pipeline
 - **Automated Daily Extractions** - Scheduled data collection at 9:15 AM (São Paulo timezone)
-- **Comprehensive Data Coverage** - Proposals (propostas), supporters (apoiadores), amendments (emendas), programs (programas), agreements (convênios), disbursements (desembolsos)
-- **Proponent Enrichment** - Automatic enrichment with contact information (email, phone) and address data (street, neighborhood, postal code)
-- **Brazilian Data Validation** - Native support for Brazilian date formats (DD/MM/YYYY), currency formats (comma decimal separator), and UF state codes
+- **Comprehensive Data Coverage** - Proposals, supporters, amendments, programs, agreements, disbursements
+- **Proponent Enrichment** - Automatic enrichment with contact information (email, phone) and address data
+- **Brazilian Data Validation** - Native support for Brazilian date/currency formats and UF state codes
 - **Performance Optimized** - Batch processing with PostgreSQL bulk operations, Railway-compatible timeouts
 - **Production Ready** - Health checks, metrics endpoints, scheduler monitoring, Telegram alerts
+
+#### CRM Application
+- **Authentication & Authorization** - Role-based access (gestor, vendedor, visualizador) with Auth.js v5
+- **Lead Management** - Automatic lead distribution, CNPJ-based assignment with duplicate detection
+- **Contact Tracking** - Timeline view of all interactions (calls, emails, meetings, WhatsApp)
+- **Existing Clients Protection** - Upload and manage existing clients to prevent lead assignment conflicts
+- **Commission System** - Automatic commission calculation for SDR (9%) and Closer (12%) roles
+- **Priority Indicators** - Highlight never-registered CNPJs for maximum opportunity potential
+- **Real-time Dashboard** - Pipeline metrics, vendor performance cards, activity feed
+- **Inline Editing** - Quick phone/email updates with permission-aware controls
 
 ---
 
@@ -37,14 +53,24 @@ PROJETUS is an enterprise-grade data pipeline that automates the extraction, tra
 └─────────────────┘      └──────────────────┘      └─────────────────┘
                                                              │
                                                              ↓
-                                                    ┌─────────────────┐
-                                                    │   PostgreSQL    │
-                                                    │    (Railway)    │
-                                                    └─────────────────┘
+                         ┌───────────────────────────────────┴──────────┐
+                         │                                              │
+                         ↓                                              ↓
+                ┌─────────────────┐                          ┌─────────────────┐
+                │   PostgreSQL    │◄─────────────────────────│   Next.js CRM   │
+                │    (Railway)    │                          │    (Vercel)     │
+                └─────────────────┘                          └─────────────────┘
+                                                                       │
+                                                                       ↓
+                                                              ┌─────────────────┐
+                                                              │ Users (Gestors, │
+                                                              │  Vendedores)    │
+                                                              └─────────────────┘
 ```
 
 ### Technology Stack
 
+#### Backend (ETL Pipeline)
 - **Language**: Python 3.11+
 - **Web Automation**: Playwright
 - **Data Processing**: Polars, Pandas
@@ -55,17 +81,79 @@ PROJETUS is an enterprise-grade data pipeline that automates the extraction, tra
 - **API**: FastAPI
 - **Monitoring**: Loguru, custom health checks
 
+#### Frontend (CRM)
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript, React 18
+- **Authentication**: Auth.js v5 (next-auth)
+- **Styling**: Tailwind CSS
+- **Database**: PostgreSQL (Railway) via pg driver
+- **Charts**: Recharts
+- **File Processing**: xlsx (Excel parsing)
+- **Password Hashing**: bcryptjs
+- **Deployment**: Vercel (iad1 region)
+
+---
+
+## CRM Application
+
+### Features Overview
+
+The PROJETUS CRM is a comprehensive sales management system designed specifically for tracking government contract opportunities from TransferênciaGov data.
+
+#### User Roles
+
+- **Gestor (Manager)** - Full access to all features, lead distribution, team management
+- **Vendedor (Salesperson)** - Access to assigned leads, contact tracking, status updates
+- **Visualizador (Viewer)** - Read-only access for leadership visibility
+
+#### Core Functionality
+
+1. **Lead Assignment**
+   - Automatic round-robin distribution to vendedores
+   - CNPJ-based assignment with duplicate detection
+   - Manual assignment by gestores
+   - Automatic exclusion of existing clients
+
+2. **Contact Management**
+   - 5-status pipeline: Não Contatado → Contactado → Proposta → Em Retorno → Fechado
+   - Contact timeline with notes (calls, emails, WhatsApp, meetings)
+   - Inline editing of phone/email fields
+   - Contact history tracking with timestamps
+
+3. **Existing Clients Protection**
+   - Upload existing clients from Excel (CLIENTES.xlsx)
+   - Automatic deduplication using `ON CONFLICT DO NOTHING`
+   - Column validation (CNPJ + ENTIDADE required)
+   - Prevents vendedores from receiving leads for existing clients
+
+4. **Commission Tracking**
+   - SDR role: 9% + R$50 bonus on contract value
+   - Closer role: 12% on contract value
+   - Automatic calculation on lead assignment
+   - Commission dashboard by status breakdown
+
+5. **Priority System**
+   - Max priority flag for never-registered CNPJs
+   - Visual indicators for high-value opportunities
+   - Execution count tracking from historical data
+
+#### Access URLs
+
+- **Production**: https://projetustgov.vercel.app
+- **Upload Existing Clients**: https://projetustgov.vercel.app/upload-clientes (gestor-only)
+- **Commission Dashboard**: https://projetustgov.vercel.app/comissoes
+
 ---
 
 ## Installation
 
 ### Prerequisites
 
-- Python 3.11 or higher
-- PostgreSQL database
-- Environment variables configured (see `.env.example`)
+- **Backend**: Python 3.11+, PostgreSQL database
+- **Frontend**: Node.js 18+, npm/yarn
+- Environment variables configured
 
-### Setup
+### Backend Setup (ETL Pipeline)
 
 1. **Clone the repository**
    ```bash
@@ -96,6 +184,53 @@ PROJETUS is an enterprise-grade data pipeline that automates the extraction, tra
    # or
    uvicorn src.api.main:app --host 0.0.0.0 --port 8000
    ```
+
+### Frontend Setup (CRM)
+
+1. **Navigate to web directory**
+   ```bash
+   cd web
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment**
+   ```bash
+   cp .env.example .env.local
+   # Add DATABASE_URL, NEXTAUTH_SECRET, NEXTAUTH_URL
+   ```
+
+4. **Initialize CRM tables**
+   ```bash
+   # Visit /api/setup-crm endpoint to create tables and seed users
+   curl http://localhost:3000/api/setup-crm
+   ```
+
+5. **Run development server**
+   ```bash
+   npm run dev
+   ```
+
+6. **Build for production**
+   ```bash
+   npm run build
+   npm start
+   ```
+
+### Default Users (after setup-crm)
+
+| Name | Email | Password | Role |
+|------|-------|----------|------|
+| Philipe | philipe@projetus.org | philipe123 | gestor |
+| Paulo | paulo@projetus.org | paulo123 | gestor |
+| Tito | tito@projetus.org | tito123 | gestor |
+| Elisson | elisson@projetus.org | elisson123 | vendedor |
+| Wellington | wellington@projetus.org | wellington123 | vendedor |
+| Gabriel | gabriel@projetus.org | gabriel123 | vendedor |
+| Vitória | vitoria@projetus.org | vitoria123 | vendedor |
 
 ---
 
@@ -235,7 +370,46 @@ For more information, see the full [MIT License](LICENSE) text.
 
 ## Changelog
 
-### Version 1.0.0 (2026-02-09)
+### Version 3.0.0 (2026-02-12) - CRM Platform
+
+**New CRM Application:**
+- Next.js 14 web application with Auth.js authentication
+- Role-based access control (gestor, vendedor, visualizador)
+- Lead management with CNPJ-based assignment
+- Contact tracking timeline (calls, emails, WhatsApp, meetings)
+- Commission system (SDR 9%, Closer 12%)
+- Priority indicators for never-registered CNPJs
+- Real-time dashboard with pipeline metrics
+
+**Existing Clients Management:**
+- Upload existing clients from Excel (CLIENTES.xlsx) ✨ NEW
+- Automatic deduplication with `ON CONFLICT DO NOTHING`
+- Column validation (CNPJ + ENTIDADE required)
+- Gestor-only access with clear upload instructions
+- Prevents lead assignment conflicts for existing clients
+
+**Phase 11 Features (Lead Management):**
+- Inline editing for phone/email fields
+- Contact notes with timeline view
+- Visualizador read-only role for leadership
+- 5-status pipeline system
+- Existing clients exclusion from lead distribution
+
+**Phase 10 Features (Auth Foundation):**
+- Auth.js v5 with JWT sessions
+- Credentials provider with bcrypt password hashing
+- Protected API routes with middleware
+- Login/logout flow with role persistence
+
+### Version 2.0.0 (2026-02-11) - Next.js Migration
+
+**Migration:**
+- Migrated from Streamlit to Next.js 14
+- New PostgreSQL schema for CRM tables
+- Vercel deployment (iad1 region)
+- React 18 with Tailwind CSS
+
+### Version 1.0.0 (2026-02-09) - ETL Pipeline
 
 **Features:**
 - Complete proponent enrichment with contact and address data
