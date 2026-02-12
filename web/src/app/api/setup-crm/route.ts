@@ -16,7 +16,15 @@ function getPool() {
   })
 }
 
+export async function GET() {
+  return runSetup()
+}
+
 export async function POST() {
+  return runSetup()
+}
+
+async function runSetup() {
   const pool = getPool()
 
   try {
@@ -39,7 +47,6 @@ export async function POST() {
       CREATE TABLE IF NOT EXISTS vendedor_projetos (
         id SERIAL PRIMARY KEY,
         vendedor_id UUID REFERENCES users(id),
-        -- Programa
         codigo_programa TEXT,
         nome_programa TEXT,
         link_externo TEXT,
@@ -49,37 +56,31 @@ export async function POST() {
         qualificacao TEXT,
         nr_emenda TEXT,
         parlamentar TEXT,
-        -- Beneficiario
         cnpj VARCHAR(20) NOT NULL,
         nome TEXT NOT NULL,
         natureza_juridica VARCHAR(255),
-        -- Financeiro
         valor_emenda NUMERIC(15,2),
         valor_global NUMERIC(15,2),
         valor_empenhado NUMERIC(15,2),
         valor_liberado NUMERIC(15,2),
-        -- Siconv extras
         nr_convenio TEXT,
         objeto TEXT,
         modalidade VARCHAR(100),
         situacao VARCHAR(100),
         saldo_conta NUMERIC(15,2),
-        -- CRM
         telefone VARCHAR(50),
         email VARCHAR(500),
         status_contato VARCHAR(50) DEFAULT 'Ainda Não',
         observacoes TEXT,
-        -- Metadata
         importado_de TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_vp_vendedor ON vendedor_projetos(vendedor_id);
-      CREATE INDEX IF NOT EXISTS idx_vp_cnpj ON vendedor_projetos(cnpj);
-      CREATE INDEX IF NOT EXISTS idx_vp_status_contato ON vendedor_projetos(status_contato);
-      CREATE INDEX IF NOT EXISTS idx_vp_uf ON vendedor_projetos(uf);
+      )
     `)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_vendedor ON vendedor_projetos(vendedor_id)`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_cnpj ON vendedor_projetos(cnpj)`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_status_contato ON vendedor_projetos(status_contato)`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_uf ON vendedor_projetos(uf)`)
 
     // 3. Migrate old statuses to Tito's 4 statuses
     await pool.query(`
