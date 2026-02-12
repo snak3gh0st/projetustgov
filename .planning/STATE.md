@@ -8,14 +8,14 @@
 
 **Milestone Goal:** Transformar dashboard de leads em CRM com auth, pipeline kanban, tracking de contato, e comissões.
 
-**Current Focus:** Phase 10 - Auth & CRM Foundation (Plan 01 complete)
+**Current Focus:** Phase 11 - Lead Management & Contact Tracking (Plan 02 complete)
 
 ## Current Position
 
-**Phase:** 10 of 13 (Milestone v3.0)
-**Plan:** 03 of 03 (Phase 10)
-**Status:** Executing Phase 10
-**Progress:** [█████████░] 80%
+**Phase:** 11 of 13 (Milestone v3.0)
+**Plan:** 03 of 04 (Phase 11)
+**Status:** Executing Phase 11
+**Progress:** [████████░░] 75%
 
 **Milestone v1.0 Status:** Complete (Phases 1, 2, 4, 5 delivered)
 **Milestone v2.0 Status:** Superseded by Next.js migration (Phases 6-8 delivered in Streamlit, Phase 9 N/A)
@@ -41,6 +41,8 @@
 | Edge Runtime warnings acceptable | 10-02 | Middleware only validates JWT, DB queries run server-side | 2026-02-11 |
 | NUMERIC(15,2) for financial columns | quick-3 | Proper arithmetic in SQL, no string parsing needed | 2026-02-11 |
 | Status contato: Novo/Contactado/Proposta/Retorno | quick-3 | Cleaner CRM pipeline stages replacing old PROPOSTA/AINDA NAO/RETORNO | 2026-02-11 |
+| CNPJ-based assignment with duplicate detection | 11-02 | Single CNPJ can have multiple emendas, must assign atomically with conflict check | 2026-02-12 |
+| HTTP 409 for duplicate assignment | 11-02 | Standard conflict status allows UI force override without separate endpoint | 2026-02-12 |
 
 ### Technical Context (Next.js Stack)
 
@@ -58,7 +60,11 @@
 - [x] Execute Phase 10 Plan 01: Install dependencies, create CRM tables, configure Auth.js
 - [x] Execute Phase 10 Plan 02: Login UI and middleware
 - [ ] Execute Phase 10 Plan 03: Vendedor management UI
-- [ ] Plan Phase 11: Lead Management & Contact Tracking
+- [x] Plan Phase 11: Lead Management & Contact Tracking
+- [x] Execute Phase 11 Plan 01: CONTEXT.md with meeting decisions
+- [x] Execute Phase 11 Plan 02: Lead assignment with duplicate detection
+- [ ] Execute Phase 11 Plan 03: Contact notes and timeline
+- [ ] Execute Phase 11 Plan 04: Existing clients exclusion
 - [ ] Plan Phase 12: Pipeline Kanban
 - [ ] Plan Phase 13: Comissões
 
@@ -79,20 +85,21 @@
 ## Session Continuity
 
 ### Last Session Summary
-**Date:** 2026-02-11
+**Date:** 2026-02-12
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Completed quick task 6: Dashboard CRM gestor
+**Activity:** Completed Phase 11 Plan 02: Lead assignment with duplicate detection
 
 **Completed:**
-- GET /api/dashboard-crm with global stats, per-vendedor aggregations, recent activity
-- Replaced home page (/) with CRM admin dashboard
-- Status pipeline bar (Novo/Tentativa/Contactado/Negociacao/Sem Interesse)
-- Per-vendedor cards with status badges, valor, last activity
-- Recent activity feed with time-ago formatting
+- Enhanced POST /api/leads/assign to support CNPJ-based assignment
+- Duplicate detection returns HTTP 409 with warning message
+- Force override option for reassignment
+- Created LeadAssignmentModal component with vendedor selection
+- Integrated assignment button into gestor leads page
+- Atomic assignment of all projects for a CNPJ
 
 **Next Actions:**
-- Execute Phase 10 Plan 03 -- Build vendedor management UI for gestor
-- Deploy to Vercel
+- Execute Phase 11 Plan 03 - Contact notes and timeline
+- Execute Phase 11 Plan 04 - Existing clients exclusion
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
