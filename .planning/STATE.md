@@ -8,14 +8,14 @@
 
 **Milestone Goal:** Transformar dashboard de leads em CRM com auth, pipeline kanban, tracking de contato, e comissões.
 
-**Current Focus:** Phase 11 - Lead Management & Contact Tracking (Plan 02 complete)
+**Current Focus:** Phase 11 - Lead Management & Contact Tracking (Plans 01-02 complete)
 
 ## Current Position
 
 **Phase:** 11 of 13 (Milestone v3.0)
 **Plan:** 03 of 04 (Phase 11)
 **Status:** Executing Phase 11
-**Progress:** [████████░░] 75%
+**Progress:** [████████░░] 78%
 
 **Milestone v1.0 Status:** Complete (Phases 1, 2, 4, 5 delivered)
 **Milestone v2.0 Status:** Superseded by Next.js migration (Phases 6-8 delivered in Streamlit, Phase 9 N/A)
@@ -41,6 +41,10 @@
 | Edge Runtime warnings acceptable | 10-02 | Middleware only validates JWT, DB queries run server-side | 2026-02-11 |
 | NUMERIC(15,2) for financial columns | quick-3 | Proper arithmetic in SQL, no string parsing needed | 2026-02-11 |
 | Status contato: Novo/Contactado/Proposta/Retorno | quick-3 | Cleaner CRM pipeline stages replacing old PROPOSTA/AINDA NAO/RETORNO | 2026-02-11 |
+| Existing clients table with CNPJ exclusion | 11-01 | Created existing_clients table to prevent vendedor distribution to 140+ existing clients | 2026-02-12 |
+| Contact notes table activation | 11-01 | Activated contact_notes for timeline feature (Plans 03-04) | 2026-02-12 |
+| 5-status system with 'Não Contatado' | 11-01 | Default status for new leads, enables gestor to monitor uncontacted leads | 2026-02-12 |
+| Vendedores always exclude existing clients | 11-01 | API-level filtering ensures vendedores never see existing clients | 2026-02-12 |
 | CNPJ-based assignment with duplicate detection | 11-02 | Single CNPJ can have multiple emendas, must assign atomically with conflict check | 2026-02-12 |
 | HTTP 409 for duplicate assignment | 11-02 | Standard conflict status allows UI force override without separate endpoint | 2026-02-12 |
 
@@ -61,7 +65,7 @@
 - [x] Execute Phase 10 Plan 02: Login UI and middleware
 - [ ] Execute Phase 10 Plan 03: Vendedor management UI
 - [x] Plan Phase 11: Lead Management & Contact Tracking
-- [x] Execute Phase 11 Plan 01: CONTEXT.md with meeting decisions
+- [x] Execute Phase 11 Plan 01: Schema & backend for lead management
 - [x] Execute Phase 11 Plan 02: Lead assignment with duplicate detection
 - [ ] Execute Phase 11 Plan 03: Contact notes and timeline
 - [ ] Execute Phase 11 Plan 04: Existing clients exclusion
@@ -87,19 +91,20 @@
 ### Last Session Summary
 **Date:** 2026-02-12
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Completed Phase 11 Plan 02: Lead assignment with duplicate detection
+**Activity:** Completed Phase 11 Plan 01: Schema & backend for lead management
 
 **Completed:**
-- Enhanced POST /api/leads/assign to support CNPJ-based assignment
-- Duplicate detection returns HTTP 409 with warning message
-- Force override option for reassignment
-- Created LeadAssignmentModal component with vendedor selection
-- Integrated assignment button into gestor leads page
-- Atomic assignment of all projects for a CNPJ
+- Created existing_clients table with CNPJ unique constraint and index
+- Activated contact_notes table for timeline feature
+- Updated status_contato default to 'Não Contatado' (5th status)
+- Migrated 3,251 leads to 'Não Contatado' status
+- Updated leads API to filter existing clients (vendedores never see them)
+- Added 5-status frontend support with gray 'Não Contatado' badge
+- Added purple "CLIENTE EXISTENTE" badge for gestor view
 
 **Next Actions:**
 - Execute Phase 11 Plan 03 - Contact notes and timeline
-- Execute Phase 11 Plan 04 - Existing clients exclusion
+- Execute Phase 11 Plan 04 - Existing clients exclusion (CSV import UI)
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
