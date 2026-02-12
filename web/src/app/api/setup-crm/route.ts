@@ -34,12 +34,9 @@ export async function POST() {
       );
     `)
 
-    // 2. Drop old table if exists (schema changed)
-    await pool.query(`DROP TABLE IF EXISTS vendedor_projetos CASCADE;`)
-
-    // 3. Create vendedor_projetos with expanded schema
+    // 2. Create vendedor_projetos if not exists (safe — never drops data)
     await pool.query(`
-      CREATE TABLE vendedor_projetos (
+      CREATE TABLE IF NOT EXISTS vendedor_projetos (
         id SERIAL PRIMARY KEY,
         vendedor_id UUID REFERENCES users(id),
         -- Programa
