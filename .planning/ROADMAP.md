@@ -278,10 +278,13 @@ Plans:
   7. Contact status tracking: "Não contactado", "Aguardando retorno", "Em conversa", "Fechado"
   8. Vendedor can edit contact data (phone, email) on lead profile
 
-**Status**: Not started
+**Status**: Planned (4 plans)
 
 Plans:
-- [ ] TBD (plan with `/gsd:plan-phase 11`)
+- [ ] 11-01-PLAN.md — Schema updates: existing_clients table, contact_notes activation, 5th status "Não Contatado"
+- [ ] 11-02-PLAN.md — Lead assignment UI and API with duplicate detection
+- [ ] 11-03-PLAN.md — Priority indicators, parlamentar repositioning, existing client flags
+- [ ] 11-04-PLAN.md — Contact notes timeline component and visualizador role
 
 ### Phase 12: Pipeline Kanban
 **Goal**: Build visual kanban board for sales pipeline with drag-and-drop between 4 status columns. Vendedor drags leads through stages; gestor can filter by vendedor, UF, or tier.
