@@ -75,10 +75,10 @@ export async function POST() {
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
 
-      CREATE INDEX idx_vp_vendedor ON vendedor_projetos(vendedor_id);
-      CREATE INDEX idx_vp_cnpj ON vendedor_projetos(cnpj);
-      CREATE INDEX idx_vp_status_contato ON vendedor_projetos(status_contato);
-      CREATE INDEX idx_vp_uf ON vendedor_projetos(uf);
+      CREATE INDEX IF NOT EXISTS idx_vp_vendedor ON vendedor_projetos(vendedor_id);
+      CREATE INDEX IF NOT EXISTS idx_vp_cnpj ON vendedor_projetos(cnpj);
+      CREATE INDEX IF NOT EXISTS idx_vp_status_contato ON vendedor_projetos(status_contato);
+      CREATE INDEX IF NOT EXISTS idx_vp_uf ON vendedor_projetos(uf);
     `)
 
     // 3. Migrate old statuses to Tito's 4 statuses
