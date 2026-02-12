@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatCNPJ, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
@@ -15,23 +15,54 @@ const STATUS_COLORS: Record<string, string> = {
 interface LeadSlideOverProps {
   lead: VendedorProjeto | null
   onClose: () => void
+  canModify?: boolean
 }
 
-export default function LeadSlideOver({ lead, onClose }: LeadSlideOverProps) {
+export default function LeadSlideOver({ lead, onClose, canModify = false }: LeadSlideOverProps) {
   const router = useRouter()
+  const [editingField, setEditingField] = useState<'telefone' | 'email' | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const [localLead, setLocalLead] = useState<VendedorProjeto | null>(lead)
+
+  // Update local lead when prop changes
+  useEffect(() => {
+    setLocalLead(lead)
+  }, [lead])
 
   useEffect(() => {
     if (!lead) return
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        if (editingField) {
+          setEditingField(null)
+        } else {
+          onClose()
+        }
+      }
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [lead, onClose])
+  }, [lead, onClose, editingField])
 
-  if (!lead) return null
+  async function updateContact(field: 'telefone' | 'email', value: string) {
+    if (!localLead) return
+    try {
+      await fetch(`/api/leads/${encodeURIComponent(localLead.cnpj)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: localLead.id, [field]: value })
+      })
+      // Optimistic update on client
+      setLocalLead(prev => prev ? {...prev, [field]: value} : null)
+      setEditingField(null)
+    } catch (err) {
+      console.error('Update contact error:', err)
+    }
+  }
 
-  const phoneDigits = lead.telefone?.replace(/\D/g, '') || ''
+  if (!lead || !localLead) return null
+
+  const phoneDigits = localLead.telefone?.replace(/\D/g, '') || ''
 
   return (
     <div className="fixed inset-0 z-50">
@@ -96,24 +127,112 @@ export default function LeadSlideOver({ lead, onClose }: LeadSlideOverProps) {
           </div>
 
           {/* Contact */}
-          {(lead.telefone || lead.email) && (
+          {(localLead.telefone || localLead.email || canModify) && (
             <div className="space-y-2">
               <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Contato</h3>
-              {lead.telefone && (
+              {(localLead.telefone || canModify) && (
                 <div className="flex items-center gap-2 text-sm text-gray-300">
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M1 3c0-1.1.9-2 2-2h2.5a1 1 0 01.98.8l.5 3a1 1 0 01-.27.9L5.1 7.3a10 10 0 004.6 4.6l1.6-1.6a1 1 0 01.9-.27l3 .5a1 1 0 01.8.98V14a2 2 0 01-2 2A13 13 0 011 3z"/>
                   </svg>
-                  {lead.telefone}
+                  {editingField === 'telefone' ? (
+                    <input
+                      type="text"
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      onBlur={() => {
+                        if (editValue !== (localLead.telefone || '')) {
+                          updateContact('telefone', editValue)
+                        } else {
+                          setEditingField(null)
+                        }
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          if (editValue !== (localLead.telefone || '')) {
+                            updateContact('telefone', editValue)
+                          } else {
+                            setEditingField(null)
+                          }
+                        } else if (e.key === 'Escape') {
+                          setEditingField(null)
+                        }
+                      }}
+                      autoFocus
+                      className="flex-1 text-sm text-white bg-sigma-navy-light border border-white/20 rounded-md px-2 py-1 focus:outline-none focus:border-sigma-neon/50"
+                    />
+                  ) : (
+                    <>
+                      <span className="flex-1">{localLead.telefone || <span className="text-gray-600">Sem telefone</span>}</span>
+                      {canModify && (
+                        <button
+                          onClick={() => {
+                            setEditingField('telefone')
+                            setEditValue(localLead.telefone || '')
+                          }}
+                          className="text-gray-500 hover:text-sigma-neon transition-colors"
+                          title="Editar telefone"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11.5 2.5a1.5 1.5 0 012 2L5 13l-4 1 1-4L11.5 2.5z"/>
+                          </svg>
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
-              {lead.email && (
+              {(localLead.email || canModify) && (
                 <div className="flex items-center gap-2 text-sm text-gray-300">
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="1" y="3" width="14" height="10" rx="1.5"/>
                     <path d="M1 4l7 5 7-5"/>
                   </svg>
-                  {lead.email}
+                  {editingField === 'email' ? (
+                    <input
+                      type="email"
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      onBlur={() => {
+                        if (editValue !== (localLead.email || '')) {
+                          updateContact('email', editValue)
+                        } else {
+                          setEditingField(null)
+                        }
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          if (editValue !== (localLead.email || '')) {
+                            updateContact('email', editValue)
+                          } else {
+                            setEditingField(null)
+                          }
+                        } else if (e.key === 'Escape') {
+                          setEditingField(null)
+                        }
+                      }}
+                      autoFocus
+                      className="flex-1 text-sm text-white bg-sigma-navy-light border border-white/20 rounded-md px-2 py-1 focus:outline-none focus:border-sigma-neon/50"
+                    />
+                  ) : (
+                    <>
+                      <span className="flex-1">{localLead.email || <span className="text-gray-600">Sem email</span>}</span>
+                      {canModify && (
+                        <button
+                          onClick={() => {
+                            setEditingField('email')
+                            setEditValue(localLead.email || '')
+                          }}
+                          className="text-gray-500 hover:text-sigma-neon transition-colors"
+                          title="Editar email"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11.5 2.5a1.5 1.5 0 012 2L5 13l-4 1 1-4L11.5 2.5z"/>
+                          </svg>
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </div>

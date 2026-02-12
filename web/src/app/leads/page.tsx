@@ -335,7 +335,11 @@ export default function LeadsPage() {
         </div>
       )}
 
-      <LeadSlideOver lead={selectedLead} onClose={() => setSelectedLead(null)} />
+      <LeadSlideOver
+        lead={selectedLead}
+        onClose={() => setSelectedLead(null)}
+        canModify={sessionUser?.role !== 'visualizador'}
+      />
 
       <LeadAssignmentModal
         cnpj={assignmentModal?.cnpj || null}
