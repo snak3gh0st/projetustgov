@@ -6,8 +6,9 @@ import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
 
-const STATUS_OPTIONS = ['Ainda Não', 'Retorno', 'Proposta', 'Fechado']
+const STATUS_OPTIONS = ['Não Contatado', 'Ainda Não', 'Retorno', 'Proposta', 'Fechado']
 const STATUS_COLORS: Record<string, string> = {
+  'Não Contatado': 'bg-gray-500/20 text-gray-400',
   'Ainda Não': 'bg-red-500/20 text-red-400',
   'Retorno': 'bg-amber-500/20 text-amber-400',
   'Proposta': 'bg-blue-500/20 text-blue-400',
@@ -184,7 +185,14 @@ export default function LeadsPage() {
                         {formatCNPJ(lead.cnpj)}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-white font-medium truncate max-w-[180px]">{lead.nome || '-'}</td>
+                    <td className="px-3 py-2 text-white font-medium truncate max-w-[180px]">
+                      {lead.nome || '-'}
+                      {lead.is_existing_client && sessionUser?.role === 'gestor' && (
+                        <span className="ml-2 text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded border border-purple-500/30">
+                          CLIENTE EXISTENTE
+                        </span>
+                      )}
+                    </td>
                     <td className="px-3 py-2 text-sigma-neon font-medium text-xs whitespace-nowrap">
                       {lead.valor_emenda ? formatCompactCurrency(Number(lead.valor_emenda)) : '-'}
                     </td>

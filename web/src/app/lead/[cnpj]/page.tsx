@@ -6,8 +6,9 @@ import Link from 'next/link'
 import { formatCNPJ, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 
-const STATUS_OPTIONS = ['Ainda Não', 'Retorno', 'Proposta', 'Fechado']
+const STATUS_OPTIONS = ['Não Contatado', 'Ainda Não', 'Retorno', 'Proposta', 'Fechado']
 const STATUS_COLORS: Record<string, string> = {
+  'Não Contatado': 'bg-gray-500/20 text-gray-400',
   'Ainda Não': 'bg-red-500/20 text-red-400',
   'Retorno': 'bg-amber-500/20 text-amber-400',
   'Proposta': 'bg-blue-500/20 text-blue-400',
@@ -76,7 +77,14 @@ export default function LeadDetailPage() {
       </Link>
 
       <div>
-        <h1 className="font-heading text-2xl font-bold text-white">{first.nome || 'Sem nome'}</h1>
+        <h1 className="font-heading text-2xl font-bold text-white">
+          {first.nome || 'Sem nome'}
+          {first.is_existing_client && (
+            <span className="ml-3 text-sm bg-purple-500/20 text-purple-400 px-3 py-1 rounded border border-purple-500/30">
+              CLIENTE EXISTENTE
+            </span>
+          )}
+        </h1>
         <p className="text-sm text-gray-400 font-mono mt-1">{formatCNPJ(cnpj)}</p>
       </div>
 
