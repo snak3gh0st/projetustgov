@@ -8,14 +8,14 @@
 
 **Milestone Goal:** Transformar dashboard de leads em CRM com auth, pipeline kanban, tracking de contato, e comissões.
 
-**Current Focus:** Phase 11 - Lead Management & Contact Tracking (Plans 01-03 complete)
+**Current Focus:** Phase 11 - Lead Management & Contact Tracking (All 4 plans complete)
 
 ## Current Position
 
 **Phase:** 11 of 13 (Milestone v3.0)
-**Plan:** 04 of 04 (Phase 11)
-**Status:** Executing Phase 11
-**Progress:** [████████░░] 80%
+**Plan:** Complete (Phase 11)
+**Status:** Phase 11 Complete
+**Progress:** [████████░░] 85%
 
 **Milestone v1.0 Status:** Complete (Phases 1, 2, 4, 5 delivered)
 **Milestone v2.0 Status:** Superseded by Next.js migration (Phases 6-8 delivered in Streamlit, Phase 9 N/A)
@@ -47,6 +47,8 @@
 | Vendedores always exclude existing clients | 11-01 | API-level filtering ensures vendedores never see existing clients | 2026-02-12 |
 | CNPJ-based assignment with duplicate detection | 11-02 | Single CNPJ can have multiple emendas, must assign atomically with conflict check | 2026-02-12 |
 | HTTP 409 for duplicate assignment | 11-02 | Standard conflict status allows UI force override without separate endpoint | 2026-02-12 |
+| Visualizador read-only role for leadership | 11-04 | Leadership needs visibility without modification risk | 2026-02-12 |
+| Contact notes sorted DESC by created_at | 11-04 | Most recent interactions are most relevant for sales context | 2026-02-12 |
 
 ### Technical Context (Next.js Stack)
 
@@ -68,7 +70,7 @@
 - [x] Execute Phase 11 Plan 01: Schema & backend for lead management
 - [x] Execute Phase 11 Plan 02: Lead assignment with duplicate detection
 - [x] Execute Phase 11 Plan 03: Priority indicators & parlamentar repositioning
-- [ ] Execute Phase 11 Plan 04: Existing clients exclusion
+- [x] Execute Phase 11 Plan 04: Contact notes timeline & visualizador role
 - [ ] Plan Phase 12: Pipeline Kanban
 - [ ] Plan Phase 13: Comissões
 
@@ -91,19 +93,27 @@
 ### Last Session Summary
 **Date:** 2026-02-12
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Completed Phase 11 Plan 03: Priority indicators & parlamentar repositioning
+**Activity:** Completed Phase 11 Plan 04: Contact notes timeline & visualizador role
 
 **Completed:**
-- Extended leads API with LEFT JOIN to proponentes for priority calculation
-- Added is_max_priority flag for CNPJs never registered in proponentes
-- Implemented CNPJ grouping with aggregated emenda counts and values
-- Added priority indicator column with red pulsing dot on leads page
-- Repositioned parlamentar column next to valor emenda (Decision #3)
-- Added priority and existing client badges to lead detail page
-- Created formatParlamentarSummary helper for consistent display
+- Added visualizador role to auth system (3-role model: gestor/vendedor/visualizador)
+- Created Paulo user as visualizador (paulo@sigma.com / sigma2026)
+- Implemented canModifyData() helper for write permission checks
+- Created contact notes API endpoints (GET, POST) with RBAC
+- Built ContactNotesTimeline component with tipo-based icons
+- Integrated timeline into lead detail page below emendas table
+- Visualizador can view all leads/notes but cannot modify
+
+**Phase 11 Complete:**
+- All 4 plans executed successfully
+- Schema & backend: existing_clients table, contact_notes table, 5-status system
+- Lead assignment: CNPJ-based with duplicate detection
+- Priority indicators: max priority flag for never-registered CNPJs
+- Contact tracking: timeline UI with visualizador read-only role
 
 **Next Actions:**
-- Execute Phase 11 Plan 04 - Existing clients exclusion (CSV import UI)
+- Plan Phase 12 - Pipeline Kanban board
+- Plan Phase 13 - Commission tracking and reporting
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
