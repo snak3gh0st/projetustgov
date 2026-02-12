@@ -34,9 +34,15 @@ export default function ComissoesPage() {
 
   useEffect(() => {
     fetch('/api/comissoes')
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error('Failed to fetch')
+        return r.json()
+      })
       .then(setData)
-      .catch(() => setError(true))
+      .catch((err) => {
+        console.error('Comissoes fetch error:', err)
+        setError(true)
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -56,8 +62,21 @@ export default function ComissoesPage() {
 
   if (error || !data) {
     return (
-      <div className="flex items-center justify-center py-20 text-gray-500">
-        Erro ao carregar comissões
+      <div className="flex flex-col items-center justify-center py-20 text-center max-w-2xl mx-auto space-y-4">
+        <p className="text-red-400 text-lg">Erro ao carregar comissões</p>
+        <p className="text-gray-500 text-sm">
+          Os campos de comissão podem não estar configurados no banco de dados.
+        </p>
+        <a
+          href="/api/setup-crm"
+          target="_blank"
+          className="px-4 py-2 bg-sigma-neon/20 hover:bg-sigma-neon/30 text-sigma-neon rounded-lg text-sm transition-colors"
+        >
+          Executar Setup (abre em nova aba)
+        </a>
+        <p className="text-xs text-gray-600">
+          Após executar o setup, recarregue esta página.
+        </p>
       </div>
     )
   }
@@ -167,11 +186,11 @@ export default function ComissoesPage() {
                     {formatCurrency(lead.valor_emenda)}
                   </td>
                   <td className="px-6 py-4 text-sm text-right text-gray-400">
-                    {lead.comissao_percentual.toFixed(1)}%
+                    {lead.comissao_percentual?.toFixed(1) || '0'}%
                   </td>
                   <td className="px-6 py-4 text-right">
                     <span className="text-base font-semibold text-[#00f0ff]">
-                      {formatCurrency(lead.comissao_valor)}
+                      {formatCurrency(lead.comissao_valor || 0)}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-center">
