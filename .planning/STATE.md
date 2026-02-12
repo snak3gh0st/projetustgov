@@ -91,13 +91,14 @@
 | 5 | Monitoramento financeiro de convênios em execução | 2026-02-11 | a040061 | [5-monitoramento-financeiro](./quick/5-monitoramento-financeiro/) |
 | 6 | Dashboard CRM gestor (pipeline, vendedor cards, activity feed) | 2026-02-11 | 7cbcc44 | [6-dashboard-crm-gestor](./quick/6-dashboard-crm-gestor/) |
 | 7 | Commission system, default status Não Contatado, parlamentar column reorder | 2026-02-12 | 3ae5f1c | [4-commission-system-default-status-n-o-con](./quick/4-commission-system-default-status-n-o-con/) |
+| 8 | Upload existing clients (CLIENTES.xlsx) with validation and clear instructions | 2026-02-12 | 29539cc | [8-create-endpoint-and-ui-to-upload-existin](./quick/8-create-endpoint-and-ui-to-upload-existin/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-12
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Completed quick task 7: Commission system, default status Não Contatado, parlamentar column reorder
+**Activity:** Completed quick task 8: Upload existing clients (CLIENTES.xlsx) with validation and clear instructions
 
 **Completed:**
 - Added inline edit UI for phone/email on lead detail page
