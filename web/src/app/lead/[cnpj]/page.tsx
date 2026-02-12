@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { formatCNPJ, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
+import ContactNotesTimeline from '@/components/ContactNotesTimeline'
 
 const STATUS_OPTIONS = ['Não Contatado', 'Ainda Não', 'Retorno', 'Proposta', 'Fechado']
 const STATUS_COLORS: Record<string, string> = {
@@ -21,6 +22,9 @@ export default function LeadDetailPage() {
 
   const [projetos, setProjetos] = useState<VendedorProjeto[]>([])
   const [loading, setLoading] = useState(true)
+  const [isPriority, setIsPriority] = useState(false)
+  const [isExistingClient, setIsExistingClient] = useState(false)
+  const [canModify, setCanModify] = useState(false)
 
   useEffect(() => {
     fetch(`/api/leads?search=${encodeURIComponent(cnpj)}&limit=100`)
@@ -30,6 +34,10 @@ export default function LeadDetailPage() {
           (p: VendedorProjeto) => p.cnpj === cnpj
         )
         setProjetos(filtered)
+        if (filtered.length > 0) {
+          setIsPriority(filtered[0].is_max_priority || false)
+          setIsExistingClient(filtered[0].is_existing_client || false)
+        }
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -77,15 +85,25 @@ export default function LeadDetailPage() {
       </Link>
 
       <div>
-        <h1 className="font-heading text-2xl font-bold text-white">
-          {first.nome || 'Sem nome'}
-          {first.is_existing_client && (
-            <span className="ml-3 text-sm bg-purple-500/20 text-purple-400 px-3 py-1 rounded border border-purple-500/30">
+        <div className="flex items-center gap-3">
+          <h1 className="font-heading text-2xl font-bold text-white">{first.nome || 'Sem nome'}</h1>
+          {isPriority && (
+            <span className="text-xs bg-red-500/20 text-red-400 px-3 py-1 rounded-full border border-red-500/30 font-medium">
+              MÁXIMA PRIORIDADE
+            </span>
+          )}
+          {isExistingClient && (
+            <span className="text-xs bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full border border-purple-500/30 font-medium">
               CLIENTE EXISTENTE
             </span>
           )}
-        </h1>
+        </div>
         <p className="text-sm text-gray-400 font-mono mt-1">{formatCNPJ(cnpj)}</p>
+        {isPriority && (
+          <p className="text-sm text-gray-500 mt-2">
+            Este CNPJ nunca executou um convênio — alta probabilidade de conversão
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
