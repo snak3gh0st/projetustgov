@@ -22,7 +22,7 @@ export async function GET() {
         COUNT(CASE WHEN vendedor_id IS NOT NULL THEN 1 END)::int as total_assigned,
         COUNT(CASE WHEN vendedor_id IS NULL THEN 1 END)::int as total_unassigned,
         COALESCE(SUM(valor_emenda::numeric), 0) as total_valor_emenda,
-        SUM(CASE WHEN COALESCE(status_contato, 'Ainda Não') IN ('Ainda Não', 'Novo', 'Contactado') THEN 1 ELSE 0 END)::int as status_ainda_nao,
+        SUM(CASE WHEN COALESCE(status_contato, 'Não Contatado') IN ('Não Contatado', 'Novo', 'Contactado') THEN 1 ELSE 0 END)::int as status_nao_contatado,
         SUM(CASE WHEN status_contato = 'Retorno' THEN 1 ELSE 0 END)::int as status_retorno,
         SUM(CASE WHEN status_contato = 'Proposta' THEN 1 ELSE 0 END)::int as status_proposta,
         SUM(CASE WHEN status_contato = 'Fechado' THEN 1 ELSE 0 END)::int as status_fechado
@@ -37,11 +37,12 @@ export async function GET() {
         vp.vendedor_id,
         u.nome as vendedor_nome,
         COUNT(*)::int as total_leads,
-        SUM(CASE WHEN COALESCE(vp.status_contato, 'Ainda Não') IN ('Ainda Não', 'Novo', 'Contactado') THEN 1 ELSE 0 END)::int as ainda_nao,
+        SUM(CASE WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Não Contatado', 'Novo', 'Contactado') THEN 1 ELSE 0 END)::int as nao_contatado,
         SUM(CASE WHEN vp.status_contato = 'Retorno' THEN 1 ELSE 0 END)::int as retorno,
         SUM(CASE WHEN vp.status_contato = 'Proposta' THEN 1 ELSE 0 END)::int as proposta,
         SUM(CASE WHEN vp.status_contato = 'Fechado' THEN 1 ELSE 0 END)::int as fechado,
         COALESCE(SUM(vp.valor_emenda::numeric), 0) as valor_total_emenda,
+        COALESCE(SUM(vp.comissao_valor::numeric), 0) as comissao_total,
         MAX(vp.updated_at) as last_activity
       FROM vendedor_projetos vp
       JOIN users u ON u.id = vp.vendedor_id
@@ -78,7 +79,7 @@ export async function GET() {
         vp.cnpj,
         vp.nome,
         COALESCE(u.nome, 'Sem vendedor') as vendedor_nome,
-        COALESCE(vp.status_contato, 'Ainda Não') as status_contato,
+        COALESCE(vp.status_contato, 'Não Contatado') as status_contato,
         vp.updated_at
       FROM vendedor_projetos vp
       LEFT JOIN users u ON u.id = vp.vendedor_id
@@ -95,7 +96,7 @@ export async function GET() {
         total_unassigned: Number(g.total_unassigned) || 0,
         total_valor_emenda: Number(g.total_valor_emenda) || 0,
         by_status: {
-          'Ainda Não': Number(g.status_ainda_nao) || 0,
+          'Não Contatado': Number(g.status_nao_contatado) || 0,
           'Retorno': Number(g.status_retorno) || 0,
           'Proposta': Number(g.status_proposta) || 0,
           'Fechado': Number(g.status_fechado) || 0,
@@ -107,11 +108,12 @@ export async function GET() {
           vendedor_id: v.vendedor_id,
           vendedor_nome: v.vendedor_nome,
           total_leads: Number(v.total_leads),
-          ainda_nao: Number(v.ainda_nao),
+          nao_contatado: Number(v.nao_contatado),
           retorno: Number(v.retorno),
           proposta: Number(v.proposta),
           fechado: Number(v.fechado),
           valor_total_emenda: Number(v.valor_total_emenda),
+          comissao_total: Number(v.comissao_total),
           last_activity: v.last_activity,
           ligacoes_hoje: today?.ligacoes || 0,
           propostas_hoje: today?.propostas || 0,

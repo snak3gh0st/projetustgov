@@ -5,7 +5,7 @@ import { formatCNPJ, formatCompactCurrency, formatCurrency } from '@/lib/format'
 
 // --- Types ---
 interface StatusCounts {
-  'Ainda Não': number
+  'Não Contatado': number
   'Retorno': number
   'Proposta': number
   'Fechado': number
@@ -23,11 +23,12 @@ interface VendedorStats {
   vendedor_id: string
   vendedor_nome: string
   total_leads: number
-  ainda_nao: number
+  nao_contatado: number
   retorno: number
   proposta: number
   fechado: number
   valor_total_emenda: number
+  comissao_total: number
   last_activity: string | null
   ligacoes_hoje: number
   propostas_hoje: number
@@ -51,13 +52,13 @@ interface DashboardData {
 
 // --- Status config ---
 const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; label: string }> = {
-  'Ainda Não': { color: 'text-red-400', bg: 'bg-red-500/20 border-red-500/30', bar: 'bg-red-500', label: 'Ainda Não' },
+  'Não Contatado': { color: 'text-red-400', bg: 'bg-red-500/20 border-red-500/30', bar: 'bg-red-500', label: 'Não Contatado' },
   'Retorno': { color: 'text-amber-400', bg: 'bg-amber-500/20 border-amber-500/30', bar: 'bg-amber-500', label: 'Retorno' },
   'Proposta': { color: 'text-blue-400', bg: 'bg-blue-500/20 border-blue-500/30', bar: 'bg-blue-500', label: 'Proposta' },
   'Fechado': { color: 'text-green-400', bg: 'bg-green-500/20 border-green-500/30', bar: 'bg-green-500', label: 'Fechado' },
 }
 
-const STATUS_ORDER = ['Ainda Não', 'Retorno', 'Proposta', 'Fechado'] as const
+const STATUS_ORDER = ['Não Contatado', 'Retorno', 'Proposta', 'Fechado'] as const
 
 function timeAgo(date: string | null): string {
   if (!date) return 'nunca'
@@ -143,24 +144,28 @@ export default function CRMDashboard() {
             {g.total_leads.toLocaleString('pt-BR')}
           </p>
         </div>
-        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Atribuidos</p>
-          <p className="text-3xl font-heading font-bold text-cyan-400 mt-2">
-            {g.total_assigned.toLocaleString('pt-BR')}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            {g.total_leads > 0 ? `${((g.total_assigned / g.total_leads) * 100).toFixed(0)}% do total` : '0%'}
-          </p>
-        </div>
-        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Nao Atribuidos</p>
-          <p className="text-3xl font-heading font-bold text-amber-400 mt-2">
-            {g.total_unassigned.toLocaleString('pt-BR')}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            {g.total_leads > 0 ? `${((g.total_unassigned / g.total_leads) * 100).toFixed(0)}% do total` : '0%'}
-          </p>
-        </div>
+        {!isVendedor && (
+          <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Atribuidos</p>
+            <p className="text-3xl font-heading font-bold text-cyan-400 mt-2">
+              {g.total_assigned.toLocaleString('pt-BR')}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {g.total_leads > 0 ? `${((g.total_assigned / g.total_leads) * 100).toFixed(0)}% do total` : '0%'}
+            </p>
+          </div>
+        )}
+        {!isVendedor && (
+          <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Nao Atribuidos</p>
+            <p className="text-3xl font-heading font-bold text-amber-400 mt-2">
+              {g.total_unassigned.toLocaleString('pt-BR')}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {g.total_leads > 0 ? `${((g.total_unassigned / g.total_leads) * 100).toFixed(0)}% do total` : '0%'}
+            </p>
+          </div>
+        )}
         <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
           <p className="text-xs text-gray-400 uppercase tracking-wider">Valor em Emendas</p>
           <p className="text-3xl font-heading font-bold text-cyan-400 mt-2">
@@ -168,6 +173,15 @@ export default function CRMDashboard() {
           </p>
           <p className="text-xs text-gray-500 mt-1">{formatCurrency(g.total_valor_emenda)}</p>
         </div>
+        {isVendedor && vendedores.length > 0 && (
+          <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Comissão Total</p>
+            <p className="text-3xl font-heading font-bold text-[#00f0ff] mt-2">
+              {formatCompactCurrency(vendedores[0]?.comissao_total || 0)}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">{formatCurrency(vendedores[0]?.comissao_total || 0)}</p>
+          </div>
+        )}
       </div>
 
       {/* 3. Status pipeline horizontal bar */}
@@ -228,7 +242,7 @@ export default function CRMDashboard() {
                 {/* Status badges */}
                 <div className="flex flex-wrap gap-2 mb-3">
                   {[
-                    { key: 'ainda_nao' as const, status: 'Ainda Não', count: v.ainda_nao },
+                    { key: 'nao_contatado' as const, status: 'Não Contatado', count: v.nao_contatado },
                     { key: 'retorno' as const, status: 'Retorno', count: v.retorno },
                     { key: 'proposta' as const, status: 'Proposta', count: v.proposta },
                     { key: 'fechado' as const, status: 'Fechado', count: v.fechado },
@@ -258,14 +272,23 @@ export default function CRMDashboard() {
                   </div>
                 )}
 
-                {/* Valor and last activity */}
-                <div className="flex items-center justify-between pt-3 border-t border-gray-800">
-                  <span className="text-sm font-semibold text-cyan-400">
-                    {formatCompactCurrency(v.valor_total_emenda)}
-                  </span>
-                  <span className="text-xs text-gray-500">
+                {/* Valor, commission, and last activity */}
+                <div className="space-y-2 pt-3 border-t border-gray-800">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-400 uppercase tracking-wider">Valor Emendas</span>
+                    <span className="text-sm font-semibold text-cyan-400">
+                      {formatCompactCurrency(v.valor_total_emenda)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-400 uppercase tracking-wider">Comissão Total</span>
+                    <span className="text-lg font-heading font-bold text-[#00f0ff]">
+                      {formatCurrency(v.comissao_total)}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 text-right">
                     Ultima atividade {timeAgo(v.last_activity)}
-                  </span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -282,7 +305,7 @@ export default function CRMDashboard() {
           </div>
           <div className="divide-y divide-gray-800/50">
             {recent_activity.map((a, i) => {
-              const cfg = STATUS_CONFIG[a.status_contato] || STATUS_CONFIG['Ainda Não']
+              const cfg = STATUS_CONFIG[a.status_contato] || STATUS_CONFIG['Não Contatado']
               return (
                 <div key={`${a.cnpj}-${i}`} className={`px-4 py-3 text-sm ${i % 2 === 0 ? 'bg-gray-900/20' : ''}`}>
                   <div className="flex items-center gap-2 flex-wrap">
