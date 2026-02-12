@@ -30,6 +30,9 @@ export interface VendedorProjeto {
   telefone: string | null
   email: string | null
   status_contato: string
+  tipo_vendedor: 'SDR' | 'Closer' | null
+  comissao_percentual: number | null
+  comissao_valor: number | null
   observacoes: string | null
   // Metadata
   importado_de: string | null
@@ -62,7 +65,7 @@ export interface DashboardStats {
   total_unassigned: number
   total_valor_emenda: number
   by_status: {
-    'Ainda Não': number
+    'Não Contatado': number
     Retorno: number
     Proposta: number
     Fechado: number

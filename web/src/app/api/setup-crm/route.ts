@@ -80,6 +80,9 @@ async function runSetup() {
         telefone VARCHAR(50),
         email VARCHAR(500),
         status_contato VARCHAR(50) DEFAULT 'Não Contatado',
+        tipo_vendedor VARCHAR(20) DEFAULT 'SDR' CHECK (tipo_vendedor IN ('SDR', 'Closer')),
+        comissao_percentual NUMERIC(5,2),
+        comissao_valor NUMERIC(15,2),
         observacoes TEXT,
         importado_de TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -91,15 +94,49 @@ async function runSetup() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_status_contato ON vendedor_projetos(status_contato)`)
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_uf ON vendedor_projetos(uf)`)
 
-    // 3. Migrate old statuses to Tito's 4 statuses
+    // 2b. Add commission columns if they don't exist (Quick Task 4)
     await pool.query(`
-      UPDATE vendedor_projetos SET status_contato = 'Ainda Não'
-      WHERE status_contato IN ('Novo', 'Contactado') OR status_contato IS NULL;
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='tipo_vendedor') THEN
+          ALTER TABLE vendedor_projetos ADD COLUMN tipo_vendedor VARCHAR(20) DEFAULT 'SDR' CHECK (tipo_vendedor IN ('SDR', 'Closer'));
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='comissao_percentual') THEN
+          ALTER TABLE vendedor_projetos ADD COLUMN comissao_percentual NUMERIC(5,2);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='comissao_valor') THEN
+          ALTER TABLE vendedor_projetos ADD COLUMN comissao_valor NUMERIC(15,2);
+        END IF;
+      END $$;
+    `).catch(() => {}) // ignore if already exists
+
+    // 2c. Calculate commission for existing records
+    await pool.query(`
+      UPDATE vendedor_projetos
+      SET
+        comissao_percentual = CASE
+          WHEN tipo_vendedor = 'SDR' THEN 9.00
+          WHEN tipo_vendedor = 'Closer' THEN 12.00
+          ELSE 9.00
+        END,
+        comissao_valor = CASE
+          WHEN tipo_vendedor = 'SDR' THEN (COALESCE(valor_emenda, 0) * 0.09) + 50
+          WHEN tipo_vendedor = 'Closer' THEN COALESCE(valor_emenda, 0) * 0.12
+          ELSE (COALESCE(valor_emenda, 0) * 0.09) + 50
+        END
+      WHERE valor_emenda IS NOT NULL AND valor_emenda > 0
+        AND (comissao_valor IS NULL OR comissao_percentual IS NULL);
+    `).catch(() => {})
+
+    // 3. Migrate old statuses to "Não Contatado" (updated from "Ainda Não")
+    await pool.query(`
+      UPDATE vendedor_projetos SET status_contato = 'Não Contatado'
+      WHERE status_contato IN ('Ainda Não', 'Novo', 'Contactado') OR status_contato IS NULL;
     `)
 
     // 4. Update default for status_contato column
     await pool.query(`
-      ALTER TABLE vendedor_projetos ALTER COLUMN status_contato SET DEFAULT 'Ainda Não';
+      ALTER TABLE vendedor_projetos ALTER COLUMN status_contato SET DEFAULT 'Não Contatado';
     `).catch(() => {}) // ignore if already set
 
     // 5. Create existing_clients table (Phase 11 Decision #2)
@@ -130,17 +167,7 @@ async function runSetup() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_contact_notes_lead_cnpj ON contact_notes(lead_cnpj);`)
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_contact_notes_vendedor ON contact_notes(vendedor_id);`)
 
-    // 7. Update status_contato default to 'Não Contatado' (Phase 11 Decision #1)
-    await pool.query(`
-      UPDATE vendedor_projetos
-      SET status_contato = 'Não Contatado'
-      WHERE status_contato = 'Ainda Não' AND observacoes IS NULL;
-    `).catch(() => {})
-
-    await pool.query(`
-      ALTER TABLE vendedor_projetos
-      ALTER COLUMN status_contato SET DEFAULT 'Não Contatado';
-    `).catch(() => {})
+    // 7. Status migration already handled in step 3 above (Quick Task 4)
 
     // 8. Enrich existing leads with telefone/email from proponentes table
     const enrichResult = await pool.query(`
