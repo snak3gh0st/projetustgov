@@ -37,6 +37,10 @@ export interface VendedorProjeto {
   updated_at: string
   vendedor_nome?: string | null
   is_existing_client?: boolean
+  is_max_priority?: boolean
+  executed_count?: number | null
+  emenda_count?: number
+  total_valor_emendas?: number | null
 }
 
 // Client grouped by CNPJ
@@ -65,12 +69,16 @@ export interface DashboardStats {
   }
 }
 
+export type UserRole = 'gestor' | 'vendedor' | 'visualizador'
+
 export interface CRMUser {
   id: string
   nome: string
   email: string
-  role: 'gestor' | 'vendedor'
+  role: UserRole
   active: boolean
+  created_at: string
+  updated_at: string
 }
 
 export interface ExistingClient {

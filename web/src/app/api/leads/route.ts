@@ -58,12 +58,25 @@ export async function GET(request: NextRequest) {
       SELECT
         vp.*,
         u.nome as vendedor_nome,
-        ec.cnpj IS NOT NULL as is_existing_client
+        ec.cnpj IS NOT NULL as is_existing_client,
+        p.cnpj IS NULL as is_max_priority,
+        p.total_convenios as executed_count,
+        (
+          SELECT COUNT(DISTINCT vp2.nr_emenda)
+          FROM vendedor_projetos vp2
+          WHERE vp2.cnpj = vp.cnpj
+        ) as emenda_count,
+        (
+          SELECT SUM(vp2.valor_emenda)
+          FROM vendedor_projetos vp2
+          WHERE vp2.cnpj = vp.cnpj
+        ) as total_valor_emendas
       FROM vendedor_projetos vp
       LEFT JOIN users u ON vp.vendedor_id = u.id
       LEFT JOIN existing_clients ec ON vp.cnpj = ec.cnpj
+      LEFT JOIN proponentes p ON vp.cnpj = p.cnpj
       WHERE ${conditions.join(' AND ')}
-      ORDER BY vp.cnpj, vp.valor_global DESC NULLS LAST
+      ORDER BY vp.cnpj, vp.valor_emenda DESC NULLS LAST
       LIMIT $${paramIndex}
     `, params)
 
