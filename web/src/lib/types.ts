@@ -36,6 +36,7 @@ export interface VendedorProjeto {
   created_at: string
   updated_at: string
   vendedor_nome?: string | null
+  is_existing_client?: boolean
 }
 
 // Client grouped by CNPJ
@@ -70,4 +71,24 @@ export interface CRMUser {
   email: string
   role: 'gestor' | 'vendedor'
   active: boolean
+}
+
+export interface ExistingClient {
+  id: number
+  cnpj: string
+  nome: string | null
+  added_by: string | null
+  notes: string | null
+  created_at: string
+}
+
+export interface ContactNote {
+  id: string
+  lead_cnpj: string
+  vendedor_id: string
+  vendedor_nome?: string
+  tipo: 'ligacao' | 'email' | 'whatsapp' | 'reuniao' | 'outro'
+  observacao: string | null
+  created_at: string
+  updated_at: string
 }

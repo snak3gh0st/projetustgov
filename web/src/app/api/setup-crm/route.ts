@@ -70,7 +70,7 @@ async function runSetup() {
         saldo_conta NUMERIC(15,2),
         telefone VARCHAR(50),
         email VARCHAR(500),
-        status_contato VARCHAR(50) DEFAULT 'Ainda Não',
+        status_contato VARCHAR(50) DEFAULT 'Não Contatado',
         observacoes TEXT,
         importado_de TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -93,7 +93,47 @@ async function runSetup() {
       ALTER TABLE vendedor_projetos ALTER COLUMN status_contato SET DEFAULT 'Ainda Não';
     `).catch(() => {}) // ignore if already set
 
-    // 5. Enrich existing leads with telefone/email from proponentes table
+    // 5. Create existing_clients table (Phase 11 Decision #2)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS existing_clients (
+        id SERIAL PRIMARY KEY,
+        cnpj VARCHAR(20) UNIQUE NOT NULL,
+        nome TEXT,
+        added_by UUID REFERENCES users(id),
+        notes TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_existing_clients_cnpj ON existing_clients(cnpj);`)
+
+    // 6. Activate contact_notes table (ready for timeline feature in Phase 11)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS contact_notes (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        lead_cnpj VARCHAR(20) NOT NULL,
+        vendedor_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        tipo VARCHAR(50) NOT NULL CHECK (tipo IN ('ligacao', 'email', 'whatsapp', 'reuniao', 'outro')),
+        observacao TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_contact_notes_lead_cnpj ON contact_notes(lead_cnpj);`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_contact_notes_vendedor ON contact_notes(vendedor_id);`)
+
+    // 7. Update status_contato default to 'Não Contatado' (Phase 11 Decision #1)
+    await pool.query(`
+      UPDATE vendedor_projetos
+      SET status_contato = 'Não Contatado'
+      WHERE status_contato = 'Ainda Não' AND observacoes IS NULL;
+    `).catch(() => {})
+
+    await pool.query(`
+      ALTER TABLE vendedor_projetos
+      ALTER COLUMN status_contato SET DEFAULT 'Não Contatado';
+    `).catch(() => {})
+
+    // 8. Enrich existing leads with telefone/email from proponentes table
     const enrichResult = await pool.query(`
       UPDATE vendedor_projetos vp
       SET
@@ -106,7 +146,7 @@ async function runSetup() {
     `).catch(() => ({ rowCount: 0 }))
     const enrichedCount = enrichResult.rowCount || 0
 
-    // 6. Create vendedores
+    // 9. Create vendedores
     const passwordHash = await bcrypt.hash('sigma2026', 10)
     const vendedores = [
       { nome: 'Wellington', email: 'wellington@sigma.com' },
