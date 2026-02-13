@@ -66,6 +66,16 @@ def _run_pipeline_job():
     try:
         run_pipeline()
         logger.info("Scheduled pipeline execution completed successfully")
+
+        # Run contact enrichment after successful ETL
+        logger.info("Starting automatic contact enrichment")
+        from src.enrichment.enrichment_runner import enrich_missing_contacts
+
+        stats = enrich_missing_contacts(limit=1000, batch_size=50, delay_between_batches=1.0)
+        logger.info(
+            f"Contact enrichment completed: {stats['enriched']} proponentes enriched "
+            f"({stats['email_added']} emails, {stats['telefone_added']} telefones)"
+        )
     except Exception as e:
         logger.error(f"Scheduled pipeline execution failed: {e}")
 
@@ -344,13 +354,14 @@ async def metrics_endpoint():
 
 @app.post("/run-pipeline", response_model=PipelineResponse, tags=["Pipeline"])
 async def run_pipeline_endpoint():
-    """Execute the ETL pipeline.
+    """Execute the ETL pipeline with contact enrichment.
 
     This endpoint triggers a full ETL pipeline execution:
     - Parses files from data/raw directory
     - Validates data
     - Loads data into database
     - Creates extraction log entry
+    - Enriches contacts via Brasil API
 
     Returns:
         PipelineResponse with execution status and message.
@@ -363,13 +374,13 @@ async def run_pipeline_endpoint():
 
         executor = ThreadPoolExecutor(max_workers=1)
         loop = asyncio.get_event_loop()
-        
+
         # Run pipeline in executor
-        await loop.run_in_executor(executor, run_pipeline, None)
-        
+        await loop.run_in_executor(executor, _run_pipeline_job)
+
         return PipelineResponse(
             status="success",
-            message="Pipeline executed successfully",
+            message="Pipeline and contact enrichment executed successfully",
             timestamp=datetime.now().isoformat(),
         )
     except Exception as e:
@@ -377,6 +388,45 @@ async def run_pipeline_endpoint():
         raise HTTPException(
             status_code=500,
             detail=f"Pipeline execution failed: {str(e)}"
+        )
+
+
+@app.post("/run-enrichment", response_model=PipelineResponse, tags=["Pipeline"])
+async def run_enrichment_endpoint():
+    """Execute contact enrichment via Brasil API.
+
+    This endpoint triggers contact enrichment for proponentes:
+    - Finds proponentes missing email or telefone
+    - Queries Brasil API (Receita Federal) for contact data
+    - Updates proponentes table with enriched contacts
+    - Returns enrichment statistics
+
+    Returns:
+        PipelineResponse with execution status and enrichment stats.
+    """
+    logger.info("Contact enrichment requested via API")
+    try:
+        from src.enrichment.enrichment_runner import enrich_missing_contacts
+
+        # Run enrichment with reasonable limit to avoid timeout
+        stats = enrich_missing_contacts(limit=1000, batch_size=50, delay_between_batches=1.0)
+
+        message = (
+            f"Enrichment completed: {stats['enriched']} proponentes enriched "
+            f"({stats['email_added']} emails, {stats['telefone_added']} telefones). "
+            f"API calls: {stats['api_calls']}, Errors: {stats['api_errors']}"
+        )
+
+        return PipelineResponse(
+            status="success",
+            message=message,
+            timestamp=datetime.now().isoformat(),
+        )
+    except Exception as e:
+        logger.error(f"Contact enrichment failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Contact enrichment failed: {str(e)}"
         )
 
 
@@ -392,6 +442,7 @@ async def root():
             "ready": "/ready",
             "metrics": "/metrics",
             "run-pipeline": "/run-pipeline (POST)",
+            "run-enrichment": "/run-enrichment (POST)",
         },
     }
 
