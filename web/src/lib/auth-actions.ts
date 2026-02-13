@@ -6,6 +6,7 @@ import { query } from './db'
 import * as bcrypt from 'bcryptjs'
 import { redirect } from 'next/navigation'
 import { AuthError } from 'next-auth'
+import { ZodError } from 'zod'
 
 export async function login(
   prevState: { error?: string } | null,
@@ -48,6 +49,12 @@ export async function login(
     redirect('/')
   } catch (error) {
     console.log('[LOGIN] Exception caught:', error)
+    if (error instanceof ZodError) {
+      console.log('[LOGIN] Validation error detected')
+      // Return the first validation error message
+      const firstError = error.issues[0]
+      return { error: firstError.message }
+    }
     if (error instanceof AuthError) {
       console.log('[LOGIN] AuthError detected')
       return { error: 'Email ou senha invalidos' }
@@ -100,6 +107,11 @@ export async function createVendedor(
     return { success: true }
   } catch (error) {
     console.error('Create vendedor error:', error)
+    if (error instanceof ZodError) {
+      // Return the first validation error message
+      const firstError = error.issues[0]
+      return { error: firstError.message }
+    }
     return { error: 'Erro ao criar vendedor' }
   }
 }
