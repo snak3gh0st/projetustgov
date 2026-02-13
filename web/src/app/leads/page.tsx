@@ -177,7 +177,6 @@ export default function LeadsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/5 bg-sigma-navy-light">
-                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-400 uppercase w-8"></th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">CNPJ</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Nome</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor Emenda</th>
@@ -200,21 +199,17 @@ export default function LeadsPage() {
               </thead>
               <tbody>
                 {displayLeads.map(lead => (
-                  <tr key={lead.id} onClick={() => setSelectedLead(lead)} className="border-b border-white/5 hover:bg-white/5 hover:border-l-2 hover:border-l-sigma-neon transition-colors cursor-pointer">
-                    <td className="px-2 py-2">
-                      {lead.is_max_priority && (
-                        <div
-                          className="w-2 h-2 rounded-full bg-red-500 animate-pulse"
-                          title="MÁXIMA PRIORIDADE - Nunca executou convênio"
-                        />
-                      )}
-                    </td>
+                  <tr
+                    key={lead.id}
+                    onClick={() => setSelectedLead(lead)}
+                    className={`border-b border-white/5 hover:bg-white/5 hover:border-l-2 hover:border-l-sigma-neon transition-colors cursor-pointer ${lead.is_max_priority ? 'bg-red-500/10 border-l-2 border-l-red-500' : ''}`}
+                  >
                     <td className="px-3 py-2">
                       <span className="font-mono text-xs text-gray-300">
                         {formatCNPJ(lead.cnpj)}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-white font-medium truncate max-w-[180px]">
+                    <td className="px-3 py-2 text-white font-medium truncate max-w-[250px]" title={lead.nome || '-'}>
                       {lead.nome || '-'}
                       {lead.is_existing_client && sessionUser?.role === 'gestor' && (
                         <span className="ml-2 text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded border border-purple-500/30">
@@ -228,7 +223,7 @@ export default function LeadsPage() {
                         <span className="ml-1 text-gray-500 text-xs">({lead.emenda_count})</span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[140px]">
+                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[140px]" title={formatParlamentarSummary(lead.parlamentares || [])}>
                       {formatParlamentarSummary(lead.parlamentares || [])}
                     </td>
                     <td className="px-3 py-2">
@@ -244,9 +239,9 @@ export default function LeadsPage() {
                         </a>
                       ) : '-'}
                     </td>
-                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[140px]">{lead.orgao_concedente || '-'}</td>
+                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[180px]" title={lead.orgao_concedente || '-'}>{lead.orgao_concedente || '-'}</td>
                     <td className="px-3 py-2 text-gray-300 text-xs">{lead.uf || '-'}</td>
-                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[120px]">{lead.municipio || '-'}</td>
+                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[120px]" title={lead.municipio || '-'}>{lead.municipio || '-'}</td>
                     <td className="px-3 py-2">
                       <input
                         type="text"
@@ -304,19 +299,24 @@ export default function LeadsPage() {
                     </td>
                     {sessionUser?.role === 'gestor' && (
                       <td className="px-3 py-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setAssignmentModal({
-                              cnpj: lead.cnpj,
-                              nome: lead.nome,
-                              currentVendedor: lead.vendedor_nome || null
-                            })
-                          }}
-                          className="text-xs px-2 py-1 rounded bg-sigma-neon/20 text-sigma-neon hover:bg-sigma-neon/30 transition-colors"
-                        >
-                          Atribuir
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setAssignmentModal({
+                                cnpj: lead.cnpj,
+                                nome: lead.nome,
+                                currentVendedor: lead.vendedor_nome || null
+                              })
+                            }}
+                            className="text-xs px-2 py-1 rounded bg-sigma-neon/20 text-sigma-neon hover:bg-sigma-neon/30 transition-colors"
+                          >
+                            {lead.vendedor_nome ? 'Reatribuir' : 'Atribuir'}
+                          </button>
+                          {lead.vendedor_nome && (
+                            <span className="text-xs text-gray-500">({lead.vendedor_nome})</span>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>

@@ -252,13 +252,37 @@ export default function LeadSlideOver({ lead, onClose, canModify = false }: Lead
             </div>
           )}
 
-          {/* Observacoes */}
-          {lead.observacoes && (
+          {/* Observacoes/Detalhes */}
+          {(lead.observacoes || canModify) && (
             <div className="space-y-2">
-              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Observacoes</h3>
-              <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                <p className="text-sm text-gray-400 italic">{lead.observacoes}</p>
-              </div>
+              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Detalhes</h3>
+              {canModify ? (
+                <textarea
+                  defaultValue={localLead.observacoes || ''}
+                  placeholder="Adicione observações sobre este lead..."
+                  onBlur={async (e) => {
+                    const newValue = e.target.value
+                    if (newValue !== (localLead.observacoes || '')) {
+                      try {
+                        await fetch(`/api/leads/${encodeURIComponent(localLead.cnpj)}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ id: localLead.id, observacoes: newValue })
+                        })
+                        setLocalLead(prev => prev ? {...prev, observacoes: newValue} : null)
+                      } catch (err) {
+                        console.error('Failed to update observacoes:', err)
+                      }
+                    }
+                  }}
+                  rows={4}
+                  className="w-full bg-white/5 rounded-xl p-3 border border-white/5 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-sigma-neon/50 resize-none"
+                />
+              ) : (
+                <div className="bg-white/5 rounded-xl p-3 border border-white/5">
+                  <p className="text-sm text-gray-400 italic">{lead.observacoes || 'Sem observações'}</p>
+                </div>
+              )}
             </div>
           )}
         </div>

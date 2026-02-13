@@ -69,20 +69,6 @@ export default function LeadDetailPage() {
     }
   }
 
-  async function updateContact(field: 'telefone' | 'email', value: string) {
-    try {
-      await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: first.id, [field]: value })
-      })
-      setProjetos(prev => prev.map(p => p.cnpj === cnpj ? {...p, [field]: value} : p))
-      setEditingField(null)
-    } catch (err) {
-      console.error('Update contact error:', err)
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -101,6 +87,20 @@ export default function LeadDetailPage() {
   }
 
   const first = projetos[0]
+
+  async function updateContact(field: 'telefone' | 'email', value: string) {
+    try {
+      await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: first.id, [field]: value })
+      })
+      setProjetos(prev => prev.map(p => p.cnpj === cnpj ? {...p, [field]: value} : p))
+      setEditingField(null)
+    } catch (err) {
+      console.error('Update contact error:', err)
+    }
+  }
   const totalValorEmenda = projetos.reduce((sum, p) => sum + (Number(p.valor_emenda) || 0), 0)
 
   return (
