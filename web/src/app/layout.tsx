@@ -22,7 +22,7 @@ export default async function RootLayout({
           <Sidebar
             user={{
               name: session.user.name,
-              role: session.user.role as 'gestor' | 'vendedor',
+              role: session.user.role as 'gestor' | 'vendedor' | 'visualizador',
               email: session.user.email,
             }}
           />

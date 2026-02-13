@@ -7,7 +7,7 @@ import { logout } from '@/lib/auth-actions'
 interface SidebarProps {
   user: {
     name?: string | null
-    role: 'gestor' | 'vendedor'
+    role: 'gestor' | 'vendedor' | 'visualizador'
     email?: string | null
   }
 }
@@ -30,7 +30,7 @@ export default function Sidebar({ user }: SidebarProps) {
         { href: '/monitoramento', label: 'Monitoramento', icon: '📈' },
         { href: '/cadastro-vendedor', label: 'Vendedores', icon: '👤' },
       ]
-    : BASE_NAV_ITEMS
+    : BASE_NAV_ITEMS  // vendedor and visualizador see base items
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-56 bg-sigma-navy-light border-r border-white/5 flex flex-col z-50">
@@ -75,9 +75,11 @@ export default function Sidebar({ user }: SidebarProps) {
           <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${
             user.role === 'gestor'
               ? 'bg-cyan-500/20 text-cyan-400'
+              : user.role === 'visualizador'
+              ? 'bg-purple-500/20 text-purple-400'
               : 'bg-green-500/20 text-green-400'
           }`}>
-            {user.role === 'gestor' ? 'Gestor' : 'Vendedor'}
+            {user.role === 'gestor' ? 'Gestor' : user.role === 'visualizador' ? 'Visualizador' : 'Vendedor'}
           </span>
         </div>
         <form action={logout}>
