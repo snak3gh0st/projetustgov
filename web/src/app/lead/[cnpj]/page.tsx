@@ -56,13 +56,26 @@ export default function LeadDetailPage() {
 
   async function updateProjeto(id: number, field: string, value: string) {
     try {
+      const body: Record<string, unknown> = { id, [field]: value }
+
+      // If status is changing to "Fechado", prompt for sale value
+      if (field === 'status_contato' && value === 'Fechado') {
+        const valorVendaStr = window.prompt('Valor da venda (R$):')
+        if (valorVendaStr !== null && valorVendaStr.trim() !== '') {
+          const valorVenda = parseFloat(valorVendaStr.replace(/[^\d.,]/g, '').replace(',', '.'))
+          if (!isNaN(valorVenda)) {
+            body.valor_venda = valorVenda
+          }
+        }
+      }
+
       await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, [field]: value }),
+        body: JSON.stringify(body),
       })
       setProjetos(prev => prev.map(p =>
-        p.id === id ? { ...p, [field]: value } : p
+        p.id === id ? { ...p, [field]: value, ...(body.valor_venda ? { valor_venda: body.valor_venda as number } : {}) } : p
       ))
     } catch (err) {
       console.error('Update error:', err)

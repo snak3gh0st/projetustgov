@@ -174,13 +174,24 @@ export default function CRMDashboard() {
           <p className="text-xs text-gray-500 mt-1">{formatCurrency(g.total_valor_emenda)}</p>
         </div>
         {isVendedor && vendedores.length > 0 && (
-          <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Comissão Total</p>
-            <p className="text-3xl font-heading font-bold text-[#00f0ff] mt-2">
-              {formatCompactCurrency(vendedores[0]?.comissao_total || 0)}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">{formatCurrency(vendedores[0]?.comissao_total || 0)}</p>
-          </div>
+          <>
+            <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+              <p className="text-xs text-gray-400 uppercase tracking-wider">Comissão Vendas</p>
+              <p className="text-3xl font-heading font-bold text-[#00f0ff] mt-2">
+                {formatCompactCurrency(vendedores[0]?.comissao_total || 0)}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">{formatCurrency(vendedores[0]?.comissao_total || 0)}</p>
+            </div>
+            <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+              <p className="text-xs text-gray-400 uppercase tracking-wider">Taxa Fechamento</p>
+              <p className="text-3xl font-heading font-bold text-green-400 mt-2">
+                {formatCompactCurrency((vendedores[0]?.fechado || 0) * 50)}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {vendedores[0]?.fechado || 0} x R$50
+              </p>
+            </div>
+          </>
         )}
       </div>
 
@@ -212,10 +223,18 @@ export default function CRMDashboard() {
         <div className="flex gap-4 mt-2">
           {STATUS_ORDER.map(status => {
             const cfg = STATUS_CONFIG[status]
+            const count = g.by_status[status] || 0
             return (
-              <div key={status} className="flex items-center gap-1.5 text-xs text-gray-500">
-                <div className={`w-2 h-2 rounded-full ${cfg.bar}`} />
-                {cfg.label}
+              <div key={status} className="flex flex-col gap-0.5">
+                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <div className={`w-2 h-2 rounded-full ${cfg.bar}`} />
+                  {cfg.label}
+                </div>
+                {isVendedor && status === 'Fechado' && count > 0 && (
+                  <div className="text-xs text-green-400 ml-3.5">
+                    {count} × R$50 = {formatCurrency(count * 50)}
+                  </div>
+                )}
               </div>
             )
           })}

@@ -33,6 +33,7 @@ export interface VendedorProjeto {
   tipo_vendedor: 'SDR' | 'Closer' | null
   comissao_percentual: number | null
   comissao_valor: number | null
+  valor_venda: number | null
   observacoes: string | null
   // Metadata
   importado_de: string | null

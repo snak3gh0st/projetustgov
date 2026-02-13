@@ -126,7 +126,17 @@ export default function LeadSlideOver({ lead, onClose, canModify = false }: Lead
             <InfoCard label="Vendedor" value={lead.vendedor_nome || '-'} />
           </div>
 
-          {/* Commission Info */}
+          {/* Sale Value & Commission Info */}
+          {localLead.status_contato === 'Fechado' && localLead.valor_venda && (
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-400">Valor da Venda</span>
+                <span className="text-sm font-semibold text-green-400">
+                  {formatCurrency(localLead.valor_venda)}
+                </span>
+              </div>
+            </div>
+          )}
           {localLead.comissao_valor && localLead.comissao_valor > 0 && (
             <div className="bg-sigma-neon/10 border border-sigma-neon/30 rounded-lg p-3">
               <div className="flex items-center justify-between">

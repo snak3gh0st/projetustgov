@@ -108,13 +108,27 @@ export default function LeadsPage() {
     try {
       const lead = leads.find(l => l.id === id)
       if (!lead) return
+
+      const body: Record<string, unknown> = { id, [field]: value }
+
+      // If status is changing to "Fechado", prompt for sale value
+      if (field === 'status_contato' && value === 'Fechado') {
+        const valorVendaStr = window.prompt('Valor da venda (R$):')
+        if (valorVendaStr !== null && valorVendaStr.trim() !== '') {
+          const valorVenda = parseFloat(valorVendaStr.replace(/[^\d.,]/g, '').replace(',', '.'))
+          if (!isNaN(valorVenda)) {
+            body.valor_venda = valorVenda
+          }
+        }
+      }
+
       await fetch(`/api/leads/${encodeURIComponent(lead.cnpj)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, [field]: value }),
+        body: JSON.stringify(body),
       })
       setLeads(prev => prev.map(l =>
-        l.id === id ? { ...l, [field]: value } : l
+        l.id === id ? { ...l, [field]: value, ...(body.valor_venda ? { valor_venda: body.valor_venda as number } : {}) } : l
       ))
     } catch (err) {
       console.error('Failed to update lead:', err)

@@ -42,6 +42,10 @@ export async function PATCH(
       updates.push(`email = $${paramIndex++}`)
       values.push(body.email)
     }
+    if (body.valor_venda !== undefined) {
+      updates.push(`valor_venda = $${paramIndex++}`)
+      values.push(body.valor_venda)
+    }
 
     if (updates.length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
