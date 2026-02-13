@@ -92,33 +92,32 @@
 | 6 | Dashboard CRM gestor (pipeline, vendedor cards, activity feed) | 2026-02-11 | 7cbcc44 | [6-dashboard-crm-gestor](./quick/6-dashboard-crm-gestor/) |
 | 7 | Commission system, default status Não Contatado, parlamentar column reorder | 2026-02-12 | 3ae5f1c | [4-commission-system-default-status-n-o-con](./quick/4-commission-system-default-status-n-o-con/) |
 | 8 | Upload existing clients (CLIENTES.xlsx) with validation and clear instructions | 2026-02-12 | 29539cc | [8-create-endpoint-and-ui-to-upload-existin](./quick/8-create-endpoint-and-ui-to-upload-existin/) |
+| 9 | Fix critical CRM bugs and UX improvements | 2026-02-13 | 32e9187 | [5-fix-critical-crm-bugs-and-ux-improvement](./quick/5-fix-critical-crm-bugs-and-ux-improvement/) |
 
 ## Session Continuity
 
 ### Last Session Summary
-**Date:** 2026-02-12
+**Date:** 2026-02-13
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Completed quick task 8: Upload existing clients (CLIENTES.xlsx) with validation and clear instructions
+**Activity:** Completed quick task 9: Fix critical CRM bugs and UX improvements
 
 **Completed:**
-- Added inline edit UI for phone/email on lead detail page
-- Added inline edit UI for phone/email in LeadSlideOver component
-- Pencil icons trigger edit mode (only visible when canModify=true)
-- Save on blur/Enter, cancel on Escape keyboard shortcuts
-- Optimistic updates in slide-over for better UX
-- Visualizador sees no edit controls (read-only maintained)
-- Both files compile without TypeScript errors
+- Fixed lead detail page runtime error (updateContact function order)
+- Leads table shows "Reatribuir" for assigned leads, "Atribuir" for unassigned
+- Max priority leads have red row highlight instead of small dot
+- Added hover tooltips to truncated columns for readability
+- Detalhes field always visible/editable in slide-over when canModify=true
+- Added valor_venda field and prompt when status changes to "Fechado"
+- Separated commission and closing fee display in vendedor dashboard
+- Added closing fee annotation (R$50/deal) below pipeline "Fechado" count
 
-**Phase 11 Complete:**
-- All 5 plans executed successfully (gap closure complete)
-- Schema & backend: existing_clients table, contact_notes table, 5-status system
-- Lead assignment: CNPJ-based with duplicate detection
-- Priority indicators: max priority flag for never-registered CNPJs
-- Contact tracking: timeline UI with visualizador read-only role
-- Contact editing: inline edit UI with permission-aware controls
+**Quick Task 9 Complete:**
+- Fixed critical UX bugs blocking sales team workflow
+- Improved table readability and assignment clarity
+- Implemented sale value tracking for closed deals
+- Separated commission display for transparency (percentage vs flat fee)
 
 **Next Actions:**
-- Human verification of inline edit UI (vendedor vs visualizador)
 - Plan Phase 12 - Pipeline Kanban board
 - Plan Phase 13 - Commission tracking and reporting
 
