@@ -88,6 +88,29 @@ export async function GET() {
       LIMIT 10
     `, vendedorParams)
 
+    // 5. Commission breakdown by status
+    const commissionRows = await query(`
+      SELECT
+        COALESCE(vp.status_contato, 'Nao Contatado') as status_contato,
+        COUNT(*)::int as count,
+        SUM(vp.comissao_valor)::numeric as total_comissao,
+        SUM(vp.valor_venda)::numeric as total_venda,
+        SUM(CASE WHEN vp.comissao_locked = true THEN 1 ELSE 0 END)::int as locked_count
+      FROM vendedor_projetos vp
+      WHERE vp.vendedor_id IS NOT NULL
+        AND vp.comissao_valor IS NOT NULL
+        AND vp.comissao_valor > 0
+        ${isVendedor ? ' AND vp.vendedor_id = $1' : ''}
+      GROUP BY vp.status_contato
+      ORDER BY
+        CASE vp.status_contato
+          WHEN 'Fechado' THEN 1
+          WHEN 'Proposta' THEN 2
+          WHEN 'Retorno' THEN 3
+          WHEN 'Nao Contatado' THEN 4
+        END
+    `, vendedorParams)
+
     return NextResponse.json({
       role: session.role,
       global: {
@@ -126,6 +149,13 @@ export async function GET() {
         vendedor_nome: r.vendedor_nome,
         status_contato: r.status_contato,
         updated_at: r.updated_at,
+      })),
+      commission_breakdown: commissionRows.map(r => ({
+        status_contato: r.status_contato,
+        count: Number(r.count),
+        total_comissao: Number(r.total_comissao) || 0,
+        total_venda: Number(r.total_venda) || 0,
+        locked_count: Number(r.locked_count) || 0,
       })),
     })
   } catch (error) {
