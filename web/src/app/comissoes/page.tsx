@@ -71,8 +71,6 @@ export default function ComissoesPage() {
     // Default: today
     return new Date().toISOString().split('T')[0]
   })
-  const [fechadoOnly, setFechadoOnly] = useState(false)
-
   // Data fetching with filters
   useEffect(() => {
     setLoading(true)
@@ -80,14 +78,13 @@ export default function ComissoesPage() {
     if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
     if (startDate) params.set('start_date', startDate)
     if (endDate) params.set('end_date', endDate)
-    if (fechadoOnly) params.set('fechado_only', 'true')
 
     fetch(`/api/comissoes?${params}`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(setData)
       .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }, [vendedorFilter, startDate, endDate, fechadoOnly])
+  }, [vendedorFilter, startDate, endDate])
 
   // Quick period helpers
   const setCurrentMonth = () => {
@@ -222,62 +219,32 @@ export default function ComissoesPage() {
             </div>
           </div>
 
-          {/* Fechado only toggle */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-400 uppercase tracking-wider">Filtro</label>
-            <label className="flex items-center gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg cursor-pointer hover:border-green-500 transition-colors">
-              <input
-                type="checkbox"
-                checked={fechadoOnly}
-                onChange={(e) => setFechadoOnly(e.target.checked)}
-                className="w-4 h-4 text-green-500 bg-gray-700 border-gray-600 rounded focus:ring-green-500"
-              />
-              <span className="text-sm text-white">Apenas Fechados</span>
-            </label>
-          </div>
         </div>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
           <p className="text-xs text-gray-400 uppercase tracking-wider">Comissao Total</p>
           <p className="text-3xl font-heading font-bold text-[#00f0ff] mt-2">
             {formatCurrency(data.summary.total_comissao)}
           </p>
+          <p className="text-xs text-gray-500 mt-1">Somente leads Fechados</p>
         </div>
 
         <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Comissao Confirmada</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wider">Leads Fechados</p>
           <p className="text-3xl font-heading font-bold text-green-400 mt-2">
-            {formatCurrency(data.summary.comissao_fechado)}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">Apenas Fechados</p>
-        </div>
-
-        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Comissao Pipeline</p>
-          <p className="text-3xl font-heading font-bold text-amber-400 mt-2">
-            {formatCurrency(data.summary.comissao_pipeline)}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">Ainda nao fechado</p>
-        </div>
-
-        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Leads com Comissao</p>
-          <p className="text-3xl font-heading font-bold text-white mt-2">
             {data.summary.total_leads}
           </p>
         </div>
 
-        {data.summary.total_valor_venda > 0 && (
-          <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Valor Total Vendas</p>
-            <p className="text-2xl font-heading font-bold text-cyan-400 mt-2">
-              {formatCurrency(data.summary.total_valor_venda)}
-            </p>
-          </div>
-        )}
+        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+          <p className="text-xs text-gray-400 uppercase tracking-wider">Valor Total Emendas</p>
+          <p className="text-3xl font-heading font-bold text-white mt-2">
+            {formatCurrency(data.summary.total_valor_emenda)}
+          </p>
+        </div>
       </div>
 
       {/* Per-vendedor breakdown (gestor only) */}
@@ -336,11 +303,9 @@ export default function ComissoesPage() {
                   <th className="text-left px-6 py-3">Vendedor</th>
                   <th className="text-left px-6 py-3">Tipo</th>
                   <th className="text-right px-6 py-3">Valor Emenda</th>
-                  <th className="text-right px-6 py-3">Valor Venda</th>
                   <th className="text-right px-6 py-3">%</th>
                   <th className="text-right px-6 py-3">Comissao</th>
-                  <th className="text-center px-6 py-3">Status</th>
-                  <th className="text-left px-6 py-3">Ultima Atualizacao</th>
+                  <th className="text-left px-6 py-3">Data Fechamento</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
@@ -368,9 +333,6 @@ export default function ComissoesPage() {
                     <td className="px-6 py-4 text-sm text-right text-white">
                       {formatCurrency(lead.valor_emenda)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-right text-white">
-                      {lead.valor_venda > 0 ? formatCurrency(lead.valor_venda) : '-'}
-                    </td>
                     <td className="px-6 py-4 text-sm text-right text-gray-400">
                       {lead.comissao_percentual?.toFixed(1) || '0'}%
                     </td>
@@ -391,15 +353,6 @@ export default function ComissoesPage() {
                           </span>
                         )}
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`px-2 py-0.5 rounded border text-xs font-medium ${
-                        STATUS_CONFIG[lead.status_contato]?.bg || 'bg-gray-500/20 border-gray-500/30'
-                      } ${
-                        STATUS_CONFIG[lead.status_contato]?.color || 'text-gray-400'
-                      }`}>
-                        {lead.status_contato}
-                      </span>
                     </td>
                     <td className="px-6 py-4 text-xs text-gray-500">
                       {new Date(lead.updated_at).toLocaleDateString('pt-BR', {

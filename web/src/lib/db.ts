@@ -6,7 +6,7 @@ export function getPool(): Pool {
   if (!pool) {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
-      max: 3,
+      max: 5,
       idleTimeoutMillis: 10000,
       connectionTimeoutMillis: 10000,
       statement_timeout: 30000,
