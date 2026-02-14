@@ -4,54 +4,117 @@ import { useEffect, useState } from 'react'
 import { formatCurrency } from '@/lib/format'
 
 interface ComissaoLead {
+  id: string
   cnpj: string
   nome: string
   valor_emenda: number
+  valor_venda: number
   tipo_vendedor: 'SDR' | 'Closer'
   comissao_percentual: number
   comissao_valor: number
+  comissao_locked: boolean
   status_contato: string
   vendedor_nome: string
+  vendedor_id: string
   updated_at: string
+  has_override: boolean
+  override_motivo: string | null
 }
 
-interface ComissaoStats {
-  total_comissao: number
-  total_leads_com_comissao: number
-  comissao_por_status: {
-    'Não Contatado': number
-    'Retorno': number
-    'Proposta': number
-    'Fechado': number
+interface ComissaoData {
+  summary: {
+    total_leads: number
+    total_comissao: number
+    comissao_fechado: number
+    comissao_pipeline: number
+    total_valor_venda: number
+    total_valor_emenda: number
   }
+  per_vendedor: Array<{
+    vendedor_id: string
+    vendedor_nome: string
+    lead_count: number
+    total_comissao: number
+    comissao_fechado: number
+    fechados_count: number
+  }>
   leads: ComissaoLead[]
+  vendedores_list: Array<{ id: string; nome: string }>
+  filters_applied: {
+    vendedor_id: string | null
+    start_date: string | null
+    end_date: string | null
+    fechado_only: boolean
+  }
+}
+
+const STATUS_CONFIG: Record<string, { color: string; bg: string }> = {
+  'Nao Contatado': { color: 'text-red-400', bg: 'bg-red-500/20 border-red-500/30' },
+  'Retorno': { color: 'text-amber-400', bg: 'bg-amber-500/20 border-amber-500/30' },
+  'Proposta': { color: 'text-blue-400', bg: 'bg-blue-500/20 border-blue-500/30' },
+  'Fechado': { color: 'text-green-400', bg: 'bg-green-500/20 border-green-500/30' },
 }
 
 export default function ComissoesPage() {
-  const [data, setData] = useState<ComissaoStats | null>(null)
+  const [data, setData] = useState<ComissaoData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
+  // Filter state
+  const [vendedorFilter, setVendedorFilter] = useState<string>('')
+  const [startDate, setStartDate] = useState<string>(() => {
+    // Default: first day of current month
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+  })
+  const [endDate, setEndDate] = useState<string>(() => {
+    // Default: today
+    return new Date().toISOString().split('T')[0]
+  })
+  const [fechadoOnly, setFechadoOnly] = useState(false)
+
+  // Data fetching with filters
   useEffect(() => {
-    fetch('/api/comissoes')
-      .then(r => {
-        if (!r.ok) throw new Error('Failed to fetch')
-        return r.json()
-      })
+    setLoading(true)
+    const params = new URLSearchParams()
+    if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
+    if (startDate) params.set('start_date', startDate)
+    if (endDate) params.set('end_date', endDate)
+    if (fechadoOnly) params.set('fechado_only', 'true')
+
+    fetch(`/api/comissoes?${params}`)
+      .then(r => r.ok ? r.json() : Promise.reject())
       .then(setData)
-      .catch((err) => {
-        console.error('Comissoes fetch error:', err)
-        setError(true)
-      })
+      .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [vendedorFilter, startDate, endDate, fechadoOnly])
+
+  // Quick period helpers
+  const setCurrentMonth = () => {
+    const now = new Date()
+    setStartDate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`)
+    setEndDate(new Date().toISOString().split('T')[0])
+  }
+
+  const setLastMonth = () => {
+    const now = new Date()
+    const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+    setStartDate(firstDayLastMonth.toISOString().split('T')[0])
+    setEndDate(lastDayLastMonth.toISOString().split('T')[0])
+  }
+
+  const setAllTime = () => {
+    setStartDate('')
+    setEndDate('')
+  }
 
   if (loading) {
     return (
       <div className="space-y-6 max-w-7xl">
         <div className="h-8 w-96 bg-gray-800 rounded animate-pulse" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[1,2,3,4,5].map(i => (
             <div key={i} className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5 h-28 animate-pulse" />
           ))}
         </div>
@@ -63,9 +126,9 @@ export default function ComissoesPage() {
   if (error || !data) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center max-w-2xl mx-auto space-y-4">
-        <p className="text-red-400 text-lg">Erro ao carregar comissões</p>
+        <p className="text-red-400 text-lg">Erro ao carregar comissoes</p>
         <p className="text-gray-500 text-sm">
-          Os campos de comissão podem não estar configurados no banco de dados.
+          Os campos de comissao podem nao estar configurados no banco de dados.
         </p>
         <a
           href="/api/setup-crm"
@@ -74,19 +137,12 @@ export default function ComissoesPage() {
         >
           Executar Setup (abre em nova aba)
         </a>
-        <p className="text-xs text-gray-600">
-          Após executar o setup, recarregue esta página.
-        </p>
       </div>
     )
   }
 
-  const STATUS_COLORS = {
-    'Não Contatado': 'text-gray-400',
-    'Retorno': 'text-yellow-400',
-    'Proposta': 'text-blue-400',
-    'Fechado': 'text-green-400',
-  }
+  const hasVendedoresList = data.vendedores_list && data.vendedores_list.length > 0
+  const showPerVendedor = data.per_vendedor && data.per_vendedor.length > 0
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -96,49 +152,174 @@ export default function ComissoesPage() {
           Comissionamento — Campanha Emendas 2026
         </h1>
         <p className="text-sm text-gray-400 mt-1">
-          Visão completa de comissões por lead e status
+          Visao completa de comissoes por lead e status
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Comissão Total</p>
-          <p className="text-3xl font-heading font-bold text-[#00f0ff] mt-2">
-            {formatCurrency(data.total_comissao)}
-          </p>
-        </div>
+      {/* Filter bar */}
+      <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-4">
+        <div className="flex flex-wrap items-end gap-4">
+          {/* Vendedor filter (gestor only) */}
+          {hasVendedoresList && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-gray-400 uppercase tracking-wider">Vendedor</label>
+              <select
+                value={vendedorFilter}
+                onChange={(e) => setVendedorFilter(e.target.value)}
+                className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:border-cyan-500 focus:outline-none min-w-[180px]"
+              >
+                <option value="">Todos os vendedores</option>
+                {data.vendedores_list.map(v => (
+                  <option key={v.id} value={v.id}>{v.nome}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
-        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Leads com Comissão</p>
-          <p className="text-3xl font-heading font-bold text-white mt-2">
-            {data.total_leads_com_comissao}
-          </p>
-        </div>
+          {/* Date range */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-gray-400 uppercase tracking-wider">De</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:border-cyan-500 focus:outline-none"
+            />
+          </div>
 
-        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Não Contatado</p>
-          <p className="text-2xl font-heading font-bold text-gray-400 mt-2">
-            {formatCurrency(data.comissao_por_status['Não Contatado'])}
-          </p>
-        </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-gray-400 uppercase tracking-wider">Ate</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:border-cyan-500 focus:outline-none"
+            />
+          </div>
 
-        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Em Retorno</p>
-          <p className="text-2xl font-heading font-bold text-yellow-400 mt-2">
-            {formatCurrency(data.comissao_por_status['Retorno'])}
-          </p>
-        </div>
+          {/* Quick period buttons */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-gray-400 uppercase tracking-wider">Periodo</label>
+            <div className="flex gap-2">
+              <button
+                onClick={setCurrentMonth}
+                className="px-3 py-2 bg-gray-800 border border-gray-700 hover:border-cyan-500 text-white text-sm rounded-lg transition-colors"
+              >
+                Este Mes
+              </button>
+              <button
+                onClick={setLastMonth}
+                className="px-3 py-2 bg-gray-800 border border-gray-700 hover:border-cyan-500 text-white text-sm rounded-lg transition-colors"
+              >
+                Ultimo Mes
+              </button>
+              <button
+                onClick={setAllTime}
+                className="px-3 py-2 bg-gray-800 border border-gray-700 hover:border-cyan-500 text-white text-sm rounded-lg transition-colors"
+              >
+                Todos
+              </button>
+            </div>
+          </div>
 
-        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Proposta/Fechado</p>
-          <p className="text-2xl font-heading font-bold text-green-400 mt-2">
-            {formatCurrency(data.comissao_por_status['Proposta'] + data.comissao_por_status['Fechado'])}
-          </p>
+          {/* Fechado only toggle */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-gray-400 uppercase tracking-wider">Filtro</label>
+            <label className="flex items-center gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg cursor-pointer hover:border-green-500 transition-colors">
+              <input
+                type="checkbox"
+                checked={fechadoOnly}
+                onChange={(e) => setFechadoOnly(e.target.checked)}
+                className="w-4 h-4 text-green-500 bg-gray-700 border-gray-600 rounded focus:ring-green-500"
+              />
+              <span className="text-sm text-white">Apenas Fechados</span>
+            </label>
+          </div>
         </div>
       </div>
 
-      {/* Leads Table */}
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+          <p className="text-xs text-gray-400 uppercase tracking-wider">Comissao Total</p>
+          <p className="text-3xl font-heading font-bold text-[#00f0ff] mt-2">
+            {formatCurrency(data.summary.total_comissao)}
+          </p>
+        </div>
+
+        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+          <p className="text-xs text-gray-400 uppercase tracking-wider">Comissao Confirmada</p>
+          <p className="text-3xl font-heading font-bold text-green-400 mt-2">
+            {formatCurrency(data.summary.comissao_fechado)}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">Apenas Fechados</p>
+        </div>
+
+        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+          <p className="text-xs text-gray-400 uppercase tracking-wider">Comissao Pipeline</p>
+          <p className="text-3xl font-heading font-bold text-amber-400 mt-2">
+            {formatCurrency(data.summary.comissao_pipeline)}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">Ainda nao fechado</p>
+        </div>
+
+        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+          <p className="text-xs text-gray-400 uppercase tracking-wider">Leads com Comissao</p>
+          <p className="text-3xl font-heading font-bold text-white mt-2">
+            {data.summary.total_leads}
+          </p>
+        </div>
+
+        {data.summary.total_valor_venda > 0 && (
+          <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Valor Total Vendas</p>
+            <p className="text-2xl font-heading font-bold text-cyan-400 mt-2">
+              {formatCurrency(data.summary.total_valor_venda)}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Per-vendedor breakdown (gestor only) */}
+      {showPerVendedor && (
+        <div>
+          <h2 className="text-lg font-heading font-semibold text-white mb-3">
+            Resumo por Vendedor
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {data.per_vendedor.map(v => (
+              <div
+                key={v.vendedor_id}
+                className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-4 hover:scale-[1.02] transition-transform"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-bold text-white">{v.vendedor_nome}</h3>
+                  <span className="text-xl font-heading font-bold text-cyan-400">{v.lead_count}</span>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-400">Comissao Total</span>
+                    <span className="text-base font-semibold text-[#00f0ff]">
+                      {formatCurrency(v.total_comissao)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-400">Comissao Fechado</span>
+                    <span className="text-sm font-semibold text-green-400">
+                      {formatCurrency(v.comissao_fechado)}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 text-right">
+                    {v.fechados_count} leads fechados
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Deals table */}
       <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-800">
           <h2 className="text-lg font-heading font-semibold text-white">
@@ -146,75 +327,97 @@ export default function ComissoesPage() {
           </h2>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-800 text-xs text-gray-400 uppercase tracking-wider">
-                <th className="text-left px-6 py-3">Lead</th>
-                <th className="text-left px-6 py-3">Vendedor</th>
-                <th className="text-left px-6 py-3">Tipo</th>
-                <th className="text-right px-6 py-3">Valor Emenda</th>
-                <th className="text-right px-6 py-3">%</th>
-                <th className="text-right px-6 py-3">Comissão</th>
-                <th className="text-center px-6 py-3">Status</th>
-                <th className="text-left px-6 py-3">Última Atualização</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800">
-              {data.leads.map((lead) => (
-                <tr key={lead.cnpj} className="hover:bg-gray-800/30 transition-colors">
-                  <td className="px-6 py-4">
-                    <a
-                      href={`/lead/${lead.cnpj}`}
-                      className="text-sm text-cyan-400 hover:text-cyan-300 font-medium"
-                    >
-                      {lead.nome}
-                    </a>
-                    <p className="text-xs text-gray-500 mt-1">{lead.cnpj}</p>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-white">{lead.vendedor_nome}</td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                      lead.tipo_vendedor === 'SDR'
-                        ? 'bg-blue-500/20 text-blue-400'
-                        : 'bg-purple-500/20 text-purple-400'
-                    }`}>
-                      {lead.tipo_vendedor}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-right text-white">
-                    {formatCurrency(lead.valor_emenda)}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-right text-gray-400">
-                    {lead.comissao_percentual?.toFixed(1) || '0'}%
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="text-base font-semibold text-[#00f0ff]">
-                      {formatCurrency(lead.comissao_valor || 0)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`text-xs font-medium ${STATUS_COLORS[lead.status_contato as keyof typeof STATUS_COLORS] || 'text-gray-400'}`}>
-                      {lead.status_contato}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-xs text-gray-500">
-                    {new Date(lead.updated_at).toLocaleDateString('pt-BR', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </td>
+        {data.leads.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-800 text-xs text-gray-400 uppercase tracking-wider">
+                  <th className="text-left px-6 py-3">Lead</th>
+                  <th className="text-left px-6 py-3">Vendedor</th>
+                  <th className="text-left px-6 py-3">Tipo</th>
+                  <th className="text-right px-6 py-3">Valor Emenda</th>
+                  <th className="text-right px-6 py-3">Valor Venda</th>
+                  <th className="text-right px-6 py-3">%</th>
+                  <th className="text-right px-6 py-3">Comissao</th>
+                  <th className="text-center px-6 py-3">Status</th>
+                  <th className="text-left px-6 py-3">Ultima Atualizacao</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {data.leads.length === 0 && (
+              </thead>
+              <tbody className="divide-y divide-gray-800">
+                {data.leads.map((lead) => (
+                  <tr key={lead.id} className="hover:bg-gray-800/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <a
+                        href={`/lead/${lead.cnpj}`}
+                        className="text-sm text-cyan-400 hover:text-cyan-300 font-medium"
+                      >
+                        {lead.nome}
+                      </a>
+                      <p className="text-xs text-gray-500 mt-1">{lead.cnpj}</p>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-white">{lead.vendedor_nome}</td>
+                    <td className="px-6 py-4">
+                      <span className={`text-xs font-semibold px-2 py-1 rounded ${
+                        lead.tipo_vendedor === 'SDR'
+                          ? 'bg-blue-500/20 text-blue-400'
+                          : 'bg-purple-500/20 text-purple-400'
+                      }`}>
+                        {lead.tipo_vendedor}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-right text-white">
+                      {formatCurrency(lead.valor_emenda)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-right text-white">
+                      {lead.valor_venda > 0 ? formatCurrency(lead.valor_venda) : '-'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-right text-gray-400">
+                      {lead.comissao_percentual?.toFixed(1) || '0'}%
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-base font-semibold text-[#00f0ff]">
+                          {formatCurrency(lead.comissao_valor || 0)}
+                        </span>
+                        {lead.comissao_locked && (
+                          <span className="text-xs text-green-500">(Confirmada)</span>
+                        )}
+                        {lead.has_override && (
+                          <span
+                            className="text-xs text-amber-500 cursor-help"
+                            title={lead.override_motivo || 'Override sem motivo'}
+                          >
+                            (Override)
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-2 py-0.5 rounded border text-xs font-medium ${
+                        STATUS_CONFIG[lead.status_contato]?.bg || 'bg-gray-500/20 border-gray-500/30'
+                      } ${
+                        STATUS_CONFIG[lead.status_contato]?.color || 'text-gray-400'
+                      }`}>
+                        {lead.status_contato}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-xs text-gray-500">
+                      {new Date(lead.updated_at).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
           <div className="px-6 py-12 text-center text-gray-500">
-            Nenhum lead com comissão encontrado
+            <p className="text-base">Nenhum lead com comissao encontrado no periodo selecionado</p>
+            <p className="text-sm mt-2">Ajuste os filtros acima para ver outros resultados</p>
           </div>
         )}
       </div>

@@ -48,6 +48,13 @@ interface DashboardData {
   global: GlobalStats
   vendedores: VendedorStats[]
   recent_activity: RecentActivity[]
+  commission_breakdown?: {
+    status_contato: string
+    count: number
+    total_comissao: number
+    total_venda: number
+    locked_count: number
+  }[]
 }
 
 // --- Status config ---
@@ -240,6 +247,41 @@ export default function CRMDashboard() {
           })}
         </div>
       </div>
+
+      {/* Commission breakdown for vendedor */}
+      {isVendedor && data.commission_breakdown && data.commission_breakdown.length > 0 && (
+        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+          <h2 className="text-lg font-heading font-semibold text-white mb-3">
+            Detalhamento Comissoes
+          </h2>
+          <div className="space-y-2">
+            {data.commission_breakdown.map(item => {
+              const cfg = STATUS_CONFIG[item.status_contato] || STATUS_CONFIG['Nao Contatado']
+              return (
+                <div key={item.status_contato} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded border text-xs font-medium ${cfg.bg} ${cfg.color}`}>
+                      {item.status_contato}
+                    </span>
+                    <span className="text-sm text-gray-400">{item.count} leads</span>
+                    {item.locked_count > 0 && (
+                      <span className="text-xs text-green-500">({item.locked_count} confirmadas)</span>
+                    )}
+                  </div>
+                  <span className="text-base font-semibold text-[#00f0ff]">
+                    {formatCurrency(item.total_comissao)}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <div className="mt-3 pt-3 border-t border-gray-700">
+            <a href="/comissoes" className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors">
+              Ver relatorio completo →
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* 4. Per-vendedor cards */}
       {vendedores.length > 0 && !isVendedor && (
