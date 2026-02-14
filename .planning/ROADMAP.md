@@ -321,13 +321,11 @@ Plans:
   4. Vendedor dashboard shows their leads, pipeline stats, and accumulated commissions
   5. Commission calculated over contract/emenda value
 
-**Status**: Planned
-
-**Plans:** 2 plans
+**Status**: Complete (2026-02-14)
 
 Plans:
-- [ ] 13-01-PLAN.md — Commission configuration backend (DB tables, config API, lock on Fechado)
-- [ ] 13-02-PLAN.md — Commission report with filters and enhanced vendedor dashboard
+- [x] 13-01-PLAN.md — Commission configuration backend (DB tables, config API, lock on Fechado)
+- [x] 13-02-PLAN.md — Commission report with filters and enhanced vendedor dashboard
 
 ## Progress
 
@@ -353,7 +351,7 @@ Plans:
 | 10. Auth & CRM Foundation | 3/3 | Complete | 2026-02-12 |
 | 11. Lead Management & Contact Tracking | 5/5 | Complete | 2026-02-12 |
 | 12. Pipeline Kanban | 0/TBD | Not started | - |
-| 13. Comissões | 0/2 | Planned | - |
+| 13. Comissões | 2/2 | Complete | 2026-02-14 |
 
 ---
 *Roadmap created: 2026-02-04*
