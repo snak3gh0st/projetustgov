@@ -254,12 +254,12 @@ Plans:
   7. Existing pages (Pipeline, Leads, Lead Profile) work behind auth
   8. Login page with Sigma branding matches existing dark theme
 
-**Status**: Planned (3 plans)
+**Status**: Complete (2026-02-12)
 
 Plans:
-- [ ] 10-01-PLAN.md — Install deps, CRM database tables, Auth.js config with credentials + JWT
-- [ ] 10-02-PLAN.md — Login page with Sigma branding, middleware route protection
-- [ ] 10-03-PLAN.md — DAL with role-based filtering, protect API routes, gestor vendedor management
+- [x] 10-01-PLAN.md — Install deps, CRM database tables, Auth.js config with credentials + JWT
+- [x] 10-02-PLAN.md — Login page with Sigma branding, middleware route protection
+- [x] 10-03-PLAN.md — DAL with role-based filtering, protect API routes, gestor vendedor management
 
 ### Phase 11: Lead Management & Contact Tracking
 **Goal**: Enable gestor to assign leads to vendedores, track contact history per lead, and manage contact status. Vendedores can register notes, update contact info, and see timeline of interactions.
@@ -321,10 +321,13 @@ Plans:
   4. Vendedor dashboard shows their leads, pipeline stats, and accumulated commissions
   5. Commission calculated over contract/emenda value
 
-**Status**: Not started
+**Status**: Planned
+
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (plan with `/gsd:plan-phase 13`)
+- [ ] 13-01-PLAN.md — Commission configuration backend (DB tables, config API, lock on Fechado)
+- [ ] 13-02-PLAN.md — Commission report with filters and enhanced vendedor dashboard
 
 ## Progress
 
@@ -347,10 +350,10 @@ Plans:
 | 8. Lead Profile & Enhanced Navigation | 5/5 | Complete | 2026-02-10 |
 | 9. Polish & Production Readiness | - | Superseded | - |
 | **Milestone v3.0** | | | |
-| 10. Auth & CRM Foundation | 0/3 | Planned | - |
+| 10. Auth & CRM Foundation | 3/3 | Complete | 2026-02-12 |
 | 11. Lead Management & Contact Tracking | 5/5 | Complete | 2026-02-12 |
 | 12. Pipeline Kanban | 0/TBD | Not started | - |
-| 13. Comissões | 0/TBD | Not started | - |
+| 13. Comissões | 0/2 | Planned | - |
 
 ---
 *Roadmap created: 2026-02-04*
