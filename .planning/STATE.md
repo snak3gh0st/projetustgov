@@ -8,14 +8,14 @@
 
 **Milestone Goal:** Transformar dashboard de leads em CRM com auth, pipeline kanban, tracking de contato, e comissões.
 
-**Current Focus:** Phase 11 - Lead Management & Contact Tracking (All 5 plans complete)
+**Current Focus:** Phase 13 - Comissões (Plan 01 complete)
 
 ## Current Position
 
-**Phase:** 11 of 13 (Milestone v3.0)
-**Plan:** Complete (Phase 11)
-**Status:** Phase 11 Complete
-**Progress:** [████████░░] 85%
+**Phase:** 13 of 13 (Milestone v3.0)
+**Plan:** 1 of 2 (Phase 13)
+**Status:** Executing Phase 13
+**Progress:** [█████████░] 85%
 
 **Milestone v1.0 Status:** Complete (Phases 1, 2, 4, 5 delivered)
 **Milestone v2.0 Status:** Superseded by Next.js migration (Phases 6-8 delivered in Streamlit, Phase 9 N/A)
@@ -51,6 +51,10 @@
 | Contact notes sorted DESC by created_at | 11-04 | Most recent interactions are most relevant for sales context | 2026-02-12 |
 | Inline edit pattern for contact fields | 11-05 | Cleaner UX than always-visible inputs, maintains read-only appearance | 2026-02-12 |
 | Optimistic updates in slide-over | 11-05 | Faster perceived performance, acceptable for MVP without parent refresh | 2026-02-12 |
+| Database-driven commission config | 13-01 | Enables gestor to adjust rates without code deployment, supports future per-vendedor rates | 2026-02-14 |
+| Separate commission_overrides table | 13-01 | Preserves audit trail, tracks approval + motivo for each override | 2026-02-14 |
+| Commission locking on Fechado status | 13-01 | Prevents retroactive rate changes affecting closed deals, allows re-opening leads | 2026-02-14 |
+| PostgreSQL NUMERIC for commission math | 13-01 | Avoids floating-point precision errors, keeps calculation logic close to data | 2026-02-14 |
 
 ### Technical Context (Next.js Stack)
 
@@ -67,7 +71,7 @@
 - [x] Plan Phase 10: Auth & CRM Foundation
 - [x] Execute Phase 10 Plan 01: Install dependencies, create CRM tables, configure Auth.js
 - [x] Execute Phase 10 Plan 02: Login UI and middleware
-- [ ] Execute Phase 10 Plan 03: Vendedor management UI
+- [x] Execute Phase 10 Plan 03: Vendedor management UI (already done via quick tasks)
 - [x] Plan Phase 11: Lead Management & Contact Tracking
 - [x] Execute Phase 11 Plan 01: Schema & backend for lead management
 - [x] Execute Phase 11 Plan 02: Lead assignment with duplicate detection
@@ -75,7 +79,8 @@
 - [x] Execute Phase 11 Plan 04: Contact notes timeline & visualizador role
 - [x] Execute Phase 11 Plan 05: Contact edit UI gap closure
 - [ ] Plan Phase 12: Pipeline Kanban
-- [ ] Plan Phase 13: Comissões
+- [x] Plan Phase 13: Comissões
+- [x] Execute Phase 13 Plan 01: Commission configuration backend
 
 ### Known Blockers
 
@@ -97,29 +102,31 @@
 ## Session Continuity
 
 ### Last Session Summary
-**Date:** 2026-02-13
+**Date:** 2026-02-14
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Completed quick task 9: Fix critical CRM bugs and UX improvements
+**Activity:** Completed Phase 13 Plan 01: Commission configuration backend
 
 **Completed:**
-- Fixed lead detail page runtime error (updateContact function order)
-- Leads table shows "Reatribuir" for assigned leads, "Atribuir" for unassigned
-- Max priority leads have red row highlight instead of small dot
-- Added hover tooltips to truncated columns for readability
-- Detalhes field always visible/editable in slide-over when canModify=true
-- Added valor_venda field and prompt when status changes to "Fechado"
-- Separated commission and closing fee display in vendedor dashboard
-- Added closing fee annotation (R$50/deal) below pipeline "Fechado" count
+- Created commission_config and commission_overrides database tables
+- Seeded default commission config: SDR 9%+R$50, Closer 12%+R$0
+- Built /api/commission-config CRUD endpoint (gestor-only)
+- GET returns active configs and recent overrides
+- POST updates default rates and recalculates non-locked leads
+- PUT creates per-lead overrides with audit trail (motivo + approved_by)
+- Updated lead PATCH to lock commission when status becomes Fechado
+- Ensure vendedor_id is set when marking Fechado (COM-01 requirement)
+- All commission math happens in PostgreSQL using NUMERIC precision
+- Commission unlocks when status changes away from Fechado
 
-**Quick Task 9 Complete:**
-- Fixed critical UX bugs blocking sales team workflow
-- Improved table readability and assignment clarity
-- Implemented sale value tracking for closed deals
-- Separated commission display for transparency (percentage vs flat fee)
+**Phase 13 Plan 01 Complete:**
+- Commission configuration is now database-driven (not hardcoded)
+- Gestor can change rates without code deployment
+- Closed deals (Fechado) protected from retroactive rate changes
+- Per-lead overrides with documented reasons and approval tracking
 
 **Next Actions:**
+- Execute Phase 13 Plan 02 - Commission tracking and reporting UI
 - Plan Phase 12 - Pipeline Kanban board
-- Plan Phase 13 - Commission tracking and reporting
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
