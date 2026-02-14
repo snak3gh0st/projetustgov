@@ -167,6 +167,66 @@ async function runSetup() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_contact_notes_lead_cnpj ON contact_notes(lead_cnpj);`)
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_contact_notes_vendedor ON contact_notes(vendedor_id);`)
 
+    // 6b. Create commission_config table (Phase 13 Plan 01)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS commission_config (
+        id SERIAL PRIMARY KEY,
+        tipo_vendedor VARCHAR(20) NOT NULL CHECK (tipo_vendedor IN ('SDR', 'Closer')),
+        percentual_default NUMERIC(5,2) NOT NULL,
+        taxa_fixa NUMERIC(15,2) NOT NULL DEFAULT 0,
+        vendedor_id UUID REFERENCES users(id),
+        active BOOLEAN DEFAULT true,
+        created_by UUID REFERENCES users(id),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `).catch(() => {})
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_cc_tipo_vendedor ON commission_config(tipo_vendedor);`).catch(() => {})
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_cc_active ON commission_config(active);`).catch(() => {})
+
+    // 6c. Create commission_overrides table (Phase 13 Plan 01)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS commission_overrides (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER NOT NULL REFERENCES vendedor_projetos(id),
+        percentual_override NUMERIC(5,2) NOT NULL,
+        taxa_fixa_override NUMERIC(15,2),
+        motivo TEXT NOT NULL,
+        approved_by UUID NOT NULL REFERENCES users(id),
+        active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `).catch(() => {})
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_co_lead_id ON commission_overrides(lead_id);`).catch(() => {})
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_co_active ON commission_overrides(active);`).catch(() => {})
+
+    // 6d. Seed default commission config (SDR: 9%+R$50, Closer: 12%+R$0)
+    await pool.query(`
+      INSERT INTO commission_config (tipo_vendedor, percentual_default, taxa_fixa, active)
+      SELECT 'SDR', 9.00, 50.00, true
+      WHERE NOT EXISTS (SELECT 1 FROM commission_config WHERE tipo_vendedor = 'SDR' AND active = true);
+    `).catch(() => {})
+    await pool.query(`
+      INSERT INTO commission_config (tipo_vendedor, percentual_default, taxa_fixa, active)
+      SELECT 'Closer', 12.00, 0.00, true
+      WHERE NOT EXISTS (SELECT 1 FROM commission_config WHERE tipo_vendedor = 'Closer' AND active = true);
+    `).catch(() => {})
+
+    // 6e. Add comissao_locked column to vendedor_projetos
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='comissao_locked') THEN
+          ALTER TABLE vendedor_projetos ADD COLUMN comissao_locked BOOLEAN DEFAULT false;
+        END IF;
+      END $$;
+    `).catch(() => {})
+
+    // 6f. Lock commission for existing Fechado leads
+    await pool.query(`
+      UPDATE vendedor_projetos SET comissao_locked = true WHERE status_contato = 'Fechado' AND comissao_locked IS NOT true;
+    `).catch(() => {})
+
     // 7. Status migration already handled in step 3 above (Quick Task 4)
 
     // 8. Enrich existing leads with telefone/email from proponentes table
