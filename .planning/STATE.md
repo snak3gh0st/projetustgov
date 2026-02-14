@@ -8,14 +8,14 @@
 
 **Milestone Goal:** Transformar dashboard de leads em CRM com auth, pipeline kanban, tracking de contato, e comissões.
 
-**Current Focus:** Phase 13 - Comissões (Plan 01 complete)
+**Current Focus:** Phase 13 - Comissões (Plans 01-02 complete)
 
 ## Current Position
 
 **Phase:** 13 of 13 (Milestone v3.0)
-**Plan:** 1 of 2 (Phase 13)
-**Status:** Executing Phase 13
-**Progress:** [█████████░] 85%
+**Plan:** 2 of 2 (Phase 13)
+**Status:** Phase 13 Complete
+**Progress:** [█████████░] 87%
 
 **Milestone v1.0 Status:** Complete (Phases 1, 2, 4, 5 delivered)
 **Milestone v2.0 Status:** Superseded by Next.js migration (Phases 6-8 delivered in Streamlit, Phase 9 N/A)
@@ -55,6 +55,9 @@
 | Separate commission_overrides table | 13-01 | Preserves audit trail, tracks approval + motivo for each override | 2026-02-14 |
 | Commission locking on Fechado status | 13-01 | Prevents retroactive rate changes affecting closed deals, allows re-opening leads | 2026-02-14 |
 | PostgreSQL NUMERIC for commission math | 13-01 | Avoids floating-point precision errors, keeps calculation logic close to data | 2026-02-14 |
+| Date filter defaults to current month | 13-02 | Most relevant view for active commission tracking, prevents data overload | 2026-02-14 |
+| Vendedor commission breakdown in dashboard | 13-02 | Vendedores need self-service visibility into earnings by status | 2026-02-14 |
+| Separate confirmed vs pipeline commission cards | 13-02 | Clear distinction between guaranteed vs potential commissions for financial planning | 2026-02-14 |
 
 ### Technical Context (Next.js Stack)
 
@@ -81,6 +84,7 @@
 - [ ] Plan Phase 12: Pipeline Kanban
 - [x] Plan Phase 13: Comissões
 - [x] Execute Phase 13 Plan 01: Commission configuration backend
+- [x] Execute Phase 13 Plan 02: Commission reporting UI with filters and dashboard breakdown
 
 ### Known Blockers
 
@@ -104,28 +108,30 @@
 ### Last Session Summary
 **Date:** 2026-02-14
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Completed Phase 13 Plan 01: Commission configuration backend
+**Activity:** Completed Phase 13 Plan 02: Commission reporting UI with filters and dashboard breakdown
 
 **Completed:**
-- Created commission_config and commission_overrides database tables
-- Seeded default commission config: SDR 9%+R$50, Closer 12%+R$0
-- Built /api/commission-config CRUD endpoint (gestor-only)
-- GET returns active configs and recent overrides
-- POST updates default rates and recalculates non-locked leads
-- PUT creates per-lead overrides with audit trail (motivo + approved_by)
-- Updated lead PATCH to lock commission when status becomes Fechado
-- Ensure vendedor_id is set when marking Fechado (COM-01 requirement)
-- All commission math happens in PostgreSQL using NUMERIC precision
-- Commission unlocks when status changes away from Fechado
+- Enhanced /api/comissoes with date/vendedor/fechado-only filtering
+- Added per-vendedor commission aggregation for gestor reports
+- Added commission_breakdown to /api/dashboard-crm (by status)
+- Rewrote /comissoes page with comprehensive filter UI
+- Date range inputs defaulting to current month
+- Quick period buttons (Este Mes, Ultimo Mes, Todos)
+- Vendedor dropdown (gestor only, vendedor auto-scoped)
+- Summary cards: total, confirmada, pipeline, leads count, valor vendas
+- Per-vendedor breakdown cards for gestor
+- Enhanced deals table with Valor Venda, locked indicators, override tooltips
+- Added commission breakdown section to vendedor dashboard
+- Shows commission by status with locked count
+- Link to full report from dashboard widget
 
-**Phase 13 Plan 01 Complete:**
-- Commission configuration is now database-driven (not hardcoded)
-- Gestor can change rates without code deployment
-- Closed deals (Fechado) protected from retroactive rate changes
-- Per-lead overrides with documented reasons and approval tracking
+**Phase 13 Complete:**
+- COM-03: Commission report filterable by vendedor and date period ✓
+- COM-04: Vendedor dashboard shows accumulated commissions with breakdown ✓
+- Gestor has full visibility across all vendedores with filtering
+- Vendedor has self-service commission visibility
 
 **Next Actions:**
-- Execute Phase 13 Plan 02 - Commission tracking and reporting UI
 - Plan Phase 12 - Pipeline Kanban board
 
 ---
