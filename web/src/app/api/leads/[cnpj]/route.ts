@@ -67,6 +67,65 @@ export async function PATCH(
       WHERE id = $${paramIndex} ${vendedorCondition}
     `, values)
 
+    // Commission lock/unlock logic (COM-01: vendedor vinculado ao lead quando marca Fechado)
+    if (body.status_contato === 'Fechado') {
+      // Step 1: Ensure vendedor_id is set. If NULL, assign current user as vendedor.
+      // This fulfills COM-01 requirement that vendedor is linked to lead when marking Fechado.
+      await query(`
+        UPDATE vendedor_projetos
+        SET vendedor_id = $2, updated_at = NOW()
+        WHERE id = $1 AND vendedor_id IS NULL
+      `, [projectId, session.userId])
+
+      // Step 2: Lock and calculate commission using config
+      await query(`
+        WITH lead_info AS (
+          SELECT id, tipo_vendedor, valor_emenda, comissao_locked
+          FROM vendedor_projetos WHERE id = $1
+        ),
+        override_check AS (
+          SELECT percentual_override, taxa_fixa_override
+          FROM commission_overrides
+          WHERE lead_id = $1 AND active = true
+          ORDER BY created_at DESC LIMIT 1
+        ),
+        config_check AS (
+          SELECT percentual_default, taxa_fixa
+          FROM commission_config
+          WHERE tipo_vendedor = (SELECT tipo_vendedor FROM lead_info)
+            AND vendedor_id IS NULL AND active = true
+          ORDER BY created_at DESC LIMIT 1
+        )
+        UPDATE vendedor_projetos
+        SET comissao_percentual = COALESCE(
+              (SELECT percentual_override FROM override_check),
+              (SELECT percentual_default FROM config_check),
+              CASE WHEN tipo_vendedor = 'SDR' THEN 9.00 ELSE 12.00 END
+            ),
+            comissao_valor = (
+              COALESCE(valor_emenda, 0) * (
+                COALESCE(
+                  (SELECT percentual_override FROM override_check),
+                  (SELECT percentual_default FROM config_check),
+                  CASE WHEN tipo_vendedor = 'SDR' THEN 9.00 ELSE 12.00 END
+                ) / 100
+              )
+            ) + COALESCE(
+              (SELECT taxa_fixa_override FROM override_check),
+              (SELECT taxa_fixa FROM config_check),
+              CASE WHEN tipo_vendedor = 'SDR' THEN 50.00 ELSE 0.00 END
+            ),
+            comissao_locked = true,
+            updated_at = NOW()
+        WHERE id = $1 AND (comissao_locked IS NOT true)
+      `, [projectId])
+    } else if (body.status_contato !== undefined && body.status_contato !== 'Fechado') {
+      // Unlock commission if status changes away from Fechado
+      await query(`
+        UPDATE vendedor_projetos SET comissao_locked = false WHERE id = $1 AND comissao_locked = true
+      `, [projectId])
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Update project error:', error)
