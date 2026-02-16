@@ -25,10 +25,13 @@ export default function LoginPage() {
       <div className="bg-sigma-navy-light border border-sigma-neon/20 rounded-2xl p-8 backdrop-blur-sm">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="font-heading text-3xl font-bold text-sigma-neon tracking-tight">
-            PROJETUS
+          <h1 className="font-heading text-4xl font-bold tracking-tight">
+            <span className="bg-gradient-to-r from-[#FD225C] via-[#7A4BAC] to-[#0072F7] bg-clip-text text-transparent">projete</span>
           </h1>
           <p className="text-gray-400 text-sm mt-1">CRM de Vendas</p>
+          <p className="text-[11px] text-[#0072F7] mt-2">
+            powered by <span className="font-semibold">SigmaIntel</span>
+          </p>
         </div>
 
         {/* Form */}

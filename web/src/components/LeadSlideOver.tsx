@@ -155,7 +155,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                       href={emenda.link_externo}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-cyan-400 hover:text-cyan-300"
+                      className="text-xs text-blue-400 hover:text-blue-300"
                       onClick={(e) => e.stopPropagation()}
                     >
                       TransferGov &rarr;
@@ -175,7 +175,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                   href={lead.link_externo}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full text-center px-4 py-2.5 rounded-xl text-sm font-medium text-cyan-400 border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 transition-colors"
+                  className="block w-full text-center px-4 py-2.5 rounded-xl text-sm font-medium text-blue-400 border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
                 >
                   Abrir no TransferGov &rarr;
                 </a>

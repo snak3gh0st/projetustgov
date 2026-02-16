@@ -165,7 +165,7 @@ export default function ComissoesPage() {
               <select
                 value={vendedorFilter}
                 onChange={(e) => setVendedorFilter(e.target.value)}
-                className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:border-cyan-500 focus:outline-none min-w-[180px]"
+                className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none min-w-[180px]"
               >
                 <option value="">Todos os vendedores</option>
                 {data.vendedores_list.map(v => (
@@ -182,7 +182,7 @@ export default function ComissoesPage() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:border-cyan-500 focus:outline-none"
+              className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
             />
           </div>
 
@@ -192,7 +192,7 @@ export default function ComissoesPage() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:border-cyan-500 focus:outline-none"
+              className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
             />
           </div>
 
@@ -202,19 +202,19 @@ export default function ComissoesPage() {
             <div className="flex gap-2">
               <button
                 onClick={setCurrentMonth}
-                className="px-3 py-2 bg-gray-800 border border-gray-700 hover:border-cyan-500 text-white text-sm rounded-lg transition-colors"
+                className="px-3 py-2 bg-gray-800 border border-gray-700 hover:border-blue-500 text-white text-sm rounded-lg transition-colors"
               >
                 Este Mes
               </button>
               <button
                 onClick={setLastMonth}
-                className="px-3 py-2 bg-gray-800 border border-gray-700 hover:border-cyan-500 text-white text-sm rounded-lg transition-colors"
+                className="px-3 py-2 bg-gray-800 border border-gray-700 hover:border-blue-500 text-white text-sm rounded-lg transition-colors"
               >
                 Ultimo Mes
               </button>
               <button
                 onClick={setAllTime}
-                className="px-3 py-2 bg-gray-800 border border-gray-700 hover:border-cyan-500 text-white text-sm rounded-lg transition-colors"
+                className="px-3 py-2 bg-gray-800 border border-gray-700 hover:border-blue-500 text-white text-sm rounded-lg transition-colors"
               >
                 Todos
               </button>
@@ -271,7 +271,7 @@ export default function ComissoesPage() {
               >
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-bold text-white">{v.vendedor_nome}</h3>
-                  <span className="text-xl font-heading font-bold text-cyan-400">{v.lead_count}</span>
+                  <span className="text-xl font-heading font-bold text-blue-400">{v.lead_count}</span>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
@@ -325,7 +325,7 @@ export default function ComissoesPage() {
                     <td className="px-6 py-4">
                       <a
                         href={`/lead/${lead.cnpj}`}
-                        className="text-sm text-cyan-400 hover:text-cyan-300 font-medium"
+                        className="text-sm text-blue-400 hover:text-blue-300 font-medium"
                       >
                         {lead.nome}
                       </a>

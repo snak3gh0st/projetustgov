@@ -35,11 +35,11 @@ export default function Sidebar({ user }: SidebarProps) {
   return (
     <aside className="fixed left-0 top-0 h-screen w-56 bg-sigma-navy-light border-r border-white/5 flex flex-col z-50">
       <div className="p-5 border-b border-white/5">
-        <h1 className="font-heading text-xl font-bold text-sigma-neon tracking-tight">
-          PROJETUS
+        <h1 className="font-heading text-xl font-bold tracking-tight">
+          <span className="bg-gradient-to-r from-[#FD225C] via-[#7A4BAC] to-[#0072F7] bg-clip-text text-transparent">projete</span>
         </h1>
-        <p className="text-[10px] text-gray-500 mt-0.5 tracking-widest uppercase">
-          Sigma CRM
+        <p className="text-[10px] text-[#0072F7] mt-0.5 tracking-widest">
+          powered by <span className="font-semibold">SigmaIntel</span>
         </p>
       </div>
 
@@ -74,7 +74,7 @@ export default function Sidebar({ user }: SidebarProps) {
           </p>
           <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${
             user.role === 'gestor'
-              ? 'bg-cyan-500/20 text-cyan-400'
+              ? 'bg-blue-500/20 text-blue-400'
               : user.role === 'visualizador'
               ? 'bg-purple-500/20 text-purple-400'
               : 'bg-green-500/20 text-green-400'

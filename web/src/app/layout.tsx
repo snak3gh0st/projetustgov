@@ -4,8 +4,8 @@ import Sidebar from '@/components/Sidebar'
 import { auth } from '@/lib/auth'
 
 export const metadata: Metadata = {
-  title: 'Projetus CRM | Sigma',
-  description: 'Lead CRM for government instrument management',
+  title: 'Projete CRM',
+  description: 'CRM de Vendas para gestão de instrumentos governamentais',
 }
 
 export default async function RootLayout({

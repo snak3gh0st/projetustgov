@@ -373,7 +373,7 @@ export default function LeadDetailPage() {
                   className="text-sm text-white bg-sigma-navy-light border border-white/20 rounded-md px-2 py-1 focus:outline-none focus:border-sigma-neon/50"
                 />
               ) : first.email ? (
-                <a href={`mailto:${first.email}`} className="text-sm text-cyan-400 hover:text-cyan-300 block">
+                <a href={`mailto:${first.email}`} className="text-sm text-blue-400 hover:text-blue-300 block">
                   {first.email}
                 </a>
               ) : (

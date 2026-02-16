@@ -112,8 +112,8 @@ export default function MonitoramentoPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        <StatCard label="Total Monitorados" value={stats.total_monitorados.toLocaleString('pt-BR')} icon="📊" accent="cyan" />
-        <StatCard label="Total em Saldo" value={formatCompactCurrency(stats.total_saldo)} icon="💰" accent="cyan" />
+        <StatCard label="Total Monitorados" value={stats.total_monitorados.toLocaleString('pt-BR')} icon="📊" accent="blue" />
+        <StatCard label="Total em Saldo" value={formatCompactCurrency(stats.total_saldo)} icon="💰" accent="blue" />
         <StatCard label="Alta Prioridade" value={String(stats.alta_prioridade)} icon="🔴" accent="red" />
         <StatCard label="Média Prioridade" value={String(stats.media_prioridade)} icon="🟡" accent="amber" />
         <StatCard label="Baixa Prioridade" value={String(stats.baixa_prioridade)} icon="🟢" accent="emerald" />
@@ -130,7 +130,7 @@ export default function MonitoramentoPage() {
                 onClick={() => setFilters(f => ({ ...f, prioridade: btn.value }))}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   filters.prioridade === btn.value
-                    ? 'bg-cyan-500 text-gray-950'
+                    ? 'bg-blue-500 text-gray-950'
                     : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
               >
@@ -148,7 +148,7 @@ export default function MonitoramentoPage() {
                 type="number"
                 value={filters.saldo_min}
                 onChange={e => handleSaldoChange(Number(e.target.value) || 0)}
-                className="w-32 bg-gray-800 border border-gray-700 rounded-lg pl-8 pr-2 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500/50"
+                className="w-32 bg-gray-800 border border-gray-700 rounded-lg pl-8 pr-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/50"
               />
             </div>
           </div>
@@ -157,7 +157,7 @@ export default function MonitoramentoPage() {
           <select
             value={filters.uf}
             onChange={e => setFilters(f => ({ ...f, uf: e.target.value }))}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-cyan-500/50"
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500/50"
           >
             <option value="">Todos os Estados</option>
             {ufs.map(uf => (
@@ -171,7 +171,7 @@ export default function MonitoramentoPage() {
             placeholder="Buscar por nome ou CNPJ"
             value={filters.search}
             onChange={e => handleSearchChange(e.target.value)}
-            className="flex-1 min-w-[180px] bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50"
+            className="flex-1 min-w-[180px] bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50"
           />
         </div>
       </div>
@@ -216,7 +216,7 @@ export default function MonitoramentoPage() {
                       {c.nome ? (c.nome.length > 50 ? c.nome.slice(0, 50) + '...' : c.nome) : '-'}
                     </td>
                     <td className="px-3 py-2 text-gray-300">{c.uf || '-'}</td>
-                    <td className="px-3 py-2 text-cyan-400 font-medium">{formatCompactCurrency(c.saldo_conta)}</td>
+                    <td className="px-3 py-2 text-blue-400 font-medium">{formatCompactCurrency(c.saldo_conta)}</td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
@@ -236,7 +236,7 @@ export default function MonitoramentoPage() {
                     <td className="px-3 py-2">
                       <button
                         onClick={() => setSelectedConvenio(c)}
-                        className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                        className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
                       >
                         Ver Detalhes
                       </button>
@@ -263,8 +263,8 @@ export default function MonitoramentoPage() {
 }
 
 function StatCard({ label, value, icon, accent }: { label: string; value: string; icon: string; accent: string }) {
-  const borderColor = accent === 'cyan' ? 'border-cyan-500/20' : accent === 'red' ? 'border-red-500/20' : accent === 'amber' ? 'border-amber-500/20' : 'border-emerald-500/20'
-  const valueColor = accent === 'cyan' ? 'text-cyan-400' : accent === 'red' ? 'text-red-400' : accent === 'amber' ? 'text-amber-400' : 'text-emerald-400'
+  const borderColor = accent === 'blue' ? 'border-blue-500/20' : accent === 'red' ? 'border-red-500/20' : accent === 'amber' ? 'border-amber-500/20' : 'border-emerald-500/20'
+  const valueColor = accent === 'blue' ? 'text-blue-400' : accent === 'red' ? 'text-red-400' : accent === 'amber' ? 'text-amber-400' : 'text-emerald-400'
 
   return (
     <div className={`bg-gray-900/50 backdrop-blur-sm border border-gray-800 ${borderColor} rounded-lg p-4`}>
@@ -336,7 +336,7 @@ function DetailModal({ convenio, onClose }: { convenio: ConvenioMonitoramento; o
             <InfoRow label="Valor Liberado" value={formatCurrency(convenio.valor_liberado)} />
             <div className="flex items-center justify-between py-1">
               <span className="text-xs text-gray-400">Saldo em Conta</span>
-              <span className="text-sm font-bold text-cyan-400">{formatCurrency(convenio.saldo_conta)}</span>
+              <span className="text-sm font-bold text-blue-400">{formatCurrency(convenio.saldo_conta)}</span>
             </div>
           </Section>
 
@@ -374,7 +374,7 @@ function DetailModal({ convenio, onClose }: { convenio: ConvenioMonitoramento; o
                 href={convenio.link_externo}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-colors"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
               >
                 Ver no TransfereGov ↗
               </a>

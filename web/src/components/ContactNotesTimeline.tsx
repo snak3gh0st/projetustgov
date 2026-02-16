@@ -10,7 +10,7 @@ interface ContactNotesTimelineProps {
 
 const TIPO_CONFIG = {
   ligacao: { label: 'Ligação', icon: '📞', color: 'text-blue-400 bg-blue-500/20 border-blue-500/30' },
-  email: { label: 'Email', icon: '📧', color: 'text-cyan-400 bg-cyan-500/20 border-cyan-500/30' },
+  email: { label: 'Email', icon: '📧', color: 'text-blue-400 bg-blue-500/20 border-blue-500/30' },
   whatsapp: { label: 'WhatsApp', icon: '💬', color: 'text-green-400 bg-green-500/20 border-green-500/30' },
   reuniao: { label: 'Reunião', icon: '🤝', color: 'text-purple-400 bg-purple-500/20 border-purple-500/30' },
   outro: { label: 'Outro', icon: '📝', color: 'text-gray-400 bg-gray-500/20 border-gray-500/30' },

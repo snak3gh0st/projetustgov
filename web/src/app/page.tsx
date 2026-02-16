@@ -154,7 +154,7 @@ export default function CRMDashboard() {
         {!isVendedor && (
           <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
             <p className="text-xs text-gray-400 uppercase tracking-wider">Atribuidos</p>
-            <p className="text-3xl font-heading font-bold text-cyan-400 mt-2">
+            <p className="text-3xl font-heading font-bold text-blue-400 mt-2">
               {g.total_assigned.toLocaleString('pt-BR')}
             </p>
             <p className="text-xs text-gray-500 mt-1">
@@ -175,7 +175,7 @@ export default function CRMDashboard() {
         )}
         <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
           <p className="text-xs text-gray-400 uppercase tracking-wider">Valor em Emendas</p>
-          <p className="text-3xl font-heading font-bold text-cyan-400 mt-2">
+          <p className="text-3xl font-heading font-bold text-blue-400 mt-2">
             {formatCompactCurrency(g.total_valor_emenda)}
           </p>
           <p className="text-xs text-gray-500 mt-1">{formatCurrency(g.total_valor_emenda)}</p>
@@ -276,7 +276,7 @@ export default function CRMDashboard() {
             })}
           </div>
           <div className="mt-3 pt-3 border-t border-gray-700">
-            <a href="/comissoes" className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors">
+            <a href="/comissoes" className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
               Ver relatorio completo →
             </a>
           </div>
@@ -297,7 +297,7 @@ export default function CRMDashboard() {
               >
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xl font-bold text-white">{v.vendedor_nome}</h3>
-                  <span className="text-2xl font-heading font-bold text-cyan-400">{v.total_leads}</span>
+                  <span className="text-2xl font-heading font-bold text-blue-400">{v.total_leads}</span>
                 </div>
 
                 {/* Status badges */}
@@ -337,7 +337,7 @@ export default function CRMDashboard() {
                 <div className="space-y-2 pt-3 border-t border-gray-800">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-400 uppercase tracking-wider">Valor Emendas</span>
-                    <span className="text-sm font-semibold text-cyan-400">
+                    <span className="text-sm font-semibold text-blue-400">
                       {formatCompactCurrency(v.valor_total_emenda)}
                     </span>
                   </div>

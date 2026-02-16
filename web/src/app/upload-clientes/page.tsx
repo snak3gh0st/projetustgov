@@ -81,7 +81,7 @@ export default function UploadClientesPage() {
   if (isGestor === null) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
       </div>
     )
   }
@@ -92,7 +92,7 @@ export default function UploadClientesPage() {
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center max-w-md">
           <h2 className="text-xl font-bold text-white mb-2">Acesso restrito</h2>
           <p className="text-gray-400 text-sm mb-4">Apenas gestores podem importar clientes existentes.</p>
-          <Link href="/" className="text-cyan-400 hover:text-cyan-300 text-sm">Voltar ao dashboard</Link>
+          <Link href="/" className="text-blue-400 hover:text-blue-300 text-sm">Voltar ao dashboard</Link>
         </div>
       </div>
     )
@@ -136,7 +136,7 @@ export default function UploadClientesPage() {
             onClick={() => inputRef.current?.click()}
             className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
               dragActive
-                ? 'border-cyan-500 bg-cyan-500/5'
+                ? 'border-blue-500 bg-blue-500/5'
                 : 'border-white/20 hover:border-white/40'
             }`}
           >
@@ -166,7 +166,7 @@ export default function UploadClientesPage() {
                 <button
                   onClick={handleImport}
                   disabled={uploading}
-                  className="bg-cyan-500 hover:bg-cyan-400 text-gray-950 font-semibold rounded-xl px-6 py-3 text-sm disabled:opacity-50 transition-colors"
+                  className="bg-blue-500 hover:bg-blue-400 text-gray-950 font-semibold rounded-xl px-6 py-3 text-sm disabled:opacity-50 transition-colors"
                 >
                   {uploading ? 'Importando...' : 'Importar'}
                 </button>
@@ -185,8 +185,8 @@ export default function UploadClientesPage() {
           {/* Results card */}
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center">
-                <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
@@ -202,9 +202,9 @@ export default function UploadClientesPage() {
                 <p className="text-xs text-gray-500">Total Linhas</p>
                 <p className="text-2xl font-bold text-white">{results.total.toLocaleString('pt-BR')}</p>
               </div>
-              <div className="bg-white/5 rounded-xl p-4 border border-cyan-500/20">
+              <div className="bg-white/5 rounded-xl p-4 border border-blue-500/20">
                 <p className="text-xs text-gray-500">Inseridos</p>
-                <p className="text-2xl font-bold text-cyan-400">{results.inserted.toLocaleString('pt-BR')}</p>
+                <p className="text-2xl font-bold text-blue-400">{results.inserted.toLocaleString('pt-BR')}</p>
               </div>
               <div className="bg-white/5 rounded-xl p-4 border border-amber-500/20">
                 <p className="text-xs text-gray-500">Duplicatas</p>
