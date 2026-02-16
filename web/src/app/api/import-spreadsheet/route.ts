@@ -200,12 +200,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Could not detect format. Expected Siconv or CRM headers.' }, { status: 400 })
     }
 
-    // Get existing (cnpj, nr_emenda) pairs for dedup + CNPJ-to-vendedor for assignment
-    const existingRes = await pool.query('SELECT cnpj, nr_emenda, vendedor_id FROM vendedor_projetos')
+    // Get existing (cnpj, nr_emenda, parlamentar) for dedup + CNPJ-to-vendedor for assignment
+    const existingRes = await pool.query('SELECT cnpj, nr_emenda, parlamentar, vendedor_id FROM vendedor_projetos')
     const existingPairs = new Set<string>()
     const cnpjToVendedor = new Map<string, string>()
     for (const r of existingRes.rows) {
-      const key = `${r.cnpj}|${r.nr_emenda || ''}`
+      // Use cnpj|nr_emenda as primary key; when nr_emenda is empty, use cnpj|parlamentar
+      const emenda = r.nr_emenda ? String(r.nr_emenda).trim() : ''
+      const parlamentar = r.parlamentar ? String(r.parlamentar).trim() : ''
+      const key = emenda ? `${r.cnpj}|${emenda}` : `${r.cnpj}||${parlamentar}`
       existingPairs.add(key)
       if (r.vendedor_id) cnpjToVendedor.set(r.cnpj, r.vendedor_id)
     }
@@ -322,9 +325,10 @@ export async function POST(request: NextRequest) {
         const cnpj = cleanCNPJ(row.cnpj)
         if (!cnpj) { skipped++; continue }
 
-        // Duplicate detection by (cnpj, nr_emenda) pair
+        // Duplicate detection: use cnpj|nr_emenda when emenda exists, cnpj||parlamentar otherwise
         const nrEmenda = row.nr_emenda ? String(row.nr_emenda).trim() : ''
-        const dedupKey = `${cnpj}|${nrEmenda}`
+        const parlamentar = row.parlamentar ? String(row.parlamentar).trim() : ''
+        const dedupKey = nrEmenda ? `${cnpj}|${nrEmenda}` : `${cnpj}||${parlamentar}`
         if (existingPairs.has(dedupKey)) {
           duplicates++
           continue
