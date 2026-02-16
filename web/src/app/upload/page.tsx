@@ -13,6 +13,11 @@ interface ImportResult {
   enriched: number
   existing_clients: number
   auto_distributed: number
+  api_enriched: number
+  api_phone_added: number
+  api_email_added: number
+  api_errors: number
+  api_remaining: number
   sheets: { sheet: string; vendedor: string | null; rows: number; duplicates: number; skipped: number; enriched: number; existing_clients: number }[]
 }
 
@@ -237,6 +242,26 @@ export default function UploadPage() {
                     <p className="text-xs text-gray-500">Ja sao Clientes</p>
                     <p className="text-xl font-bold text-orange-400">{results.existing_clients.toLocaleString('pt-BR')}</p>
                     <p className="text-xs text-gray-600 mt-1">Sinalizados nas observacoes</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* BrasilAPI enrichment stats */}
+            {results.api_enriched > 0 && (
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                <div className="bg-white/5 rounded-xl p-4 border border-purple-500/20">
+                  <p className="text-xs text-gray-500">Receita Federal (API)</p>
+                  <p className="text-xl font-bold text-purple-400">{results.api_enriched}</p>
+                  <p className="text-xs text-gray-600 mt-1">
+                    {results.api_phone_added} tel, {results.api_email_added} email
+                  </p>
+                </div>
+                {results.api_remaining > 0 && (
+                  <div className="bg-white/5 rounded-xl p-4 border border-yellow-500/20">
+                    <p className="text-xs text-gray-500">Pendentes API</p>
+                    <p className="text-xl font-bold text-yellow-400">{results.api_remaining}</p>
+                    <p className="text-xs text-gray-600 mt-1">Serao buscados no proximo upload</p>
                   </div>
                 )}
               </div>

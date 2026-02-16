@@ -30,6 +30,21 @@ function normalizeHeader(h: string): string {
     .replace(/\s+/g, ' ')
 }
 
+function formatPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+  }
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+  }
+  return raw
+}
+
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 function cleanCNPJ(val: unknown): string | null {
   if (!val) return null
   const str = String(val).replace(/\D/g, '')
@@ -277,6 +292,8 @@ export async function POST(request: NextRequest) {
     let totalErrors = 0
     let totalEnriched = 0
     let totalExistingClients = 0
+    // Track CNPJs inserted without contact data for BrasilAPI enrichment
+    const cnpjsNeedingContacts = new Set<string>()
 
     for (const sheetName of workbook.SheetNames) {
       const sheet = workbook.Sheets[sheetName]
@@ -399,6 +416,9 @@ export async function POST(request: NextRequest) {
           await pool.query(INSERT_SQL, values)
           inserted++
           existingPairs.add(dedupKey) // track within this import too
+          if (!finalTelefone && !finalEmail) {
+            cnpjsNeedingContacts.add(cnpj)
+          }
         } catch (err) {
           console.error('Insert error for CNPJ', cnpj, err)
           skipped++
@@ -413,6 +433,54 @@ export async function POST(request: NextRequest) {
       sheetResults.push({ sheet: sheetName, vendedor: sheetVendedorId, rows: inserted, duplicates, skipped, enriched, existing_clients: existingClientCount })
     }
 
+    // BrasilAPI enrichment: fetch phone/email from Receita Federal for leads still missing contacts
+    let apiEnriched = 0
+    let apiPhoneAdded = 0
+    let apiEmailAdded = 0
+    let apiErrors = 0
+    const cnpjsToEnrich = Array.from(cnpjsNeedingContacts).slice(0, 30) // limit to avoid timeout
+
+    for (const cnpj of cnpjsToEnrich) {
+      try {
+        const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
+          signal: AbortSignal.timeout(10000),
+        })
+        if (!res.ok) { apiErrors++; await delay(500); continue }
+
+        const data = await res.json()
+        const phone = data.ddd_telefone_1 ? formatPhone(data.ddd_telefone_1) : null
+        const email = data.email && data.email.trim() !== '' ? data.email.trim().toLowerCase() : null
+
+        if (!phone && !email) { await delay(500); continue }
+
+        const updates: string[] = []
+        const params: unknown[] = []
+        let paramIdx = 1
+
+        if (phone) {
+          updates.push(`telefone = $${paramIdx++}`)
+          params.push(phone)
+        }
+        if (email) {
+          updates.push(`email = $${paramIdx++}`)
+          params.push(email)
+        }
+        updates.push('updated_at = NOW()')
+        params.push(cnpj)
+
+        await pool.query(
+          `UPDATE vendedor_projetos SET ${updates.join(', ')} WHERE cnpj = $${paramIdx} AND (telefone IS NULL OR telefone = '') AND (email IS NULL OR email = '')`,
+          params
+        )
+        apiEnriched++
+        if (phone) apiPhoneAdded++
+        if (email) apiEmailAdded++
+      } catch {
+        apiErrors++
+      }
+      await delay(500)
+    }
+
     return NextResponse.json({
       success: true,
       format,
@@ -423,6 +491,11 @@ export async function POST(request: NextRequest) {
       enriched: totalEnriched,
       existing_clients: totalExistingClients,
       auto_distributed: format !== 'crm' ? totalInserted : 0,
+      api_enriched: apiEnriched,
+      api_phone_added: apiPhoneAdded,
+      api_email_added: apiEmailAdded,
+      api_errors: apiErrors,
+      api_remaining: Math.max(0, cnpjsNeedingContacts.size - cnpjsToEnrich.length),
       sheets: sheetResults,
     })
   } catch (error) {
