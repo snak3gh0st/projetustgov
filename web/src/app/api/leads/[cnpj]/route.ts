@@ -81,11 +81,13 @@ export async function PATCH(
         WHERE id = $1 AND vendedor_id IS NULL
       `, [projectId, session.userId])
 
-      // Step 2: Lock and calculate commission using config
-      // Commission is based on valor_venda (actual sale value), NOT valor_emenda (amendment total)
+      // Step 2: Always recalculate and lock commission when setting Fechado
+      // Formula: Lucro Bruto = valor_venda * 10% (Projetus margin)
+      //          Comissao = Lucro Bruto * vendedor_percentage (SDR 1%, Closer 4%)
+      // Example: 100k sale → 10k margin → SDR gets 1% of 10k = R$100, Closer gets 4% = R$400
       await query(`
         WITH lead_info AS (
-          SELECT id, tipo_vendedor, valor_venda, comissao_locked
+          SELECT id, tipo_vendedor, valor_venda
           FROM vendedor_projetos WHERE id = $1
         ),
         override_check AS (
@@ -108,7 +110,7 @@ export async function PATCH(
               CASE WHEN tipo_vendedor = 'SDR' THEN 1.00 ELSE 4.00 END
             ),
             comissao_valor = (
-              COALESCE(valor_venda, 0) * (
+              COALESCE(valor_venda, 0) * 0.10 * (
                 COALESCE(
                   (SELECT percentual_override FROM override_check),
                   (SELECT percentual_default FROM config_check),
@@ -122,7 +124,7 @@ export async function PATCH(
             ),
             comissao_locked = true,
             updated_at = NOW()
-        WHERE id = $1 AND (comissao_locked IS NOT true)
+        WHERE id = $1
       `, [projectId])
     } else if (body.status_contato !== undefined && body.status_contato !== 'Fechado') {
       // Unlock commission if status changes away from Fechado

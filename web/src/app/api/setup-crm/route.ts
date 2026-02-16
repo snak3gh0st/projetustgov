@@ -123,7 +123,8 @@ async function runSetup() {
       END $$;
     `).catch(() => {}) // ignore if already exists
 
-    // 2c. Calculate commission for existing records (based on valor_venda, not valor_emenda)
+    // 2c. Calculate commission for existing records
+    // Formula: valor_venda * 10% (Projetus margin) * vendedor_percentage
     await pool.query(`
       UPDATE vendedor_projetos
       SET
@@ -133,9 +134,9 @@ async function runSetup() {
           ELSE 1.00
         END,
         comissao_valor = CASE
-          WHEN tipo_vendedor = 'SDR' THEN COALESCE(valor_venda, 0) * 0.01
-          WHEN tipo_vendedor = 'Closer' THEN COALESCE(valor_venda, 0) * 0.04
-          ELSE COALESCE(valor_venda, 0) * 0.01
+          WHEN tipo_vendedor = 'SDR' THEN COALESCE(valor_venda, 0) * 0.10 * 0.01
+          WHEN tipo_vendedor = 'Closer' THEN COALESCE(valor_venda, 0) * 0.10 * 0.04
+          ELSE COALESCE(valor_venda, 0) * 0.10 * 0.01
         END
       WHERE valor_venda IS NOT NULL AND valor_venda > 0
         AND (comissao_valor IS NULL OR comissao_percentual IS NULL);
