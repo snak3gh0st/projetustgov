@@ -18,11 +18,10 @@ function getPool() {
 
 // Map sheet names to vendedor emails
 const VENDEDOR_MAP: Record<string, string> = {
-  'wellington': 'wellington@sigma.com',
-  'elisson': 'elisson@sigma.com',
-  'gabriel': 'gabriel@sigma.com',
-  'vitória': 'vitoria@sigma.com',
-  'vitoria': 'vitoria@sigma.com',
+  'wellington': 'wellington@projetus.org',
+  'elisson': 'elisson@projetus.org',
+  'gabriel': 'gabriel@projetus.org',
+  'vitoria': 'vitoria@projetus.org',
 }
 
 function normalizeHeader(h: string): string {
@@ -54,7 +53,7 @@ type FormatType = 'siconv' | 'crm' | 'unknown'
 function detectFormat(headers: string[]): FormatType {
   const normalized = headers.map(h => normalizeHeader(h))
   const siconvIndicators = ['n instrumento', 'nr instrumento', 'objeto', 'situacao', 'saldo em conta']
-  const crmIndicators = ['codigo programa', 'nome programa', 'qualificacao']
+  const crmIndicators = ['codigo programa', 'nome programa', 'qualificacao', 'beneficiario']
 
   if (siconvIndicators.some(ind => normalized.some(h => h.includes(ind)))) return 'siconv'
   if (crmIndicators.some(ind => normalized.some(h => h.includes(ind)))) return 'crm'
@@ -90,6 +89,7 @@ const CRM_COLUMN_MAP: Record<string, string> = {
   'orgao superior': 'orgao_concedente',
   'uf beneficiario': 'uf',
   'municipio beneficiario': 'municipio',
+  'municipio': 'municipio',
   'qualificacao': 'qualificacao',
   'nr emenda beneficiario': 'nr_emenda',
   'n emenda beneficiario': 'nr_emenda',
@@ -98,6 +98,9 @@ const CRM_COLUMN_MAP: Record<string, string> = {
   'nome beneficiario': 'nome',
   'nat jur beneficiario': 'natureza_juridica',
   'nat. jur. beneficiario': 'natureza_juridica',
+  'contato': 'telefone',
+  'email': 'email',
+  'valor': 'valor_emenda',
 }
 
 function mapHeaders(sampleHeaders: string[], columnMap: Record<string, string>): Record<string, string> {
@@ -247,7 +250,7 @@ export async function POST(request: NextRequest) {
       // For CRM format, use sheet name to determine vendedor
       let sheetVendedorId: string | null = null
       if (format === 'crm') {
-        const normalized = sheetName.toLowerCase().trim()
+        const normalized = normalizeHeader(sheetName)
         const vendedorEmail = VENDEDOR_MAP[normalized]
         sheetVendedorId = vendedorEmail ? usersByEmail[vendedorEmail] || null : null
       }
