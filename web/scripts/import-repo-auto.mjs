@@ -95,6 +95,7 @@ function fixText(text) {
     'Assist?ncia': 'Assistência', 'ASSIST?NCIA': 'ASSISTÊNCIA',
     'Seguran?a': 'Segurança', 'SEGURAN?A': 'SEGURANÇA',
     'Cidad?o': 'Cidadão', 'CIDAD?O': 'CIDADÃO',
+    'Econ?mica': 'Econômica', 'ECON?MICA': 'ECONÔMICA',
   }
   for (const [wrong, right] of Object.entries(qReplacements)) {
     if (s.includes(wrong)) s = s.replaceAll(wrong, right)
@@ -201,8 +202,12 @@ async function main() {
 
   await parseCSV(PROGRAMA_CSV, (row) => {
     const ano = row.ANO_DISPONIBILIZACAO || ''
+    const cod = row.COD_PROGRAMA || ''
     const natJur = row.NATUREZA_JURIDICA_PROGRAMA || ''
-    if (ano !== '2026') return
+    // Accept programs where ANO=2026 OR code year indicates 2026 (CADASTRADO programs have empty ANO)
+    const codeYear = cod.length >= 9 ? cod.substring(5, 9) : ''
+    const is2026 = ano === '2026' || codeYear === '2026'
+    if (!is2026) return
     if (!natJur.toLowerCase().includes('civil') && !natJur.toLowerCase().includes('organiza')) return
 
     const idProg = row.ID_PROGRAMA || ''
