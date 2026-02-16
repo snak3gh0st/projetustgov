@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { formatCNPJ, formatCompactCurrency, formatParlamentarSummary } from '@/lib/format'
+import { formatCNPJ, formatCompactCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
@@ -98,8 +98,7 @@ export default function LeadsPage() {
       return {
         ...first,
         emenda_count: cnpjLeads.length,
-        total_valor_emendas: cnpjLeads.reduce((sum, l) => sum + (Number(l.valor_emenda) || 0), 0),
-        parlamentares: cnpjLeads.map(l => l.parlamentar)
+        total_valor_emendas: cnpjLeads.reduce((sum, l) => sum + (Number(l.valor_emenda) || 0), 0)
       }
     })
   }, [leads])
@@ -196,135 +195,84 @@ export default function LeadsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/5 bg-sigma-navy-light">
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">CNPJ</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Nome</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor Emenda</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Parlamentar</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Link</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Ministerio</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">UF</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Municipio</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Telefone</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Email</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Instituição</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Ministério</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Local</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Contato</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
                   {sessionUser?.role === 'gestor' && (
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Vendedor</th>
-                  )}
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Obs</th>
-                  {sessionUser?.role === 'gestor' && (
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Ações</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Vendedor</th>
                   )}
                 </tr>
               </thead>
               <tbody>
-                {displayLeads.map(lead => (
+                {displayLeads.map(lead => {
+                  const hasContact = lead.telefone || lead.email
+                  return (
                   <tr
                     key={lead.id}
                     onClick={() => setSelectedLead(lead)}
-                    className={`border-b border-white/5 hover:bg-white/5 hover:border-l-2 hover:border-l-sigma-neon transition-colors cursor-pointer ${lead.is_max_priority ? 'bg-red-500/10 border-l-2 border-l-red-500' : ''}`}
+                    className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${
+                      lead.is_max_priority ? 'bg-red-500/10 border-l-2 border-l-red-500' :
+                      !hasContact ? 'bg-red-500/5 border-l-2 border-l-red-500/50' : ''
+                    }`}
                   >
-                    <td className="px-3 py-2">
-                      <span className="font-mono text-xs text-gray-300">
-                        {formatCNPJ(lead.cnpj)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-white font-medium min-w-[200px]">
-                      <div className="whitespace-normal break-words leading-tight">
+                    <td className="px-4 py-3 max-w-[280px]">
+                      <div className="text-white font-medium text-sm leading-tight whitespace-normal break-words">
                         {lead.nome || '-'}
                         {lead.is_existing_client && sessionUser?.role === 'gestor' && (
-                          <span className="ml-2 text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded border border-purple-500/30">
-                            CLIENTE EXISTENTE
+                          <span className="ml-2 text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded border border-purple-500/30">
+                            CLIENTE
                           </span>
                         )}
                       </div>
+                      <span className="font-mono text-[11px] text-gray-500 mt-0.5 block">{formatCNPJ(lead.cnpj)}</span>
                     </td>
-                    <td className="px-3 py-2 text-sigma-neon font-medium text-xs whitespace-nowrap">
-                      {formatCompactCurrency(lead.total_valor_emendas || 0)}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sigma-neon font-semibold text-sm">
+                        {formatCompactCurrency(lead.total_valor_emendas || 0)}
+                      </span>
                       {lead.emenda_count > 1 && (
                         <span className="ml-1 text-gray-500 text-xs">({lead.emenda_count})</span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-gray-300 text-xs min-w-[130px]">
-                      <div className="whitespace-normal break-words leading-tight">
-                        {formatParlamentarSummary(lead.parlamentares || [])}
-                      </div>
+                    <td className="px-4 py-3 max-w-[220px]">
+                      <div className="text-gray-300 text-xs leading-tight whitespace-normal break-words">{lead.orgao_concedente || '-'}</div>
                     </td>
-                    <td className="px-3 py-2">
-                      {lead.link_externo ? (
-                        <a
-                          href={lead.link_externo}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={e => e.stopPropagation()}
-                          className="text-cyan-400 hover:text-cyan-300 text-xs underline"
-                        >
-                          Ver
-                        </a>
-                      ) : '-'}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-gray-300 text-xs">
+                        {lead.uf && lead.municipio ? `${lead.municipio}, ${lead.uf}` : lead.uf || lead.municipio || '-'}
+                      </span>
                     </td>
-                    <td className="px-3 py-2 text-gray-300 text-xs min-w-[180px]">
-                      <div className="whitespace-normal break-words leading-tight">{lead.orgao_concedente || '-'}</div>
+                    <td className="px-4 py-3 max-w-[200px]">
+                      {hasContact ? (
+                        <div className="space-y-0.5">
+                          {lead.telefone && (
+                            <div className="text-xs text-gray-300 truncate">{lead.telefone}</div>
+                          )}
+                          {lead.email && (
+                            <div className="text-xs text-gray-500 truncate">{lead.email}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-red-400/70">Sem contato</span>
+                      )}
                     </td>
-                    <td className="px-3 py-2 text-gray-300 text-xs">{lead.uf || '-'}</td>
-                    <td className="px-3 py-2 text-gray-300 text-xs">{lead.municipio || '-'}</td>
-                    <td className="px-3 py-2">
-                      <input
-                        type="text"
-                        defaultValue={lead.telefone || ''}
-                        placeholder="..."
-                        onClick={e => e.stopPropagation()}
-                        onBlur={e => {
-                          if (e.target.value !== (lead.telefone || '')) {
-                            updateLead(lead.id, 'telefone', e.target.value)
-                          }
-                        }}
-                        className="bg-transparent border-b border-white/10 text-xs text-gray-300 w-24 focus:outline-none focus:border-sigma-neon/50 placeholder-gray-600"
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        type="email"
-                        defaultValue={lead.email || ''}
-                        placeholder="..."
-                        onClick={e => e.stopPropagation()}
-                        onBlur={e => {
-                          if (e.target.value !== (lead.email || '')) {
-                            updateLead(lead.id, 'email', e.target.value)
-                          }
-                        }}
-                        className="bg-transparent border-b border-white/10 text-xs text-gray-300 w-28 focus:outline-none focus:border-sigma-neon/50 placeholder-gray-600"
-                      />
-                    </td>
-                    <td className="px-3 py-2">
+                    <td className="px-4 py-3">
                       <select
                         value={lead.status_contato || 'Não Contatado'}
                         onClick={e => e.stopPropagation()}
                         onChange={e => updateLead(lead.id, 'status_contato', e.target.value)}
-                        className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[lead.status_contato] || STATUS_COLORS['Não Contatado']}`}
+                        className={`text-xs font-medium rounded-full px-3 py-1 border-0 cursor-pointer ${STATUS_COLORS[lead.status_contato] || STATUS_COLORS['Não Contatado']}`}
                       >
                         {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </td>
                     {sessionUser?.role === 'gestor' && (
-                      <td className="px-3 py-2 text-gray-400 text-xs">{lead.vendedor_nome || '-'}</td>
-                    )}
-                    <td className="px-3 py-2">
-                      <input
-                        type="text"
-                        defaultValue={lead.observacoes || ''}
-                        placeholder="..."
-                        onClick={e => e.stopPropagation()}
-                        onBlur={e => {
-                          if (e.target.value !== (lead.observacoes || '')) {
-                            updateLead(lead.id, 'observacoes', e.target.value)
-                          }
-                        }}
-                        className="bg-transparent border-b border-white/10 text-xs text-gray-300 w-24 focus:outline-none focus:border-sigma-neon/50 placeholder-gray-600"
-                      />
-                    </td>
-                    {sessionUser?.role === 'gestor' && (
-                      <td className="px-3 py-2">
+                      <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-400">{lead.vendedor_nome || '-'}</span>
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -334,18 +282,16 @@ export default function LeadsPage() {
                                 currentVendedor: lead.vendedor_nome || null
                               })
                             }}
-                            className="text-xs px-2 py-1 rounded bg-sigma-neon/20 text-sigma-neon hover:bg-sigma-neon/30 transition-colors"
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-400 hover:bg-sigma-neon/20 hover:text-sigma-neon transition-colors"
                           >
-                            {lead.vendedor_nome ? 'Reatribuir' : 'Atribuir'}
+                            {lead.vendedor_nome ? '↻' : '+'}
                           </button>
-                          {lead.vendedor_nome && (
-                            <span className="text-xs text-gray-500">({lead.vendedor_nome})</span>
-                          )}
                         </div>
                       </td>
                     )}
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

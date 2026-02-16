@@ -129,7 +129,37 @@ export async function PATCH(
     } else if (body.status_contato !== undefined && body.status_contato !== 'Fechado') {
       // Unlock commission if status changes away from Fechado
       await query(`
-        UPDATE vendedor_projetos SET comissao_locked = false WHERE id = $1 AND comissao_locked = true
+        UPDATE vendedor_projetos SET comissao_locked = false, comissao_valor = NULL, comissao_percentual = NULL WHERE id = $1 AND comissao_locked = true
+      `, [projectId])
+    } else if (body.tipo_vendedor !== undefined && !body.status_contato) {
+      // If tipo_vendedor changed and lead is already Fechado, recalculate commission
+      await query(`
+        WITH lead_info AS (
+          SELECT id, tipo_vendedor, valor_venda, status_contato
+          FROM vendedor_projetos WHERE id = $1
+        ),
+        config_check AS (
+          SELECT percentual_default, taxa_fixa
+          FROM commission_config
+          WHERE tipo_vendedor = (SELECT tipo_vendedor FROM lead_info)
+            AND vendedor_id IS NULL AND active = true
+          ORDER BY created_at DESC LIMIT 1
+        )
+        UPDATE vendedor_projetos
+        SET comissao_percentual = COALESCE(
+              (SELECT percentual_default FROM config_check),
+              CASE WHEN tipo_vendedor = 'SDR' THEN 1.00 ELSE 4.00 END
+            ),
+            comissao_valor = (
+              COALESCE(valor_venda, 0) * 0.10 * (
+                COALESCE(
+                  (SELECT percentual_default FROM config_check),
+                  CASE WHEN tipo_vendedor = 'SDR' THEN 1.00 ELSE 4.00 END
+                ) / 100
+              )
+            ) + COALESCE((SELECT taxa_fixa FROM config_check), 0.00),
+            updated_at = NOW()
+        WHERE id = $1 AND status_contato = 'Fechado'
       `, [projectId])
     }
 
