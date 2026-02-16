@@ -107,7 +107,7 @@ export default function LeadsPage() {
       return {
         ...first,
         emenda_count: cnpjLeads.length,
-        subLeads: cnpjLeads.slice(1), // other emendas for cascade
+        subLeads: cnpjLeads, // all emendas for cascade (including first)
       }
     })
 
@@ -319,11 +319,6 @@ export default function LeadsPage() {
                             )}
                           </div>
                           <span className="font-mono text-[11px] text-gray-500 mt-0.5 block">{formatCNPJ(lead.cnpj)}</span>
-                          {hasMultipleEmendas && lead.parlamentar && (
-                            <span className="text-[11px] text-amber-400/80 mt-0.5 block">
-                              {lead.parlamentar}
-                            </span>
-                          )}
                         </div>
                       </div>
                     </td>
