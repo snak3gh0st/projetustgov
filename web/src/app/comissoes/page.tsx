@@ -228,7 +228,7 @@ export default function ComissoesPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
           <p className="text-xs text-gray-400 uppercase tracking-wider">Comissao (percentual)</p>
-          <p className="text-3xl font-heading font-bold text-[#00f0ff] mt-2">
+          <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
             {formatCurrency(data.summary.total_comissao)}
           </p>
           <p className="text-xs text-gray-500 mt-1">Somente leads Fechados</p>
@@ -276,7 +276,7 @@ export default function ComissoesPage() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-400">Comissao (%)</span>
-                    <span className="text-base font-semibold text-[#00f0ff]">
+                    <span className="text-base font-semibold text-[#0072F7]">
                       {formatCurrency(v.total_comissao)}
                     </span>
                   </div>
@@ -349,7 +349,7 @@ export default function ComissoesPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex flex-col items-end gap-1">
-                        <span className="text-base font-semibold text-[#00f0ff]">
+                        <span className="text-base font-semibold text-[#0072F7]">
                           {formatCurrency(lead.comissao_valor || 0)}
                         </span>
                         {lead.comissao_locked && (

@@ -184,7 +184,7 @@ export default function CRMDashboard() {
           <>
             <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
               <p className="text-xs text-gray-400 uppercase tracking-wider">Comissão Vendas</p>
-              <p className="text-3xl font-heading font-bold text-[#00f0ff] mt-2">
+              <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
                 {formatCompactCurrency(vendedores[0]?.comissao_total || 0)}
               </p>
               <p className="text-xs text-gray-500 mt-1">{formatCurrency(vendedores[0]?.comissao_total || 0)}</p>
@@ -268,7 +268,7 @@ export default function CRMDashboard() {
                       <span className="text-xs text-green-500">({item.locked_count} confirmadas)</span>
                     )}
                   </div>
-                  <span className="text-base font-semibold text-[#00f0ff]">
+                  <span className="text-base font-semibold text-[#0072F7]">
                     {formatCurrency(item.total_comissao)}
                   </span>
                 </div>
@@ -343,7 +343,7 @@ export default function CRMDashboard() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-400 uppercase tracking-wider">Comissão Total</span>
-                    <span className="text-lg font-heading font-bold text-[#00f0ff]">
+                    <span className="text-lg font-heading font-bold text-[#0072F7]">
                       {formatCurrency(v.comissao_total)}
                     </span>
                   </div>
