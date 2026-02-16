@@ -100,6 +100,36 @@ export default function LeadSlideOver({ lead, onClose, canModify = false }: Lead
               {lead.status_contato}
             </span>
           )}
+
+          {canModify && (
+            <div className="mt-3">
+              <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1">Tipo Vendedor</label>
+              <select
+                value={localLead.tipo_vendedor || 'SDR'}
+                onChange={async (e) => {
+                  const newTipo = e.target.value
+                  try {
+                    const res = await fetch(`/api/leads/${encodeURIComponent(localLead.cnpj)}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ id: localLead.id, tipo_vendedor: newTipo })
+                    })
+                    if (res.ok) {
+                      setLocalLead(prev => prev ? {...prev, tipo_vendedor: newTipo as 'SDR' | 'Closer'} : null)
+                    } else {
+                      alert('Erro ao atualizar tipo vendedor')
+                    }
+                  } catch {
+                    alert('Erro de conexao')
+                  }
+                }}
+                className="bg-sigma-navy-light border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-sigma-neon/50"
+              >
+                <option value="SDR">SDR (1%)</option>
+                <option value="Closer">Closer (4%)</option>
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Content */}

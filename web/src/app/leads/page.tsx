@@ -122,11 +122,16 @@ export default function LeadsPage() {
         }
       }
 
-      await fetch(`/api/leads/${encodeURIComponent(lead.cnpj)}`, {
+      const res = await fetch(`/api/leads/${encodeURIComponent(lead.cnpj)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        alert(`Erro ao atualizar: ${errData.error || 'Falha no servidor'}`)
+        return // Don't do optimistic update
+      }
       setLeads(prev => prev.map(l =>
         l.id === id ? { ...l, [field]: value, ...(body.valor_venda ? { valor_venda: body.valor_venda as number } : {}) } : l
       ))

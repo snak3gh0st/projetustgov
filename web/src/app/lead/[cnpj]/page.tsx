@@ -69,11 +69,16 @@ export default function LeadDetailPage() {
         }
       }
 
-      await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
+      const res = await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        alert(`Erro ao atualizar: ${errData.error || 'Falha no servidor'}`)
+        return // Don't do optimistic update
+      }
       setProjetos(prev => prev.map(p =>
         p.id === id ? { ...p, [field]: value, ...(body.valor_venda ? { valor_venda: body.valor_venda as number } : {}) } : p
       ))
@@ -172,9 +177,20 @@ export default function LeadDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <p className="text-xs text-gray-400 uppercase">Tipo Vendedor</p>
-              <p className="text-lg font-semibold text-white mt-1">
-                {first.tipo_vendedor || 'SDR'}
-              </p>
+              {canModify ? (
+                <select
+                  value={first.tipo_vendedor || 'SDR'}
+                  onChange={(e) => updateProjeto(first.id, 'tipo_vendedor', e.target.value)}
+                  className="mt-1 bg-sigma-navy-light border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-sigma-neon/50"
+                >
+                  <option value="SDR">SDR (1%)</option>
+                  <option value="Closer">Closer (4%)</option>
+                </select>
+              ) : (
+                <p className="text-lg font-semibold text-white mt-1">
+                  {first.tipo_vendedor || 'SDR'}
+                </p>
+              )}
             </div>
             <div>
               <p className="text-xs text-gray-400 uppercase">Percentual Comissão</p>
