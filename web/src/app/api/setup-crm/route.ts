@@ -361,6 +361,14 @@ async function runSetup() {
     ).catch(() => ({ rows: [{ matching: 0 }] }))
     diag.cnpj_overlap = overlap.rows[0]
 
+    // Count truly missing contacts (both phone AND email empty)
+    const noContact = await pool.query(`
+      SELECT COUNT(*) as rows_no_contact, COUNT(DISTINCT cnpj) as cnpjs_no_contact
+      FROM vendedor_projetos
+      WHERE (telefone IS NULL OR telefone = '') AND (email IS NULL OR email = '')
+    `).catch(() => ({ rows: [{ rows_no_contact: 0, cnpjs_no_contact: 0 }] }))
+    diag.no_contact = noContact.rows[0]
+
     const sampleVp = await pool.query(`SELECT cnpj FROM vendedor_projetos LIMIT 3`)
     const sampleP = await pool.query(`SELECT cnpj FROM proponentes LIMIT 3`).catch(() => ({ rows: [] }))
     diag.sample_cnpj_vp = sampleVp.rows.map((r: { cnpj: string }) => r.cnpj)
