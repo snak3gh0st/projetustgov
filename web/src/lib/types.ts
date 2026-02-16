@@ -29,6 +29,7 @@ export interface VendedorProjeto {
   // CRM
   telefone: string | null
   email: string | null
+  endereco: string | null
   status_contato: string
   tipo_vendedor: 'SDR' | 'Closer' | null
   comissao_percentual: number | null

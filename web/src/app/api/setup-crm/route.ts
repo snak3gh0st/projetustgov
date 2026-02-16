@@ -238,6 +238,9 @@ async function runSetup() {
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='comissao_bonus') THEN
           ALTER TABLE vendedor_projetos ADD COLUMN comissao_bonus NUMERIC(15,2) DEFAULT 0;
         END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='endereco') THEN
+          ALTER TABLE vendedor_projetos ADD COLUMN endereco TEXT;
+        END IF;
       END $$;
     `).catch(() => {})
 
@@ -275,15 +278,15 @@ async function runSetup() {
     `).catch(() => ({ rowCount: 0 }))
     const enrichedCount = enrichResult.rowCount || 0
 
-    // 8b. BrasilAPI retroactive enrichment for leads still missing contacts
-    const missingContacts = await pool.query(`
+    // 8b. BrasilAPI retroactive enrichment for leads missing contacts OR address
+    const missingData = await pool.query(`
       SELECT DISTINCT cnpj FROM vendedor_projetos
-      WHERE (telefone IS NULL OR telefone = '') AND (email IS NULL OR email = '')
-      LIMIT 30
+      WHERE (telefone IS NULL OR telefone = '') OR (email IS NULL OR email = '') OR (endereco IS NULL OR endereco = '')
+      LIMIT 50
     `).catch(() => ({ rows: [] }))
 
     let apiEnrichedCount = 0
-    const cnpjsToEnrich = (missingContacts.rows || []) as { cnpj: string }[]
+    const cnpjsToEnrich = (missingData.rows || []) as { cnpj: string }[]
 
     for (const row of cnpjsToEnrich) {
       try {
@@ -301,17 +304,38 @@ async function runSetup() {
         const rawEmail = (data.email || '').trim().toLowerCase()
         const email = rawEmail && rawEmail !== 'none' && rawEmail !== 'null' && rawEmail.includes('@') ? rawEmail : null
 
-        if (!phone && !email) { await new Promise(r => setTimeout(r, 300)); continue }
+        // Build address from BrasilAPI fields
+        const addrParts = [
+          data.logradouro,
+          data.numero && data.numero !== 'S/N' ? data.numero : null,
+          data.complemento,
+          data.bairro,
+        ].filter(Boolean)
+        const cep = data.cep ? String(data.cep).replace(/\D/g, '') : null
+        const endereco = addrParts.length > 0
+          ? addrParts.join(', ') + (cep ? ` - CEP ${cep.replace(/(\d{5})(\d{3})/, '$1-$2')}` : '')
+          : null
+        const apiUf = data.uf || null
+        const apiMunicipio = data.municipio || null
+        const nome = data.razao_social || data.nome_fantasia || null
+        const natJur = data.natureza_juridica ? String(data.natureza_juridica).replace(/^\d+\s*-\s*/, '') : null
+
+        if (!phone && !email && !endereco && !apiUf && !nome) { await new Promise(r => setTimeout(r, 300)); continue }
 
         const updates: string[] = []
         const params: unknown[] = []
         let idx = 1
-        if (phone) { updates.push(`telefone = $${idx++}`); params.push(phone) }
-        if (email) { updates.push(`email = $${idx++}`); params.push(email) }
+        if (phone) { updates.push(`telefone = COALESCE(NULLIF(telefone, ''), $${idx++})`); params.push(phone) }
+        if (email) { updates.push(`email = COALESCE(NULLIF(email, ''), $${idx++})`); params.push(email) }
+        if (endereco) { updates.push(`endereco = COALESCE(NULLIF(endereco, ''), $${idx++})`); params.push(endereco) }
+        if (apiUf) { updates.push(`uf = COALESCE(NULLIF(uf, ''), $${idx++})`); params.push(apiUf) }
+        if (apiMunicipio) { updates.push(`municipio = COALESCE(NULLIF(municipio, ''), $${idx++})`); params.push(apiMunicipio) }
+        if (nome) { updates.push(`nome = CASE WHEN nome IS NULL OR nome = '' OR nome = 'Sem nome' THEN $${idx++} ELSE nome END`); params.push(nome) }
+        if (natJur) { updates.push(`natureza_juridica = COALESCE(natureza_juridica, $${idx++})`); params.push(natJur) }
         updates.push('updated_at = NOW()')
         params.push(row.cnpj)
         await pool.query(
-          `UPDATE vendedor_projetos SET ${updates.join(', ')} WHERE cnpj = $${idx} AND (telefone IS NULL OR telefone = '') AND (email IS NULL OR email = '')`,
+          `UPDATE vendedor_projetos SET ${updates.join(', ')} WHERE cnpj = $${idx}`,
           params
         )
         apiEnrichedCount++

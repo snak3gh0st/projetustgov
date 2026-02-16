@@ -262,8 +262,17 @@ export default function LeadDetailPage() {
       )}
 
       {/* Contact info */}
-      {(first.telefone || first.email || canModify) && (
+      {(first.telefone || first.email || first.endereco || canModify) && (
         <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4 flex flex-wrap gap-6">
+          {first.endereco && (
+            <div>
+              <p className="text-xs text-gray-400 uppercase mb-1">Endereco</p>
+              <p className="text-sm text-gray-300">{first.endereco}</p>
+              {first.municipio && first.uf && (
+                <p className="text-xs text-gray-500 mt-0.5">{first.municipio} - {first.uf}</p>
+              )}
+            </div>
+          )}
           {(first.telefone || canModify) && (
             <div>
               <div className="flex items-center gap-2 mb-1">

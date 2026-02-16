@@ -432,10 +432,11 @@ export async function POST(request: NextRequest) {
       sheetResults.push({ sheet: sheetName, vendedor: sheetVendedorId, rows: inserted, duplicates, skipped, enriched, existing_clients: existingClientCount })
     }
 
-    // BrasilAPI enrichment: fetch phone/email from Receita Federal for leads still missing contacts
+    // BrasilAPI enrichment: fetch phone/email/address from Receita Federal for leads still missing data
     let apiEnriched = 0
     let apiPhoneAdded = 0
     let apiEmailAdded = 0
+    let apiAddressAdded = 0
     let apiErrors = 0
     const cnpjsToEnrich = Array.from(cnpjsNeedingContacts).slice(0, 30) // limit to avoid timeout
 
@@ -452,30 +453,46 @@ export async function POST(request: NextRequest) {
         const rawEmail = data.email ? data.email.trim().toLowerCase() : ''
         const email = rawEmail && rawEmail !== 'none' && rawEmail !== 'null' && rawEmail.includes('@') ? rawEmail : null
 
-        if (!phone && !email) { await delay(500); continue }
+        // Build address from BrasilAPI fields
+        const addrParts = [
+          data.logradouro,
+          data.numero && data.numero !== 'S/N' ? data.numero : null,
+          data.complemento,
+          data.bairro,
+        ].filter(Boolean)
+        const cep = data.cep ? String(data.cep).replace(/\D/g, '') : null
+        const endereco = addrParts.length > 0
+          ? addrParts.join(', ') + (cep ? ` - CEP ${cep.replace(/(\d{5})(\d{3})/, '$1-$2')}` : '')
+          : null
+        const apiUf = data.uf || null
+        const apiMunicipio = data.municipio || null
+        const nome = data.razao_social || data.nome_fantasia || null
+        const natJur = data.natureza_juridica ? String(data.natureza_juridica).replace(/^\d+\s*-\s*/, '') : null
+
+        if (!phone && !email && !endereco && !apiUf && !nome) { await delay(500); continue }
 
         const updates: string[] = []
         const params: unknown[] = []
         let paramIdx = 1
 
-        if (phone) {
-          updates.push(`telefone = $${paramIdx++}`)
-          params.push(phone)
-        }
-        if (email) {
-          updates.push(`email = $${paramIdx++}`)
-          params.push(email)
-        }
+        if (phone) { updates.push(`telefone = COALESCE(NULLIF(telefone, ''), $${paramIdx++})`); params.push(phone) }
+        if (email) { updates.push(`email = COALESCE(NULLIF(email, ''), $${paramIdx++})`); params.push(email) }
+        if (endereco) { updates.push(`endereco = COALESCE(NULLIF(endereco, ''), $${paramIdx++})`); params.push(endereco) }
+        if (apiUf) { updates.push(`uf = COALESCE(NULLIF(uf, ''), $${paramIdx++})`); params.push(apiUf) }
+        if (apiMunicipio) { updates.push(`municipio = COALESCE(NULLIF(municipio, ''), $${paramIdx++})`); params.push(apiMunicipio) }
+        if (nome) { updates.push(`nome = CASE WHEN nome IS NULL OR nome = '' OR nome = 'Sem nome' THEN $${paramIdx++} ELSE nome END`); params.push(nome) }
+        if (natJur) { updates.push(`natureza_juridica = COALESCE(natureza_juridica, $${paramIdx++})`); params.push(natJur) }
         updates.push('updated_at = NOW()')
         params.push(cnpj)
 
         await pool.query(
-          `UPDATE vendedor_projetos SET ${updates.join(', ')} WHERE cnpj = $${paramIdx} AND (telefone IS NULL OR telefone = '') AND (email IS NULL OR email = '')`,
+          `UPDATE vendedor_projetos SET ${updates.join(', ')} WHERE cnpj = $${paramIdx}`,
           params
         )
         apiEnriched++
         if (phone) apiPhoneAdded++
         if (email) apiEmailAdded++
+        if (endereco) apiAddressAdded++
       } catch {
         apiErrors++
       }

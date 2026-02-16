@@ -225,6 +225,17 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
             </div>
           )}
 
+          {/* Address */}
+          {localLead.endereco && (
+            <div className="space-y-2">
+              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Endereco</h3>
+              <p className="text-sm text-gray-300">{localLead.endereco}</p>
+              {localLead.municipio && localLead.uf && (
+                <p className="text-xs text-gray-500">{localLead.municipio} - {localLead.uf}</p>
+              )}
+            </div>
+          )}
+
           {/* Contact */}
           {(localLead.telefone || localLead.email || canModify) && (
             <div className="space-y-2">

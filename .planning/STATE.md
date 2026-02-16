@@ -117,6 +117,7 @@
 | 19 | Cascade emenda UX, no value summing, truncation fixes, client filter, green commission | 2026-02-16 | 7152f5d | - |
 | 20 | Show distributed leads with tabs + redistribution + unassign in /distribuir page | 2026-02-16 | 9a443e0 | - |
 | 21 | Cascade differentiates emendas by parlamentar (show on main row + sub-rows) | 2026-02-16 | dcbec6a | - |
+| 22 | BrasilAPI enrichment pulls address (endereco, uf, municipio) + display in UI | 2026-02-16 | - | - |
 
 ## Session Continuity
 

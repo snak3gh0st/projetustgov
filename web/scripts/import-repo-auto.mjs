@@ -452,7 +452,21 @@ async function main() {
         const nome = data.razao_social || data.nome_fantasia || null
         const natJur = data.natureza_juridica ? data.natureza_juridica.replace(/^\d+\s*-\s*/, '') : null
 
-        if (!phone && !email && !nome) { apiNoData++; await delay(500); continue }
+        // Build address from BrasilAPI fields
+        const addrParts = [
+          data.logradouro,
+          data.numero && data.numero !== 'S/N' ? data.numero : null,
+          data.complemento,
+          data.bairro,
+        ].filter(Boolean)
+        const cep = data.cep ? String(data.cep).replace(/\D/g, '') : null
+        const endereco = addrParts.length > 0
+          ? addrParts.join(', ') + (cep ? ` - CEP ${cep.replace(/(\d{5})(\d{3})/, '$1-$2')}` : '')
+          : null
+        const apiUf = data.uf || null
+        const apiMunicipio = data.municipio || null
+
+        if (!phone && !email && !nome && !endereco) { apiNoData++; await delay(500); continue }
 
         const updates = []
         const params = []
@@ -461,6 +475,9 @@ async function main() {
         if (email) { updates.push(`email = COALESCE(NULLIF(email, ''), $${idx++})`); params.push(email) }
         if (nome) { updates.push(`nome = CASE WHEN nome IS NULL OR nome = '' OR nome = 'Sem nome' THEN $${idx++} ELSE nome END`); params.push(nome) }
         if (natJur) { updates.push(`natureza_juridica = COALESCE(natureza_juridica, $${idx++})`); params.push(natJur) }
+        if (endereco) { updates.push(`endereco = COALESCE(NULLIF(endereco, ''), $${idx++})`); params.push(endereco) }
+        if (apiUf) { updates.push(`uf = COALESCE(NULLIF(uf, ''), $${idx++})`); params.push(apiUf) }
+        if (apiMunicipio) { updates.push(`municipio = COALESCE(NULLIF(municipio, ''), $${idx++})`); params.push(apiMunicipio) }
         updates.push('updated_at = NOW()')
         params.push(cnpj)
 
