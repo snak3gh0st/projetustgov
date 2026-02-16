@@ -444,6 +444,7 @@ export async function POST(request: NextRequest) {
       try {
         const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
           signal: AbortSignal.timeout(10000),
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ProjetusCRM/1.0)' },
         })
         if (!res.ok) { apiErrors++; await delay(500); continue }
 

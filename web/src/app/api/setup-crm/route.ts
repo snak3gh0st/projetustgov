@@ -276,6 +276,7 @@ async function runSetup() {
       try {
         const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${row.cnpj}`, {
           signal: AbortSignal.timeout(8000),
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ProjetusCRM/1.0)' },
         })
         if (!res.ok) {
           apiErrors++
