@@ -5,6 +5,7 @@ import { formatCNPJ, formatCompactCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
+import SaleModal from '@/components/SaleModal'
 
 const STATUS_OPTIONS = ['Não Contatado', 'Retorno', 'Proposta', 'Fechado']
 const STATUS_COLORS: Record<string, string> = {
@@ -39,6 +40,12 @@ export default function LeadsPage() {
     cnpj: string
     nome: string
     currentVendedor: string | null
+  } | null>(null)
+  const [saleModal, setSaleModal] = useState<{
+    leadId: number
+    leadCnpj: string
+    leadNome: string
+    tipoVendedor: string | null
   } | null>(null)
 
   // Fetch session
@@ -108,18 +115,18 @@ export default function LeadsPage() {
       const lead = leads.find(l => l.id === id)
       if (!lead) return
 
-      const body: Record<string, unknown> = { id, [field]: value }
-
-      // If status is changing to "Fechado", prompt for sale value
+      // If status is changing to "Fechado", open SaleModal instead of proceeding directly
       if (field === 'status_contato' && value === 'Fechado') {
-        const valorVendaStr = window.prompt('Valor da venda (R$):')
-        if (valorVendaStr !== null && valorVendaStr.trim() !== '') {
-          const valorVenda = parseFloat(valorVendaStr.replace(/[^\d.,]/g, '').replace(',', '.'))
-          if (!isNaN(valorVenda)) {
-            body.valor_venda = valorVenda
-          }
-        }
+        setSaleModal({
+          leadId: id,
+          leadCnpj: lead.cnpj,
+          leadNome: lead.nome || 'Sem nome',
+          tipoVendedor: lead.tipo_vendedor,
+        })
+        return // SaleModal will call submitFechado when confirmed
       }
+
+      const body: Record<string, unknown> = { id, [field]: value }
 
       const res = await fetch(`/api/leads/${encodeURIComponent(lead.cnpj)}`, {
         method: 'PATCH',
@@ -129,20 +136,56 @@ export default function LeadsPage() {
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}))
         alert(`Erro ao atualizar: ${errData.error || 'Falha no servidor'}`)
-        return // Don't do optimistic update
+        return
       }
       const data = await res.json().catch(() => ({}))
       setLeads(prev => prev.map(l =>
         l.id === id ? {
           ...l,
           [field]: value,
-          ...(body.valor_venda ? { valor_venda: body.valor_venda as number } : {}),
           ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
           ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
+          ...(data.comissao_bonus != null ? { comissao_bonus: Number(data.comissao_bonus) } : {}),
         } : l
       ))
     } catch (err) {
       console.error('Failed to update lead:', err)
+    }
+  }
+
+  async function submitFechado(leadId: number, leadCnpj: string, saleData: { valor_venda: number; tipo_vendedor: string }) {
+    try {
+      const body = {
+        id: leadId,
+        status_contato: 'Fechado',
+        valor_venda: saleData.valor_venda,
+        tipo_vendedor: saleData.tipo_vendedor,
+      }
+      const res = await fetch(`/api/leads/${encodeURIComponent(leadCnpj)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        alert(`Erro ao registrar venda: ${errData.error || 'Falha no servidor'}`)
+        return
+      }
+      const data = await res.json().catch(() => ({}))
+      setLeads(prev => prev.map(l =>
+        l.id === leadId ? {
+          ...l,
+          status_contato: 'Fechado',
+          valor_venda: saleData.valor_venda,
+          tipo_vendedor: saleData.tipo_vendedor as 'SDR' | 'Closer',
+          ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
+          ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
+          ...(data.comissao_bonus != null ? { comissao_bonus: Number(data.comissao_bonus) } : {}),
+        } : l
+      ))
+      setSaleModal(null)
+    } catch (err) {
+      console.error('Failed to submit fechado:', err)
     }
   }
 
@@ -326,6 +369,18 @@ export default function LeadsPage() {
         onAssigned={() => {
           setAssignmentModal(null)
           fetchLeads() // refresh list
+        }}
+      />
+
+      <SaleModal
+        open={!!saleModal}
+        leadNome={saleModal?.leadNome || ''}
+        currentTipoVendedor={saleModal?.tipoVendedor}
+        onCancel={() => setSaleModal(null)}
+        onConfirm={(data) => {
+          if (saleModal) {
+            submitFechado(saleModal.leadId, saleModal.leadCnpj, data)
+          }
         }}
       />
     </div>

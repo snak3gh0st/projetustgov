@@ -12,6 +12,7 @@ interface ComissaoLead {
   tipo_vendedor: 'SDR' | 'Closer'
   comissao_percentual: number
   comissao_valor: number
+  comissao_bonus: number
   comissao_locked: boolean
   status_contato: string
   vendedor_nome: string
@@ -25,6 +26,7 @@ interface ComissaoData {
   summary: {
     total_leads: number
     total_comissao: number
+    total_bonus: number
     comissao_fechado: number
     comissao_pipeline: number
     total_valor_venda: number
@@ -223,9 +225,9 @@ export default function ComissoesPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Comissao Total</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wider">Comissao (percentual)</p>
           <p className="text-3xl font-heading font-bold text-[#00f0ff] mt-2">
             {formatCurrency(data.summary.total_comissao)}
           </p>
@@ -233,8 +235,16 @@ export default function ComissoesPage() {
         </div>
 
         <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Leads Fechados</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wider">Bonus Fechamentos</p>
           <p className="text-3xl font-heading font-bold text-green-400 mt-2">
+            {formatCurrency(data.summary.total_bonus)}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">R$ 50 por lead fechado</p>
+        </div>
+
+        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+          <p className="text-xs text-gray-400 uppercase tracking-wider">Leads Fechados</p>
+          <p className="text-3xl font-heading font-bold text-white mt-2">
             {data.summary.total_leads}
           </p>
         </div>
@@ -302,9 +312,10 @@ export default function ComissoesPage() {
                   <th className="text-left px-6 py-3">Lead</th>
                   <th className="text-left px-6 py-3">Vendedor</th>
                   <th className="text-left px-6 py-3">Tipo</th>
-                  <th className="text-right px-6 py-3">Valor Emenda</th>
+                  <th className="text-right px-6 py-3">Valor Venda</th>
                   <th className="text-right px-6 py-3">%</th>
                   <th className="text-right px-6 py-3">Comissao</th>
+                  <th className="text-right px-6 py-3">Bonus</th>
                   <th className="text-left px-6 py-3">Data Fechamento</th>
                 </tr>
               </thead>
@@ -331,7 +342,7 @@ export default function ComissoesPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-right text-white">
-                      {formatCurrency(lead.valor_emenda)}
+                      {formatCurrency(lead.valor_venda)}
                     </td>
                     <td className="px-6 py-4 text-sm text-right text-gray-400">
                       {Number(lead.comissao_percentual || 0).toFixed(1)}%
@@ -353,6 +364,9 @@ export default function ComissoesPage() {
                           </span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-right text-green-400 font-medium">
+                      {formatCurrency(lead.comissao_bonus || 0)}
                     </td>
                     <td className="px-6 py-4 text-xs text-gray-500">
                       {new Date(lead.updated_at).toLocaleDateString('pt-BR', {

@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
           vp.tipo_vendedor,
           vp.comissao_percentual,
           vp.comissao_valor,
+          COALESCE(vp.comissao_bonus, 0) as comissao_bonus,
           vp.comissao_locked,
           COALESCE(vp.status_contato, 'Nao Contatado') as status_contato,
           u.nome as vendedor_nome,
@@ -79,6 +80,7 @@ export async function GET(request: NextRequest) {
         SELECT
           COUNT(*)::int as total_leads,
           SUM(vp.comissao_valor)::numeric as total_comissao,
+          SUM(COALESCE(vp.comissao_bonus, 0))::numeric as total_bonus,
           SUM(CASE WHEN vp.status_contato = 'Fechado' THEN vp.comissao_valor ELSE 0 END)::numeric as comissao_fechado,
           SUM(CASE WHEN vp.status_contato != 'Fechado' THEN vp.comissao_valor ELSE 0 END)::numeric as comissao_pipeline,
           COALESCE(SUM(vp.valor_venda), 0)::numeric as total_valor_venda,
@@ -127,6 +129,7 @@ export async function GET(request: NextRequest) {
       summary: {
         total_leads: Number(summary.total_leads) || 0,
         total_comissao: Number(summary.total_comissao) || 0,
+        total_bonus: Number(summary.total_bonus) || 0,
         comissao_fechado: Number(summary.comissao_fechado) || 0,
         comissao_pipeline: Number(summary.comissao_pipeline) || 0,
         total_valor_venda: Number(summary.total_valor_venda) || 0,
@@ -142,6 +145,7 @@ export async function GET(request: NextRequest) {
         tipo_vendedor: lead.tipo_vendedor,
         comissao_percentual: Number(lead.comissao_percentual) || 0,
         comissao_valor: Number(lead.comissao_valor) || 0,
+        comissao_bonus: Number(lead.comissao_bonus) || 0,
         comissao_locked: Boolean(lead.comissao_locked),
         status_contato: lead.status_contato,
         vendedor_nome: lead.vendedor_nome,

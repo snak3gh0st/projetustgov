@@ -101,40 +101,14 @@ export default function LeadSlideOver({ lead, onClose, canModify = false }: Lead
             </span>
           )}
 
-          {canModify && (
-            <div className="mt-3">
-              <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1">Tipo Vendedor</label>
-              <select
-                value={localLead.tipo_vendedor || 'SDR'}
-                onChange={async (e) => {
-                  const newTipo = e.target.value
-                  try {
-                    const res = await fetch(`/api/leads/${encodeURIComponent(localLead.cnpj)}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ id: localLead.id, tipo_vendedor: newTipo })
-                    })
-                    if (res.ok) {
-                      const data = await res.json()
-                      setLocalLead(prev => prev ? {
-                        ...prev,
-                        tipo_vendedor: newTipo as 'SDR' | 'Closer',
-                        comissao_percentual: data.comissao_percentual != null ? Number(data.comissao_percentual) : prev.comissao_percentual,
-                        comissao_valor: data.comissao_valor != null ? Number(data.comissao_valor) : prev.comissao_valor,
-                      } : null)
-                    } else {
-                      alert('Erro ao atualizar tipo vendedor')
-                    }
-                  } catch {
-                    alert('Erro de conexao')
-                  }
-                }}
-                className="bg-sigma-navy-light border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-sigma-neon/50"
-              >
-                <option value="SDR">SDR (1%)</option>
-                <option value="Closer">Closer (4%)</option>
-              </select>
-            </div>
+          {localLead.tipo_vendedor && (
+            <span className={`inline-block mt-2 text-xs font-medium rounded-full px-3 py-1 border ${
+              localLead.tipo_vendedor === 'SDR'
+                ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                : 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+            }`}>
+              {localLead.tipo_vendedor} ({localLead.tipo_vendedor === 'SDR' ? '1%' : '4%'})
+            </span>
           )}
         </div>
 
@@ -164,20 +138,38 @@ export default function LeadSlideOver({ lead, onClose, canModify = false }: Lead
 
           {/* Sale Value & Commission Info */}
           {localLead.status_contato === 'Fechado' && localLead.valor_venda && (
-            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-400">Valor da Venda</span>
                 <span className="text-sm font-semibold text-green-400">
                   {formatCurrency(localLead.valor_venda)}
                 </span>
               </div>
+              {localLead.comissao_valor != null && localLead.comissao_valor > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-400">
+                    Comissao ({Number(localLead.comissao_percentual || 0).toFixed(1)}%)
+                  </span>
+                  <span className="text-sm font-semibold text-sigma-neon">
+                    {formatCurrency(localLead.comissao_valor)}
+                  </span>
+                </div>
+              )}
+              {localLead.comissao_bonus != null && localLead.comissao_bonus > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-400">Bonus por fechamento</span>
+                  <span className="text-sm font-semibold text-green-400">
+                    {formatCurrency(localLead.comissao_bonus)}
+                  </span>
+                </div>
+              )}
             </div>
           )}
-          {localLead.comissao_valor && localLead.comissao_valor > 0 && (
+          {!localLead.valor_venda && localLead.comissao_valor != null && localLead.comissao_valor > 0 && (
             <div className="bg-sigma-neon/10 border border-sigma-neon/30 rounded-lg p-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-400">
-                  Comissão ({localLead.tipo_vendedor || 'SDR'} - {Number(localLead.comissao_percentual || 0).toFixed(1)}%)
+                  Comissao ({localLead.tipo_vendedor || 'SDR'} - {Number(localLead.comissao_percentual || 0).toFixed(1)}%)
                 </span>
                 <span className="text-sm font-semibold text-sigma-neon">
                   {formatCurrency(localLead.comissao_valor)}

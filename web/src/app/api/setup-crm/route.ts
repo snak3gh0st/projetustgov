@@ -124,7 +124,8 @@ async function runSetup() {
     `).catch(() => {}) // ignore if already exists
 
     // 2c. Calculate commission for existing records
-    // Formula: valor_venda * vendedor_percentage + R$50 per fechamento
+    // Formula: comissao_valor = valor_venda * vendedor_percentage (commission only, no bonus)
+    //          comissao_bonus = R$50 per fechamento (separate)
     await pool.query(`
       UPDATE vendedor_projetos
       SET
@@ -134,10 +135,11 @@ async function runSetup() {
           ELSE 1.00
         END,
         comissao_valor = CASE
-          WHEN tipo_vendedor = 'SDR' THEN COALESCE(valor_venda, 0) * 0.01 + 50.00
-          WHEN tipo_vendedor = 'Closer' THEN COALESCE(valor_venda, 0) * 0.04 + 50.00
-          ELSE COALESCE(valor_venda, 0) * 0.01 + 50.00
-        END
+          WHEN tipo_vendedor = 'SDR' THEN COALESCE(valor_venda, 0) * 0.01
+          WHEN tipo_vendedor = 'Closer' THEN COALESCE(valor_venda, 0) * 0.04
+          ELSE COALESCE(valor_venda, 0) * 0.01
+        END,
+        comissao_bonus = 50.00
       WHERE valor_venda IS NOT NULL AND valor_venda > 0
         AND (comissao_valor IS NULL OR comissao_percentual IS NULL);
     `).catch(() => {})
@@ -226,12 +228,15 @@ async function runSetup() {
       WHERE NOT EXISTS (SELECT 1 FROM commission_config WHERE tipo_vendedor = 'Closer' AND active = true);
     `).catch(() => {})
 
-    // 6e. Add comissao_locked column to vendedor_projetos
+    // 6e. Add comissao_locked and comissao_bonus columns to vendedor_projetos
     await pool.query(`
       DO $$
       BEGIN
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='comissao_locked') THEN
           ALTER TABLE vendedor_projetos ADD COLUMN comissao_locked BOOLEAN DEFAULT false;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='comissao_bonus') THEN
+          ALTER TABLE vendedor_projetos ADD COLUMN comissao_bonus NUMERIC(15,2) DEFAULT 0;
         END IF;
       END $$;
     `).catch(() => {})
@@ -239,6 +244,20 @@ async function runSetup() {
     // 6f. Lock commission for existing Fechado leads
     await pool.query(`
       UPDATE vendedor_projetos SET comissao_locked = true WHERE status_contato = 'Fechado' AND comissao_locked IS NOT true;
+    `).catch(() => {})
+
+    // 6g. Migrate existing records: separate bonus from comissao_valor
+    // If comissao_bonus is NULL/0 but comissao_valor has the old combined value,
+    // recalculate: comissao_valor = valor_venda * (comissao_percentual/100), bonus = 50
+    await pool.query(`
+      UPDATE vendedor_projetos
+      SET comissao_valor = COALESCE(valor_venda, 0) * (COALESCE(comissao_percentual, 1.00) / 100),
+          comissao_bonus = 50.00
+      WHERE comissao_valor IS NOT NULL
+        AND comissao_valor > 0
+        AND valor_venda IS NOT NULL
+        AND valor_venda > 0
+        AND (comissao_bonus IS NULL OR comissao_bonus = 0)
     `).catch(() => {})
 
     // 7. Status migration already handled in step 3 above (Quick Task 4)

@@ -87,11 +87,13 @@ export async function POST(request: NextRequest) {
     `, [tipo_vendedor, percentual_default, taxa_fixa, session.userId])
 
     // Step 3: Recalculate commission for non-locked, non-overridden leads
+    // comissao_valor = commission only (no bonus), comissao_bonus = taxa_fixa (separate)
     const recalculated = await query(`
       WITH updated AS (
         UPDATE vendedor_projetos
         SET comissao_percentual = $1,
-            comissao_valor = (COALESCE(valor_venda, 0) * ($1 / 100)) + $2,
+            comissao_valor = COALESCE(valor_venda, 0) * ($1 / 100),
+            comissao_bonus = $2,
             updated_at = NOW()
         WHERE tipo_vendedor = $3
           AND (comissao_locked IS NOT true)
@@ -153,10 +155,12 @@ export async function PUT(request: NextRequest) {
     `, [lead_id, percentual_override, taxa_fixa_override || null, motivo, session.userId])
 
     // Step 3: If lead is NOT locked, recalculate its commission using the override values
+    // comissao_valor = commission only, comissao_bonus = taxa_fixa (separate)
     await query(`
       UPDATE vendedor_projetos
       SET comissao_percentual = $1,
-          comissao_valor = (COALESCE(valor_venda, 0) * ($1 / 100)) + COALESCE($2, 0),
+          comissao_valor = COALESCE(valor_venda, 0) * ($1 / 100),
+          comissao_bonus = COALESCE($2, 0),
           updated_at = NOW()
       WHERE id = $3
         AND (comissao_locked IS NOT true)

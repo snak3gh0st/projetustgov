@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { formatCNPJ, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import ContactNotesTimeline from '@/components/ContactNotesTimeline'
+import SaleModal from '@/components/SaleModal'
 
 const STATUS_OPTIONS = ['Não Contatado', 'Retorno', 'Proposta', 'Fechado']
 const STATUS_COLORS: Record<string, string> = {
@@ -26,6 +27,10 @@ export default function LeadDetailPage() {
   const [canModify, setCanModify] = useState(false)
   const [editingField, setEditingField] = useState<'telefone' | 'email' | null>(null)
   const [editValue, setEditValue] = useState('')
+  const [saleModal, setSaleModal] = useState<{
+    projetoId: number
+    tipoVendedor: string | null
+  } | null>(null)
 
   useEffect(() => {
     fetch(`/api/leads?search=${encodeURIComponent(cnpj)}&limit=100`)
@@ -56,18 +61,17 @@ export default function LeadDetailPage() {
 
   async function updateProjeto(id: number, field: string, value: string) {
     try {
-      const body: Record<string, unknown> = { id, [field]: value }
-
-      // If status is changing to "Fechado", prompt for sale value
+      // If status is changing to "Fechado", open SaleModal instead
       if (field === 'status_contato' && value === 'Fechado') {
-        const valorVendaStr = window.prompt('Valor da venda (R$):')
-        if (valorVendaStr !== null && valorVendaStr.trim() !== '') {
-          const valorVenda = parseFloat(valorVendaStr.replace(/[^\d.,]/g, '').replace(',', '.'))
-          if (!isNaN(valorVenda)) {
-            body.valor_venda = valorVenda
-          }
-        }
+        const projeto = projetos.find(p => p.id === id)
+        setSaleModal({
+          projetoId: id,
+          tipoVendedor: projeto?.tipo_vendedor || null,
+        })
+        return
       }
+
+      const body: Record<string, unknown> = { id, [field]: value }
 
       const res = await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
         method: 'PATCH',
@@ -77,13 +81,56 @@ export default function LeadDetailPage() {
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}))
         alert(`Erro ao atualizar: ${errData.error || 'Falha no servidor'}`)
-        return // Don't do optimistic update
+        return
       }
+      const data = await res.json().catch(() => ({}))
       setProjetos(prev => prev.map(p =>
-        p.id === id ? { ...p, [field]: value, ...(body.valor_venda ? { valor_venda: body.valor_venda as number } : {}) } : p
+        p.id === id ? {
+          ...p,
+          [field]: value,
+          ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
+          ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
+          ...(data.comissao_bonus != null ? { comissao_bonus: Number(data.comissao_bonus) } : {}),
+        } : p
       ))
     } catch (err) {
       console.error('Update error:', err)
+    }
+  }
+
+  async function submitFechado(projetoId: number, saleData: { valor_venda: number; tipo_vendedor: string }) {
+    try {
+      const body = {
+        id: projetoId,
+        status_contato: 'Fechado',
+        valor_venda: saleData.valor_venda,
+        tipo_vendedor: saleData.tipo_vendedor,
+      }
+      const res = await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        alert(`Erro ao registrar venda: ${errData.error || 'Falha no servidor'}`)
+        return
+      }
+      const data = await res.json().catch(() => ({}))
+      setProjetos(prev => prev.map(p =>
+        p.id === projetoId ? {
+          ...p,
+          status_contato: 'Fechado',
+          valor_venda: saleData.valor_venda,
+          tipo_vendedor: saleData.tipo_vendedor as 'SDR' | 'Closer',
+          ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
+          ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
+          ...(data.comissao_bonus != null ? { comissao_bonus: Number(data.comissao_bonus) } : {}),
+        } : p
+      ))
+      setSaleModal(null)
+    } catch (err) {
+      console.error('Failed to submit fechado:', err)
     }
   }
 
@@ -174,7 +221,7 @@ export default function LeadDetailPage() {
       {/* Commission Info */}
       {first.vendedor_id && first.comissao_valor && first.comissao_valor > 0 && (
         <div className="bg-sigma-neon/10 border border-sigma-neon/30 rounded-xl p-5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-xs text-gray-400 uppercase">Tipo Vendedor</p>
               {canModify ? (
@@ -193,15 +240,21 @@ export default function LeadDetailPage() {
               )}
             </div>
             <div>
-              <p className="text-xs text-gray-400 uppercase">Percentual Comissão</p>
-              <p className="text-lg font-semibold text-white mt-1">
-                {Number(first.comissao_percentual || 0).toFixed(1)}%
+              <p className="text-xs text-gray-400 uppercase">Comissao ({Number(first.comissao_percentual || 0).toFixed(1)}%)</p>
+              <p className="text-2xl font-heading font-bold text-sigma-neon mt-1">
+                {formatCurrency(first.comissao_valor)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-400 uppercase">Comissão Total</p>
-              <p className="text-2xl font-heading font-bold text-sigma-neon mt-1">
-                {formatCurrency(first.comissao_valor)}
+              <p className="text-xs text-gray-400 uppercase">Bonus por Fechamento</p>
+              <p className="text-lg font-semibold text-green-400 mt-1">
+                {formatCurrency(first.comissao_bonus || 0)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase">Valor da Venda</p>
+              <p className="text-lg font-semibold text-white mt-1">
+                {formatCurrency(first.valor_venda || 0)}
               </p>
             </div>
           </div>
@@ -382,6 +435,18 @@ export default function LeadDetailPage() {
 
       {/* Contact notes timeline */}
       <ContactNotesTimeline cnpj={cnpj} canModify={canModify} />
+
+      <SaleModal
+        open={!!saleModal}
+        leadNome={first.nome || 'Sem nome'}
+        currentTipoVendedor={saleModal?.tipoVendedor}
+        onCancel={() => setSaleModal(null)}
+        onConfirm={(data) => {
+          if (saleModal) {
+            submitFechado(saleModal.projetoId, data)
+          }
+        }}
+      />
     </div>
   )
 }
