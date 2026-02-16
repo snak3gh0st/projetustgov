@@ -264,12 +264,25 @@ async function runSetup() {
     `).catch(() => ({ rows: [] }))
 
     let apiEnrichedCount = 0
-    for (const row of (missingContacts.rows || [])) {
+    let apiCalled = 0
+    let apiErrors = 0
+    let apiNoData = 0
+    const apiDebug: string[] = []
+    const cnpjsToEnrich = (missingContacts.rows || []) as { cnpj: string }[]
+    apiDebug.push(`found ${cnpjsToEnrich.length} cnpjs missing contacts`)
+
+    for (const row of cnpjsToEnrich) {
+      apiCalled++
       try {
         const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${row.cnpj}`, {
           signal: AbortSignal.timeout(8000),
         })
-        if (!res.ok) { await new Promise(r => setTimeout(r, 300)); continue }
+        if (!res.ok) {
+          apiErrors++
+          apiDebug.push(`${row.cnpj}: HTTP ${res.status}`)
+          await new Promise(r => setTimeout(r, 300))
+          continue
+        }
         const data = await res.json()
         const phoneRaw = data.ddd_telefone_1 || ''
         const phoneDigits = phoneRaw.replace(/\D/g, '')
@@ -279,7 +292,12 @@ async function runSetup() {
         const rawEmail = (data.email || '').trim().toLowerCase()
         const email = rawEmail && rawEmail !== 'none' && rawEmail !== 'null' && rawEmail.includes('@') ? rawEmail : null
 
-        if (!phone && !email) { await new Promise(r => setTimeout(r, 300)); continue }
+        if (!phone && !email) {
+          apiNoData++
+          apiDebug.push(`${row.cnpj}: no useful data (tel="${phoneRaw}" email="${data.email || ''}")`)
+          await new Promise(r => setTimeout(r, 300))
+          continue
+        }
 
         const updates: string[] = []
         const params: unknown[] = []
@@ -288,12 +306,16 @@ async function runSetup() {
         if (email) { updates.push(`email = $${idx++}`); params.push(email) }
         updates.push('updated_at = NOW()')
         params.push(row.cnpj)
-        await pool.query(
+        const updateResult = await pool.query(
           `UPDATE vendedor_projetos SET ${updates.join(', ')} WHERE cnpj = $${idx} AND (telefone IS NULL OR telefone = '') AND (email IS NULL OR email = '')`,
           params
         )
         apiEnrichedCount++
-      } catch { /* skip */ }
+        apiDebug.push(`${row.cnpj}: updated ${updateResult.rowCount} rows (phone=${phone ? 'yes' : 'no'} email=${email ? 'yes' : 'no'})`)
+      } catch (err) {
+        apiErrors++
+        apiDebug.push(`${row.cnpj}: ERROR ${String(err).slice(0, 80)}`)
+      }
       await new Promise(r => setTimeout(r, 300))
     }
 
@@ -384,6 +406,7 @@ async function runSetup() {
       vendedores_created: created,
       enriched_contacts: enrichedCount,
       api_enriched: apiEnrichedCount,
+      api_debug: { called: apiCalled, errors: apiErrors, no_data: apiNoData, log: apiDebug.slice(0, 15) },
       diagnostics: diag,
     })
   } catch (error) {
