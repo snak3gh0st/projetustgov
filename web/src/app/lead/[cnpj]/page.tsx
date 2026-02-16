@@ -166,7 +166,7 @@ export default function LeadDetailPage() {
       console.error('Update contact error:', err)
     }
   }
-  const maiorEmenda = Math.max(...projetos.map(p => Number(p.valor_emenda) || 0))
+  const totalEmendas = projetos.reduce((sum, p) => sum + (Number(p.valor_emenda) || 0), 0)
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -198,9 +198,9 @@ export default function LeadDetailPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4">
-          <p className="text-xs text-gray-400 uppercase">{projetos.length > 1 ? 'Maior Emenda' : 'Valor Emenda'}</p>
+          <p className="text-xs text-gray-400 uppercase">{projetos.length > 1 ? 'Total Emendas' : 'Valor Emenda'}</p>
           <p className="text-xl font-heading font-bold text-sigma-neon mt-1">
-            {formatCurrency(maiorEmenda)}
+            {formatCurrency(totalEmendas)}
           </p>
         </div>
         <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4">

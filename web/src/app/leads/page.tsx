@@ -92,7 +92,7 @@ export default function LeadsPage() {
     return () => clearTimeout(timer)
   }, [fetchLeads])
 
-  // Group leads by CNPJ for display (no summing - show highest emenda value)
+  // Group leads by CNPJ for display (show total when multiple emendas, cascade shows individual values)
   const displayLeads = useMemo(() => {
     const leadsByCnpj = leads.reduce((acc, lead) => {
       if (!acc[lead.cnpj]) {
@@ -338,7 +338,7 @@ export default function LeadsPage() {
                       ) : (
                         <div>
                           <span className="text-sigma-neon font-semibold text-sm">
-                            {formatCompactCurrency(Number(lead.valor_emenda) || 0)}
+                            {formatCompactCurrency(hasMultipleEmendas ? Number(lead.total_valor_emendas || lead.valor_emenda) || 0 : Number(lead.valor_emenda) || 0)}
                           </span>
                           {hasMultipleEmendas && (
                             <span className="ml-1 text-gray-500 text-xs">({lead.emenda_count})</span>
