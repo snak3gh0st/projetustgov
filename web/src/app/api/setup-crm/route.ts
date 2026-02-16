@@ -260,13 +260,13 @@ async function runSetup() {
 
     // 10. Create/ensure users with @projetus.org emails (password = nome123)
     const allUsers = [
-      { nome: 'Elisson', email: 'elisson@projetus.org', role: 'vendedor', password: 'elisson123' },
-      { nome: 'Wellington', email: 'wellington@projetus.org', role: 'vendedor', password: 'wellington123' },
-      { nome: 'Gabriel', email: 'gabriel@projetus.org', role: 'vendedor', password: 'gabriel123' },
-      { nome: 'Vitória', email: 'vitoria@projetus.org', role: 'vendedor', password: 'vitoria123' },
-      { nome: 'Philipe', email: 'philipe@projetus.org', role: 'gestor', password: 'philipe123' },
-      { nome: 'Tito', email: 'tito@projetus.org', role: 'gestor', password: 'tito123' },
-      { nome: 'Paulo', email: 'paulo@projetus.org', role: 'gestor', password: 'paulo123' },
+      { nome: 'Elisson', email: 'elisson@projetus.org', role: 'vendedor', password: 'Elisson#482' },
+      { nome: 'Wellington', email: 'wellington@projetus.org', role: 'vendedor', password: 'Wellington#739' },
+      { nome: 'Gabriel', email: 'gabriel@projetus.org', role: 'vendedor', password: 'Gabriel#615' },
+      { nome: 'Vitória', email: 'vitoria@projetus.org', role: 'vendedor', password: 'Vitoria#904' },
+      { nome: 'Philipe', email: 'philipe@projetus.org', role: 'gestor', password: 'Philipe#268' },
+      { nome: 'Tito', email: 'tito@projetus.org', role: 'gestor', password: 'Tito#351' },
+      { nome: 'Paulo', email: 'paulo@projetus.org', role: 'gestor', password: 'Paulo#649' },
     ]
 
     // Update passwords for all existing users
