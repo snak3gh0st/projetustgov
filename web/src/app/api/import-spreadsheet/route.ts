@@ -123,6 +123,43 @@ function mapHeaders(sampleHeaders: string[], columnMap: Record<string, string>):
   return headerMap
 }
 
+function detectAndFixHeaderShift(
+  headerMap: Record<string, string>,
+  sampleRow: Record<string, unknown>
+): Record<string, string> {
+  const fixed = { ...headerMap }
+  // Find the original header currently mapped to 'uf'
+  const ufHeader = Object.entries(fixed).find(([_, v]) => v === 'uf')?.[0]
+  if (!ufHeader) return fixed
+
+  const sampleUfValue = String(sampleRow[ufHeader] || '').trim()
+  // UF codes are 2 chars (e.g., "SP", "RJ"). If value >3 chars, it's actually orgao data
+  if (sampleUfValue.length > 3) {
+    // Find headers mapping to 'municipio' -- there may be two:
+    // 1. From "Municipio Beneficiario" (partial match) -- actually contains UF codes
+    // 2. From "Municipio" (exact match) -- contains real city names
+    const municipioHeaders = Object.entries(fixed).filter(([_, v]) => v === 'municipio')
+
+    let ufDataHeader: string | null = null
+    let cityDataHeader: string | null = null
+
+    for (const [origHeader] of municipioHeaders) {
+      const norm = normalizeHeader(origHeader)
+      if (norm.includes('beneficiario')) {
+        ufDataHeader = origHeader   // "Municipio Beneficiario" -> actually has UF codes
+      } else {
+        cityDataHeader = origHeader // "Municipio" -> actually has city names
+      }
+    }
+
+    // Remap the shifted columns
+    fixed[ufHeader] = 'orgao_concedente'           // "UF Beneficiario" -> orgao_concedente
+    if (ufDataHeader) fixed[ufDataHeader] = 'uf'   // "Municipio Beneficiario" -> uf
+    if (cityDataHeader) fixed[cityDataHeader] = 'municipio' // stays as municipio
+  }
+  return fixed
+}
+
 const INSERT_SQL = `
   INSERT INTO vendedor_projetos (
     vendedor_id, codigo_programa, nome_programa, link_externo, orgao_concedente,
@@ -256,7 +293,7 @@ export async function POST(request: NextRequest) {
       }
 
       const sampleHeaders = Object.keys(rawRows[0])
-      const headerMap = mapHeaders(sampleHeaders, columnMap)
+      const headerMap = detectAndFixHeaderShift(mapHeaders(sampleHeaders, columnMap), rawRows[0])
 
       let inserted = 0
       let duplicates = 0
@@ -268,6 +305,18 @@ export async function POST(request: NextRequest) {
         const row: Record<string, unknown> = {}
         for (const [orig, mapped] of Object.entries(headerMap)) {
           row[mapped] = raw[orig]
+        }
+
+        // Extract data from unnamed columns (__EMPTY, __EMPTY_1, etc.)
+        // Gabriel's sheet has extra unlabeled columns with email and phone data
+        for (const [key, val] of Object.entries(raw)) {
+          if (!key.startsWith('__EMPTY') || !val || String(val).trim() === '') continue
+          const strVal = String(val).trim()
+          if (strVal.includes('@') && !row.email) {
+            row.email = strVal
+          } else if (/^[\d\s\-().+]+$/.test(strVal) && strVal.replace(/\D/g, '').length >= 8 && !row.telefone) {
+            row.telefone = strVal
+          }
         }
 
         const cnpj = cleanCNPJ(row.cnpj)
@@ -297,11 +346,13 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Enrich contacts from proponentes table
+        // Prefer spreadsheet's own contact data over proponentes enrichment
+        const spreadsheetTelefone = row.telefone ? String(row.telefone).trim() : null
+        const spreadsheetEmail = row.email ? String(row.email).trim() : null
         const contact = contactByCnpj.get(cnpj)
-        const enrichedTelefone = contact?.telefone || null
-        const enrichedEmail = contact?.email || null
-        if (contact) enriched++
+        const finalTelefone = spreadsheetTelefone || contact?.telefone || null
+        const finalEmail = spreadsheetEmail || contact?.email || null
+        if (contact || spreadsheetTelefone || spreadsheetEmail) enriched++
 
         // Flag existing clients in observacoes
         const isExistingClient = existingClients.has(cnpj)
@@ -334,8 +385,8 @@ export async function POST(request: NextRequest) {
           str('modalidade'),               // modalidade
           str('situacao'),                 // situacao
           num('saldo_conta'),              // saldo_conta
-          enrichedTelefone,                // telefone
-          enrichedEmail,                   // email
+          finalTelefone,                   // telefone
+          finalEmail,                      // email
           obs,                             // observacoes
           format,                          // importado_de
         ]
