@@ -228,13 +228,15 @@ export default function LeadsPage() {
                         {formatCNPJ(lead.cnpj)}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-white font-medium truncate max-w-[250px]" title={lead.nome || '-'}>
-                      {lead.nome || '-'}
-                      {lead.is_existing_client && sessionUser?.role === 'gestor' && (
-                        <span className="ml-2 text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded border border-purple-500/30">
-                          CLIENTE EXISTENTE
-                        </span>
-                      )}
+                    <td className="px-3 py-2 text-white font-medium min-w-[200px]">
+                      <div className="whitespace-normal break-words leading-tight">
+                        {lead.nome || '-'}
+                        {lead.is_existing_client && sessionUser?.role === 'gestor' && (
+                          <span className="ml-2 text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded border border-purple-500/30">
+                            CLIENTE EXISTENTE
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2 text-sigma-neon font-medium text-xs whitespace-nowrap">
                       {formatCompactCurrency(lead.total_valor_emendas || 0)}
@@ -242,8 +244,10 @@ export default function LeadsPage() {
                         <span className="ml-1 text-gray-500 text-xs">({lead.emenda_count})</span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[140px]" title={formatParlamentarSummary(lead.parlamentares || [])}>
-                      {formatParlamentarSummary(lead.parlamentares || [])}
+                    <td className="px-3 py-2 text-gray-300 text-xs min-w-[130px]">
+                      <div className="whitespace-normal break-words leading-tight">
+                        {formatParlamentarSummary(lead.parlamentares || [])}
+                      </div>
                     </td>
                     <td className="px-3 py-2">
                       {lead.link_externo ? (
@@ -258,9 +262,11 @@ export default function LeadsPage() {
                         </a>
                       ) : '-'}
                     </td>
-                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[180px]" title={lead.orgao_concedente || '-'}>{lead.orgao_concedente || '-'}</td>
+                    <td className="px-3 py-2 text-gray-300 text-xs min-w-[180px]">
+                      <div className="whitespace-normal break-words leading-tight">{lead.orgao_concedente || '-'}</div>
+                    </td>
                     <td className="px-3 py-2 text-gray-300 text-xs">{lead.uf || '-'}</td>
-                    <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[120px]" title={lead.municipio || '-'}>{lead.municipio || '-'}</td>
+                    <td className="px-3 py-2 text-gray-300 text-xs">{lead.municipio || '-'}</td>
                     <td className="px-3 py-2">
                       <input
                         type="text"
