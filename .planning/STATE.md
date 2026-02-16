@@ -60,6 +60,7 @@
 | Separate confirmed vs pipeline commission cards | 13-02 | Clear distinction between guaranteed vs potential commissions for financial planning | 2026-02-14 |
 | PATCH returns updated commission data | quick-14 | Frontend needs recalculated values after tipo_vendedor change; prevents stale local state | 2026-02-16 |
 | Spreadsheet-only DB for MVP | quick-15 | No propostas/convenios from REPO in DB; only gestor-uploaded spreadsheet enriched by REPO contacts + BrasilAPI | 2026-02-16 |
+| Auto-import from 3 repo bases | quick-16 | siconv_programa + siconv_emenda + siconv_proponentes replace manual spreadsheet; spreadsheet only used for vendedor distribution | 2026-02-16 |
 
 ### Technical Context (Next.js Stack)
 
@@ -110,21 +111,25 @@
 | 13 | Fix all 11 client-reported bugs (commission, UI, auth, BrasilAPI enrichment) | 2026-02-16 | 01407bf | - |
 | 14 | Fix commission not updating on tipo_vendedor change (stale local state) | 2026-02-16 | 2f0213e | - |
 | 15 | DB reset + reimport from PROGRAMAS 2026 xlsx (369 leads, 97% contacts, 100% links) | 2026-02-16 | ff86d99 | - |
+| 16 | Auto-import from 3 repo bases: 240 leads, 100% valor_emenda, 98% contacts, R$144M | 2026-02-16 | - | - |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-16
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 15: DB reset + reimport from official PROGRAMAS 2026 spreadsheet
+**Activity:** Quick task 16: Auto-import from 3 repo bases (siconv_programa + siconv_emenda + siconv_proponentes)
 
 **Completed:**
-- Reset vendedor_projetos, contact_notes, commission_overrides tables
-- Reimported 369 leads from PROGRAMAS 2026 xlsx (4 vendedores: Wellington 98, Vitória 98, Elisson 88, Gabriel 85)
-- Enriched contacts: 289 from proponentes (REPO), 70 from BrasilAPI
-- 97.3% contact coverage (359/369 have phone or email), 100% TransfereGov links
-- Created reset-db.mjs and reimport-planilha.mjs scripts for reproducibility
-- MVP data source is now ONLY the gestor-uploaded spreadsheet, enriched by REPO + BrasilAPI
+- Created import-repo-auto.mjs: auto-generates leads from 3 repo CSV bases
+- Chain: siconv_programa (2026+OSC) -> siconv_emenda (valor+parlamentar+nr) -> siconv_proponentes (contatos)
+- Spreadsheet used ONLY for vendedor distribution (CNPJ->vendedor mapping)
+- 240 leads inserted (240 unique prog+cnpj combos, vs 371 with duplicates before)
+- 100% coverage: codigo_programa, nome_programa, valor_emenda, nr_emenda, parlamentar, link, orgao
+- 98% contact coverage (234/240), 91% telefone, 80% email
+- BrasilAPI enriched 47 CNPJs missing from proponentes (100% success)
+- 12 NEW leads discovered (not in original spreadsheet)
+- Total valor: R$ 144M across 4 vendedores
 
 **Next Actions:**
 - Plan Phase 12 - Pipeline Kanban board
