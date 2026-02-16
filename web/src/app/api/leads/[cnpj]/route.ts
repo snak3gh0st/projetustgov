@@ -163,7 +163,13 @@ export async function PATCH(
       `, [projectId])
     }
 
-    return NextResponse.json({ success: true })
+    // Return updated commission data so frontend can refresh
+    const updated = await query(
+      `SELECT comissao_percentual, comissao_valor, tipo_vendedor, valor_venda, status_contato FROM vendedor_projetos WHERE id = $1`,
+      [projectId]
+    )
+
+    return NextResponse.json({ success: true, ...(updated[0] || {}) })
   } catch (error) {
     console.error('Update project error:', error)
     return NextResponse.json({ error: 'Failed to update' }, { status: 500 })

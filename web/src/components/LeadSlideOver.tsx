@@ -115,7 +115,13 @@ export default function LeadSlideOver({ lead, onClose, canModify = false }: Lead
                       body: JSON.stringify({ id: localLead.id, tipo_vendedor: newTipo })
                     })
                     if (res.ok) {
-                      setLocalLead(prev => prev ? {...prev, tipo_vendedor: newTipo as 'SDR' | 'Closer'} : null)
+                      const data = await res.json()
+                      setLocalLead(prev => prev ? {
+                        ...prev,
+                        tipo_vendedor: newTipo as 'SDR' | 'Closer',
+                        comissao_percentual: data.comissao_percentual != null ? Number(data.comissao_percentual) : prev.comissao_percentual,
+                        comissao_valor: data.comissao_valor != null ? Number(data.comissao_valor) : prev.comissao_valor,
+                      } : null)
                     } else {
                       alert('Erro ao atualizar tipo vendedor')
                     }

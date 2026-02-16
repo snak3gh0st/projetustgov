@@ -131,8 +131,15 @@ export default function LeadsPage() {
         alert(`Erro ao atualizar: ${errData.error || 'Falha no servidor'}`)
         return // Don't do optimistic update
       }
+      const data = await res.json().catch(() => ({}))
       setLeads(prev => prev.map(l =>
-        l.id === id ? { ...l, [field]: value, ...(body.valor_venda ? { valor_venda: body.valor_venda as number } : {}) } : l
+        l.id === id ? {
+          ...l,
+          [field]: value,
+          ...(body.valor_venda ? { valor_venda: body.valor_venda as number } : {}),
+          ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
+          ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
+        } : l
       ))
     } catch (err) {
       console.error('Failed to update lead:', err)
