@@ -377,7 +377,7 @@ export async function POST(request: NextRequest) {
         // Flag existing clients in observacoes
         const isExistingClient = existingClients.has(cnpj)
         if (isExistingClient) existingClientCount++
-        const obs = isExistingClient ? '⚠️ JA E CLIENTE PROJETUS' : null
+        const obs = isExistingClient ? 'JA E CLIENTE PROJETUS' : null
 
         const str = (key: string) => row[key] ? String(row[key]).trim() : null
         const num = (key: string) => parseNumeric(row[key])

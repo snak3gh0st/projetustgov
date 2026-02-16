@@ -17,10 +17,10 @@ interface MonitoramentoStats {
   baixa_prioridade: number
 }
 
-const PRIORITY_COLORS: Record<string, { dot: string; bg: string; text: string; bar: string }> = {
-  Alta: { dot: '🔴', bg: 'bg-red-50', text: 'text-red-500', bar: 'bg-red-500' },
-  Média: { dot: '🟡', bg: 'bg-amber-50', text: 'text-amber-600', bar: 'bg-amber-500' },
-  Baixa: { dot: '🟢', bg: 'bg-emerald-50', text: 'text-emerald-600', bar: 'bg-emerald-500' },
+const PRIORITY_COLORS: Record<string, { bg: string; text: string; bar: string; dot: string }> = {
+  Alta: { dot: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-500', bar: 'bg-red-500' },
+  Media: { dot: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-600', bar: 'bg-amber-500' },
+  Baixa: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-600', bar: 'bg-emerald-500' },
 }
 
 export default function MonitoramentoPage() {
@@ -34,7 +34,7 @@ export default function MonitoramentoPage() {
   })
   const [filters, setFilters] = useState({
     prioridade: '',
-    saldo_min: 500000,
+    valor_min: 0,
     uf: '',
     search: '',
   })
@@ -42,11 +42,10 @@ export default function MonitoramentoPage() {
   const [loading, setLoading] = useState(true)
   const [ufs, setUfs] = useState<string[]>([])
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const saldoTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const valorTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Debounced filter values
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [debouncedSaldo, setDebouncedSaldo] = useState(500000)
+  const [debouncedValor, setDebouncedValor] = useState(0)
 
   const handleSearchChange = useCallback((value: string) => {
     setFilters(f => ({ ...f, search: value }))
@@ -54,17 +53,17 @@ export default function MonitoramentoPage() {
     searchTimeout.current = setTimeout(() => setDebouncedSearch(value), 500)
   }, [])
 
-  const handleSaldoChange = useCallback((value: number) => {
-    setFilters(f => ({ ...f, saldo_min: value }))
-    if (saldoTimeout.current) clearTimeout(saldoTimeout.current)
-    saldoTimeout.current = setTimeout(() => setDebouncedSaldo(value), 500)
+  const handleValorChange = useCallback((value: number) => {
+    setFilters(f => ({ ...f, valor_min: value }))
+    if (valorTimeout.current) clearTimeout(valorTimeout.current)
+    valorTimeout.current = setTimeout(() => setDebouncedValor(value), 500)
   }, [])
 
   useEffect(() => {
     setLoading(true)
     const params = new URLSearchParams()
     if (filters.prioridade) params.append('prioridade', filters.prioridade)
-    params.append('saldo_min', debouncedSaldo.toString())
+    if (debouncedValor > 0) params.append('valor_min', debouncedValor.toString())
     if (filters.uf) params.append('uf', filters.uf)
     if (debouncedSearch) params.append('search', debouncedSearch)
 
@@ -74,7 +73,6 @@ export default function MonitoramentoPage() {
         const items: ConvenioMonitoramento[] = data.convenios || []
         setConvenios(items)
         setStats(data.stats || { total_monitorados: 0, total_saldo: 0, alta_prioridade: 0, media_prioridade: 0, baixa_prioridade: 0 })
-        // Extract unique UFs for dropdown (only on first load or when no UF filter)
         if (!filters.uf) {
           const uniqueUfs = Array.from(new Set(items.map(c => c.uf).filter((v): v is string => Boolean(v)))).sort()
           setUfs(uniqueUfs)
@@ -82,9 +80,8 @@ export default function MonitoramentoPage() {
       })
       .catch(err => console.error('Monitoramento fetch error:', err))
       .finally(() => setLoading(false))
-  }, [filters.prioridade, filters.uf, debouncedSearch, debouncedSaldo])
+  }, [filters.prioridade, filters.uf, debouncedSearch, debouncedValor])
 
-  // Close modal on Escape
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSelectedConvenio(null)
@@ -96,7 +93,7 @@ export default function MonitoramentoPage() {
   const priorityButtons = [
     { label: 'Todos', value: '' },
     { label: 'Alta', value: 'Alta' },
-    { label: 'Média', value: 'Média' },
+    { label: 'Media', value: 'Media' },
     { label: 'Baixa', value: 'Baixa' },
   ]
 
@@ -106,23 +103,22 @@ export default function MonitoramentoPage() {
       <div>
         <h1 className="font-heading text-2xl font-bold text-gray-900">Monitoramento Financeiro</h1>
         <p className="text-sm text-gray-400 mt-1">
-          Convênios em execução com saldo disponível para prospecção
+          Acompanhamento de valores de emendas e execucao financeira dos leads
         </p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        <StatCard label="Total Monitorados" value={stats.total_monitorados.toLocaleString('pt-BR')} icon="📊" accent="blue" />
-        <StatCard label="Total em Saldo" value={formatCompactCurrency(stats.total_saldo)} icon="💰" accent="blue" />
-        <StatCard label="Alta Prioridade" value={String(stats.alta_prioridade)} icon="🔴" accent="red" />
-        <StatCard label="Média Prioridade" value={String(stats.media_prioridade)} icon="🟡" accent="amber" />
-        <StatCard label="Baixa Prioridade" value={String(stats.baixa_prioridade)} icon="🟢" accent="emerald" />
+        <StatCard label="Total Monitorados" value={stats.total_monitorados.toLocaleString('pt-BR')} accent="blue" />
+        <StatCard label="Total em Valores" value={formatCompactCurrency(stats.total_saldo)} accent="blue" />
+        <StatCard label="Alta Prioridade" value={String(stats.alta_prioridade)} accent="red" />
+        <StatCard label="Media Prioridade" value={String(stats.media_prioridade)} accent="amber" />
+        <StatCard label="Baixa Prioridade" value={String(stats.baixa_prioridade)} accent="emerald" />
       </div>
 
       {/* Filter Bar */}
       <div className="bg-white border border-gray-200 shadow-sm rounded-lg p-4">
         <div className="flex flex-wrap gap-3 items-center">
-          {/* Priority buttons */}
           <div className="flex gap-1">
             {priorityButtons.map(btn => (
               <button
@@ -139,21 +135,19 @@ export default function MonitoramentoPage() {
             ))}
           </div>
 
-          {/* Saldo mínimo */}
           <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-400">Saldo min:</span>
+            <span className="text-xs text-gray-400">Valor min:</span>
             <div className="relative">
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">R$</span>
               <input
                 type="number"
-                value={filters.saldo_min}
-                onChange={e => handleSaldoChange(Number(e.target.value) || 0)}
+                value={filters.valor_min}
+                onChange={e => handleValorChange(Number(e.target.value) || 0)}
                 className="w-32 bg-gray-100 border border-gray-300 rounded-lg pl-8 pr-2 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-[#0072F7]"
               />
             </div>
           </div>
 
-          {/* UF dropdown */}
           <select
             value={filters.uf}
             onChange={e => setFilters(f => ({ ...f, uf: e.target.value }))}
@@ -165,7 +159,6 @@ export default function MonitoramentoPage() {
             ))}
           </select>
 
-          {/* Search */}
           <input
             type="text"
             placeholder="Buscar por nome ou CNPJ"
@@ -179,29 +172,29 @@ export default function MonitoramentoPage() {
       {/* Table */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-pulse text-gray-500">Carregando convênios...</div>
+          <div className="animate-pulse text-gray-500">Carregando dados...</div>
         </div>
       ) : convenios.length === 0 ? (
         <div className="flex items-center justify-center py-20 text-gray-500">
-          Nenhum convênio encontrado com os filtros selecionados
+          Nenhum lead encontrado com os filtros selecionados
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-200">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Nº Convênio</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Organização</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Organizacao</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Programa</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">UF</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Saldo</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase min-w-[160px]">% Execução</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor Emenda</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Parlamentar</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Prioridade</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Ação</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Acao</th>
               </tr>
             </thead>
             <tbody>
               {convenios.map((c, i) => {
-                const colors = PRIORITY_COLORS[c.prioridade] || PRIORITY_COLORS['Média']
+                const colors = PRIORITY_COLORS[c.prioridade] || PRIORITY_COLORS['Media']
                 return (
                   <tr
                     key={c.id || i}
@@ -209,28 +202,19 @@ export default function MonitoramentoPage() {
                       i % 2 === 0 ? '' : 'bg-gray-50/50'
                     }`}
                   >
-                    <td className="px-3 py-2 font-mono text-xs text-gray-600">
-                      {c.nr_convenio ? (c.nr_convenio.length > 15 ? c.nr_convenio.slice(0, 15) + '...' : c.nr_convenio) : '-'}
-                    </td>
                     <td className="px-3 py-2 text-gray-900 font-medium truncate max-w-[250px]">
                       {c.nome ? (c.nome.length > 50 ? c.nome.slice(0, 50) + '...' : c.nome) : '-'}
                     </td>
-                    <td className="px-3 py-2 text-gray-600">{c.uf || '-'}</td>
-                    <td className="px-3 py-2 text-[#0072F7] font-medium">{formatCompactCurrency(c.saldo_conta)}</td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${colors.bar}`}
-                            style={{ width: `${Math.min(c.perc_execucao, 100)}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-gray-400 w-12 text-right">{c.perc_execucao.toFixed(1)}%</span>
-                      </div>
+                    <td className="px-3 py-2 text-gray-600 truncate max-w-[200px]">
+                      {c.nome_programa ? (c.nome_programa.length > 40 ? c.nome_programa.slice(0, 40) + '...' : c.nome_programa) : '-'}
                     </td>
+                    <td className="px-3 py-2 text-gray-600">{c.uf || '-'}</td>
+                    <td className="px-3 py-2 text-[#0072F7] font-medium">{formatCompactCurrency(c.valor_emenda || c.saldo_conta || 0)}</td>
+                    <td className="px-3 py-2 text-gray-600 truncate max-w-[150px]">{c.parlamentar || '-'}</td>
                     <td className="px-3 py-2">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}>
-                        {colors.dot} {c.prioridade}
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
+                        {c.prioridade}
                       </span>
                     </td>
                     <td className="px-3 py-2">
@@ -249,12 +233,10 @@ export default function MonitoramentoPage() {
         </div>
       )}
 
-      {/* Result count */}
       {!loading && convenios.length > 0 && (
-        <p className="text-xs text-gray-500 text-right">{convenios.length} convênios encontrados</p>
+        <p className="text-xs text-gray-500 text-right">{convenios.length} leads encontrados</p>
       )}
 
-      {/* Detail Modal */}
       {selectedConvenio && (
         <DetailModal convenio={selectedConvenio} onClose={() => setSelectedConvenio(null)} />
       )}
@@ -262,15 +244,16 @@ export default function MonitoramentoPage() {
   )
 }
 
-function StatCard({ label, value, icon, accent }: { label: string; value: string; icon: string; accent: string }) {
+function StatCard({ label, value, accent }: { label: string; value: string; accent: string }) {
   const borderColor = accent === 'blue' ? 'border-blue-200' : accent === 'red' ? 'border-red-200' : accent === 'amber' ? 'border-amber-200' : 'border-emerald-200'
   const valueColor = accent === 'blue' ? 'text-[#0072F7]' : accent === 'red' ? 'text-red-500' : accent === 'amber' ? 'text-amber-600' : 'text-emerald-600'
+  const dotColor = accent === 'blue' ? 'bg-[#0072F7]' : accent === 'red' ? 'bg-red-500' : accent === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'
 
   return (
     <div className={`bg-white border border-gray-200 shadow-sm ${borderColor} rounded-lg p-4`}>
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-400">{label}</span>
-        <span className="text-lg">{icon}</span>
+        <span className={`w-2 h-2 rounded-full ${dotColor}`} />
       </div>
       <p className={`text-xl font-bold mt-1 ${valueColor}`}>{value}</p>
     </div>
@@ -278,13 +261,13 @@ function StatCard({ label, value, icon, accent }: { label: string; value: string
 }
 
 function DetailModal({ convenio, onClose }: { convenio: ConvenioMonitoramento; onClose: () => void }) {
-  const colors = PRIORITY_COLORS[convenio.prioridade] || PRIORITY_COLORS['Média']
-  const percSaldo = convenio.perc_execucao > 0 ? (100 - convenio.perc_execucao).toFixed(1) : '100.0'
+  const colors = PRIORITY_COLORS[convenio.prioridade] || PRIORITY_COLORS['Media']
+  const valorPrincipal = convenio.valor_emenda || convenio.saldo_conta || 0
 
   const priorityExplanations: Record<string, string> = {
-    Alta: 'Alta prioridade - Baixa execução e alto saldo remanescente',
-    Média: 'Média prioridade - Execução parcial em andamento',
-    Baixa: 'Baixa prioridade - Alta execução, saldo reduzido',
+    Alta: 'Alta prioridade - Valor elevado de emenda',
+    Media: 'Media prioridade - Valor moderado de emenda',
+    Baixa: 'Baixa prioridade - Valor menor de emenda',
   }
 
   return (
@@ -292,18 +275,15 @@ function DetailModal({ convenio, onClose }: { convenio: ConvenioMonitoramento; o
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
 
-      {/* Modal */}
       <div
         className="relative bg-white border border-gray-200 shadow-lg rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">{convenio.nome || 'Organização'}</h2>
+            <h2 className="text-lg font-bold text-gray-900">{convenio.nome || 'Organizacao'}</h2>
             <p className="text-sm text-gray-400 mt-0.5">{convenio.cnpj ? formatCNPJ(convenio.cnpj) : '-'}</p>
           </div>
           <button
@@ -315,51 +295,36 @@ function DetailModal({ convenio, onClose }: { convenio: ConvenioMonitoramento; o
         </div>
 
         <div className="space-y-5">
-          {/* Informações Básicas */}
-          <Section title="Informações Básicas">
+          <Section title="Informacoes Basicas">
             <InfoRow label="Nome" value={convenio.nome} />
             <InfoRow label="CNPJ" value={convenio.cnpj ? formatCNPJ(convenio.cnpj) : null} />
             <InfoRow label="UF" value={convenio.uf} />
-            <InfoRow label="Município" value={convenio.municipio} />
-            <InfoRow label="Nº Convênio" value={convenio.nr_convenio} />
+            <InfoRow label="Municipio" value={convenio.municipio} />
+            <InfoRow label="Programa" value={convenio.nome_programa} />
+            <InfoRow label="Nr Emenda" value={convenio.nr_emenda} />
+            <InfoRow label="Parlamentar" value={convenio.parlamentar} />
           </Section>
 
-          {/* Contato */}
           <Section title="Contato">
-            <InfoRow label="Email" value={convenio.email || 'Não informado'} />
-            <InfoRow label="Telefone" value={convenio.telefone || 'Não informado'} />
+            <InfoRow label="Email" value={convenio.email || 'Nao informado'} />
+            <InfoRow label="Telefone" value={convenio.telefone || 'Nao informado'} />
           </Section>
 
-          {/* Financeiro */}
           <Section title="Financeiro">
-            <InfoRow label="Valor Global" value={formatCurrency(convenio.valor_global)} />
-            <InfoRow label="Valor Liberado" value={formatCurrency(convenio.valor_liberado)} />
             <div className="flex items-center justify-between py-1">
-              <span className="text-xs text-gray-400">Saldo em Conta</span>
-              <span className="text-sm font-bold text-[#0072F7]">{formatCurrency(convenio.saldo_conta)}</span>
+              <span className="text-xs text-gray-400">Valor Emenda</span>
+              <span className="text-sm font-bold text-[#0072F7]">{formatCurrency(valorPrincipal)}</span>
             </div>
+            {convenio.valor_global ? <InfoRow label="Valor Global" value={formatCurrency(convenio.valor_global)} /> : null}
+            {convenio.valor_liberado ? <InfoRow label="Valor Liberado" value={formatCurrency(convenio.valor_liberado)} /> : null}
+            {convenio.saldo_conta ? <InfoRow label="Saldo em Conta" value={formatCurrency(convenio.saldo_conta)} /> : null}
           </Section>
 
-          {/* Execução */}
-          <Section title="Execução">
-            <div className="space-y-2">
-              <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full ${colors.bar}`}
-                  style={{ width: `${Math.min(convenio.perc_execucao, 100)}%` }}
-                />
-              </div>
-              <p className="text-xs text-gray-400">
-                Executado: {convenio.perc_execucao.toFixed(1)}% | Saldo: {percSaldo}%
-              </p>
-            </div>
-          </Section>
-
-          {/* Análise de Prioridade */}
-          <Section title="Análise de Prioridade">
+          <Section title="Analise de Prioridade">
             <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}>
-                {colors.dot} {convenio.prioridade}
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
+                {convenio.prioridade}
               </span>
             </div>
             <p className="text-xs text-gray-400 mt-2">
@@ -367,7 +332,6 @@ function DetailModal({ convenio, onClose }: { convenio: ConvenioMonitoramento; o
             </p>
           </Section>
 
-          {/* Links */}
           <Section title="Links">
             {convenio.link_externo ? (
               <a
@@ -376,11 +340,11 @@ function DetailModal({ convenio, onClose }: { convenio: ConvenioMonitoramento; o
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-[#0072F7] hover:bg-blue-100 transition-colors"
               >
-                Ver no TransfereGov ↗
+                Ver no TransfereGov
               </a>
             ) : (
-              <span className="text-xs text-gray-500" title="Link não disponível">
-                Ver no TransfereGov (indisponível)
+              <span className="text-xs text-gray-500">
+                Link nao disponivel
               </span>
             )}
           </Section>
@@ -401,7 +365,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
+function InfoRow({ label, value }: { label: string; value: string | number | null | undefined }) {
   return (
     <div className="flex items-center justify-between py-1">
       <span className="text-xs text-gray-400">{label}</span>

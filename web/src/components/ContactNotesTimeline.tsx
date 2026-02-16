@@ -9,11 +9,11 @@ interface ContactNotesTimelineProps {
 }
 
 const TIPO_CONFIG = {
-  ligacao: { label: 'Ligação', icon: '📞', color: 'text-[#0072F7] bg-blue-50 border-blue-200' },
-  email: { label: 'Email', icon: '📧', color: 'text-[#0072F7] bg-blue-50 border-blue-200' },
-  whatsapp: { label: 'WhatsApp', icon: '💬', color: 'text-green-600 bg-green-50 border-green-200' },
-  reuniao: { label: 'Reunião', icon: '🤝', color: 'text-purple-600 bg-purple-50 border-purple-200' },
-  outro: { label: 'Outro', icon: '📝', color: 'text-gray-600 bg-gray-50 border-gray-200' },
+  ligacao: { label: 'Ligacao', icon: 'Tel', color: 'text-[#0072F7] bg-blue-50 border-blue-200' },
+  email: { label: 'Email', icon: '@', color: 'text-[#0072F7] bg-blue-50 border-blue-200' },
+  whatsapp: { label: 'WhatsApp', icon: 'WA', color: 'text-green-600 bg-green-50 border-green-200' },
+  reuniao: { label: 'Reuniao', icon: 'Reu', color: 'text-purple-600 bg-purple-50 border-purple-200' },
+  outro: { label: 'Outro', icon: '--', color: 'text-gray-600 bg-gray-50 border-gray-200' },
 }
 
 export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTimelineProps) {
