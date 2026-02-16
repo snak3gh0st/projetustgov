@@ -43,11 +43,91 @@ function parseBRNumber(val) {
 
 function formatPhone(raw) {
   if (!raw) return null
-  const digits = String(raw).replace(/\D/g, '')
+  let digits = String(raw).replace(/\D/g, '')
+  // Strip trunk prefix 0 (e.g., 09132264140 -> 9132264140)
+  if (digits.length === 11 && digits.startsWith('0') && !digits.startsWith('0800')) {
+    const ddd = digits.slice(1, 3)
+    // Valid DDDs are 11-99 (no leading 0 in DDD)
+    if (parseInt(ddd) >= 11) digits = digits.slice(1)
+  }
+  if (digits.length === 12 && digits.startsWith('0')) digits = digits.slice(1)
   if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
   if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
   if (digits.length >= 8) return raw
   return null
+}
+
+// Fix encoding artifacts and missing accents in source data
+function fixText(text) {
+  if (!text) return text
+  let s = String(text)
+
+  // Fix known '?' replacements in program names (source CSV has literal '?' for accented chars)
+  const qReplacements = {
+    'A??es': 'Ações', 'A??O': 'AÇÃO', 'a??es': 'ações', 'a??o': 'ação',
+    'Excel?ncia': 'Excelência', 'EXCEL?NCIA': 'EXCELÊNCIA',
+    'Solid?ria': 'Solidária', 'SOLID?RIA': 'SOLIDÁRIA',
+    'Sustent?veis': 'Sustentáveis', 'SUSTENT?VEIS': 'SUSTENTÁVEIS',
+    'Sustent?vel': 'Sustentável', 'SUSTENT?VEL': 'SUSTENTÁVEL',
+    'Agroind?stria': 'Agroindústria', 'AGROIND?STRIA': 'AGROINDÚSTRIA',
+    'Agropecu?rio': 'Agropecuário', 'AGROPECU?RIO': 'AGROPECUÁRIO',
+    'Crian?a': 'Criança', 'CRIAN?A': 'CRIANÇA',
+    'Sa?de': 'Saúde', 'SA?DE': 'SAÚDE',
+    'Ci?ncia': 'Ciência', 'CI?NCIA': 'CIÊNCIA',
+    'Tecnol?gico': 'Tecnológico', 'TECNOL?GICO': 'TECNOLÓGICO',
+    'Tur?stico': 'Turístico', 'TUR?STICO': 'TURÍSTICO',
+    'Econ?mico': 'Econômico', 'ECON?MICO': 'ECONÔMICO',
+    'P?blico': 'Público', 'P?BLICO': 'PÚBLICO',
+    'P?blica': 'Pública', 'P?BLICA': 'PÚBLICA',
+    'Educa??o': 'Educação', 'EDUCA??O': 'EDUCAÇÃO',
+    'Habita??o': 'Habitação', 'HABITA??O': 'HABITAÇÃO',
+    'Prote??o': 'Proteção', 'PROTE??O': 'PROTEÇÃO',
+    'Produ??o': 'Produção', 'PRODU??O': 'PRODUÇÃO',
+    'Alimenta??o': 'Alimentação', 'ALIMENTA??O': 'ALIMENTAÇÃO',
+    'Promo??o': 'Promoção', 'PROMO??O': 'PROMOÇÃO',
+    'Inova??o': 'Inovação', 'INOVA??O': 'INOVAÇÃO',
+    'Conserva??o': 'Conservação', 'CONSERVA??O': 'CONSERVAÇÃO',
+    'Gest?o': 'Gestão', 'GEST?O': 'GESTÃO',
+    'Integra??o': 'Integração', 'INTEGRA??O': 'INTEGRAÇÃO',
+    'Inclus?o': 'Inclusão', 'INCLUS?O': 'INCLUSÃO',
+    'Previd?ncia': 'Previdência', 'PREVID?NCIA': 'PREVIDÊNCIA',
+    'Ind?gena': 'Indígena', 'IND?GENA': 'INDÍGENA',
+    'Assist?ncia': 'Assistência', 'ASSIST?NCIA': 'ASSISTÊNCIA',
+    'Seguran?a': 'Segurança', 'SEGURAN?A': 'SEGURANÇA',
+    'Cidad?o': 'Cidadão', 'CIDAD?O': 'CIDADÃO',
+  }
+  for (const [wrong, right] of Object.entries(qReplacements)) {
+    if (s.includes(wrong)) s = s.replaceAll(wrong, right)
+  }
+
+  // Fix missing accents in UPPERCASE ministry names
+  const accentFixes = {
+    'MINISTERIO': 'MINISTÉRIO',
+    'EDUCACAO': 'EDUCAÇÃO',
+    'AGRICULTURA': 'AGRICULTURA', // already correct
+    'PECUARIA': 'PECUÁRIA',
+    'CIDADANIA': 'CIDADANIA', // already correct
+    'JUSTICA': 'JUSTIÇA',
+    'DEFESA': 'DEFESA', // already correct
+    'CIENCIA': 'CIÊNCIA',
+    'COMUNICACOES': 'COMUNICAÇÕES',
+    'COMUNICACAO': 'COMUNICAÇÃO',
+    'FAZENDA': 'FAZENDA', // already correct
+    'INTEGRACAO': 'INTEGRAÇÃO',
+    'PLANEJAMENTO': 'PLANEJAMENTO', // already correct
+    'ORCAMENTO': 'ORÇAMENTO',
+    'TRABALHO': 'TRABALHO', // already correct
+    'PREVIDENCIA': 'PREVIDÊNCIA',
+    'TURISMO': 'TURISMO', // already correct
+    'SAUDE': 'SAÚDE',
+    'DESENVOLVIMENTO': 'DESENVOLVIMENTO', // already correct
+    'ESPORTE': 'ESPORTE', // already correct
+  }
+  for (const [wrong, right] of Object.entries(accentFixes)) {
+    if (wrong !== right && s.includes(wrong)) s = s.replaceAll(wrong, right)
+  }
+
+  return s
 }
 
 function normalizeHeader(h) {
@@ -58,7 +138,7 @@ function delay(ms) { return new Promise(r => setTimeout(r, ms)) }
 
 // Parse semicolon-delimited CSV line by line (streaming, memory efficient)
 async function parseCSV(filePath, onRow) {
-  const rl = createInterface({ input: createReadStream(filePath, { encoding: 'latin1' }), crlfDelay: Infinity })
+  const rl = createInterface({ input: createReadStream(filePath, { encoding: 'utf8' }), crlfDelay: Infinity })
   let headers = null
   for await (const line of rl) {
     const cols = line.split(';')
@@ -222,7 +302,7 @@ async function main() {
     // Cascata: concatenate emendas
     const totalValor = emendas.reduce((s, e) => s + e.valor, 0)
     const nrEmendas = emendas.map(e => e.nr_emenda).filter(Boolean).join(' | ')
-    const parlamentares = [...new Set(emendas.map(e => e.parlamentar).filter(Boolean))].join(' | ')
+    const parlamentares = [...new Set(emendas.map(e => fixText(e.parlamentar)).filter(Boolean))].join(' | ')
 
     // Vendedor from spreadsheet mapping
     const vendedorEmail = cnpjToVendedor.get(cnpj) || null
@@ -235,8 +315,8 @@ async function main() {
       email: prop.email || null,
       telefone: formatPhone(prop.telefone) || null,
       codigo_programa: codProg,
-      nome_programa: prog.nome || null,
-      orgao_concedente: prog.orgao || null,
+      nome_programa: fixText(prog.nome) || null,
+      orgao_concedente: fixText(prog.orgao) || null,
       link_externo: link,
       valor_emenda: totalValor > 0 ? totalValor : null,
       nr_emenda: nrEmendas || null,
