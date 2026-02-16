@@ -448,8 +448,9 @@ export async function POST(request: NextRequest) {
         if (!res.ok) { apiErrors++; await delay(500); continue }
 
         const data = await res.json()
-        const phone = data.ddd_telefone_1 ? formatPhone(data.ddd_telefone_1) : null
-        const email = data.email && data.email.trim() !== '' ? data.email.trim().toLowerCase() : null
+        const phone = data.ddd_telefone_1 && data.ddd_telefone_1.replace(/\D/g, '').length >= 8 ? formatPhone(data.ddd_telefone_1) : null
+        const rawEmail = data.email ? data.email.trim().toLowerCase() : ''
+        const email = rawEmail && rawEmail !== 'none' && rawEmail !== 'null' && rawEmail.includes('@') ? rawEmail : null
 
         if (!phone && !email) { await delay(500); continue }
 

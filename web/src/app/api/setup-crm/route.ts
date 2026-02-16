@@ -256,6 +256,47 @@ async function runSetup() {
     `).catch(() => ({ rowCount: 0 }))
     const enrichedCount = enrichResult.rowCount || 0
 
+    // 8b. BrasilAPI retroactive enrichment for leads still missing contacts
+    const missingContacts = await pool.query(`
+      SELECT DISTINCT cnpj FROM vendedor_projetos
+      WHERE (telefone IS NULL OR telefone = '') AND (email IS NULL OR email = '')
+      LIMIT 50
+    `).catch(() => ({ rows: [] }))
+
+    let apiEnrichedCount = 0
+    for (const row of (missingContacts.rows || [])) {
+      try {
+        const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${row.cnpj}`, {
+          signal: AbortSignal.timeout(8000),
+        })
+        if (!res.ok) { await new Promise(r => setTimeout(r, 500)); continue }
+        const data = await res.json()
+        const phoneRaw = data.ddd_telefone_1 || ''
+        const phoneDigits = phoneRaw.replace(/\D/g, '')
+        const phone = phoneDigits.length >= 10
+          ? `(${phoneDigits.slice(0, 2)}) ${phoneDigits.length === 11 ? phoneDigits.slice(2, 7) : phoneDigits.slice(2, 6)}-${phoneDigits.slice(-4)}`
+          : phoneDigits.length >= 8 ? phoneRaw : null
+        const rawEmail = (data.email || '').trim().toLowerCase()
+        const email = rawEmail && rawEmail !== 'none' && rawEmail !== 'null' && rawEmail.includes('@') ? rawEmail : null
+
+        if (!phone && !email) { await new Promise(r => setTimeout(r, 500)); continue }
+
+        const updates: string[] = []
+        const params: unknown[] = []
+        let idx = 1
+        if (phone) { updates.push(`telefone = $${idx++}`); params.push(phone) }
+        if (email) { updates.push(`email = $${idx++}`); params.push(email) }
+        updates.push('updated_at = NOW()')
+        params.push(row.cnpj)
+        await pool.query(
+          `UPDATE vendedor_projetos SET ${updates.join(', ')} WHERE cnpj = $${idx} AND (telefone IS NULL OR telefone = '') AND (email IS NULL OR email = '')`,
+          params
+        )
+        apiEnrichedCount++
+      } catch { /* skip */ }
+      await new Promise(r => setTimeout(r, 500))
+    }
+
     // 9. Migrate existing @sigma.com emails to @projetus.org
     const emailMigrations = [
       { old: 'wellington@sigma.com', new: 'wellington@projetus.org' },
@@ -334,6 +375,7 @@ async function runSetup() {
       success: true,
       vendedores_created: created,
       enriched_contacts: enrichedCount,
+      api_enriched: apiEnrichedCount,
       diagnostics: diag,
     })
   } catch (error) {
