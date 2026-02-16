@@ -42,7 +42,7 @@ export async function GET() {
           SUM(CASE WHEN vp.status_contato = 'Proposta' THEN 1 ELSE 0 END)::int as proposta,
           SUM(CASE WHEN vp.status_contato = 'Fechado' THEN 1 ELSE 0 END)::int as fechado,
           COALESCE(SUM(vp.valor_emenda::numeric), 0) as valor_total_emenda,
-          COALESCE(SUM(vp.comissao_valor::numeric), 0) as comissao_total,
+          COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' THEN vp.comissao_valor::numeric ELSE 0 END), 0) as comissao_total,
           MAX(vp.updated_at) as last_activity
         FROM vendedor_projetos vp
         JOIN users u ON u.id = vp.vendedor_id

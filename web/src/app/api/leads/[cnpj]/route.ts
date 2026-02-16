@@ -46,6 +46,10 @@ export async function PATCH(
       updates.push(`valor_venda = $${paramIndex++}`)
       values.push(body.valor_venda)
     }
+    if (body.tipo_vendedor !== undefined) {
+      updates.push(`tipo_vendedor = $${paramIndex++}`)
+      values.push(body.tipo_vendedor)
+    }
 
     if (updates.length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
@@ -100,20 +104,20 @@ export async function PATCH(
         SET comissao_percentual = COALESCE(
               (SELECT percentual_override FROM override_check),
               (SELECT percentual_default FROM config_check),
-              CASE WHEN tipo_vendedor = 'SDR' THEN 9.00 ELSE 12.00 END
+              CASE WHEN tipo_vendedor = 'SDR' THEN 1.00 ELSE 4.00 END
             ),
             comissao_valor = (
               COALESCE(valor_emenda, 0) * (
                 COALESCE(
                   (SELECT percentual_override FROM override_check),
                   (SELECT percentual_default FROM config_check),
-                  CASE WHEN tipo_vendedor = 'SDR' THEN 9.00 ELSE 12.00 END
+                  CASE WHEN tipo_vendedor = 'SDR' THEN 1.00 ELSE 4.00 END
                 ) / 100
               )
             ) + COALESCE(
               (SELECT taxa_fixa_override FROM override_check),
               (SELECT taxa_fixa FROM config_check),
-              CASE WHEN tipo_vendedor = 'SDR' THEN 50.00 ELSE 0.00 END
+              0.00
             ),
             comissao_locked = true,
             updated_at = NOW()

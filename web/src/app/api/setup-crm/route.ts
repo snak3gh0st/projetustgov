@@ -115,14 +115,14 @@ async function runSetup() {
       UPDATE vendedor_projetos
       SET
         comissao_percentual = CASE
-          WHEN tipo_vendedor = 'SDR' THEN 9.00
-          WHEN tipo_vendedor = 'Closer' THEN 12.00
-          ELSE 9.00
+          WHEN tipo_vendedor = 'SDR' THEN 1.00
+          WHEN tipo_vendedor = 'Closer' THEN 4.00
+          ELSE 1.00
         END,
         comissao_valor = CASE
-          WHEN tipo_vendedor = 'SDR' THEN (COALESCE(valor_emenda, 0) * 0.09) + 50
-          WHEN tipo_vendedor = 'Closer' THEN COALESCE(valor_emenda, 0) * 0.12
-          ELSE (COALESCE(valor_emenda, 0) * 0.09) + 50
+          WHEN tipo_vendedor = 'SDR' THEN COALESCE(valor_emenda, 0) * 0.01
+          WHEN tipo_vendedor = 'Closer' THEN COALESCE(valor_emenda, 0) * 0.04
+          ELSE COALESCE(valor_emenda, 0) * 0.01
         END
       WHERE valor_emenda IS NOT NULL AND valor_emenda > 0
         AND (comissao_valor IS NULL OR comissao_percentual IS NULL);
@@ -200,15 +200,15 @@ async function runSetup() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_co_lead_id ON commission_overrides(lead_id);`).catch(() => {})
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_co_active ON commission_overrides(active);`).catch(() => {})
 
-    // 6d. Seed default commission config (SDR: 9%+R$50, Closer: 12%+R$0)
+    // 6d. Seed default commission config (SDR: 1%+R$0, Closer: 4%+R$0)
     await pool.query(`
       INSERT INTO commission_config (tipo_vendedor, percentual_default, taxa_fixa, active)
-      SELECT 'SDR', 9.00, 50.00, true
+      SELECT 'SDR', 1.00, 0.00, true
       WHERE NOT EXISTS (SELECT 1 FROM commission_config WHERE tipo_vendedor = 'SDR' AND active = true);
     `).catch(() => {})
     await pool.query(`
       INSERT INTO commission_config (tipo_vendedor, percentual_default, taxa_fixa, active)
-      SELECT 'Closer', 12.00, 0.00, true
+      SELECT 'Closer', 4.00, 0.00, true
       WHERE NOT EXISTS (SELECT 1 FROM commission_config WHERE tipo_vendedor = 'Closer' AND active = true);
     `).catch(() => {})
 

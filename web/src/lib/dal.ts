@@ -55,7 +55,7 @@ export async function verifyLeadAccess(cnpj: string, userId: string, role: strin
 
   // Vendedor must have the lead assigned
   const assignments = await query(
-    `SELECT 1 FROM lead_assignments WHERE lead_cnpj = $1 AND vendedor_id = $2 LIMIT 1`,
+    `SELECT 1 FROM vendedor_projetos WHERE cnpj = $1 AND vendedor_id = $2 LIMIT 1`,
     [cnpj, userId]
   )
 
