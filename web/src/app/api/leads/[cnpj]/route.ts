@@ -82,9 +82,9 @@ export async function PATCH(
       `, [projectId, session.userId])
 
       // Step 2: Always recalculate and lock commission when setting Fechado
-      // Formula: Lucro Bruto = valor_venda * 10% (Projetus margin)
-      //          Comissao = Lucro Bruto * vendedor_percentage (SDR 1%, Closer 4%)
-      // Example: 100k sale → 10k margin → SDR gets 1% of 10k = R$100, Closer gets 4% = R$400
+      // Formula: Comissao = valor_venda * vendedor_percentage + taxa_fixa
+      //          SDR 1%, Closer 4%, + R$50 per fechamento
+      // Example: 100k sale → SDR gets 1% = R$1,000 + R$50 = R$1,050
       await query(`
         WITH lead_info AS (
           SELECT id, tipo_vendedor, valor_venda
@@ -110,7 +110,7 @@ export async function PATCH(
               CASE WHEN tipo_vendedor = 'SDR' THEN 1.00 ELSE 4.00 END
             ),
             comissao_valor = (
-              COALESCE(valor_venda, 0) * 0.10 * (
+              COALESCE(valor_venda, 0) * (
                 COALESCE(
                   (SELECT percentual_override FROM override_check),
                   (SELECT percentual_default FROM config_check),
@@ -120,7 +120,7 @@ export async function PATCH(
             ) + COALESCE(
               (SELECT taxa_fixa_override FROM override_check),
               (SELECT taxa_fixa FROM config_check),
-              0.00
+              50.00
             ),
             comissao_locked = true,
             updated_at = NOW()
@@ -151,13 +151,13 @@ export async function PATCH(
               CASE WHEN tipo_vendedor = 'SDR' THEN 1.00 ELSE 4.00 END
             ),
             comissao_valor = (
-              COALESCE(valor_venda, 0) * 0.10 * (
+              COALESCE(valor_venda, 0) * (
                 COALESCE(
                   (SELECT percentual_default FROM config_check),
                   CASE WHEN tipo_vendedor = 'SDR' THEN 1.00 ELSE 4.00 END
                 ) / 100
               )
-            ) + COALESCE((SELECT taxa_fixa FROM config_check), 0.00),
+            ) + COALESCE((SELECT taxa_fixa FROM config_check), 50.00),
             updated_at = NOW()
         WHERE id = $1 AND status_contato = 'Fechado'
       `, [projectId])

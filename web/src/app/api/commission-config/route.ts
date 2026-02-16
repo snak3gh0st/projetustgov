@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       WITH updated AS (
         UPDATE vendedor_projetos
         SET comissao_percentual = $1,
-            comissao_valor = (COALESCE(valor_emenda, 0) * ($1 / 100)) + $2,
+            comissao_valor = (COALESCE(valor_venda, 0) * ($1 / 100)) + $2,
             updated_at = NOW()
         WHERE tipo_vendedor = $3
           AND (comissao_locked IS NOT true)
@@ -156,7 +156,7 @@ export async function PUT(request: NextRequest) {
     await query(`
       UPDATE vendedor_projetos
       SET comissao_percentual = $1,
-          comissao_valor = (COALESCE(valor_emenda, 0) * ($1 / 100)) + COALESCE($2, 0),
+          comissao_valor = (COALESCE(valor_venda, 0) * ($1 / 100)) + COALESCE($2, 0),
           updated_at = NOW()
       WHERE id = $3
         AND (comissao_locked IS NOT true)

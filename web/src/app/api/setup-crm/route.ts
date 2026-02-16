@@ -124,7 +124,7 @@ async function runSetup() {
     `).catch(() => {}) // ignore if already exists
 
     // 2c. Calculate commission for existing records
-    // Formula: valor_venda * 10% (Projetus margin) * vendedor_percentage
+    // Formula: valor_venda * vendedor_percentage + R$50 per fechamento
     await pool.query(`
       UPDATE vendedor_projetos
       SET
@@ -134,9 +134,9 @@ async function runSetup() {
           ELSE 1.00
         END,
         comissao_valor = CASE
-          WHEN tipo_vendedor = 'SDR' THEN COALESCE(valor_venda, 0) * 0.10 * 0.01
-          WHEN tipo_vendedor = 'Closer' THEN COALESCE(valor_venda, 0) * 0.10 * 0.04
-          ELSE COALESCE(valor_venda, 0) * 0.10 * 0.01
+          WHEN tipo_vendedor = 'SDR' THEN COALESCE(valor_venda, 0) * 0.01 + 50.00
+          WHEN tipo_vendedor = 'Closer' THEN COALESCE(valor_venda, 0) * 0.04 + 50.00
+          ELSE COALESCE(valor_venda, 0) * 0.01 + 50.00
         END
       WHERE valor_venda IS NOT NULL AND valor_venda > 0
         AND (comissao_valor IS NULL OR comissao_percentual IS NULL);
@@ -214,15 +214,15 @@ async function runSetup() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_co_lead_id ON commission_overrides(lead_id);`).catch(() => {})
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_co_active ON commission_overrides(active);`).catch(() => {})
 
-    // 6d. Seed default commission config (SDR: 1%+R$0, Closer: 4%+R$0)
+    // 6d. Seed default commission config (SDR: 1%+R$50, Closer: 4%+R$50)
     await pool.query(`
       INSERT INTO commission_config (tipo_vendedor, percentual_default, taxa_fixa, active)
-      SELECT 'SDR', 1.00, 0.00, true
+      SELECT 'SDR', 1.00, 50.00, true
       WHERE NOT EXISTS (SELECT 1 FROM commission_config WHERE tipo_vendedor = 'SDR' AND active = true);
     `).catch(() => {})
     await pool.query(`
       INSERT INTO commission_config (tipo_vendedor, percentual_default, taxa_fixa, active)
-      SELECT 'Closer', 4.00, 0.00, true
+      SELECT 'Closer', 4.00, 50.00, true
       WHERE NOT EXISTS (SELECT 1 FROM commission_config WHERE tipo_vendedor = 'Closer' AND active = true);
     `).catch(() => {})
 
