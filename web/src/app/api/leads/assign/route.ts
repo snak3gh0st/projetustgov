@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { cnpj, vendedor_id, force, lead_ids } = body
+    const { cnpj, vendedor_id, force, lead_ids, reassign } = body
 
     // Support both CNPJ-based assignment (modal) and bulk assignment (multi-select)
     if (cnpj) {
@@ -107,20 +107,32 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Assign all leads with matching CNPJs (not just the selected ones)
-      // Count affected rows first
+      // Assign all leads with matching CNPJs
+      // When reassigning, update ALL leads for those CNPJs (including already assigned)
+      const whereClause = reassign
+        ? `WHERE cnpj = ANY($1)`
+        : `WHERE cnpj = ANY($1) AND (vendedor_id IS NULL OR id = ANY($2))`
+      const countParams = reassign ? [cnpjs] : [cnpjs, lead_ids]
+
       const countResult = await query<{ count: string }>(
-        `SELECT COUNT(*) as count FROM vendedor_projetos
-         WHERE cnpj = ANY($1) AND (vendedor_id IS NULL OR id = ANY($2))`,
-        [cnpjs, lead_ids]
+        `SELECT COUNT(*) as count FROM vendedor_projetos ${whereClause}`,
+        countParams
       )
       const totalAssigned = parseInt(countResult[0]?.count || '0', 10)
 
-      await query(
-        `UPDATE vendedor_projetos SET vendedor_id = $1, updated_at = NOW()
-         WHERE cnpj = ANY($2) AND (vendedor_id IS NULL OR id = ANY($3))`,
-        [vendedor_id, cnpjs, lead_ids]
-      )
+      if (reassign) {
+        await query(
+          `UPDATE vendedor_projetos SET vendedor_id = $1, updated_at = NOW()
+           WHERE cnpj = ANY($2)`,
+          [vendedor_id, cnpjs]
+        )
+      } else {
+        await query(
+          `UPDATE vendedor_projetos SET vendedor_id = $1, updated_at = NOW()
+           WHERE cnpj = ANY($2) AND (vendedor_id IS NULL OR id = ANY($3))`,
+          [vendedor_id, cnpjs, lead_ids]
+        )
+      }
 
       const extraAssigned = Math.max(0, totalAssigned - lead_ids.length)
 

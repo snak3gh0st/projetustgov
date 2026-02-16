@@ -11,14 +11,20 @@ interface Vendedor {
   lead_count: number
 }
 
+type Tab = 'unassigned' | 'assigned'
+
 export default function DistribuirPage() {
+  const [tab, setTab] = useState<Tab>('unassigned')
   const [leads, setLeads] = useState<VendedorProjeto[]>([])
+  const [assignedLeads, setAssignedLeads] = useState<VendedorProjeto[]>([])
   const [vendedores, setVendedores] = useState<Vendedor[]>([])
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<number>>(new Set())
   const [selectedVendedorId, setSelectedVendedorId] = useState('')
+  const [filterVendedorId, setFilterVendedorId] = useState('')
   const [search, setSearch] = useState('')
   const [ufFilter, setUfFilter] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadingAssigned, setLoadingAssigned] = useState(false)
   const [assigning, setAssigning] = useState(false)
   const [toast, setToast] = useState('')
   const [userRole, setUserRole] = useState<string | null>(null)
@@ -33,6 +39,22 @@ export default function DistribuirPage() {
       console.error('Failed to fetch leads:', err)
     } finally {
       setLoading(false)
+    }
+  }, [])
+
+  const fetchAssignedLeads = useCallback(async () => {
+    setLoadingAssigned(true)
+    try {
+      const res = await fetch('/api/leads?limit=5000')
+      const data = await res.json()
+      const assigned = (Array.isArray(data) ? data : []).filter(
+        (l: VendedorProjeto) => l.vendedor_id !== null
+      )
+      setAssignedLeads(assigned)
+    } catch (err) {
+      console.error('Failed to fetch assigned leads:', err)
+    } finally {
+      setLoadingAssigned(false)
     }
   }, [])
 
@@ -61,47 +83,73 @@ export default function DistribuirPage() {
   useEffect(() => {
     if (userRole === 'gestor') {
       fetchLeads()
+      fetchAssignedLeads()
       fetchVendedores()
     }
-  }, [userRole, fetchLeads, fetchVendedores])
+  }, [userRole, fetchLeads, fetchAssignedLeads, fetchVendedores])
+
+  // Clear selection when switching tabs
+  useEffect(() => {
+    setSelectedLeadIds(new Set())
+    setSelectedVendedorId('')
+    setSearch('')
+    setUfFilter('')
+  }, [tab])
+
+  // Active leads based on tab
+  const activeLeads = tab === 'unassigned' ? leads : assignedLeads
 
   // Count leads per CNPJ
   const cnpjCounts = useMemo(() => {
     const counts: Record<string, number> = {}
-    for (const l of leads) {
+    for (const l of activeLeads) {
       counts[l.cnpj] = (counts[l.cnpj] || 0) + 1
     }
     return counts
-  }, [leads])
+  }, [activeLeads])
 
   // Compute extra leads that would be auto-included via CNPJ grouping
   const extraByCnpj = useMemo(() => {
     const selectedCnpjs = new Set<string>()
-    for (const lead of leads) {
+    for (const lead of activeLeads) {
       if (selectedLeadIds.has(lead.id)) {
         selectedCnpjs.add(lead.cnpj)
       }
     }
     let extra = 0
-    for (const lead of leads) {
+    for (const lead of activeLeads) {
       if (!selectedLeadIds.has(lead.id) && selectedCnpjs.has(lead.cnpj)) {
         extra++
       }
     }
     return extra
-  }, [leads, selectedLeadIds])
+  }, [activeLeads, selectedLeadIds])
 
   // Filtered leads
-  const filteredLeads = leads.filter(lead => {
+  const filteredLeads = activeLeads.filter(lead => {
     if (search) {
       const s = search.toLowerCase()
       if (!lead.cnpj.includes(s) && !(lead.nome || '').toLowerCase().includes(s)) return false
     }
     if (ufFilter && lead.uf !== ufFilter) return false
+    if (tab === 'assigned' && filterVendedorId && lead.vendedor_id !== filterVendedorId) return false
     return true
   })
 
-  const ufs = Array.from(new Set(leads.map(l => l.uf).filter((v): v is string => Boolean(v)))).sort()
+  const ufs = Array.from(new Set(activeLeads.map(l => l.uf).filter((v): v is string => Boolean(v)))).sort()
+
+  // Group assigned leads by vendedor for summary cards
+  const assignedByVendedor = useMemo(() => {
+    const groups: Record<string, { nome: string; count: number }> = {}
+    for (const l of assignedLeads) {
+      const vid = l.vendedor_id || 'unknown'
+      if (!groups[vid]) {
+        groups[vid] = { nome: l.vendedor_nome || 'Desconhecido', count: 0 }
+      }
+      groups[vid].count++
+    }
+    return groups
+  }, [assignedLeads])
 
   function toggleLead(id: number) {
     setSelectedLeadIds(prev => {
@@ -130,6 +178,7 @@ export default function DistribuirPage() {
         body: JSON.stringify({
           lead_ids: Array.from(selectedLeadIds),
           vendedor_id: selectedVendedorId,
+          ...(tab === 'assigned' ? { reassign: true } : {}),
         }),
       })
       if (res.ok) {
@@ -137,7 +186,8 @@ export default function DistribuirPage() {
         const total = data.assigned_count ?? selectedLeadIds.size
         const extra = data.extra_by_cnpj ?? 0
         const warnings: string[] = data.warnings ?? []
-        let msg = `${total} leads atribuidos com sucesso!`
+        const action = tab === 'assigned' ? 'redistribuidos' : 'atribuidos'
+        let msg = `${total} leads ${action} com sucesso!`
         if (extra > 0) {
           msg += ` (${extra} adicionais por agrupamento CNPJ)`
         }
@@ -147,6 +197,7 @@ export default function DistribuirPage() {
         setToast(msg)
         setSelectedLeadIds(new Set())
         fetchLeads()
+        fetchAssignedLeads()
         fetchVendedores()
         setTimeout(() => setToast(''), 5000)
       } else {
@@ -161,35 +212,138 @@ export default function DistribuirPage() {
     }
   }
 
+  async function handleUnassign() {
+    if (selectedLeadIds.size === 0) return
+    setAssigning(true)
+    try {
+      // Get unique CNPJs from selected leads
+      const selectedCnpjs = new Set<string>()
+      for (const lead of assignedLeads) {
+        if (selectedLeadIds.has(lead.id)) {
+          selectedCnpjs.add(lead.cnpj)
+        }
+      }
+      const cnpjArray = Array.from(selectedCnpjs)
+
+      let totalUnassigned = 0
+      for (const cnpj of cnpjArray) {
+        const res = await fetch('/api/leads/assign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cnpj, unassign: true }),
+        })
+        if (res.ok) totalUnassigned++
+      }
+
+      setToast(`${totalUnassigned} CNPJ(s) desatribuidos com sucesso!`)
+      setSelectedLeadIds(new Set())
+      fetchLeads()
+      fetchAssignedLeads()
+      fetchVendedores()
+      setTimeout(() => setToast(''), 5000)
+    } catch {
+      setToast('Erro ao desatribuir leads')
+      setTimeout(() => setToast(''), 3000)
+    } finally {
+      setAssigning(false)
+    }
+  }
+
   if (userRole !== 'gestor') {
     return <div className="flex items-center justify-center py-20 text-gray-500">Verificando permissoes...</div>
   }
+
+  const isLoading = tab === 'unassigned' ? loading : loadingAssigned
 
   return (
     <div className="space-y-6 max-w-[1400px]">
       <div>
         <h1 className="font-heading text-2xl font-bold text-white">Distribuir Leads</h1>
-        <p className="text-sm text-gray-400 mt-1">Atribua leads nao atribuidos aos vendedores</p>
+        <p className="text-sm text-gray-400 mt-1">
+          {tab === 'unassigned'
+            ? 'Atribua leads nao atribuidos aos vendedores'
+            : 'Visualize e redistribua leads ja atribuidos'
+          }
+        </p>
       </div>
 
-      {/* Vendedor cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {vendedores.map(v => (
-          <div
-            key={v.id}
-            onClick={() => setSelectedVendedorId(v.id)}
-            className={`rounded-xl p-3 border cursor-pointer transition-all ${
-              selectedVendedorId === v.id
-                ? 'border-cyan-500 bg-cyan-500/10 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
-                : 'border-white/5 bg-white/[0.02] hover:border-white/10'
-            }`}
-          >
-            <p className="text-sm font-medium text-white truncate">{v.nome}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{v.email}</p>
-            <p className="text-xs text-cyan-400 mt-1">{v.lead_count} leads</p>
-          </div>
-        ))}
+      {/* Tabs */}
+      <div className="flex gap-1 rounded-xl bg-white/[0.03] border border-white/5 p-1 w-fit">
+        <button
+          onClick={() => setTab('unassigned')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            tab === 'unassigned'
+              ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+              : 'text-gray-400 hover:text-white border border-transparent'
+          }`}
+        >
+          Nao Atribuidos
+          <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
+            tab === 'unassigned' ? 'bg-cyan-500/20 text-cyan-300' : 'bg-white/5 text-gray-500'
+          }`}>
+            {leads.length}
+          </span>
+        </button>
+        <button
+          onClick={() => setTab('assigned')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            tab === 'assigned'
+              ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+              : 'text-gray-400 hover:text-white border border-transparent'
+          }`}
+        >
+          Distribuidos
+          <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
+            tab === 'assigned' ? 'bg-cyan-500/20 text-cyan-300' : 'bg-white/5 text-gray-500'
+          }`}>
+            {assignedLeads.length}
+          </span>
+        </button>
       </div>
+
+      {/* Vendedor cards - for unassigned tab: target selection; for assigned tab: summary */}
+      {tab === 'unassigned' ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {vendedores.map(v => (
+            <div
+              key={v.id}
+              onClick={() => setSelectedVendedorId(v.id)}
+              className={`rounded-xl p-3 border cursor-pointer transition-all ${
+                selectedVendedorId === v.id
+                  ? 'border-cyan-500 bg-cyan-500/10 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                  : 'border-white/5 bg-white/[0.02] hover:border-white/10'
+              }`}
+            >
+              <p className="text-sm font-medium text-white truncate">{v.nome}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{v.email}</p>
+              <p className="text-xs text-cyan-400 mt-1">{v.lead_count} leads</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {vendedores.map(v => {
+            const info = assignedByVendedor[v.id]
+            const count = info?.count || 0
+            const isFiltered = filterVendedorId === v.id
+            return (
+              <div
+                key={v.id}
+                onClick={() => setFilterVendedorId(isFiltered ? '' : v.id)}
+                className={`rounded-xl p-3 border cursor-pointer transition-all ${
+                  isFiltered
+                    ? 'border-cyan-500 bg-cyan-500/10 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                    : 'border-white/5 bg-white/[0.02] hover:border-white/10'
+                }`}
+              >
+                <p className="text-sm font-medium text-white truncate">{v.nome}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{v.email}</p>
+                <p className="text-xs text-cyan-400 mt-1">{count} leads atribuidos</p>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
@@ -208,6 +362,18 @@ export default function DistribuirPage() {
           <option value="">Todas UFs</option>
           {ufs.map(uf => <option key={uf} value={uf!}>{uf}</option>)}
         </select>
+        {tab === 'assigned' && (
+          <select
+            value={filterVendedorId}
+            onChange={e => setFilterVendedorId(e.target.value)}
+            className="bg-sigma-navy-card border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-cyan-500/50"
+          >
+            <option value="">Todos Vendedores</option>
+            {vendedores.map(v => (
+              <option key={v.id} value={v.id}>{v.nome}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* CNPJ grouping note */}
@@ -218,9 +384,18 @@ export default function DistribuirPage() {
       )}
 
       {/* Table */}
-      {loading ? (
+      {isLoading ? (
         <div className="flex items-center justify-center py-20">
           <div className="animate-pulse text-gray-500">Carregando leads...</div>
+        </div>
+      ) : filteredLeads.length === 0 ? (
+        <div className="flex items-center justify-center py-20 text-gray-500">
+          {tab === 'unassigned'
+            ? 'Nenhum lead pendente de atribuicao'
+            : filterVendedorId
+              ? 'Nenhum lead atribuido a este vendedor'
+              : 'Nenhum lead distribuido ainda'
+          }
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-white/5">
@@ -236,12 +411,15 @@ export default function DistribuirPage() {
                   />
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">CNPJ</th>
+                {tab === 'assigned' && (
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Vendedor</th>
+                )}
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Leads</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Nome</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Programa</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor Global</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor Emenda</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">UF</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Municipio</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -263,6 +441,13 @@ export default function DistribuirPage() {
                     />
                   </td>
                   <td className="px-3 py-2 font-mono text-xs text-gray-300">{formatCNPJ(lead.cnpj)}</td>
+                  {tab === 'assigned' && (
+                    <td className="px-3 py-2 text-xs">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                        {lead.vendedor_nome || '-'}
+                      </span>
+                    </td>
+                  )}
                   <td className="px-3 py-2 text-xs">
                     {cnpjCounts[lead.cnpj] > 1 ? (
                       <span className="text-cyan-400 font-medium">{cnpjCounts[lead.cnpj]} leads</span>
@@ -272,9 +457,25 @@ export default function DistribuirPage() {
                   </td>
                   <td className="px-3 py-2 text-white font-medium truncate max-w-[180px]">{lead.nome || '-'}</td>
                   <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[150px]">{lead.nome_programa || '-'}</td>
-                  <td className="px-3 py-2 text-cyan-400 text-xs">{formatCompactCurrency(lead.valor_global)}</td>
+                  <td className="px-3 py-2 text-cyan-400 text-xs">{formatCompactCurrency(lead.valor_emenda)}</td>
                   <td className="px-3 py-2 text-gray-300">{lead.uf || '-'}</td>
-                  <td className="px-3 py-2 text-gray-400 text-xs truncate max-w-[120px]">{lead.municipio || '-'}</td>
+                  <td className="px-3 py-2 text-xs">
+                    {tab === 'assigned' ? (
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${
+                        lead.status_contato === 'Fechado'
+                          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                          : lead.status_contato === 'Proposta'
+                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            : lead.status_contato === 'Retorno'
+                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                              : 'bg-white/5 text-gray-400 border border-white/10'
+                      }`}>
+                        {lead.status_contato}
+                      </span>
+                    ) : (
+                      <span className="text-gray-500">{lead.municipio || '-'}</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -287,16 +488,27 @@ export default function DistribuirPage() {
         <span className="text-sm text-gray-400">
           {selectedLeadIds.size > 0
             ? `${selectedLeadIds.size} leads selecionados${extraByCnpj > 0 ? ` (+${extraByCnpj} por CNPJ)` : ''}`
-            : `${filteredLeads.length} leads nao atribuidos`
+            : tab === 'unassigned'
+              ? `${filteredLeads.length} leads nao atribuidos`
+              : `${filteredLeads.length} leads distribuidos`
           }
         </span>
         <div className="flex items-center gap-3">
+          {tab === 'assigned' && selectedLeadIds.size > 0 && (
+            <button
+              onClick={handleUnassign}
+              disabled={assigning}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              {assigning ? 'Removendo...' : 'Desatribuir'}
+            </button>
+          )}
           <select
             value={selectedVendedorId}
             onChange={e => setSelectedVendedorId(e.target.value)}
             className="bg-sigma-navy-card border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-cyan-500/50"
           >
-            <option value="">Selecione vendedor...</option>
+            <option value="">{tab === 'assigned' ? 'Redistribuir para...' : 'Selecione vendedor...'}</option>
             {vendedores.map(v => (
               <option key={v.id} value={v.id}>{v.nome} ({v.lead_count})</option>
             ))}
@@ -306,7 +518,12 @@ export default function DistribuirPage() {
             disabled={selectedLeadIds.size === 0 || !selectedVendedorId || assigning}
             className="px-4 py-2 rounded-lg text-sm font-medium bg-cyan-500 text-gray-950 hover:bg-cyan-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
-            {assigning ? 'Atribuindo...' : `Atribuir ${selectedLeadIds.size + extraByCnpj} leads`}
+            {assigning
+              ? (tab === 'assigned' ? 'Redistribuindo...' : 'Atribuindo...')
+              : tab === 'assigned'
+                ? `Redistribuir ${selectedLeadIds.size + extraByCnpj} leads`
+                : `Atribuir ${selectedLeadIds.size + extraByCnpj} leads`
+            }
           </button>
         </div>
       </div>
