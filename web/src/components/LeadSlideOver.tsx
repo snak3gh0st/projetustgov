@@ -171,7 +171,7 @@ export default function LeadSlideOver({ lead, onClose, canModify = false }: Lead
             <div className="bg-sigma-neon/10 border border-sigma-neon/30 rounded-lg p-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-400">
-                  Comissão ({localLead.tipo_vendedor || 'SDR'} - {localLead.comissao_percentual?.toFixed(1) || '0'}%)
+                  Comissão ({localLead.tipo_vendedor || 'SDR'} - {Number(localLead.comissao_percentual || 0).toFixed(1)}%)
                 </span>
                 <span className="text-sm font-semibold text-sigma-neon">
                   {formatCurrency(localLead.comissao_valor)}

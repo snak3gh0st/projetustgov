@@ -7,14 +7,16 @@ export function formatCNPJ(cnpj: string): string {
   )
 }
 
-export function formatCurrency(value: number | null | undefined): string {
+export function formatCurrency(value: number | string | null | undefined): string {
   if (value == null) return 'R$ 0'
+  const n = typeof value === 'string' ? Number(value) : value
+  if (isNaN(n)) return 'R$ 0'
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(value)
+  }).format(n)
 }
 
 export function formatCurrencyFull(value: number | null | undefined): string {
@@ -37,12 +39,14 @@ export function formatDate(dateStr: string | null | undefined): string {
   return d.toLocaleDateString('pt-BR')
 }
 
-export function formatCompactCurrency(value: number | null | undefined): string {
+export function formatCompactCurrency(value: number | string | null | undefined): string {
   if (value == null) return 'R$ 0'
-  if (value >= 1_000_000_000) return `R$ ${(value / 1_000_000_000).toFixed(1)}B`
-  if (value >= 1_000_000) return `R$ ${(value / 1_000_000).toFixed(1)}M`
-  if (value >= 1_000) return `R$ ${(value / 1_000).toFixed(0)}K`
-  return formatCurrency(value)
+  const n = Number(value)
+  if (isNaN(n)) return 'R$ 0'
+  if (n >= 1_000_000_000) return `R$ ${(n / 1_000_000_000).toFixed(1)}B`
+  if (n >= 1_000_000) return `R$ ${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `R$ ${(n / 1_000).toFixed(0)}K`
+  return formatCurrency(n)
 }
 
 export function formatParlamentarSummary(parlamentares: (string | null)[]): string {

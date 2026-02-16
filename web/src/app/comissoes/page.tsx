@@ -334,7 +334,7 @@ export default function ComissoesPage() {
                       {formatCurrency(lead.valor_emenda)}
                     </td>
                     <td className="px-6 py-4 text-sm text-right text-gray-400">
-                      {lead.comissao_percentual?.toFixed(1) || '0'}%
+                      {Number(lead.comissao_percentual || 0).toFixed(1)}%
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex flex-col items-end gap-1">

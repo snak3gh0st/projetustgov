@@ -49,11 +49,12 @@ function getColor(count: number, max: number): string {
   return `rgb(${r},${g},${b})`
 }
 
-function formatCompact(value: number): string {
-  if (value >= 1_000_000_000) return `R$ ${(value / 1_000_000_000).toFixed(1)}B`
-  if (value >= 1_000_000) return `R$ ${(value / 1_000_000).toFixed(1)}M`
-  if (value >= 1_000) return `R$ ${(value / 1_000).toFixed(0)}K`
-  return `R$ ${value.toFixed(0)}`
+function formatCompact(value: number | string): string {
+  const n = Number(value) || 0
+  if (n >= 1_000_000_000) return `R$ ${(n / 1_000_000_000).toFixed(1)}B`
+  if (n >= 1_000_000) return `R$ ${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `R$ ${(n / 1_000).toFixed(0)}K`
+  return `R$ ${n.toFixed(0)}`
 }
 
 export default function BrazilHeatmap({ data }: { data: StateData[] }) {

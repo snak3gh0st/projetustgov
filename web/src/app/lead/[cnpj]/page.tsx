@@ -195,7 +195,7 @@ export default function LeadDetailPage() {
             <div>
               <p className="text-xs text-gray-400 uppercase">Percentual Comissão</p>
               <p className="text-lg font-semibold text-white mt-1">
-                {first.comissao_percentual?.toFixed(1) || '0'}%
+                {Number(first.comissao_percentual || 0).toFixed(1)}%
               </p>
             </div>
             <div>
