@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { formatCNPJ, formatCompactCurrency } from '@/lib/format'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { formatCNPJ, formatCompactCurrency, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
@@ -47,6 +47,8 @@ export default function LeadsPage() {
     leadNome: string
     tipoVendedor: string | null
   } | null>(null)
+  const [expandedCnpjs, setExpandedCnpjs] = useState<Set<string>>(new Set())
+  const [clientFilter, setClientFilter] = useState('')
 
   // Fetch session
   useEffect(() => {
@@ -90,7 +92,7 @@ export default function LeadsPage() {
     return () => clearTimeout(timer)
   }, [fetchLeads])
 
-  // Group leads by CNPJ for display
+  // Group leads by CNPJ for display (no summing - show highest emenda value)
   const displayLeads = useMemo(() => {
     const leadsByCnpj = leads.reduce((acc, lead) => {
       if (!acc[lead.cnpj]) {
@@ -100,15 +102,33 @@ export default function LeadsPage() {
       return acc
     }, {} as Record<string, VendedorProjeto[]>)
 
-    return Object.entries(leadsByCnpj).map(([cnpj, cnpjLeads]) => {
-      const first = cnpjLeads[0]
+    let result = Object.entries(leadsByCnpj).map(([cnpj, cnpjLeads]) => {
+      const first = cnpjLeads[0] // highest value (ORDER BY valor_emenda DESC)
       return {
         ...first,
         emenda_count: cnpjLeads.length,
-        total_valor_emendas: cnpjLeads.reduce((sum, l) => sum + (Number(l.valor_emenda) || 0), 0)
+        subLeads: cnpjLeads.slice(1), // other emendas for cascade
       }
     })
-  }, [leads])
+
+    // Client filter
+    if (clientFilter === 'existing') {
+      result = result.filter(l => l.is_existing_client)
+    } else if (clientFilter === 'new') {
+      result = result.filter(l => !l.is_existing_client)
+    }
+
+    return result
+  }, [leads, clientFilter])
+
+  function toggleExpand(cnpj: string) {
+    setExpandedCnpjs(prev => {
+      const next = new Set(prev)
+      if (next.has(cnpj)) next.delete(cnpj)
+      else next.add(cnpj)
+      return next
+    })
+  }
 
   async function updateLead(id: number, field: string, value: string) {
     try {
@@ -227,11 +247,18 @@ export default function LeadsPage() {
           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         {sessionUser?.role === 'gestor' && (
-          <select value={vendedorFilter} onChange={e => setVendedorFilter(e.target.value)} className="bg-sigma-navy-card border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-sigma-neon/50">
-            <option value="">Todos Vendedores</option>
-            <option value="unassigned">Não atribuídos</option>
-            {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome} ({v.lead_count})</option>)}
-          </select>
+          <>
+            <select value={vendedorFilter} onChange={e => setVendedorFilter(e.target.value)} className="bg-sigma-navy-card border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-sigma-neon/50">
+              <option value="">Todos Vendedores</option>
+              <option value="unassigned">Não atribuídos</option>
+              {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome} ({v.lead_count})</option>)}
+            </select>
+            <select value={clientFilter} onChange={e => setClientFilter(e.target.value)} className="bg-sigma-navy-card border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-sigma-neon/50">
+              <option value="">Todos Clientes</option>
+              <option value="existing">Clientes Existentes</option>
+              <option value="new">Novos Clientes</option>
+            </select>
+          </>
         )}
       </div>
 
@@ -259,9 +286,12 @@ export default function LeadsPage() {
               <tbody>
                 {displayLeads.map(lead => {
                   const hasContact = lead.telefone || lead.email
+                  const isExpanded = expandedCnpjs.has(lead.cnpj)
+                  const hasMultipleEmendas = lead.emenda_count > 1
+                  const isFechado = lead.status_contato === 'Fechado'
                   return (
+                  <React.Fragment key={lead.cnpj}>
                   <tr
-                    key={lead.id}
                     onClick={() => setSelectedLead(lead)}
                     className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${
                       lead.is_max_priority ? 'bg-red-500/10 border-l-2 border-l-red-500' :
@@ -269,22 +299,46 @@ export default function LeadsPage() {
                     }`}
                   >
                     <td className="px-4 py-3 max-w-[280px]">
-                      <div className="text-white font-medium text-sm leading-tight whitespace-normal break-words">
-                        {lead.nome || '-'}
-                        {lead.is_existing_client && sessionUser?.role === 'gestor' && (
-                          <span className="ml-2 text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded border border-purple-500/30">
-                            CLIENTE
-                          </span>
+                      <div className="flex items-start gap-1.5">
+                        {hasMultipleEmendas && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleExpand(lead.cnpj) }}
+                            className="mt-0.5 text-gray-500 hover:text-sigma-neon transition-colors text-xs flex-shrink-0"
+                            title={`${lead.emenda_count} emendas`}
+                          >
+                            {isExpanded ? '▼' : '▶'}
+                          </button>
                         )}
+                        <div className="min-w-0">
+                          <div className="text-white font-medium text-sm leading-tight whitespace-normal break-words">
+                            {lead.nome || '-'}
+                            {lead.is_existing_client && (
+                              <span className="ml-2 text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded border border-purple-500/30">
+                                CLIENTE
+                              </span>
+                            )}
+                          </div>
+                          <span className="font-mono text-[11px] text-gray-500 mt-0.5 block">{formatCNPJ(lead.cnpj)}</span>
+                        </div>
                       </div>
-                      <span className="font-mono text-[11px] text-gray-500 mt-0.5 block">{formatCNPJ(lead.cnpj)}</span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-sigma-neon font-semibold text-sm">
-                        {formatCompactCurrency(lead.total_valor_emendas || 0)}
-                      </span>
-                      {lead.emenda_count > 1 && (
-                        <span className="ml-1 text-gray-500 text-xs">({lead.emenda_count})</span>
+                      {isFechado && lead.comissao_valor ? (
+                        <div>
+                          <span className="text-green-400 font-semibold text-sm">
+                            {formatCompactCurrency(lead.comissao_valor)}
+                          </span>
+                          <span className="block text-[10px] text-gray-500">comissao</span>
+                        </div>
+                      ) : (
+                        <div>
+                          <span className="text-sigma-neon font-semibold text-sm">
+                            {formatCompactCurrency(Number(lead.valor_emenda) || 0)}
+                          </span>
+                          {hasMultipleEmendas && (
+                            <span className="ml-1 text-gray-500 text-xs">({lead.emenda_count})</span>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3 max-w-[220px]">
@@ -340,6 +394,40 @@ export default function LeadsPage() {
                       </td>
                     )}
                   </tr>
+                  {/* Cascade sub-rows for multiple emendas */}
+                  {isExpanded && lead.subLeads.map(sub => (
+                    <tr
+                      key={sub.id}
+                      onClick={() => setSelectedLead(sub)}
+                      className="border-b border-white/5 bg-white/[0.02] hover:bg-white/5 transition-colors cursor-pointer"
+                    >
+                      <td className="px-4 py-2 pl-10">
+                        <div className="text-gray-400 text-xs">
+                          <span className="text-gray-600 mr-1">↳</span>
+                          {sub.parlamentar || sub.nome_programa || '-'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        <span className="text-sigma-neon/70 font-medium text-xs">
+                          {formatCompactCurrency(Number(sub.valor_emenda) || 0)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="text-gray-500 text-xs">{sub.orgao_concedente || '-'}</div>
+                      </td>
+                      <td className="px-4 py-2" colSpan={sessionUser?.role === 'gestor' ? 4 : 3}>
+                        <select
+                          value={sub.status_contato || 'Não Contatado'}
+                          onClick={e => e.stopPropagation()}
+                          onChange={e => updateLead(sub.id, 'status_contato', e.target.value)}
+                          className={`text-xs font-medium rounded-full px-2 py-0.5 border-0 cursor-pointer ${STATUS_COLORS[sub.status_contato] || STATUS_COLORS['Não Contatado']}`}
+                        >
+                          {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                  </React.Fragment>
                   )
                 })}
               </tbody>

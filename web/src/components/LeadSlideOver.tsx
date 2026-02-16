@@ -90,7 +90,7 @@ export default function LeadSlideOver({ lead, onClose, canModify = false }: Lead
 
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold text-white truncate pr-8">{lead.nome || 'Sem nome'}</h2>
+              <h2 className="text-xl font-bold text-white pr-8 whitespace-normal break-words">{lead.nome || 'Sem nome'}</h2>
               <p className="font-mono text-sm text-gray-400 mt-1">{formatCNPJ(lead.cnpj)}</p>
             </div>
           </div>
@@ -367,7 +367,7 @@ function InfoCard({ label, value, highlight }: { label: string; value: string; h
   return (
     <div className="bg-white/5 rounded-xl p-3 border border-white/5">
       <p className="text-xs text-gray-500 mb-1">{label}</p>
-      <p className={`text-sm font-medium truncate ${highlight ? 'text-sigma-neon font-bold' : 'text-gray-200'}`}>{value}</p>
+      <p className={`text-sm font-medium whitespace-normal break-words ${highlight ? 'text-sigma-neon font-bold' : 'text-gray-200'}`}>{value}</p>
     </div>
   )
 }

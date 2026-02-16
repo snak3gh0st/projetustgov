@@ -24,11 +24,10 @@ export async function GET(request: NextRequest) {
     // Check for exclude_existing parameter (for gestor assignment view)
     const excludeExisting = searchParams.get('exclude_existing')
 
-    // Vendedor role -> only their projects, ALWAYS exclude existing clients
+    // Vendedor role -> only their assigned projects (including existing clients if assigned to them)
     if (session.role === 'vendedor') {
       conditions.push(`vp.vendedor_id = $${paramIndex++}`)
       params.push(session.userId)
-      conditions.push('ec.cnpj IS NULL') // vendedores never see existing clients
     } else if (vendedorId === 'unassigned') {
       conditions.push(`vp.vendedor_id IS NULL`)
     } else if (vendedorId) {

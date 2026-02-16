@@ -166,7 +166,7 @@ export default function LeadDetailPage() {
       console.error('Update contact error:', err)
     }
   }
-  const totalValorEmenda = projetos.reduce((sum, p) => sum + (Number(p.valor_emenda) || 0), 0)
+  const maiorEmenda = Math.max(...projetos.map(p => Number(p.valor_emenda) || 0))
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -198,9 +198,9 @@ export default function LeadDetailPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4">
-          <p className="text-xs text-gray-400 uppercase">Valor Emenda Total</p>
+          <p className="text-xs text-gray-400 uppercase">{projetos.length > 1 ? 'Maior Emenda' : 'Valor Emenda'}</p>
           <p className="text-xl font-heading font-bold text-sigma-neon mt-1">
-            {formatCurrency(totalValorEmenda)}
+            {formatCurrency(maiorEmenda)}
           </p>
         </div>
         <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4">
@@ -394,8 +394,8 @@ export default function LeadDetailPage() {
             <tbody>
               {projetos.map(p => (
                 <tr key={p.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                  <td className="px-4 py-3 text-white text-xs truncate max-w-[180px]">{p.parlamentar || '-'}</td>
-                  <td className="px-4 py-3 text-gray-300 text-xs truncate max-w-[150px]">{p.orgao_concedente || '-'}</td>
+                  <td className="px-4 py-3 text-white text-xs max-w-[220px] whitespace-normal break-words">{p.parlamentar || '-'}</td>
+                  <td className="px-4 py-3 text-gray-300 text-xs max-w-[200px] whitespace-normal break-words">{p.orgao_concedente || '-'}</td>
                   <td className="px-4 py-3 text-sigma-neon text-xs">{formatCurrency(Number(p.valor_emenda) || 0)}</td>
                   <td className="px-4 py-3">
                     <select
