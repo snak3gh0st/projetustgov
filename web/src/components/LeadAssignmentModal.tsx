@@ -117,6 +117,38 @@ export default function LeadAssignmentModal({
           </div>
         )}
 
+        {currentVendedor && (
+          <button
+            onClick={async () => {
+              if (!confirm('Remover atribuicao deste lead?')) return
+              setLoading(true)
+              setError('')
+              try {
+                const res = await fetch('/api/leads/assign', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ cnpj, unassign: true })
+                })
+                if (res.ok) {
+                  onAssigned()
+                  onClose()
+                } else {
+                  const data = await res.json()
+                  setError(data.error || 'Erro ao remover atribuicao')
+                }
+              } catch {
+                setError('Erro de conexao')
+              } finally {
+                setLoading(false)
+              }
+            }}
+            disabled={loading}
+            className="w-full mb-4 px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors text-sm disabled:opacity-50"
+          >
+            Remover Atribuicao
+          </button>
+        )}
+
         <label className="block mb-4">
           <span className="text-sm text-gray-400 mb-2 block">Vendedor</span>
           <select

@@ -21,6 +21,15 @@ export async function POST(request: NextRequest) {
 
     // Support both CNPJ-based assignment (modal) and bulk assignment (multi-select)
     if (cnpj) {
+      // Handle unassignment first (before vendedor_id check)
+      if (body.unassign) {
+        await query(
+          `UPDATE vendedor_projetos SET vendedor_id = NULL, updated_at = NOW() WHERE cnpj = $1`,
+          [cnpj]
+        )
+        return NextResponse.json({ success: true, unassigned: true, cnpj })
+      }
+
       // CNPJ-based assignment (LEAD-01, LEAD-02)
       if (!vendedor_id) {
         return NextResponse.json({ error: 'vendedor_id required' }, { status: 400 })
