@@ -102,7 +102,7 @@
 | 7 | Commission system, default status Não Contatado, parlamentar column reorder | 2026-02-12 | 3ae5f1c | [4-commission-system-default-status-n-o-con](./quick/4-commission-system-default-status-n-o-con/) |
 | 8 | Upload existing clients (CLIENTES.xlsx) with validation and clear instructions | 2026-02-12 | 29539cc | [8-create-endpoint-and-ui-to-upload-existin](./quick/8-create-endpoint-and-ui-to-upload-existin/) |
 | 9 | Fix critical CRM bugs and UX improvements | 2026-02-13 | 32e9187 | [5-fix-critical-crm-bugs-and-ux-improvement](./quick/5-fix-critical-crm-bugs-and-ux-improvement/) |
-| 10 | Fix import-spreadsheet for PROGRAMAS 2026 Excel format | 2026-02-16 | 3e3c0c1 | [6-verificar-populacao-db-e-importar-base-p](./quick/6-verificar-populacao-db-e-importar-base-p/) |
+| 10 | Fix import-spreadsheet for PROGRAMAS 2026 format + dedup fix + 314 leads imported | 2026-02-16 | 0064fc5 | [6-verificar-populacao-db-e-importar-base-p](./quick/6-verificar-populacao-db-e-importar-base-p/) |
 | 11 | Fix critical client bugs - lead assignment | 2026-02-16 | 7af8385 | [7-fix-critical-client-bugs-lead-assignment](./quick/7-fix-critical-client-bugs-lead-assignment/) |
 
 ## Session Continuity
@@ -110,17 +110,17 @@
 ### Last Session Summary
 **Date:** 2026-02-16
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 11: Fix critical client bugs in lead assignment
+**Activity:** Quick task 10: Import PROGRAMAS 2026 spreadsheet + dedup fix
 
 **Completed:**
-- Fixed verifyLeadAccess to query vendedor_projetos (not non-existent lead_assignments table)
-- Corrected commission rates from 9%/12% to 1%/4% with zero flat fees (3 locations: setup-crm seed, recalc, PATCH fallbacks)
-- Dashboard comissao_total now only sums Fechado leads (not pipeline)
-- Secured /api/setup-crm and /api/import-spreadsheet (removed from publicPaths)
-- Added error handling for status updates (res.ok check, alert on failure)
-- Added tipo_vendedor dropdown UI in LeadSlideOver and lead detail page
-- Added lead unassignment capability (button in assignment modal, API handler)
-- All 8 production bugs fixed, build passes with zero errors
+- Fixed import-spreadsheet to handle PROGRAMAS 2026 Beneficiario-style headers
+- Updated VENDEDOR_MAP to @projetus.org, fixed sheet name normalization (accents, spaces)
+- Added Vitória header-shift auto-detection and Gabriel unnamed column extraction
+- Spreadsheet contact data now preferred over proponentes enrichment
+- Fixed dedup key: uses cnpj|parlamentar when nr_emenda absent (prevents data loss)
+- Successfully imported 314 leads from PRIMEIROS TESTES VENDAS - PROGRAMAS 2026.xlsx
+- File has 419 real data rows (2185 raw rows include 1766 empty Excel formatting rows)
+- Wellington: 70 leads, Elisson: 71 leads, Gabriel: 75 leads, Vitória: 98 leads
 
 **Next Actions:**
 - Plan Phase 12 - Pipeline Kanban board
