@@ -77,6 +77,7 @@ async function runSetup() {
         modalidade VARCHAR(100),
         situacao VARCHAR(100),
         saldo_conta NUMERIC(15,2),
+        valor_venda NUMERIC(15,2),
         telefone VARCHAR(50),
         email VARCHAR(500),
         status_contato VARCHAR(50) DEFAULT 'Não Contatado',
@@ -98,6 +99,9 @@ async function runSetup() {
     await pool.query(`
       DO $$
       BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='valor_venda') THEN
+          ALTER TABLE vendedor_projetos ADD COLUMN valor_venda NUMERIC(15,2);
+        END IF;
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='tipo_vendedor') THEN
           ALTER TABLE vendedor_projetos ADD COLUMN tipo_vendedor VARCHAR(20) DEFAULT 'SDR' CHECK (tipo_vendedor IN ('SDR', 'Closer'));
         END IF;
@@ -110,7 +114,7 @@ async function runSetup() {
       END $$;
     `).catch(() => {}) // ignore if already exists
 
-    // 2c. Calculate commission for existing records
+    // 2c. Calculate commission for existing records (based on valor_venda, not valor_emenda)
     await pool.query(`
       UPDATE vendedor_projetos
       SET
@@ -120,11 +124,11 @@ async function runSetup() {
           ELSE 1.00
         END,
         comissao_valor = CASE
-          WHEN tipo_vendedor = 'SDR' THEN COALESCE(valor_emenda, 0) * 0.01
-          WHEN tipo_vendedor = 'Closer' THEN COALESCE(valor_emenda, 0) * 0.04
-          ELSE COALESCE(valor_emenda, 0) * 0.01
+          WHEN tipo_vendedor = 'SDR' THEN COALESCE(valor_venda, 0) * 0.01
+          WHEN tipo_vendedor = 'Closer' THEN COALESCE(valor_venda, 0) * 0.04
+          ELSE COALESCE(valor_venda, 0) * 0.01
         END
-      WHERE valor_emenda IS NOT NULL AND valor_emenda > 0
+      WHERE valor_venda IS NOT NULL AND valor_venda > 0
         AND (comissao_valor IS NULL OR comissao_percentual IS NULL);
     `).catch(() => {})
 

@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
           vp.cnpj,
           vp.nome,
           vp.valor_emenda,
-          0 as valor_venda,
+          COALESCE(vp.valor_venda, 0) as valor_venda,
           vp.tipo_vendedor,
           vp.comissao_percentual,
           vp.comissao_valor,
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
           SUM(vp.comissao_valor)::numeric as total_comissao,
           SUM(CASE WHEN vp.status_contato = 'Fechado' THEN vp.comissao_valor ELSE 0 END)::numeric as comissao_fechado,
           SUM(CASE WHEN vp.status_contato != 'Fechado' THEN vp.comissao_valor ELSE 0 END)::numeric as comissao_pipeline,
-          0 as total_valor_venda,
+          COALESCE(SUM(vp.valor_venda), 0)::numeric as total_valor_venda,
           SUM(vp.valor_emenda)::numeric as total_valor_emenda
         FROM vendedor_projetos vp
         WHERE ${whereClause}

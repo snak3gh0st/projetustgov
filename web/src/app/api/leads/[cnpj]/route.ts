@@ -82,9 +82,10 @@ export async function PATCH(
       `, [projectId, session.userId])
 
       // Step 2: Lock and calculate commission using config
+      // Commission is based on valor_venda (actual sale value), NOT valor_emenda (amendment total)
       await query(`
         WITH lead_info AS (
-          SELECT id, tipo_vendedor, valor_emenda, comissao_locked
+          SELECT id, tipo_vendedor, valor_venda, comissao_locked
           FROM vendedor_projetos WHERE id = $1
         ),
         override_check AS (
@@ -107,7 +108,7 @@ export async function PATCH(
               CASE WHEN tipo_vendedor = 'SDR' THEN 1.00 ELSE 4.00 END
             ),
             comissao_valor = (
-              COALESCE(valor_emenda, 0) * (
+              COALESCE(valor_venda, 0) * (
                 COALESCE(
                   (SELECT percentual_override FROM override_check),
                   (SELECT percentual_default FROM config_check),

@@ -86,7 +86,7 @@ export async function GET() {
           'Fechado' as status_contato,
           COUNT(*)::int as count,
           SUM(vp.comissao_valor)::numeric as total_comissao,
-          0 as total_venda,
+          COALESCE(SUM(vp.valor_venda), 0)::numeric as total_venda,
           SUM(CASE WHEN vp.comissao_locked = true THEN 1 ELSE 0 END)::int as locked_count
         FROM vendedor_projetos vp
         WHERE vp.vendedor_id IS NOT NULL
