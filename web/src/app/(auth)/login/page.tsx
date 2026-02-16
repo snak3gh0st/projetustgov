@@ -26,7 +26,7 @@ export default function LoginPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="font-heading text-4xl font-bold tracking-tight">
-            <span className="bg-gradient-to-r from-[#FD225C] via-[#7A4BAC] to-[#0072F7] bg-clip-text text-transparent">projete</span>
+            <span className="bg-gradient-to-r from-[#FD225C] via-[#7A4BAC] to-[#0072F7] bg-clip-text text-transparent">PROJETUS</span>
           </h1>
           <p className="text-gray-400 text-sm mt-1">CRM de Vendas</p>
           <p className="text-[11px] text-[#0072F7] mt-2">

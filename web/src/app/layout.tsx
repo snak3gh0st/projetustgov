@@ -4,7 +4,7 @@ import Sidebar from '@/components/Sidebar'
 import { auth } from '@/lib/auth'
 
 export const metadata: Metadata = {
-  title: 'Projete CRM',
+  title: 'Projetus CRM',
   description: 'CRM de Vendas para gestão de instrumentos governamentais',
 }
 

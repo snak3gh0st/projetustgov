@@ -36,7 +36,7 @@ export default function Sidebar({ user }: SidebarProps) {
     <aside className="fixed left-0 top-0 h-screen w-56 bg-sigma-navy-light border-r border-white/5 flex flex-col z-50">
       <div className="p-5 border-b border-white/5">
         <h1 className="font-heading text-xl font-bold tracking-tight">
-          <span className="bg-gradient-to-r from-[#FD225C] via-[#7A4BAC] to-[#0072F7] bg-clip-text text-transparent">projete</span>
+          <span className="bg-gradient-to-r from-[#FD225C] via-[#7A4BAC] to-[#0072F7] bg-clip-text text-transparent">PROJETUS</span>
         </h1>
         <p className="text-[10px] text-[#0072F7] mt-0.5 tracking-widest">
           powered by <span className="font-semibold">SigmaIntel</span>
