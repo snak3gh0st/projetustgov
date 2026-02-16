@@ -37,7 +37,7 @@ interface ComissaoData {
     vendedor_nome: string
     lead_count: number
     total_comissao: number
-    comissao_fechado: number
+    total_bonus: number
     fechados_count: number
   }>
   leads: ComissaoLead[]
@@ -275,15 +275,15 @@ export default function ComissoesPage() {
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400">Comissao Total</span>
+                    <span className="text-xs text-gray-400">Comissao (%)</span>
                     <span className="text-base font-semibold text-[#00f0ff]">
                       {formatCurrency(v.total_comissao)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400">Comissao Fechado</span>
+                    <span className="text-xs text-gray-400">Bonus (R$50/fechamento)</span>
                     <span className="text-sm font-semibold text-green-400">
-                      {formatCurrency(v.comissao_fechado)}
+                      {formatCurrency(v.total_bonus)}
                     </span>
                   </div>
                   <div className="text-xs text-gray-500 text-right">

@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
           u.nome as vendedor_nome,
           COUNT(*)::int as lead_count,
           SUM(vp.comissao_valor)::numeric as total_comissao,
-          SUM(CASE WHEN vp.status_contato = 'Fechado' THEN vp.comissao_valor ELSE 0 END)::numeric as comissao_fechado,
+          SUM(COALESCE(vp.comissao_bonus, 0))::numeric as total_bonus,
           SUM(CASE WHEN vp.status_contato = 'Fechado' THEN 1 ELSE 0 END)::int as fechados_count
         FROM vendedor_projetos vp
         JOIN users u ON u.id = vp.vendedor_id
@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
       vendedor_nome: v.vendedor_nome,
       lead_count: Number(v.lead_count),
       total_comissao: Number(v.total_comissao) || 0,
-      comissao_fechado: Number(v.comissao_fechado) || 0,
+      total_bonus: Number(v.total_bonus) || 0,
       fechados_count: Number(v.fechados_count) || 0,
     }))
 
