@@ -215,15 +215,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Could not detect format. Expected Siconv or CRM headers.' }, { status: 400 })
     }
 
-    // Get existing (cnpj, nr_emenda, parlamentar) for dedup + CNPJ-to-vendedor for assignment
-    const existingRes = await pool.query('SELECT cnpj, nr_emenda, parlamentar, vendedor_id FROM vendedor_projetos')
+    // Get existing rows for dedup (cnpj + parlamentar + link_externo) + CNPJ-to-vendedor for assignment
+    const existingRes = await pool.query('SELECT cnpj, parlamentar, link_externo, vendedor_id FROM vendedor_projetos')
     const existingPairs = new Set<string>()
     const cnpjToVendedor = new Map<string, string>()
     for (const r of existingRes.rows) {
-      // Use cnpj|nr_emenda as primary key; when nr_emenda is empty, use cnpj|parlamentar
-      const emenda = r.nr_emenda ? String(r.nr_emenda).trim() : ''
       const parlamentar = r.parlamentar ? String(r.parlamentar).trim() : ''
-      const key = emenda ? `${r.cnpj}|${emenda}` : `${r.cnpj}||${parlamentar}`
+      const linkExterno = r.link_externo ? String(r.link_externo).trim() : ''
+      const key = `${r.cnpj}|${parlamentar}|${linkExterno}`
       existingPairs.add(key)
       if (r.vendedor_id) cnpjToVendedor.set(r.cnpj, r.vendedor_id)
     }
@@ -342,10 +341,10 @@ export async function POST(request: NextRequest) {
         const cnpj = cleanCNPJ(row.cnpj)
         if (!cnpj) { skipped++; continue }
 
-        // Duplicate detection: use cnpj|nr_emenda when emenda exists, cnpj||parlamentar otherwise
-        const nrEmenda = row.nr_emenda ? String(row.nr_emenda).trim() : ''
+        // Duplicate detection: full row identity (cnpj + parlamentar + link_externo)
         const parlamentar = row.parlamentar ? String(row.parlamentar).trim() : ''
-        const dedupKey = nrEmenda ? `${cnpj}|${nrEmenda}` : `${cnpj}||${parlamentar}`
+        const linkExterno = row.link_externo ? String(row.link_externo).trim() : ''
+        const dedupKey = `${cnpj}|${parlamentar}|${linkExterno}`
         if (existingPairs.has(dedupKey)) {
           duplicates++
           continue

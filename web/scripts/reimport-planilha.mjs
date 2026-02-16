@@ -201,10 +201,10 @@ async function main() {
       const cnpj = cleanCNPJ(row.cnpj)
       if (!cnpj) { skipped++; continue }
 
-      // Dedup
-      const nrEmenda = row.nr_emenda ? String(row.nr_emenda).trim() : ''
+      // Dedup: full row identity (cnpj + parlamentar + link_externo)
       const parlamentar = row.parlamentar ? String(row.parlamentar).trim() : ''
-      const dedupKey = nrEmenda ? `${cnpj}|${nrEmenda}` : `${cnpj}||${parlamentar}`
+      const linkExterno = row.link_externo ? String(row.link_externo).trim() : ''
+      const dedupKey = `${cnpj}|${parlamentar}|${linkExterno}`
       if (seenPairs.has(dedupKey)) { duplicates++; continue }
 
       // Prefer spreadsheet contact > proponentes contact
