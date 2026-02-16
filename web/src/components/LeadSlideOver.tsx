@@ -141,9 +141,14 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                       {emenda.status_contato}
                     </span>
                   </div>
-                  {emenda.parlamentar && (
-                    <p className="text-xs text-gray-300">{emenda.parlamentar}</p>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {emenda.parlamentar && (
+                      <p className="text-xs text-amber-400/80 font-medium">{emenda.parlamentar}</p>
+                    )}
+                    {emenda.nr_emenda && (
+                      <span className="text-[10px] text-gray-600">#{emenda.nr_emenda}</span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 whitespace-normal break-words">{emenda.orgao_concedente || '-'}</p>
                   {emenda.link_externo && (
                     <a

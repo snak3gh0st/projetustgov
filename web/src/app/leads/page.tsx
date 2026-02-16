@@ -319,6 +319,11 @@ export default function LeadsPage() {
                             )}
                           </div>
                           <span className="font-mono text-[11px] text-gray-500 mt-0.5 block">{formatCNPJ(lead.cnpj)}</span>
+                          {hasMultipleEmendas && lead.parlamentar && (
+                            <span className="text-[11px] text-amber-400/80 mt-0.5 block">
+                              {lead.parlamentar}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -402,9 +407,12 @@ export default function LeadsPage() {
                       className="border-b border-white/5 bg-white/[0.02] hover:bg-white/5 transition-colors cursor-pointer"
                     >
                       <td className="px-4 py-2 pl-10">
-                        <div className="text-gray-400 text-xs">
+                        <div className="text-xs">
                           <span className="text-gray-600 mr-1">↳</span>
-                          {sub.parlamentar || sub.nome_programa || '-'}
+                          <span className="text-amber-400/80 font-medium">{sub.parlamentar || '-'}</span>
+                          {sub.nr_emenda && (
+                            <span className="text-gray-600 ml-1.5 text-[10px]">#{sub.nr_emenda}</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-2 whitespace-nowrap">

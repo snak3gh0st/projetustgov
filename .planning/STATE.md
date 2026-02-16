@@ -116,6 +116,7 @@
 | 18 | Fix commission formula: remove 0.10 factor (10x too small) + add R$50 per fechamento | 2026-02-16 | 25fff79 | - |
 | 19 | Cascade emenda UX, no value summing, truncation fixes, client filter, green commission | 2026-02-16 | 7152f5d | - |
 | 20 | Show distributed leads with tabs + redistribution + unassign in /distribuir page | 2026-02-16 | 9a443e0 | - |
+| 21 | Cascade differentiates emendas by parlamentar (show on main row + sub-rows) | 2026-02-16 | dcbec6a | - |
 
 ## Session Continuity
 
