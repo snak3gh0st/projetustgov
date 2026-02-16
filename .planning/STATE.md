@@ -102,36 +102,26 @@
 | 7 | Commission system, default status Não Contatado, parlamentar column reorder | 2026-02-12 | 3ae5f1c | [4-commission-system-default-status-n-o-con](./quick/4-commission-system-default-status-n-o-con/) |
 | 8 | Upload existing clients (CLIENTES.xlsx) with validation and clear instructions | 2026-02-12 | 29539cc | [8-create-endpoint-and-ui-to-upload-existin](./quick/8-create-endpoint-and-ui-to-upload-existin/) |
 | 9 | Fix critical CRM bugs and UX improvements | 2026-02-13 | 32e9187 | [5-fix-critical-crm-bugs-and-ux-improvement](./quick/5-fix-critical-crm-bugs-and-ux-improvement/) |
+| 10 | Fix import-spreadsheet for PROGRAMAS 2026 Excel format | 2026-02-16 | 3e3c0c1 | [6-verificar-populacao-db-e-importar-base-p](./quick/6-verificar-populacao-db-e-importar-base-p/) |
 
 ## Session Continuity
 
 ### Last Session Summary
-**Date:** 2026-02-14
+**Date:** 2026-02-16
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Completed Phase 13 Plan 02: Commission reporting UI with filters and dashboard breakdown
+**Activity:** Quick task 10: Fix import-spreadsheet for PROGRAMAS 2026 Excel format
 
 **Completed:**
-- Enhanced /api/comissoes with date/vendedor/fechado-only filtering
-- Added per-vendedor commission aggregation for gestor reports
-- Added commission_breakdown to /api/dashboard-crm (by status)
-- Rewrote /comissoes page with comprehensive filter UI
-- Date range inputs defaulting to current month
-- Quick period buttons (Este Mes, Ultimo Mes, Todos)
-- Vendedor dropdown (gestor only, vendedor auto-scoped)
-- Summary cards: total, confirmada, pipeline, leads count, valor vendas
-- Per-vendedor breakdown cards for gestor
-- Enhanced deals table with Valor Venda, locked indicators, override tooltips
-- Added commission breakdown section to vendedor dashboard
-- Shows commission by status with locked count
-- Link to full report from dashboard widget
-
-**Phase 13 Complete:**
-- COM-03: Commission report filterable by vendedor and date period ✓
-- COM-04: Vendedor dashboard shows accumulated commissions with breakdown ✓
-- Gestor has full visibility across all vendedores with filtering
-- Vendedor has self-service commission visibility
+- Fixed format detection to recognize Beneficiario-style headers as CRM format
+- Updated VENDEDOR_MAP to @projetus.org emails matching users table
+- Fixed sheet name normalization (handles accents "Vitória" and trailing spaces "Gabriel ")
+- Added CRM_COLUMN_MAP entries: contato→telefone, email→email, valor→valor_emenda, municipio→municipio
+- Added Vitória header-shift auto-detection (detects when UF column contains orgao data)
+- Added unnamed column extraction for Gabriel's extra email/phone data
+- Spreadsheet contact data now preferred over proponentes enrichment
 
 **Next Actions:**
+- Upload PRIMEIROS TESTES VENDAS - PROGRAMAS 2026.xlsx via /upload page
 - Plan Phase 12 - Pipeline Kanban board
 
 ---
