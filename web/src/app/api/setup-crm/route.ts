@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 30
+export const maxDuration = 60
 
 function getPool() {
   const url = process.env.DATABASE_URL || process.env.POSTGRES_URL
@@ -260,7 +260,7 @@ async function runSetup() {
     const missingContacts = await pool.query(`
       SELECT DISTINCT cnpj FROM vendedor_projetos
       WHERE (telefone IS NULL OR telefone = '') AND (email IS NULL OR email = '')
-      LIMIT 50
+      LIMIT 30
     `).catch(() => ({ rows: [] }))
 
     let apiEnrichedCount = 0
@@ -269,7 +269,7 @@ async function runSetup() {
         const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${row.cnpj}`, {
           signal: AbortSignal.timeout(8000),
         })
-        if (!res.ok) { await new Promise(r => setTimeout(r, 500)); continue }
+        if (!res.ok) { await new Promise(r => setTimeout(r, 300)); continue }
         const data = await res.json()
         const phoneRaw = data.ddd_telefone_1 || ''
         const phoneDigits = phoneRaw.replace(/\D/g, '')
@@ -279,7 +279,7 @@ async function runSetup() {
         const rawEmail = (data.email || '').trim().toLowerCase()
         const email = rawEmail && rawEmail !== 'none' && rawEmail !== 'null' && rawEmail.includes('@') ? rawEmail : null
 
-        if (!phone && !email) { await new Promise(r => setTimeout(r, 500)); continue }
+        if (!phone && !email) { await new Promise(r => setTimeout(r, 300)); continue }
 
         const updates: string[] = []
         const params: unknown[] = []
@@ -294,7 +294,7 @@ async function runSetup() {
         )
         apiEnrichedCount++
       } catch { /* skip */ }
-      await new Promise(r => setTimeout(r, 500))
+      await new Promise(r => setTimeout(r, 300))
     }
 
     // 9. Migrate existing @sigma.com emails to @projetus.org
