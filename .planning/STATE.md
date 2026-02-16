@@ -59,6 +59,7 @@
 | Vendedor commission breakdown in dashboard | 13-02 | Vendedores need self-service visibility into earnings by status | 2026-02-14 |
 | Separate confirmed vs pipeline commission cards | 13-02 | Clear distinction between guaranteed vs potential commissions for financial planning | 2026-02-14 |
 | PATCH returns updated commission data | quick-14 | Frontend needs recalculated values after tipo_vendedor change; prevents stale local state | 2026-02-16 |
+| Spreadsheet-only DB for MVP | quick-15 | No propostas/convenios from REPO in DB; only gestor-uploaded spreadsheet enriched by REPO contacts + BrasilAPI | 2026-02-16 |
 
 ### Technical Context (Next.js Stack)
 
@@ -108,21 +109,22 @@
 | 12 | Add valor_venda column + fix commission formula (valor_venda not valor_emenda) | 2026-02-16 | 997e9b3 | - |
 | 13 | Fix all 11 client-reported bugs (commission, UI, auth, BrasilAPI enrichment) | 2026-02-16 | 01407bf | - |
 | 14 | Fix commission not updating on tipo_vendedor change (stale local state) | 2026-02-16 | 2f0213e | - |
+| 15 | DB reset + reimport from PROGRAMAS 2026 xlsx (369 leads, 97% contacts, 100% links) | 2026-02-16 | ff86d99 | - |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-16
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 13: Fix all 11 client-reported bugs + BrasilAPI enrichment cleanup
+**Activity:** Quick task 15: DB reset + reimport from official PROGRAMAS 2026 spreadsheet
 
 **Completed:**
-- Added valor_venda column, fixed commission formula (valor_venda * 10% * vendedor%)
-- Fixed all 11 client-reported bugs (login, commission, UI, passwords, BrasilAPI)
-- BrasilAPI enrichment: 73/84 CNPJs enriched locally (11 truly have no data at Receita Federal)
-- Cleaned up leads table from 14 to 7 columns
-- Cleaned up setup-crm debug logging for production
-- Fixed commission not updating on tipo_vendedor change (PATCH now returns updated values)
+- Reset vendedor_projetos, contact_notes, commission_overrides tables
+- Reimported 369 leads from PROGRAMAS 2026 xlsx (4 vendedores: Wellington 98, Vitória 98, Elisson 88, Gabriel 85)
+- Enriched contacts: 289 from proponentes (REPO), 70 from BrasilAPI
+- 97.3% contact coverage (359/369 have phone or email), 100% TransfereGov links
+- Created reset-db.mjs and reimport-planilha.mjs scripts for reproducibility
+- MVP data source is now ONLY the gestor-uploaded spreadsheet, enriched by REPO + BrasilAPI
 
 **Next Actions:**
 - Plan Phase 12 - Pipeline Kanban board
