@@ -103,25 +103,26 @@
 | 8 | Upload existing clients (CLIENTES.xlsx) with validation and clear instructions | 2026-02-12 | 29539cc | [8-create-endpoint-and-ui-to-upload-existin](./quick/8-create-endpoint-and-ui-to-upload-existin/) |
 | 9 | Fix critical CRM bugs and UX improvements | 2026-02-13 | 32e9187 | [5-fix-critical-crm-bugs-and-ux-improvement](./quick/5-fix-critical-crm-bugs-and-ux-improvement/) |
 | 10 | Fix import-spreadsheet for PROGRAMAS 2026 Excel format | 2026-02-16 | 3e3c0c1 | [6-verificar-populacao-db-e-importar-base-p](./quick/6-verificar-populacao-db-e-importar-base-p/) |
+| 11 | Fix critical client bugs - lead assignment | 2026-02-16 | 7af8385 | [7-fix-critical-client-bugs-lead-assignment](./quick/7-fix-critical-client-bugs-lead-assignment/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-16
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 10: Fix import-spreadsheet for PROGRAMAS 2026 Excel format
+**Activity:** Quick task 11: Fix critical client bugs in lead assignment
 
 **Completed:**
-- Fixed format detection to recognize Beneficiario-style headers as CRM format
-- Updated VENDEDOR_MAP to @projetus.org emails matching users table
-- Fixed sheet name normalization (handles accents "Vitória" and trailing spaces "Gabriel ")
-- Added CRM_COLUMN_MAP entries: contato→telefone, email→email, valor→valor_emenda, municipio→municipio
-- Added Vitória header-shift auto-detection (detects when UF column contains orgao data)
-- Added unnamed column extraction for Gabriel's extra email/phone data
-- Spreadsheet contact data now preferred over proponentes enrichment
+- Fixed verifyLeadAccess to query vendedor_projetos (not non-existent lead_assignments table)
+- Corrected commission rates from 9%/12% to 1%/4% with zero flat fees (3 locations: setup-crm seed, recalc, PATCH fallbacks)
+- Dashboard comissao_total now only sums Fechado leads (not pipeline)
+- Secured /api/setup-crm and /api/import-spreadsheet (removed from publicPaths)
+- Added error handling for status updates (res.ok check, alert on failure)
+- Added tipo_vendedor dropdown UI in LeadSlideOver and lead detail page
+- Added lead unassignment capability (button in assignment modal, API handler)
+- All 8 production bugs fixed, build passes with zero errors
 
 **Next Actions:**
-- Upload PRIMEIROS TESTES VENDAS - PROGRAMAS 2026.xlsx via /upload page
 - Plan Phase 12 - Pipeline Kanban board
 
 ---
