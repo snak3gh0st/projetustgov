@@ -9,11 +9,11 @@ interface ContactNotesTimelineProps {
 }
 
 const TIPO_CONFIG = {
-  ligacao: { label: 'Ligação', icon: '📞', color: 'text-blue-400 bg-blue-500/20 border-blue-500/30' },
-  email: { label: 'Email', icon: '📧', color: 'text-blue-400 bg-blue-500/20 border-blue-500/30' },
-  whatsapp: { label: 'WhatsApp', icon: '💬', color: 'text-green-400 bg-green-500/20 border-green-500/30' },
-  reuniao: { label: 'Reunião', icon: '🤝', color: 'text-purple-400 bg-purple-500/20 border-purple-500/30' },
-  outro: { label: 'Outro', icon: '📝', color: 'text-gray-400 bg-gray-500/20 border-gray-500/30' },
+  ligacao: { label: 'Ligação', icon: '📞', color: 'text-[#0072F7] bg-blue-50 border-blue-200' },
+  email: { label: 'Email', icon: '📧', color: 'text-[#0072F7] bg-blue-50 border-blue-200' },
+  whatsapp: { label: 'WhatsApp', icon: '💬', color: 'text-green-600 bg-green-50 border-green-200' },
+  reuniao: { label: 'Reunião', icon: '🤝', color: 'text-purple-600 bg-purple-50 border-purple-200' },
+  outro: { label: 'Outro', icon: '📝', color: 'text-gray-600 bg-gray-50 border-gray-200' },
 }
 
 export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTimelineProps) {
@@ -83,16 +83,16 @@ export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTi
   }
 
   return (
-    <div className="bg-sigma-navy-card border border-white/5 rounded-xl overflow-hidden">
-      <div className="p-4 border-b border-white/5 flex items-center justify-between">
+    <div className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
+      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-heading font-semibold text-white">Histórico de Contatos</h2>
+          <h2 className="text-lg font-heading font-semibold text-gray-900">Histórico de Contatos</h2>
           <p className="text-xs text-gray-500">{notes.length} interações registradas</p>
         </div>
         {canModify && (
           <button
             onClick={() => setShowForm(!showForm)}
-            className="px-3 py-1.5 rounded-lg bg-sigma-neon text-sigma-navy-dark text-sm font-medium hover:brightness-110 transition-all"
+            className="px-3 py-1.5 rounded-lg bg-[#0072F7] text-white text-sm font-medium hover:bg-[#0058C4] transition-all"
           >
             + Nova Interação
           </button>
@@ -100,13 +100,13 @@ export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTi
       </div>
 
       {showForm && canModify && (
-        <form onSubmit={handleSubmit} className="p-4 border-b border-white/5 bg-white/5">
+        <form onSubmit={handleSubmit} className="p-4 border-b border-gray-200 bg-gray-50">
           <label className="block mb-3">
             <span className="text-sm text-gray-400 block mb-1">Tipo de Contato</span>
             <select
               value={formData.tipo}
               onChange={e => setFormData({ ...formData, tipo: e.target.value })}
-              className="w-full bg-sigma-navy-light border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-sigma-neon/50"
+              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-[#0072F7]"
             >
               {Object.entries(TIPO_CONFIG).map(([key, cfg]) => (
                 <option key={key} value={key}>
@@ -122,21 +122,21 @@ export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTi
               onChange={e => setFormData({ ...formData, observacao: e.target.value })}
               placeholder="Descreva o que foi discutido..."
               rows={3}
-              className="w-full bg-sigma-navy-light border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-sigma-neon/50 placeholder-gray-600"
+              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-[#0072F7] placeholder-gray-400"
             />
           </label>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setShowForm(false)}
-              className="px-3 py-1.5 rounded-lg border border-white/10 text-gray-300 text-sm hover:bg-white/5"
+              className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-sm hover:bg-gray-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting || !formData.observacao.trim()}
-              className="px-3 py-1.5 rounded-lg bg-sigma-neon text-sigma-navy-dark text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 rounded-lg bg-[#0072F7] text-white text-sm font-medium hover:bg-[#0058C4] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? 'Salvando...' : 'Salvar'}
             </button>
@@ -144,7 +144,7 @@ export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTi
         </form>
       )}
 
-      <div className="divide-y divide-white/5">
+      <div className="divide-y divide-gray-200">
         {notes.length === 0 ? (
           <div className="p-8 text-center text-gray-500 text-sm">
             Nenhuma interação registrada ainda
@@ -153,7 +153,7 @@ export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTi
           notes.map((note) => {
             const cfg = TIPO_CONFIG[note.tipo as keyof typeof TIPO_CONFIG]
             return (
-              <div key={note.id} className="p-4 hover:bg-white/5 transition-colors">
+              <div key={note.id} className="p-4 hover:bg-gray-50 transition-colors">
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0 mt-1">
                     <span className={`inline-block px-2 py-1 rounded text-xs border ${cfg.color}`}>
@@ -162,11 +162,11 @@ export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTi
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2 mb-1">
-                      <span className="text-sm font-medium text-white">{note.vendedor_nome}</span>
+                      <span className="text-sm font-medium text-gray-900">{note.vendedor_nome}</span>
                       <span className="text-xs text-gray-500">{formatDate(note.created_at)}</span>
                     </div>
                     {note.observacao && (
-                      <p className="text-sm text-gray-300 whitespace-pre-wrap">{note.observacao}</p>
+                      <p className="text-sm text-gray-600 whitespace-pre-wrap">{note.observacao}</p>
                     )}
                   </div>
                 </div>

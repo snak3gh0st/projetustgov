@@ -18,9 +18,9 @@ interface MonitoramentoStats {
 }
 
 const PRIORITY_COLORS: Record<string, { dot: string; bg: string; text: string; bar: string }> = {
-  Alta: { dot: '🔴', bg: 'bg-red-500/10', text: 'text-red-400', bar: 'bg-red-500' },
-  Média: { dot: '🟡', bg: 'bg-amber-500/10', text: 'text-amber-400', bar: 'bg-amber-500' },
-  Baixa: { dot: '🟢', bg: 'bg-emerald-500/10', text: 'text-emerald-400', bar: 'bg-emerald-500' },
+  Alta: { dot: '🔴', bg: 'bg-red-50', text: 'text-red-500', bar: 'bg-red-500' },
+  Média: { dot: '🟡', bg: 'bg-amber-50', text: 'text-amber-600', bar: 'bg-amber-500' },
+  Baixa: { dot: '🟢', bg: 'bg-emerald-50', text: 'text-emerald-600', bar: 'bg-emerald-500' },
 }
 
 export default function MonitoramentoPage() {
@@ -104,7 +104,7 @@ export default function MonitoramentoPage() {
     <div className="space-y-6 max-w-[1400px]">
       {/* Header */}
       <div>
-        <h1 className="font-heading text-2xl font-bold text-white">Monitoramento Financeiro</h1>
+        <h1 className="font-heading text-2xl font-bold text-gray-900">Monitoramento Financeiro</h1>
         <p className="text-sm text-gray-400 mt-1">
           Convênios em execução com saldo disponível para prospecção
         </p>
@@ -120,7 +120,7 @@ export default function MonitoramentoPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-lg p-4">
+      <div className="bg-white border border-gray-200 shadow-sm rounded-lg p-4">
         <div className="flex flex-wrap gap-3 items-center">
           {/* Priority buttons */}
           <div className="flex gap-1">
@@ -130,8 +130,8 @@ export default function MonitoramentoPage() {
                 onClick={() => setFilters(f => ({ ...f, prioridade: btn.value }))}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   filters.prioridade === btn.value
-                    ? 'bg-blue-500 text-gray-950'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    ? 'bg-[#0072F7] text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
                 {btn.label}
@@ -148,7 +148,7 @@ export default function MonitoramentoPage() {
                 type="number"
                 value={filters.saldo_min}
                 onChange={e => handleSaldoChange(Number(e.target.value) || 0)}
-                className="w-32 bg-gray-800 border border-gray-700 rounded-lg pl-8 pr-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/50"
+                className="w-32 bg-gray-100 border border-gray-300 rounded-lg pl-8 pr-2 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-[#0072F7]"
               />
             </div>
           </div>
@@ -157,7 +157,7 @@ export default function MonitoramentoPage() {
           <select
             value={filters.uf}
             onChange={e => setFilters(f => ({ ...f, uf: e.target.value }))}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500/50"
+            className="bg-gray-100 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:border-[#0072F7]"
           >
             <option value="">Todos os Estados</option>
             {ufs.map(uf => (
@@ -171,7 +171,7 @@ export default function MonitoramentoPage() {
             placeholder="Buscar por nome ou CNPJ"
             value={filters.search}
             onChange={e => handleSearchChange(e.target.value)}
-            className="flex-1 min-w-[180px] bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50"
+            className="flex-1 min-w-[180px] bg-gray-100 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0072F7]"
           />
         </div>
       </div>
@@ -186,10 +186,10 @@ export default function MonitoramentoPage() {
           Nenhum convênio encontrado com os filtros selecionados
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-white/5">
+        <div className="overflow-x-auto rounded-xl border border-gray-200">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/5 bg-gray-900/80">
+              <tr className="border-b border-gray-200 bg-gray-50">
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Nº Convênio</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Organização</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">UF</th>
@@ -205,21 +205,21 @@ export default function MonitoramentoPage() {
                 return (
                   <tr
                     key={c.id || i}
-                    className={`border-b border-white/5 hover:bg-white/5 transition-colors ${
-                      i % 2 === 0 ? '' : 'bg-white/[0.02]'
+                    className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${
+                      i % 2 === 0 ? '' : 'bg-gray-50/50'
                     }`}
                   >
-                    <td className="px-3 py-2 font-mono text-xs text-gray-300">
+                    <td className="px-3 py-2 font-mono text-xs text-gray-600">
                       {c.nr_convenio ? (c.nr_convenio.length > 15 ? c.nr_convenio.slice(0, 15) + '...' : c.nr_convenio) : '-'}
                     </td>
-                    <td className="px-3 py-2 text-white font-medium truncate max-w-[250px]">
+                    <td className="px-3 py-2 text-gray-900 font-medium truncate max-w-[250px]">
                       {c.nome ? (c.nome.length > 50 ? c.nome.slice(0, 50) + '...' : c.nome) : '-'}
                     </td>
-                    <td className="px-3 py-2 text-gray-300">{c.uf || '-'}</td>
-                    <td className="px-3 py-2 text-blue-400 font-medium">{formatCompactCurrency(c.saldo_conta)}</td>
+                    <td className="px-3 py-2 text-gray-600">{c.uf || '-'}</td>
+                    <td className="px-3 py-2 text-[#0072F7] font-medium">{formatCompactCurrency(c.saldo_conta)}</td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full ${colors.bar}`}
                             style={{ width: `${Math.min(c.perc_execucao, 100)}%` }}
@@ -236,7 +236,7 @@ export default function MonitoramentoPage() {
                     <td className="px-3 py-2">
                       <button
                         onClick={() => setSelectedConvenio(c)}
-                        className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                        className="text-xs text-[#0072F7] hover:text-blue-700 transition-colors"
                       >
                         Ver Detalhes
                       </button>
@@ -263,11 +263,11 @@ export default function MonitoramentoPage() {
 }
 
 function StatCard({ label, value, icon, accent }: { label: string; value: string; icon: string; accent: string }) {
-  const borderColor = accent === 'blue' ? 'border-blue-500/20' : accent === 'red' ? 'border-red-500/20' : accent === 'amber' ? 'border-amber-500/20' : 'border-emerald-500/20'
-  const valueColor = accent === 'blue' ? 'text-blue-400' : accent === 'red' ? 'text-red-400' : accent === 'amber' ? 'text-amber-400' : 'text-emerald-400'
+  const borderColor = accent === 'blue' ? 'border-blue-200' : accent === 'red' ? 'border-red-200' : accent === 'amber' ? 'border-amber-200' : 'border-emerald-200'
+  const valueColor = accent === 'blue' ? 'text-[#0072F7]' : accent === 'red' ? 'text-red-500' : accent === 'amber' ? 'text-amber-600' : 'text-emerald-600'
 
   return (
-    <div className={`bg-gray-900/50 backdrop-blur-sm border border-gray-800 ${borderColor} rounded-lg p-4`}>
+    <div className={`bg-white border border-gray-200 shadow-sm ${borderColor} rounded-lg p-4`}>
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-400">{label}</span>
         <span className="text-lg">{icon}</span>
@@ -293,22 +293,22 @@ function DetailModal({ convenio, onClose }: { convenio: ConvenioMonitoramento; o
       onClick={onClose}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
 
       {/* Modal */}
       <div
-        className="relative bg-gray-900/95 backdrop-blur-md border border-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6"
+        className="relative bg-white border border-gray-200 shadow-lg rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h2 className="text-lg font-bold text-white">{convenio.nome || 'Organização'}</h2>
+            <h2 className="text-lg font-bold text-gray-900">{convenio.nome || 'Organização'}</h2>
             <p className="text-sm text-gray-400 mt-0.5">{convenio.cnpj ? formatCNPJ(convenio.cnpj) : '-'}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors text-xl leading-none"
+            className="text-gray-400 hover:text-gray-800 transition-colors text-xl leading-none"
           >
             &times;
           </button>
@@ -336,14 +336,14 @@ function DetailModal({ convenio, onClose }: { convenio: ConvenioMonitoramento; o
             <InfoRow label="Valor Liberado" value={formatCurrency(convenio.valor_liberado)} />
             <div className="flex items-center justify-between py-1">
               <span className="text-xs text-gray-400">Saldo em Conta</span>
-              <span className="text-sm font-bold text-blue-400">{formatCurrency(convenio.saldo_conta)}</span>
+              <span className="text-sm font-bold text-[#0072F7]">{formatCurrency(convenio.saldo_conta)}</span>
             </div>
           </Section>
 
           {/* Execução */}
           <Section title="Execução">
             <div className="space-y-2">
-              <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
+              <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full ${colors.bar}`}
                   style={{ width: `${Math.min(convenio.perc_execucao, 100)}%` }}
@@ -374,7 +374,7 @@ function DetailModal({ convenio, onClose }: { convenio: ConvenioMonitoramento; o
                 href={convenio.link_externo}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-[#0072F7] hover:bg-blue-100 transition-colors"
               >
                 Ver no TransfereGov ↗
               </a>
@@ -394,7 +394,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div>
       <h3 className="text-xs font-medium text-gray-500 uppercase mb-2">{title}</h3>
-      <div className="bg-gray-800/50 rounded-lg p-3 space-y-1">
+      <div className="bg-gray-50 rounded-lg p-3 space-y-1">
         {children}
       </div>
     </div>
@@ -405,7 +405,7 @@ function InfoRow({ label, value }: { label: string; value: string | null | undef
   return (
     <div className="flex items-center justify-between py-1">
       <span className="text-xs text-gray-400">{label}</span>
-      <span className="text-sm text-gray-200">{value || '-'}</span>
+      <span className="text-sm text-gray-800">{value || '-'}</span>
     </div>
   )
 }

@@ -92,27 +92,27 @@ export default function LeadAssignmentModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative bg-sigma-navy-card border border-white/10 rounded-xl p-6 w-full max-w-md shadow-2xl">
-        <h2 className="text-xl font-heading font-bold text-white mb-1">Atribuir Lead</h2>
-        <p className="text-sm text-gray-400 mb-4">
-          {leadNome} <span className="text-gray-600">({formatCNPJ(cnpj)})</span>
+      <div className="relative bg-white border border-gray-200 rounded-xl p-6 w-full max-w-md shadow-lg">
+        <h2 className="text-xl font-heading font-bold text-gray-900 mb-1">Atribuir Lead</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          {leadNome} <span className="text-gray-400">({formatCNPJ(cnpj)})</span>
         </p>
 
         {currentVendedor && (
-          <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm text-blue-400">
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-[#0072F7]">
             Atualmente atribuído a: <strong>{currentVendedor}</strong>
           </div>
         )}
 
         {duplicateWarning && (
-          <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-            <p className="text-sm text-amber-400 mb-2">{duplicateWarning}</p>
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm text-amber-600 mb-2">{duplicateWarning}</p>
             <p className="text-xs text-gray-500">Clique novamente para confirmar reatribuição</p>
           </div>
         )}
 
         {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-500">
             {error}
           </div>
         )}
@@ -143,18 +143,18 @@ export default function LeadAssignmentModal({
               }
             }}
             disabled={loading}
-            className="w-full mb-4 px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors text-sm disabled:opacity-50"
+            className="w-full mb-4 px-4 py-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors text-sm disabled:opacity-50"
           >
             Remover Atribuicao
           </button>
         )}
 
         <label className="block mb-4">
-          <span className="text-sm text-gray-400 mb-2 block">Vendedor</span>
+          <span className="text-sm text-gray-500 mb-2 block">Vendedor</span>
           <select
             value={selectedVendedor}
             onChange={e => setSelectedVendedor(e.target.value)}
-            className="w-full bg-sigma-navy-light border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-sigma-neon/50"
+            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-[#0072F7]/50"
           >
             <option value="">Selecione...</option>
             {vendedores.map(v => (
@@ -168,14 +168,14 @@ export default function LeadAssignmentModal({
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 rounded-lg border border-white/10 text-gray-300 hover:bg-white/5 transition-colors"
+            className="flex-1 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={handleAssign}
             disabled={!selectedVendedor || loading}
-            className="flex-1 px-4 py-2 rounded-lg bg-sigma-neon text-sigma-navy-dark font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="flex-1 px-4 py-2 rounded-lg bg-[#0072F7] text-white font-medium hover:bg-[#0058C4] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {loading ? 'Atribuindo...' : forceAssign ? 'Confirmar' : 'Atribuir'}
           </button>

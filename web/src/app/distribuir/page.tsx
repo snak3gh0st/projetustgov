@@ -258,7 +258,7 @@ export default function DistribuirPage() {
   return (
     <div className="space-y-6 max-w-[1400px]">
       <div>
-        <h1 className="font-heading text-2xl font-bold text-white">Distribuir Leads</h1>
+        <h1 className="font-heading text-2xl font-bold text-gray-900">Distribuir Leads</h1>
         <p className="text-sm text-gray-400 mt-1">
           {tab === 'unassigned'
             ? 'Atribua leads nao atribuidos aos vendedores'
@@ -268,18 +268,18 @@ export default function DistribuirPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-xl bg-white/[0.03] border border-white/5 p-1 w-fit">
+      <div className="flex gap-1 rounded-xl bg-gray-50 border border-gray-200 p-1 w-fit">
         <button
           onClick={() => setTab('unassigned')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             tab === 'unassigned'
-              ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
-              : 'text-gray-400 hover:text-white border border-transparent'
+              ? 'bg-blue-50 text-[#0072F7] border border-blue-200'
+              : 'text-gray-400 hover:text-gray-800 border border-transparent'
           }`}
         >
           Nao Atribuidos
           <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
-            tab === 'unassigned' ? 'bg-blue-500/20 text-blue-300' : 'bg-white/5 text-gray-500'
+            tab === 'unassigned' ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-500'
           }`}>
             {leads.length}
           </span>
@@ -288,13 +288,13 @@ export default function DistribuirPage() {
           onClick={() => setTab('assigned')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             tab === 'assigned'
-              ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
-              : 'text-gray-400 hover:text-white border border-transparent'
+              ? 'bg-blue-50 text-[#0072F7] border border-blue-200'
+              : 'text-gray-400 hover:text-gray-800 border border-transparent'
           }`}
         >
           Distribuidos
           <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
-            tab === 'assigned' ? 'bg-blue-500/20 text-blue-300' : 'bg-white/5 text-gray-500'
+            tab === 'assigned' ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-500'
           }`}>
             {assignedLeads.length}
           </span>
@@ -310,13 +310,13 @@ export default function DistribuirPage() {
               onClick={() => setSelectedVendedorId(v.id)}
               className={`rounded-xl p-3 border cursor-pointer transition-all ${
                 selectedVendedorId === v.id
-                  ? 'border-blue-500 bg-blue-500/10 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
-                  : 'border-white/5 bg-white/[0.02] hover:border-white/10'
+                  ? 'border-[#0072F7] bg-blue-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
               }`}
             >
-              <p className="text-sm font-medium text-white truncate">{v.nome}</p>
+              <p className="text-sm font-medium text-gray-900 truncate">{v.nome}</p>
               <p className="text-xs text-gray-400 mt-0.5">{v.email}</p>
-              <p className="text-xs text-blue-400 mt-1">{v.lead_count} leads</p>
+              <p className="text-xs text-[#0072F7] mt-1">{v.lead_count} leads</p>
             </div>
           ))}
         </div>
@@ -332,13 +332,13 @@ export default function DistribuirPage() {
                 onClick={() => setFilterVendedorId(isFiltered ? '' : v.id)}
                 className={`rounded-xl p-3 border cursor-pointer transition-all ${
                   isFiltered
-                    ? 'border-blue-500 bg-blue-500/10 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
-                    : 'border-white/5 bg-white/[0.02] hover:border-white/10'
+                    ? 'border-[#0072F7] bg-blue-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
               >
-                <p className="text-sm font-medium text-white truncate">{v.nome}</p>
+                <p className="text-sm font-medium text-gray-900 truncate">{v.nome}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{v.email}</p>
-                <p className="text-xs text-blue-400 mt-1">{count} leads atribuidos</p>
+                <p className="text-xs text-[#0072F7] mt-1">{count} leads atribuidos</p>
               </div>
             )
           })}
@@ -352,12 +352,12 @@ export default function DistribuirPage() {
           placeholder="Buscar por CNPJ ou nome..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 min-w-[200px] bg-sigma-navy-card border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 transition-colors"
+          className="flex-1 min-w-[200px] bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0072F7] transition-colors"
         />
         <select
           value={ufFilter}
           onChange={e => setUfFilter(e.target.value)}
-          className="bg-sigma-navy-card border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-blue-500/50"
+          className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
         >
           <option value="">Todas UFs</option>
           {ufs.map(uf => <option key={uf} value={uf!}>{uf}</option>)}
@@ -366,7 +366,7 @@ export default function DistribuirPage() {
           <select
             value={filterVendedorId}
             onChange={e => setFilterVendedorId(e.target.value)}
-            className="bg-sigma-navy-card border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-blue-500/50"
+            className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
           >
             <option value="">Todos Vendedores</option>
             {vendedores.map(v => (
@@ -378,7 +378,7 @@ export default function DistribuirPage() {
 
       {/* CNPJ grouping note */}
       {extraByCnpj > 0 && selectedLeadIds.size > 0 && (
-        <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-2.5 text-sm text-blue-300">
+        <div className="rounded-lg border border-blue-200 bg-blue-50/50 px-4 py-2.5 text-sm text-blue-700">
           {extraByCnpj} lead{extraByCnpj > 1 ? 's' : ''} adicional{extraByCnpj > 1 ? 'is' : ''} do mesmo CNPJ ser{extraByCnpj > 1 ? 'ao' : 'a'} incluido{extraByCnpj > 1 ? 's' : ''} automaticamente
         </div>
       )}
@@ -398,10 +398,10 @@ export default function DistribuirPage() {
           }
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-white/5">
+        <div className="overflow-x-auto rounded-xl border border-gray-200">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/5 bg-sigma-navy-light">
+              <tr className="border-b border-gray-200 bg-gray-50">
                 <th className="px-3 py-3 text-left">
                   <input
                     type="checkbox"
@@ -427,8 +427,8 @@ export default function DistribuirPage() {
                 <tr
                   key={lead.id}
                   onClick={() => toggleLead(lead.id)}
-                  className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${
-                    selectedLeadIds.has(lead.id) ? 'bg-blue-500/5' : ''
+                  className={`border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer ${
+                    selectedLeadIds.has(lead.id) ? 'bg-blue-50/50' : ''
                   }`}
                 >
                   <td className="px-3 py-2">
@@ -440,35 +440,35 @@ export default function DistribuirPage() {
                       className="rounded border-gray-600 bg-transparent text-blue-500 focus:ring-blue-500/30"
                     />
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs text-gray-300">{formatCNPJ(lead.cnpj)}</td>
+                  <td className="px-3 py-2 font-mono text-xs text-gray-600">{formatCNPJ(lead.cnpj)}</td>
                   {tab === 'assigned' && (
                     <td className="px-3 py-2 text-xs">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-[#0072F7] border border-blue-200">
                         {lead.vendedor_nome || '-'}
                       </span>
                     </td>
                   )}
                   <td className="px-3 py-2 text-xs">
                     {cnpjCounts[lead.cnpj] > 1 ? (
-                      <span className="text-blue-400 font-medium">{cnpjCounts[lead.cnpj]} leads</span>
+                      <span className="text-[#0072F7] font-medium">{cnpjCounts[lead.cnpj]} leads</span>
                     ) : (
                       <span className="text-gray-500">1</span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-white font-medium truncate max-w-[180px]">{lead.nome || '-'}</td>
-                  <td className="px-3 py-2 text-gray-300 text-xs truncate max-w-[150px]">{lead.nome_programa || '-'}</td>
-                  <td className="px-3 py-2 text-blue-400 text-xs">{formatCompactCurrency(lead.valor_emenda)}</td>
-                  <td className="px-3 py-2 text-gray-300">{lead.uf || '-'}</td>
+                  <td className="px-3 py-2 text-gray-900 font-medium truncate max-w-[180px]">{lead.nome || '-'}</td>
+                  <td className="px-3 py-2 text-gray-600 text-xs truncate max-w-[150px]">{lead.nome_programa || '-'}</td>
+                  <td className="px-3 py-2 text-[#0072F7] text-xs">{formatCompactCurrency(lead.valor_emenda)}</td>
+                  <td className="px-3 py-2 text-gray-600">{lead.uf || '-'}</td>
                   <td className="px-3 py-2 text-xs">
                     {tab === 'assigned' ? (
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${
                         lead.status_contato === 'Fechado'
-                          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                          ? 'bg-green-50 text-green-600 border border-green-200'
                           : lead.status_contato === 'Proposta'
-                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            ? 'bg-amber-50 text-amber-600 border border-amber-200'
                             : lead.status_contato === 'Retorno'
-                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                              : 'bg-white/5 text-gray-400 border border-white/10'
+                              ? 'bg-blue-50 text-[#0072F7] border border-blue-200'
+                              : 'bg-gray-50 text-gray-400 border border-gray-200'
                       }`}>
                         {lead.status_contato}
                       </span>
@@ -484,7 +484,7 @@ export default function DistribuirPage() {
       )}
 
       {/* Bottom action bar */}
-      <div className="sticky bottom-4 flex items-center justify-between rounded-xl border border-white/10 bg-gray-950/90 backdrop-blur-md px-4 py-3">
+      <div className="sticky bottom-4 flex items-center justify-between rounded-xl border border-gray-200 bg-white/90 backdrop-blur-md px-4 py-3 shadow-sm">
         <span className="text-sm text-gray-400">
           {selectedLeadIds.size > 0
             ? `${selectedLeadIds.size} leads selecionados${extraByCnpj > 0 ? ` (+${extraByCnpj} por CNPJ)` : ''}`
@@ -498,7 +498,7 @@ export default function DistribuirPage() {
             <button
               onClick={handleUnassign}
               disabled={assigning}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               {assigning ? 'Removendo...' : 'Desatribuir'}
             </button>
@@ -506,7 +506,7 @@ export default function DistribuirPage() {
           <select
             value={selectedVendedorId}
             onChange={e => setSelectedVendedorId(e.target.value)}
-            className="bg-sigma-navy-card border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-blue-500/50"
+            className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
           >
             <option value="">{tab === 'assigned' ? 'Redistribuir para...' : 'Selecione vendedor...'}</option>
             {vendedores.map(v => (
@@ -516,7 +516,7 @@ export default function DistribuirPage() {
           <button
             onClick={handleAssign}
             disabled={selectedLeadIds.size === 0 || !selectedVendedorId || assigning}
-            className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-500 text-gray-950 hover:bg-blue-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-[#0072F7] text-white hover:bg-[#0058C4] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             {assigning
               ? (tab === 'assigned' ? 'Redistribuindo...' : 'Atribuindo...')
@@ -530,7 +530,7 @@ export default function DistribuirPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 right-6 max-w-md bg-blue-500/20 border border-blue-500/30 text-blue-300 px-4 py-2 rounded-lg text-sm backdrop-blur-md">
+        <div className="fixed bottom-6 right-6 max-w-md bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-lg text-sm backdrop-blur-md">
           {toast}
         </div>
       )}

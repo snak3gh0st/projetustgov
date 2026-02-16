@@ -9,10 +9,10 @@ import SaleModal from '@/components/SaleModal'
 
 const STATUS_OPTIONS = ['Não Contatado', 'Retorno', 'Proposta', 'Fechado']
 const STATUS_COLORS: Record<string, string> = {
-  'Não Contatado': 'bg-red-500/20 text-red-400',
-  'Retorno': 'bg-amber-500/20 text-amber-400',
-  'Proposta': 'bg-blue-500/20 text-blue-400',
-  'Fechado': 'bg-green-500/20 text-green-400',
+  'Não Contatado': 'bg-red-50 text-red-500',
+  'Retorno': 'bg-amber-50 text-amber-600',
+  'Proposta': 'bg-blue-50 text-[#0072F7]',
+  'Fechado': 'bg-green-50 text-green-600',
 }
 
 interface Vendedor {
@@ -227,8 +227,8 @@ export default function LeadsPage() {
   return (
     <div className="space-y-6 max-w-[1400px]">
       <div>
-        <h1 className="font-heading text-2xl font-bold text-white">Lista de Leads</h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <h1 className="font-heading text-2xl font-bold text-gray-900">Lista de Leads</h1>
+        <p className="text-sm text-gray-500 mt-1">
           {sessionUser?.role === 'vendedor' ? 'Seus leads atribuídos' : 'Todos os projetos dos vendedores'}
         </p>
       </div>
@@ -238,22 +238,22 @@ export default function LeadsPage() {
         placeholder="Buscar por CNPJ ou nome..."
         value={search}
         onChange={e => setSearch(e.target.value)}
-        className="w-full bg-sigma-navy-card border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-sigma-neon/50 transition-colors"
+        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0072F7] transition-colors"
       />
 
       <div className="flex flex-wrap gap-3">
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="bg-sigma-navy-card border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-sigma-neon/50">
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]">
           <option value="">Todos Status</option>
           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         {sessionUser?.role === 'gestor' && (
           <>
-            <select value={vendedorFilter} onChange={e => setVendedorFilter(e.target.value)} className="bg-sigma-navy-card border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-sigma-neon/50">
+            <select value={vendedorFilter} onChange={e => setVendedorFilter(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]">
               <option value="">Todos Vendedores</option>
               <option value="unassigned">Não atribuídos</option>
               {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome} ({v.lead_count})</option>)}
             </select>
-            <select value={clientFilter} onChange={e => setClientFilter(e.target.value)} className="bg-sigma-navy-card border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-sigma-neon/50">
+            <select value={clientFilter} onChange={e => setClientFilter(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]">
               <option value="">Todos Clientes</option>
               <option value="existing">Clientes Existentes</option>
               <option value="new">Novos Clientes</option>
@@ -264,22 +264,22 @@ export default function LeadsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-pulse text-gray-500">Carregando leads...</div>
+          <div className="animate-pulse text-gray-400">Carregando leads...</div>
         </div>
       ) : (
         <div>
-          <div className="overflow-x-auto rounded-xl border border-white/5">
+          <div className="overflow-x-auto rounded-xl border border-gray-200">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5 bg-sigma-navy-light">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Instituição</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Ministério</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Local</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Contato</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Instituição</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ministério</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Local</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contato</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   {sessionUser?.role === 'gestor' && (
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Vendedor</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendedor</th>
                   )}
                 </tr>
               </thead>
@@ -293,9 +293,9 @@ export default function LeadsPage() {
                   <React.Fragment key={lead.cnpj}>
                   <tr
                     onClick={() => setSelectedLead(lead)}
-                    className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${
-                      lead.is_max_priority ? 'bg-red-500/10 border-l-2 border-l-red-500' :
-                      !hasContact ? 'bg-red-500/5 border-l-2 border-l-red-500/50' : ''
+                    className={`border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer ${
+                      lead.is_max_priority ? 'bg-red-50 border-l-2 border-l-red-500' :
+                      !hasContact ? 'bg-red-50/50 border-l-2 border-l-red-300' : ''
                     }`}
                   >
                     <td className="px-4 py-3 max-w-[280px]">
@@ -303,32 +303,32 @@ export default function LeadsPage() {
                         {hasMultipleEmendas && (
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleExpand(lead.cnpj) }}
-                            className="mt-0.5 text-gray-500 hover:text-sigma-neon transition-colors text-xs flex-shrink-0"
+                            className="mt-0.5 text-gray-400 hover:text-[#0072F7] transition-colors text-xs flex-shrink-0"
                             title={`${lead.emenda_count} emendas`}
                           >
                             {isExpanded ? '▼' : '▶'}
                           </button>
                         )}
                         <div className="min-w-0">
-                          <div className="text-white font-medium text-sm leading-tight whitespace-normal break-words">
+                          <div className="text-gray-900 font-medium text-sm leading-tight whitespace-normal break-words">
                             {lead.nome || '-'}
                             {lead.is_existing_client && (
-                              <span className="ml-2 text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded border border-purple-500/30">
+                              <span className="ml-2 text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-200">
                                 CLIENTE
                               </span>
                             )}
                           </div>
-                          <span className="font-mono text-[11px] text-gray-500 mt-0.5 block">{formatCNPJ(lead.cnpj)}</span>
+                          <span className="font-mono text-[11px] text-gray-400 mt-0.5 block">{formatCNPJ(lead.cnpj)}</span>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {isFechado && lead.comissao_valor ? (
                         <div>
-                          <span className="text-green-400 font-semibold text-sm">
+                          <span className="text-green-600 font-semibold text-sm">
                             {formatCompactCurrency(lead.comissao_valor)}
                           </span>
-                          <span className="block text-[10px] text-gray-500">comissao</span>
+                          <span className="block text-[10px] text-gray-400">comissao</span>
                         </div>
                       ) : (
                         <div>
@@ -336,16 +336,16 @@ export default function LeadsPage() {
                             {formatCompactCurrency(hasMultipleEmendas ? Number(lead.total_valor_emendas || lead.valor_emenda) || 0 : Number(lead.valor_emenda) || 0)}
                           </span>
                           {hasMultipleEmendas && (
-                            <span className="ml-1 text-gray-500 text-xs">({lead.emenda_count})</span>
+                            <span className="ml-1 text-gray-400 text-xs">({lead.emenda_count})</span>
                           )}
                         </div>
                       )}
                     </td>
                     <td className="px-4 py-3 max-w-[220px]">
-                      <div className="text-gray-300 text-xs leading-tight whitespace-normal break-words">{lead.orgao_concedente || '-'}</div>
+                      <div className="text-gray-600 text-xs leading-tight whitespace-normal break-words">{lead.orgao_concedente || '-'}</div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-gray-300 text-xs">
+                      <span className="text-gray-600 text-xs">
                         {lead.uf && lead.municipio ? `${lead.municipio}, ${lead.uf}` : lead.uf || lead.municipio || '-'}
                       </span>
                     </td>
@@ -353,14 +353,14 @@ export default function LeadsPage() {
                       {hasContact ? (
                         <div className="space-y-0.5">
                           {lead.telefone && (
-                            <div className="text-xs text-gray-300 truncate">{lead.telefone}</div>
+                            <div className="text-xs text-gray-600 truncate">{lead.telefone}</div>
                           )}
                           {lead.email && (
-                            <div className="text-xs text-gray-500 truncate">{lead.email}</div>
+                            <div className="text-xs text-gray-400 truncate">{lead.email}</div>
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-red-400/70">Sem contato</span>
+                        <span className="text-xs text-red-500/70">Sem contato</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -376,7 +376,7 @@ export default function LeadsPage() {
                     {sessionUser?.role === 'gestor' && (
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-400">{lead.vendedor_nome || '-'}</span>
+                          <span className="text-xs text-gray-500">{lead.vendedor_nome || '-'}</span>
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -386,7 +386,7 @@ export default function LeadsPage() {
                                 currentVendedor: lead.vendedor_nome || null
                               })
                             }}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-400 hover:bg-sigma-neon/20 hover:text-sigma-neon transition-colors"
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-[#0072F7] transition-colors"
                           >
                             {lead.vendedor_nome ? '↻' : '+'}
                           </button>
@@ -399,14 +399,14 @@ export default function LeadsPage() {
                     <tr
                       key={sub.id}
                       onClick={() => setSelectedLead(sub)}
-                      className="border-b border-white/5 bg-white/[0.02] hover:bg-white/5 transition-colors cursor-pointer"
+                      className="border-b border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer"
                     >
                       <td className="px-4 py-2 pl-10">
                         <div className="text-xs">
-                          <span className="text-gray-600 mr-1">↳</span>
-                          <span className="text-amber-400/80 font-medium">{sub.parlamentar || '-'}</span>
+                          <span className="text-gray-400 mr-1">↳</span>
+                          <span className="text-amber-600 font-medium">{sub.parlamentar || '-'}</span>
                           {sub.nr_emenda && (
-                            <span className="text-gray-600 ml-1.5 text-[10px]">#{sub.nr_emenda}</span>
+                            <span className="text-gray-400 ml-1.5 text-[10px]">#{sub.nr_emenda}</span>
                           )}
                         </div>
                       </td>
@@ -416,7 +416,7 @@ export default function LeadsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-2">
-                        <div className="text-gray-500 text-xs">{sub.orgao_concedente || '-'}</div>
+                        <div className="text-gray-400 text-xs">{sub.orgao_concedente || '-'}</div>
                       </td>
                       <td className="px-4 py-2" colSpan={sessionUser?.role === 'gestor' ? 4 : 3}>
                         <select
@@ -437,9 +437,9 @@ export default function LeadsPage() {
             </table>
           </div>
 
-          <div className="flex items-center justify-between mt-4 text-sm text-gray-400">
+          <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
             <span>{displayLeads.length} CNPJs ({leads.length} emendas)</span>
-            <button onClick={exportCSV} className="px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 transition-colors text-xs">
+            <button onClick={exportCSV} className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-xs">
               Exportar CSV
             </button>
           </div>

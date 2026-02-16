@@ -10,7 +10,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="w-full bg-sigma-neon text-sigma-navy font-semibold py-3 rounded-lg hover:bg-sigma-neon/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full bg-[#0072F7] text-white font-semibold py-3 rounded-lg hover:bg-[#0058C4] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {pending ? 'Entrando...' : 'Entrar'}
     </button>
@@ -22,7 +22,7 @@ export default function LoginPage() {
 
   return (
     <div className="w-full max-w-md px-6">
-      <div className="bg-sigma-navy-light border border-sigma-neon/20 rounded-2xl p-8 backdrop-blur-sm">
+      <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="font-heading text-4xl font-bold tracking-tight">
@@ -38,7 +38,7 @@ export default function LoginPage() {
         <form action={formAction} className="space-y-5">
           {/* Email Field */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-600 mb-2">
               Email
             </label>
             <input
@@ -47,16 +47,16 @@ export default function LoginPage() {
               type="email"
               placeholder="Email"
               required
-              className="w-full px-4 py-3 bg-sigma-navy border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-sigma-neon transition-colors"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0072F7] transition-colors"
             />
             {state?.error && (
-              <p className="text-red-400 text-sm mt-1">{state.error}</p>
+              <p className="text-red-500 text-sm mt-1">{state.error}</p>
             )}
           </div>
 
           {/* Password Field */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-600 mb-2">
               Senha
             </label>
             <input
@@ -65,7 +65,7 @@ export default function LoginPage() {
               type="password"
               placeholder="Senha"
               required
-              className="w-full px-4 py-3 bg-sigma-navy border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-sigma-neon transition-colors"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0072F7] transition-colors"
             />
           </div>
 

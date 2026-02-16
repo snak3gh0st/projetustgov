@@ -16,18 +16,18 @@ export default function KPICard({
   deltaType = 'neutral',
 }: KPICardProps) {
   const deltaColor = {
-    positive: 'text-emerald-400',
-    negative: 'text-red-400',
+    positive: 'text-emerald-600',
+    negative: 'text-red-500',
     neutral: 'text-gray-400',
   }[deltaType]
 
   return (
-    <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4 flex flex-col gap-1">
+    <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex flex-col gap-1">
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-400 uppercase tracking-wider">{title}</span>
         {icon && <span className="text-lg">{icon}</span>}
       </div>
-      <span className="text-2xl font-heading font-bold text-white">{value}</span>
+      <span className="text-2xl font-heading font-bold text-gray-900">{value}</span>
       <div className="flex items-center gap-2">
         {subtitle && <span className="text-xs text-gray-500">{subtitle}</span>}
         {delta && <span className={`text-xs font-medium ${deltaColor}`}>{delta}</span>}

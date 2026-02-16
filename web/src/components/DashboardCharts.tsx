@@ -22,8 +22,8 @@ export function CategoryDonut({ data }: { data: CatData[] }) {
   const total = data.reduce((s, d) => s + d.value, 0)
 
   return (
-    <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4">
-      <h3 className="text-sm font-semibold text-white mb-2">Distribuição por Categoria</h3>
+    <div className="bg-white border border-gray-200 rounded-xl p-4">
+      <h3 className="text-sm font-semibold text-gray-900 mb-2">Distribuição por Categoria</h3>
       <div className="flex items-center">
         <div className="w-32 h-32">
           <ResponsiveContainer width="100%" height="100%">
@@ -42,8 +42,8 @@ export function CategoryDonut({ data }: { data: CatData[] }) {
                 ))}
               </Pie>
               <Tooltip
-                contentStyle={{ background: '#0d1120', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12 }}
-                itemStyle={{ color: '#fff' }}
+                contentStyle={{ background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 12 }}
+                itemStyle={{ color: '#111827' }}
                 formatter={(value: number) => [`${value} (${total ? ((value/total)*100).toFixed(0) : 0}%)`, '']}
               />
             </PieChart>
@@ -54,10 +54,10 @@ export function CategoryDonut({ data }: { data: CatData[] }) {
             <div key={d.name} className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full" style={{ background: CAT_COLORS[d.name] }} />
-                <span className="text-xs text-gray-400">{d.name}</span>
+                <span className="text-xs text-gray-500">{d.name}</span>
               </div>
               <div className="text-right">
-                <span className="text-sm font-bold text-white">{d.value}</span>
+                <span className="text-sm font-bold text-gray-900">{d.value}</span>
                 <span className="text-xs text-gray-500 ml-1">
                   ({total ? ((d.value/total)*100).toFixed(0) : 0}%)
                 </span>
@@ -89,18 +89,18 @@ export function TopStatesChart({ data }: { data: StateBar[] }) {
   const top10 = [...data].sort((a, b) => b.saldo - a.saldo).slice(0, 10)
 
   return (
-    <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4">
-      <h3 className="text-sm font-semibold text-white mb-2">Top 10 Estados por Volume</h3>
+    <div className="bg-white border border-gray-200 rounded-xl p-4">
+      <h3 className="text-sm font-semibold text-gray-900 mb-2">Top 10 Estados por Volume</h3>
       <div style={{ height: 250 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={top10} layout="vertical" margin={{ left: 30, right: 10, top: 5, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis type="number" tickFormatter={v => `R$${formatCompact(v)}`} tick={{ fontSize: 10, fill: '#666' }} />
-            <YAxis type="category" dataKey="uf" tick={{ fontSize: 11, fill: '#aaa', fontWeight: 600 }} width={30} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis type="number" tickFormatter={v => `R$${formatCompact(v)}`} tick={{ fontSize: 10, fill: '#6b7280' }} />
+            <YAxis type="category" dataKey="uf" tick={{ fontSize: 11, fill: '#374151', fontWeight: 600 }} width={30} />
             <Tooltip
-              contentStyle={{ background: '#0d1120', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12 }}
+              contentStyle={{ background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 12 }}
               formatter={(value: number) => [`R$ ${formatCompact(value)}`, 'Volume']}
-              labelStyle={{ color: '#fff' }}
+              labelStyle={{ color: '#111827' }}
             />
             <Bar dataKey="saldo" radius={[0, 4, 4, 0]} maxBarSize={20}>
               {top10.map((entry, index) => (
@@ -123,8 +123,8 @@ interface ExecBucket {
 
 export function ExecutionChart({ data }: { data: ExecBucket[] }) {
   return (
-    <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4">
-      <h3 className="text-sm font-semibold text-white mb-1">Distribuição por % Execução</h3>
+    <div className="bg-white border border-gray-200 rounded-xl p-4">
+      <h3 className="text-sm font-semibold text-gray-900 mb-1">Distribuição por % Execução</h3>
       <p className="text-xs text-gray-500 mb-2">Quanto menor a execução, maior o saldo disponível</p>
       <div style={{ height: 200 }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -135,12 +135,12 @@ export function ExecutionChart({ data }: { data: ExecBucket[] }) {
                 <stop offset="95%" stopColor="#00ff88" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis dataKey="range" tick={{ fontSize: 10, fill: '#666' }} />
-            <YAxis tick={{ fontSize: 10, fill: '#666' }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis dataKey="range" tick={{ fontSize: 10, fill: '#6b7280' }} />
+            <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} />
             <Tooltip
-              contentStyle={{ background: '#0d1120', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12 }}
-              labelStyle={{ color: '#fff' }}
+              contentStyle={{ background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 12 }}
+              labelStyle={{ color: '#111827' }}
               formatter={(value: number, name: string) => [name === 'count' ? `${value} convênios` : `R$ ${formatCompact(value)}`, name === 'count' ? 'Quantidade' : 'Saldo']}
             />
             <Area type="monotone" dataKey="count" stroke="#00ff88" fill="url(#execGrad)" strokeWidth={2} />
@@ -162,8 +162,8 @@ interface VendedorPerf {
 
 export function VendedorPerformance({ data }: { data: VendedorPerf[] }) {
   return (
-    <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4">
-      <h3 className="text-sm font-semibold text-white mb-3">Performance dos Vendedores</h3>
+    <div className="bg-white border border-gray-200 rounded-xl p-4">
+      <h3 className="text-sm font-semibold text-gray-900 mb-3">Performance dos Vendedores</h3>
       <div className="space-y-3">
         {data.map((v, i) => {
           const maxSaldo = Math.max(...data.map(d => d.saldo), 1)
@@ -174,20 +174,20 @@ export function VendedorPerformance({ data }: { data: VendedorPerf[] }) {
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                    i === 0 ? 'bg-yellow-500/20 text-yellow-400' :
-                    i === 1 ? 'bg-gray-400/20 text-gray-300' :
-                    'bg-orange-500/20 text-orange-400'
+                    i === 0 ? 'bg-yellow-100 text-yellow-600' :
+                    i === 1 ? 'bg-gray-100 text-gray-600' :
+                    'bg-orange-100 text-orange-600'
                   }`}>
                     {i + 1}
                   </div>
-                  <span className="text-sm font-medium text-white">{v.nome}</span>
+                  <span className="text-sm font-medium text-gray-900">{v.nome}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs text-sigma-neon font-semibold">R$ {formatCompact(v.saldo)}</span>
+                  <span className="text-xs text-[#0072F7] font-semibold">R$ {formatCompact(v.saldo)}</span>
                 </div>
               </div>
               <div className="ml-8 flex items-center gap-2">
-                <div className="flex-1 h-2 bg-sigma-navy-light rounded-full overflow-hidden">
+                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
@@ -199,7 +199,7 @@ export function VendedorPerformance({ data }: { data: VendedorPerf[] }) {
                 <div className="flex gap-3 text-xs text-gray-500 shrink-0">
                   <span>{v.clientes} clientes</span>
                   <span>{v.projetos} proj.</span>
-                  <span className="text-blue-400">{v.propostas} prop.</span>
+                  <span className="text-[#0072F7]">{v.propostas} prop.</span>
                 </div>
               </div>
             </div>

@@ -40,12 +40,12 @@ const STATE_PATHS: Record<string, { d: string; cx: number; cy: number }> = {
 }
 
 function getColor(count: number, max: number): string {
-  if (count === 0) return '#1a1f35'
+  if (count === 0) return '#f3f4f6'
   const intensity = Math.min(count / Math.max(max * 0.6, 1), 1)
-  // Dark blue to neon green gradient
-  const r = Math.round(16 + intensity * (0 - 16))
-  const g = Math.round(31 + intensity * (255 - 31))
-  const b = Math.round(53 + intensity * (136 - 53))
+  // Light blue to strong blue gradient for light theme
+  const r = Math.round(219 + intensity * (0 - 219))
+  const g = Math.round(234 + intensity * (114 - 234))
+  const b = Math.round(254 + intensity * (247 - 254))
   return `rgb(${r},${g},${b})`
 }
 
@@ -87,17 +87,17 @@ export default function BrazilHeatmap({ data }: { data: StateData[] }) {
   const hoveredData = hoveredState ? dataMap[hoveredState] : null
 
   return (
-    <div className="bg-sigma-navy-card border border-white/5 rounded-xl p-4">
+    <div className="bg-white border border-gray-200 rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-sm font-semibold text-white">Mapa de Convênios por Estado</h3>
+          <h3 className="text-sm font-semibold text-gray-900">Mapa de Convênios por Estado</h3>
           <p className="text-xs text-gray-500">{data.length} estados com projetos</p>
         </div>
         {hoveredData && (
           <div className="text-right animate-in fade-in">
-            <p className="text-sm font-bold text-white">{hoveredState}</p>
-            <p className="text-xs text-sigma-neon">{hoveredData.count} convênios</p>
-            <p className="text-xs text-gray-400">{formatCompact(hoveredData.saldo)}</p>
+            <p className="text-sm font-bold text-gray-900">{hoveredState}</p>
+            <p className="text-xs text-[#0072F7]">{hoveredData.count} convênios</p>
+            <p className="text-xs text-gray-500">{formatCompact(hoveredData.saldo)}</p>
           </div>
         )}
       </div>
@@ -121,7 +121,7 @@ export default function BrazilHeatmap({ data }: { data: StateData[] }) {
               <path
                 d={d}
                 fill={getColor(count, maxCount)}
-                stroke={isHovered ? '#00ff88' : '#2a3050'}
+                stroke={isHovered ? '#0072F7' : '#d1d5db'}
                 strokeWidth={isHovered ? 2 : 0.8}
                 opacity={isHovered ? 1 : 0.9}
                 className="transition-all duration-200"
@@ -129,7 +129,7 @@ export default function BrazilHeatmap({ data }: { data: StateData[] }) {
               <text
                 x={cx}
                 y={cy}
-                fill={count > 0 ? '#ffffff' : '#4a5070'}
+                fill={count > 0 ? '#1f2937' : '#9ca3af'}
                 fontSize={isHovered ? 9 : 7}
                 fontWeight={isHovered ? 700 : 500}
                 textAnchor="middle"
@@ -142,7 +142,7 @@ export default function BrazilHeatmap({ data }: { data: StateData[] }) {
                 <text
                   x={cx}
                   y={cy + 10}
-                  fill="#aaaacc"
+                  fill="#6b7280"
                   fontSize={6}
                   textAnchor="middle"
                   dominantBaseline="middle"
@@ -159,7 +159,7 @@ export default function BrazilHeatmap({ data }: { data: StateData[] }) {
       {/* Legend */}
       <div className="flex items-center justify-center gap-4 mt-2 text-xs text-gray-500">
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded" style={{ background: '#1a1f35' }} />
+          <div className="w-3 h-3 rounded" style={{ background: '#f3f4f6' }} />
           <span>0</span>
         </div>
         <div className="flex items-center gap-1">

@@ -62,20 +62,20 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, onConfi
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
 
       {/* Modal */}
-      <div className="relative bg-sigma-navy-card border border-white/10 rounded-2xl shadow-2xl w-[440px] max-w-[90vw] p-6 animate-fade-in">
+      <div className="relative bg-white border border-gray-200 rounded-2xl shadow-lg w-[440px] max-w-[90vw] p-6 animate-fade-in">
         {/* Glow effect */}
-        <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-green-500/10 to-transparent rounded-t-2xl pointer-events-none" />
+        <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-green-500/5 to-transparent rounded-t-2xl pointer-events-none" />
 
         <div className="relative space-y-5">
           {/* Header */}
           <div>
-            <h2 className="text-lg font-heading font-bold text-white">Registrar Venda</h2>
-            <p className="text-sm text-gray-400 mt-1 truncate">{leadNome}</p>
+            <h2 className="text-lg font-heading font-bold text-gray-900">Registrar Venda</h2>
+            <p className="text-sm text-gray-500 mt-1 truncate">{leadNome}</p>
           </div>
 
           {/* Valor da Venda */}
           <div>
-            <label className="block text-xs text-gray-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
               Valor da Venda (R$) *
             </label>
             <input
@@ -90,16 +90,16 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, onConfi
                 if (e.key === 'Enter') handleSubmit()
               }}
               placeholder="Ex: 400000"
-              className="w-full bg-sigma-navy-light border border-white/10 rounded-xl px-4 py-3 text-lg text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50 transition-colors font-mono"
+              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-green-500/50 transition-colors font-mono"
             />
             {error && (
-              <p className="text-red-400 text-xs mt-1.5">{error}</p>
+              <p className="text-red-500 text-xs mt-1.5">{error}</p>
             )}
           </div>
 
           {/* Tipo Vendedor */}
           <div>
-            <label className="block text-xs text-gray-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
               Tipo de Vendedor *
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -108,8 +108,8 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, onConfi
                 onClick={() => setTipoVendedor('SDR')}
                 className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all ${
                   tipoVendedor === 'SDR'
-                    ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
-                    : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'
+                    ? 'bg-blue-50 border-blue-200 text-[#0072F7]'
+                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'
                 }`}
               >
                 SDR (1%)
@@ -119,8 +119,8 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, onConfi
                 onClick={() => setTipoVendedor('Closer')}
                 className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all ${
                   tipoVendedor === 'Closer'
-                    ? 'bg-purple-500/20 border-purple-500/50 text-purple-400'
-                    : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'
+                    ? 'bg-purple-50 border-purple-200 text-purple-600'
+                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'
                 }`}
               >
                 Closer (4%)
@@ -130,16 +130,16 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, onConfi
 
           {/* Preview */}
           {previewValor > 0 && (
-            <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-1.5">
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-1.5">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Comissao ({pct}%)</span>
-                <span className="text-sigma-neon font-semibold">
+                <span className="text-gray-500">Comissao ({pct}%)</span>
+                <span className="text-[#0072F7] font-semibold">
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(previewComissao)}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Bonus por fechamento</span>
-                <span className="text-green-400 font-semibold">R$ 50</span>
+                <span className="text-gray-500">Bonus por fechamento</span>
+                <span className="text-green-600 font-semibold">R$ 50</span>
               </div>
             </div>
           )}
@@ -148,7 +148,7 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, onConfi
           <div className="flex gap-3 pt-1">
             <button
               onClick={onCancel}
-              className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-400 border border-white/10 hover:bg-white/5 transition-colors"
+              className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors"
             >
               Cancelar
             </button>

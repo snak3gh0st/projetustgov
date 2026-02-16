@@ -33,13 +33,13 @@ export default function Sidebar({ user }: SidebarProps) {
     : BASE_NAV_ITEMS  // vendedor and visualizador see base items
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-56 bg-sigma-navy-light border-r border-white/5 flex flex-col z-50">
-      <div className="p-5 border-b border-white/5">
+    <aside className="fixed left-0 top-0 h-screen w-56 bg-white border-r border-gray-200 flex flex-col z-50">
+      <div className="p-5 border-b border-gray-200">
         <h1 className="font-heading text-xl font-bold tracking-tight">
           <span className="bg-gradient-to-r from-[#FD225C] via-[#7A4BAC] to-[#0072F7] bg-clip-text text-transparent">PROJETUS</span>
         </h1>
-        <p className="text-[10px] text-[#0072F7] mt-0.5 tracking-widest">
-          powered by <span className="font-semibold">SigmaIntel</span>
+        <p className="text-[10px] text-gray-400 mt-0.5 tracking-widest uppercase">
+          CRM de Vendas
         </p>
       </div>
 
@@ -55,8 +55,8 @@ export default function Sidebar({ user }: SidebarProps) {
               href={href}
               className={`flex items-center gap-3 px-5 py-2.5 text-sm transition-colors ${
                 isActive
-                  ? 'text-sigma-neon bg-sigma-neon/10 border-r-2 border-sigma-neon'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                  ? 'text-[#0072F7] bg-blue-50 border-r-2 border-[#0072F7]'
+                  : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
               }`}
             >
               <span>{icon}</span>
@@ -67,17 +67,17 @@ export default function Sidebar({ user }: SidebarProps) {
       </nav>
 
       {/* User info and logout */}
-      <div className="p-4 border-t border-white/5 space-y-3">
+      <div className="p-4 border-t border-gray-200 space-y-3">
         <div>
-          <p className="text-sm font-medium text-gray-200 truncate">
+          <p className="text-sm font-medium text-gray-800 truncate">
             {user.name || user.email}
           </p>
           <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${
             user.role === 'gestor'
-              ? 'bg-blue-500/20 text-blue-400'
+              ? 'bg-blue-50 text-blue-600'
               : user.role === 'visualizador'
-              ? 'bg-purple-500/20 text-purple-400'
-              : 'bg-green-500/20 text-green-400'
+              ? 'bg-purple-50 text-purple-600'
+              : 'bg-green-50 text-green-600'
           }`}>
             {user.role === 'gestor' ? 'Gestor' : user.role === 'visualizador' ? 'Visualizador' : 'Vendedor'}
           </span>
@@ -85,11 +85,18 @@ export default function Sidebar({ user }: SidebarProps) {
         <form action={logout}>
           <button
             type="submit"
-            className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 py-2 px-3 rounded text-sm transition-colors"
+            className="w-full bg-red-50 hover:bg-red-100 text-red-500 py-2 px-3 rounded text-sm transition-colors"
           >
             Sair
           </button>
         </form>
+      </div>
+
+      {/* Footer: powered by */}
+      <div className="px-5 py-3 border-t border-gray-200">
+        <p className="text-[10px] text-[#0072F7] tracking-wider text-center">
+          powered by <span className="font-semibold">SigmaIntel</span>
+        </p>
       </div>
     </aside>
   )

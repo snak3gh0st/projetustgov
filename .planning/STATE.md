@@ -118,6 +118,7 @@
 | 20 | Show distributed leads with tabs + redistribution + unassign in /distribuir page | 2026-02-16 | 9a443e0 | - |
 | 21 | Cascade differentiates emendas by parlamentar (show on main row + sub-rows) | 2026-02-16 | dcbec6a | - |
 | 22 | BrasilAPI enrichment pulls address (endereco, uf, municipio) + display in UI | 2026-02-16 | - | - |
+| 23 | Rebrand to Projete: brand colors (magenta/purple/blue), gradient logo, powered by SigmaIntel | 2026-02-16 | b16955c | - |
 
 ## Session Continuity
 

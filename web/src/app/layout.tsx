@@ -17,7 +17,7 @@ export default async function RootLayout({
 
   return (
     <html lang="pt-BR">
-      <body className="bg-sigma-navy text-gray-200 font-body">
+      <body className="bg-gray-50 text-gray-800 font-body">
         {session?.user && (
           <Sidebar
             user={{

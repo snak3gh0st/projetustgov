@@ -51,10 +51,10 @@ interface ComissaoData {
 }
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string }> = {
-  'Nao Contatado': { color: 'text-red-400', bg: 'bg-red-500/20 border-red-500/30' },
-  'Retorno': { color: 'text-amber-400', bg: 'bg-amber-500/20 border-amber-500/30' },
-  'Proposta': { color: 'text-blue-400', bg: 'bg-blue-500/20 border-blue-500/30' },
-  'Fechado': { color: 'text-green-400', bg: 'bg-green-500/20 border-green-500/30' },
+  'Nao Contatado': { color: 'text-red-500', bg: 'bg-red-50 border-red-200' },
+  'Retorno': { color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
+  'Proposta': { color: 'text-[#0072F7]', bg: 'bg-blue-50 border-blue-200' },
+  'Fechado': { color: 'text-green-600', bg: 'bg-green-50 border-green-200' },
 }
 
 export default function ComissoesPage() {
@@ -111,13 +111,13 @@ export default function ComissoesPage() {
   if (loading) {
     return (
       <div className="space-y-6 max-w-7xl">
-        <div className="h-8 w-96 bg-gray-800 rounded animate-pulse" />
+        <div className="h-8 w-96 bg-gray-100 rounded animate-pulse" />
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[1,2,3,4,5].map(i => (
-            <div key={i} className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5 h-28 animate-pulse" />
+            <div key={i} className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 h-28 animate-pulse" />
           ))}
         </div>
-        <div className="h-96 bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl animate-pulse" />
+        <div className="h-96 bg-white border border-gray-200 shadow-sm rounded-xl animate-pulse" />
       </div>
     )
   }
@@ -125,7 +125,7 @@ export default function ComissoesPage() {
   if (error || !data) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center max-w-2xl mx-auto space-y-4">
-        <p className="text-red-400 text-lg">Erro ao carregar comissoes</p>
+        <p className="text-red-500 text-lg">Erro ao carregar comissoes</p>
         <p className="text-gray-500 text-sm">
           Os campos de comissao podem nao estar configurados no banco de dados.
         </p>
@@ -147,7 +147,7 @@ export default function ComissoesPage() {
     <div className="space-y-6 max-w-7xl">
       {/* Header */}
       <div>
-        <h1 className="font-heading text-2xl font-bold text-white">
+        <h1 className="font-heading text-2xl font-bold text-gray-900">
           Comissionamento — Campanha Emendas 2026
         </h1>
         <p className="text-sm text-gray-400 mt-1">
@@ -156,7 +156,7 @@ export default function ComissoesPage() {
       </div>
 
       {/* Filter bar */}
-      <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-4">
+      <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
         <div className="flex flex-wrap items-end gap-4">
           {/* Vendedor filter (gestor only) */}
           {hasVendedoresList && (
@@ -165,7 +165,7 @@ export default function ComissoesPage() {
               <select
                 value={vendedorFilter}
                 onChange={(e) => setVendedorFilter(e.target.value)}
-                className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none min-w-[180px]"
+                className="bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none min-w-[180px]"
               >
                 <option value="">Todos os vendedores</option>
                 {data.vendedores_list.map(v => (
@@ -182,7 +182,7 @@ export default function ComissoesPage() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+              className="bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none"
             />
           </div>
 
@@ -192,7 +192,7 @@ export default function ComissoesPage() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+              className="bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none"
             />
           </div>
 
@@ -202,19 +202,19 @@ export default function ComissoesPage() {
             <div className="flex gap-2">
               <button
                 onClick={setCurrentMonth}
-                className="px-3 py-2 bg-gray-800 border border-gray-700 hover:border-blue-500 text-white text-sm rounded-lg transition-colors"
+                className="px-3 py-2 bg-gray-100 border border-gray-300 hover:border-[#0072F7] text-gray-900 text-sm rounded-lg transition-colors"
               >
                 Este Mes
               </button>
               <button
                 onClick={setLastMonth}
-                className="px-3 py-2 bg-gray-800 border border-gray-700 hover:border-blue-500 text-white text-sm rounded-lg transition-colors"
+                className="px-3 py-2 bg-gray-100 border border-gray-300 hover:border-[#0072F7] text-gray-900 text-sm rounded-lg transition-colors"
               >
                 Ultimo Mes
               </button>
               <button
                 onClick={setAllTime}
-                className="px-3 py-2 bg-gray-800 border border-gray-700 hover:border-blue-500 text-white text-sm rounded-lg transition-colors"
+                className="px-3 py-2 bg-gray-100 border border-gray-300 hover:border-[#0072F7] text-gray-900 text-sm rounded-lg transition-colors"
               >
                 Todos
               </button>
@@ -226,7 +226,7 @@ export default function ComissoesPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
           <p className="text-xs text-gray-400 uppercase tracking-wider">Comissao (percentual)</p>
           <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
             {formatCurrency(data.summary.total_comissao)}
@@ -234,24 +234,24 @@ export default function ComissoesPage() {
           <p className="text-xs text-gray-500 mt-1">Somente leads Fechados</p>
         </div>
 
-        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
           <p className="text-xs text-gray-400 uppercase tracking-wider">Bonus Fechamentos</p>
-          <p className="text-3xl font-heading font-bold text-green-400 mt-2">
+          <p className="text-3xl font-heading font-bold text-green-600 mt-2">
             {formatCurrency(data.summary.total_bonus)}
           </p>
           <p className="text-xs text-gray-500 mt-1">R$ 50 por lead fechado</p>
         </div>
 
-        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
           <p className="text-xs text-gray-400 uppercase tracking-wider">Leads Fechados</p>
-          <p className="text-3xl font-heading font-bold text-white mt-2">
+          <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
             {data.summary.total_leads}
           </p>
         </div>
 
-        <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-5">
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
           <p className="text-xs text-gray-400 uppercase tracking-wider">Valor Total Emendas</p>
-          <p className="text-3xl font-heading font-bold text-white mt-2">
+          <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
             {formatCurrency(data.summary.total_valor_emenda)}
           </p>
         </div>
@@ -260,18 +260,18 @@ export default function ComissoesPage() {
       {/* Per-vendedor breakdown (gestor only) */}
       {showPerVendedor && (
         <div>
-          <h2 className="text-lg font-heading font-semibold text-white mb-3">
+          <h2 className="text-lg font-heading font-semibold text-gray-900 mb-3">
             Resumo por Vendedor
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {data.per_vendedor.map(v => (
               <div
                 key={v.vendedor_id}
-                className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl p-4 hover:scale-[1.02] transition-transform"
+                className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 hover:scale-[1.02] transition-transform"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-bold text-white">{v.vendedor_nome}</h3>
-                  <span className="text-xl font-heading font-bold text-blue-400">{v.lead_count}</span>
+                  <h3 className="text-lg font-bold text-gray-900">{v.vendedor_nome}</h3>
+                  <span className="text-xl font-heading font-bold text-[#0072F7]">{v.lead_count}</span>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
@@ -282,7 +282,7 @@ export default function ComissoesPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-400">Bonus (R$50/fechamento)</span>
-                    <span className="text-sm font-semibold text-green-400">
+                    <span className="text-sm font-semibold text-green-600">
                       {formatCurrency(v.total_bonus)}
                     </span>
                   </div>
@@ -297,9 +297,9 @@ export default function ComissoesPage() {
       )}
 
       {/* Deals table */}
-      <div className="bg-gray-900/40 backdrop-blur-sm border border-gray-800 rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-800">
-          <h2 className="text-lg font-heading font-semibold text-white">
+      <div className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-heading font-semibold text-gray-900">
             Detalhamento por Lead
           </h2>
         </div>
@@ -308,7 +308,7 @@ export default function ComissoesPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-800 text-xs text-gray-400 uppercase tracking-wider">
+                <tr className="border-b border-gray-200 text-xs text-gray-400 uppercase tracking-wider">
                   <th className="text-left px-6 py-3">Lead</th>
                   <th className="text-left px-6 py-3">Vendedor</th>
                   <th className="text-left px-6 py-3">Tipo</th>
@@ -319,29 +319,29 @@ export default function ComissoesPage() {
                   <th className="text-left px-6 py-3">Data Fechamento</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody className="divide-y divide-gray-200">
                 {data.leads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-gray-800/30 transition-colors">
+                  <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <a
                         href={`/lead/${lead.cnpj}`}
-                        className="text-sm text-blue-400 hover:text-blue-300 font-medium"
+                        className="text-sm text-[#0072F7] hover:text-blue-700 font-medium"
                       >
                         {lead.nome}
                       </a>
                       <p className="text-xs text-gray-500 mt-1">{lead.cnpj}</p>
                     </td>
-                    <td className="px-6 py-4 text-sm text-white">{lead.vendedor_nome}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{lead.vendedor_nome}</td>
                     <td className="px-6 py-4">
                       <span className={`text-xs font-semibold px-2 py-1 rounded ${
                         lead.tipo_vendedor === 'SDR'
-                          ? 'bg-blue-500/20 text-blue-400'
-                          : 'bg-purple-500/20 text-purple-400'
+                          ? 'bg-blue-50 text-[#0072F7]'
+                          : 'bg-purple-50 text-purple-600'
                       }`}>
                         {lead.tipo_vendedor}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-right text-white">
+                    <td className="px-6 py-4 text-sm text-right text-gray-900">
                       {formatCurrency(lead.valor_venda)}
                     </td>
                     <td className="px-6 py-4 text-sm text-right text-gray-400">
@@ -353,7 +353,7 @@ export default function ComissoesPage() {
                           {formatCurrency(lead.comissao_valor || 0)}
                         </span>
                         {lead.comissao_locked && (
-                          <span className="text-xs text-green-500">(Confirmada)</span>
+                          <span className="text-xs text-green-600">(Confirmada)</span>
                         )}
                         {lead.has_override && (
                           <span
@@ -365,7 +365,7 @@ export default function ComissoesPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-right text-green-400 font-medium">
+                    <td className="px-6 py-4 text-sm text-right text-green-600 font-medium">
                       {formatCurrency(lead.comissao_bonus || 0)}
                     </td>
                     <td className="px-6 py-4 text-xs text-gray-500">
