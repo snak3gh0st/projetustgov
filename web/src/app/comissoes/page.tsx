@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency } from '@/lib/format'
 
 interface ComissaoLead {
@@ -61,6 +61,8 @@ export default function ComissoesPage() {
   const [data, setData] = useState<ComissaoData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [sortCol, setSortCol] = useState('')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   // Filter state
   const [vendedorFilter, setVendedorFilter] = useState<string>('')
@@ -107,6 +109,41 @@ export default function ComissoesPage() {
     setStartDate('')
     setEndDate('')
   }
+
+  function handleSort(col: string) {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
+  }
+
+  function SortIcon({ col }: { col: string }) {
+    if (sortCol !== col) return <span className="ml-1 text-gray-300">↕</span>
+    return <span className="ml-1">{sortDir === 'asc' ? '▲' : '▼'}</span>
+  }
+
+  const sortedLeads = useMemo(() => {
+    if (!data?.leads || !sortCol) return data?.leads || []
+    return [...data.leads].sort((a, b) => {
+      let va: string | number = ''
+      let vb: string | number = ''
+      switch (sortCol) {
+        case 'nome': va = (a.nome || '').toLowerCase(); vb = (b.nome || '').toLowerCase(); break
+        case 'vendedor': va = (a.vendedor_nome || '').toLowerCase(); vb = (b.vendedor_nome || '').toLowerCase(); break
+        case 'tipo': va = a.tipo_vendedor || ''; vb = b.tipo_vendedor || ''; break
+        case 'valor_venda': va = a.valor_venda || 0; vb = b.valor_venda || 0; break
+        case 'percentual': va = a.comissao_percentual || 0; vb = b.comissao_percentual || 0; break
+        case 'comissao': va = a.comissao_valor || 0; vb = b.comissao_valor || 0; break
+        case 'bonus': va = a.comissao_bonus || 0; vb = b.comissao_bonus || 0; break
+        case 'data': va = a.updated_at || ''; vb = b.updated_at || ''; break
+      }
+      if (va < vb) return sortDir === 'asc' ? -1 : 1
+      if (va > vb) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [data?.leads, sortCol, sortDir])
 
   if (loading) {
     return (
@@ -304,23 +341,23 @@ export default function ComissoesPage() {
           </h2>
         </div>
 
-        {data.leads.length > 0 ? (
+        {sortedLeads.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 text-xs text-gray-400 uppercase tracking-wider">
-                  <th className="text-left px-6 py-3">Lead</th>
-                  <th className="text-left px-6 py-3">Vendedor</th>
-                  <th className="text-left px-6 py-3">Tipo</th>
-                  <th className="text-right px-6 py-3">Valor Venda</th>
-                  <th className="text-right px-6 py-3">%</th>
-                  <th className="text-right px-6 py-3">Comissao</th>
-                  <th className="text-right px-6 py-3">Bonus</th>
-                  <th className="text-left px-6 py-3">Data Fechamento</th>
+                  <th onClick={() => handleSort('nome')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Lead<SortIcon col="nome" /></th>
+                  <th onClick={() => handleSort('vendedor')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Vendedor<SortIcon col="vendedor" /></th>
+                  <th onClick={() => handleSort('tipo')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Tipo<SortIcon col="tipo" /></th>
+                  <th onClick={() => handleSort('valor_venda')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Valor Venda<SortIcon col="valor_venda" /></th>
+                  <th onClick={() => handleSort('percentual')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">%<SortIcon col="percentual" /></th>
+                  <th onClick={() => handleSort('comissao')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Comissao<SortIcon col="comissao" /></th>
+                  <th onClick={() => handleSort('bonus')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Bonus<SortIcon col="bonus" /></th>
+                  <th onClick={() => handleSort('data')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Data Fechamento<SortIcon col="data" /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {data.leads.map((lead) => (
+                {sortedLeads.map((lead) => (
                   <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <a

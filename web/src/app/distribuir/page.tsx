@@ -28,6 +28,8 @@ export default function DistribuirPage() {
   const [assigning, setAssigning] = useState(false)
   const [toast, setToast] = useState('')
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [sortCol, setSortCol] = useState('')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   const fetchLeads = useCallback(async () => {
     setLoading(true)
@@ -138,6 +140,41 @@ export default function DistribuirPage() {
 
   const ufs = Array.from(new Set(activeLeads.map(l => l.uf).filter((v): v is string => Boolean(v)))).sort()
 
+  function handleSort(col: string) {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
+  }
+
+  function SortIcon({ col }: { col: string }) {
+    if (sortCol !== col) return <span className="ml-1 text-gray-300">↕</span>
+    return <span className="ml-1">{sortDir === 'asc' ? '▲' : '▼'}</span>
+  }
+
+  const sortedLeads = useMemo(() => {
+    if (!sortCol) return filteredLeads
+    return [...filteredLeads].sort((a, b) => {
+      let va: string | number = ''
+      let vb: string | number = ''
+      switch (sortCol) {
+        case 'cnpj': va = a.cnpj || ''; vb = b.cnpj || ''; break
+        case 'vendedor': va = (a.vendedor_nome || '').toLowerCase(); vb = (b.vendedor_nome || '').toLowerCase(); break
+        case 'leads': va = cnpjCounts[a.cnpj] || 0; vb = cnpjCounts[b.cnpj] || 0; break
+        case 'nome': va = (a.nome || '').toLowerCase(); vb = (b.nome || '').toLowerCase(); break
+        case 'programa': va = (a.nome_programa || '').toLowerCase(); vb = (b.nome_programa || '').toLowerCase(); break
+        case 'valor': va = Number(a.valor_emenda) || 0; vb = Number(b.valor_emenda) || 0; break
+        case 'uf': va = (a.uf || '').toLowerCase(); vb = (b.uf || '').toLowerCase(); break
+        case 'status': va = a.status_contato || ''; vb = b.status_contato || ''; break
+      }
+      if (va < vb) return sortDir === 'asc' ? -1 : 1
+      if (va > vb) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [filteredLeads, sortCol, sortDir, cnpjCounts])
+
   // Group assigned leads by vendedor for summary cards
   const assignedByVendedor = useMemo(() => {
     const groups: Record<string, { nome: string; count: number }> = {}
@@ -161,10 +198,10 @@ export default function DistribuirPage() {
   }
 
   function toggleAll() {
-    if (selectedLeadIds.size === filteredLeads.length) {
+    if (selectedLeadIds.size === sortedLeads.length) {
       setSelectedLeadIds(new Set())
     } else {
-      setSelectedLeadIds(new Set(filteredLeads.map(l => l.id)))
+      setSelectedLeadIds(new Set(sortedLeads.map(l => l.id)))
     }
   }
 
@@ -388,7 +425,7 @@ export default function DistribuirPage() {
         <div className="flex items-center justify-center py-20">
           <div className="animate-pulse text-gray-500">Carregando leads...</div>
         </div>
-      ) : filteredLeads.length === 0 ? (
+      ) : sortedLeads.length === 0 ? (
         <div className="flex items-center justify-center py-20 text-gray-500">
           {tab === 'unassigned'
             ? 'Nenhum lead pendente de atribuicao'
@@ -405,25 +442,25 @@ export default function DistribuirPage() {
                 <th className="px-3 py-3 text-left">
                   <input
                     type="checkbox"
-                    checked={filteredLeads.length > 0 && selectedLeadIds.size === filteredLeads.length}
+                    checked={sortedLeads.length > 0 && selectedLeadIds.size === sortedLeads.length}
                     onChange={toggleAll}
                     className="rounded border-gray-600 bg-transparent text-blue-500 focus:ring-blue-500/30"
                   />
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">CNPJ</th>
+                <th onClick={() => handleSort('cnpj')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">CNPJ<SortIcon col="cnpj" /></th>
                 {tab === 'assigned' && (
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Vendedor</th>
+                  <th onClick={() => handleSort('vendedor')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Vendedor<SortIcon col="vendedor" /></th>
                 )}
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Leads</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Nome</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Programa</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor Emenda</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">UF</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                <th onClick={() => handleSort('leads')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Leads<SortIcon col="leads" /></th>
+                <th onClick={() => handleSort('nome')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Nome<SortIcon col="nome" /></th>
+                <th onClick={() => handleSort('programa')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Programa<SortIcon col="programa" /></th>
+                <th onClick={() => handleSort('valor')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Valor Emenda<SortIcon col="valor" /></th>
+                <th onClick={() => handleSort('uf')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">UF<SortIcon col="uf" /></th>
+                <th onClick={() => handleSort('status')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Status<SortIcon col="status" /></th>
               </tr>
             </thead>
             <tbody>
-              {filteredLeads.map(lead => (
+              {sortedLeads.map(lead => (
                 <tr
                   key={lead.id}
                   onClick={() => toggleLead(lead.id)}
@@ -489,8 +526,8 @@ export default function DistribuirPage() {
           {selectedLeadIds.size > 0
             ? `${selectedLeadIds.size} leads selecionados${extraByCnpj > 0 ? ` (+${extraByCnpj} por CNPJ)` : ''}`
             : tab === 'unassigned'
-              ? `${filteredLeads.length} leads nao atribuidos`
-              : `${filteredLeads.length} leads distribuidos`
+              ? `${sortedLeads.length} leads nao atribuidos`
+              : `${sortedLeads.length} leads distribuidos`
           }
         </span>
         <div className="flex items-center gap-3">

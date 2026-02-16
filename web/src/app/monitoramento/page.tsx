@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { formatCurrency, formatCNPJ, formatCompactCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 
@@ -46,6 +46,8 @@ export default function MonitoramentoPage() {
 
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [debouncedValor, setDebouncedValor] = useState(0)
+  const [sortCol, setSortCol] = useState('')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   const handleSearchChange = useCallback((value: string) => {
     setFilters(f => ({ ...f, search: value }))
@@ -89,6 +91,42 @@ export default function MonitoramentoPage() {
     window.addEventListener('keydown', handleEsc)
     return () => window.removeEventListener('keydown', handleEsc)
   }, [])
+
+  function handleSort(col: string) {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
+  }
+
+  function SortIcon({ col }: { col: string }) {
+    if (sortCol !== col) return <span className="ml-1 text-gray-300">↕</span>
+    return <span className="ml-1">{sortDir === 'asc' ? '▲' : '▼'}</span>
+  }
+
+  const sortedConvenios = useMemo(() => {
+    if (!sortCol) return convenios
+    return [...convenios].sort((a, b) => {
+      let va: string | number = ''
+      let vb: string | number = ''
+      switch (sortCol) {
+        case 'nome': va = (a.nome || '').toLowerCase(); vb = (b.nome || '').toLowerCase(); break
+        case 'programa': va = (a.nome_programa || '').toLowerCase(); vb = (b.nome_programa || '').toLowerCase(); break
+        case 'uf': va = (a.uf || '').toLowerCase(); vb = (b.uf || '').toLowerCase(); break
+        case 'valor': va = Number(a.valor_emenda) || 0; vb = Number(b.valor_emenda) || 0; break
+        case 'parlamentar': va = (a.parlamentar || '').toLowerCase(); vb = (b.parlamentar || '').toLowerCase(); break
+        case 'prioridade': {
+          const order: Record<string, number> = { 'Alta': 3, 'Media': 2, 'Baixa': 1 }
+          va = order[a.prioridade] || 0; vb = order[b.prioridade] || 0; break
+        }
+      }
+      if (va < vb) return sortDir === 'asc' ? -1 : 1
+      if (va > vb) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [convenios, sortCol, sortDir])
 
   const priorityButtons = [
     { label: 'Todos', value: '' },
@@ -183,17 +221,17 @@ export default function MonitoramentoPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Organizacao</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Programa</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">UF</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Valor Emenda</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Parlamentar</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Prioridade</th>
+                <th onClick={() => handleSort('nome')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Organizacao<SortIcon col="nome" /></th>
+                <th onClick={() => handleSort('programa')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Programa<SortIcon col="programa" /></th>
+                <th onClick={() => handleSort('uf')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">UF<SortIcon col="uf" /></th>
+                <th onClick={() => handleSort('valor')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Valor Emenda<SortIcon col="valor" /></th>
+                <th onClick={() => handleSort('parlamentar')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Parlamentar<SortIcon col="parlamentar" /></th>
+                <th onClick={() => handleSort('prioridade')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Prioridade<SortIcon col="prioridade" /></th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Acao</th>
               </tr>
             </thead>
             <tbody>
-              {convenios.map((c, i) => {
+              {sortedConvenios.map((c, i) => {
                 const colors = PRIORITY_COLORS[c.prioridade] || PRIORITY_COLORS['Media']
                 return (
                   <tr
@@ -233,8 +271,8 @@ export default function MonitoramentoPage() {
         </div>
       )}
 
-      {!loading && convenios.length > 0 && (
-        <p className="text-xs text-gray-500 text-right">{convenios.length} leads encontrados</p>
+      {!loading && sortedConvenios.length > 0 && (
+        <p className="text-xs text-gray-500 text-right">{sortedConvenios.length} leads encontrados</p>
       )}
 
       {selectedConvenio && (

@@ -49,6 +49,8 @@ export default function LeadsPage() {
   } | null>(null)
   const [expandedCnpjs, setExpandedCnpjs] = useState<Set<string>>(new Set())
   const [clientFilter, setClientFilter] = useState('')
+  const [sortCol, setSortCol] = useState('')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   // Fetch session
   useEffect(() => {
@@ -118,8 +120,41 @@ export default function LeadsPage() {
       result = result.filter(l => !l.is_existing_client)
     }
 
+    // Sorting
+    if (sortCol) {
+      result = [...result].sort((a, b) => {
+        let va: string | number = ''
+        let vb: string | number = ''
+        switch (sortCol) {
+          case 'nome': va = (a.nome || '').toLowerCase(); vb = (b.nome || '').toLowerCase(); break
+          case 'valor': va = Number(a.total_valor_emendas || a.valor_emenda) || 0; vb = Number(b.total_valor_emendas || b.valor_emenda) || 0; break
+          case 'orgao': va = (a.orgao_concedente || '').toLowerCase(); vb = (b.orgao_concedente || '').toLowerCase(); break
+          case 'local': va = `${a.uf || ''} ${a.municipio || ''}`.toLowerCase(); vb = `${b.uf || ''} ${b.municipio || ''}`.toLowerCase(); break
+          case 'status': va = a.status_contato || ''; vb = b.status_contato || ''; break
+          case 'vendedor': va = (a.vendedor_nome || '').toLowerCase(); vb = (b.vendedor_nome || '').toLowerCase(); break
+        }
+        if (va < vb) return sortDir === 'asc' ? -1 : 1
+        if (va > vb) return sortDir === 'asc' ? 1 : -1
+        return 0
+      })
+    }
+
     return result
-  }, [leads, clientFilter])
+  }, [leads, clientFilter, sortCol, sortDir])
+
+  function handleSort(col: string) {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
+  }
+
+  function SortIcon({ col }: { col: string }) {
+    if (sortCol !== col) return <span className="ml-1 text-gray-300">↕</span>
+    return <span className="ml-1">{sortDir === 'asc' ? '▲' : '▼'}</span>
+  }
 
   function toggleExpand(cnpj: string) {
     setExpandedCnpjs(prev => {
@@ -272,14 +307,14 @@ export default function LeadsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Instituição</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ministério</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Local</th>
+                  <th onClick={() => handleSort('nome')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Instituição<SortIcon col="nome" /></th>
+                  <th onClick={() => handleSort('valor')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Valor<SortIcon col="valor" /></th>
+                  <th onClick={() => handleSort('orgao')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Ministério<SortIcon col="orgao" /></th>
+                  <th onClick={() => handleSort('local')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Local<SortIcon col="local" /></th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contato</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th onClick={() => handleSort('status')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Status<SortIcon col="status" /></th>
                   {sessionUser?.role === 'gestor' && (
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendedor</th>
+                    <th onClick={() => handleSort('vendedor')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Vendedor<SortIcon col="vendedor" /></th>
                   )}
                 </tr>
               </thead>
