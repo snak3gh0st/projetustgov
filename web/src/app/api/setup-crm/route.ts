@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Pool } from 'pg'
 import bcrypt from 'bcryptjs'
+import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -17,10 +18,18 @@ function getPool() {
 }
 
 export async function GET() {
+  const session = await getApiSession()
+  if (!session || session.role !== 'gestor') {
+    return NextResponse.json({ error: 'Unauthorized — gestor only' }, { status: 401 })
+  }
   return runSetup()
 }
 
 export async function POST() {
+  const session = await getApiSession()
+  if (!session || session.role !== 'gestor') {
+    return NextResponse.json({ error: 'Unauthorized — gestor only' }, { status: 401 })
+  }
   return runSetup()
 }
 
