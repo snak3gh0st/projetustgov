@@ -14,11 +14,12 @@ const STATUS_COLORS: Record<string, string> = {
 
 interface LeadSlideOverProps {
   lead: VendedorProjeto | null
+  allEmendas?: VendedorProjeto[]
   onClose: () => void
   canModify?: boolean
 }
 
-export default function LeadSlideOver({ lead, onClose, canModify = false }: LeadSlideOverProps) {
+export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = false }: LeadSlideOverProps) {
   const router = useRouter()
   const [editingField, setEditingField] = useState<'telefone' | 'email' | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -114,27 +115,68 @@ export default function LeadSlideOver({ lead, onClose, canModify = false }: Lead
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-4">
-          {/* Info Grid */}
-          {/* Link do programa */}
-          {lead.link_externo && (
-            <a
-              href={lead.link_externo}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full text-center px-4 py-2.5 rounded-xl text-sm font-medium text-cyan-400 border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 transition-colors"
-            >
-              Abrir no TransferGov &rarr;
-            </a>
-          )}
-
+          {/* Common info */}
           <div className="grid grid-cols-2 gap-3">
-            <InfoCard label="Ministerio" value={lead.orgao_concedente || '-'} />
-            <InfoCard label="Parlamentar" value={lead.parlamentar || '-'} />
             <InfoCard label="UF / Municipio" value={[lead.uf, lead.municipio].filter(Boolean).join(' / ') || '-'} />
-            <InfoCard label="Valor Emenda" value={formatCurrency(lead.valor_emenda || lead.valor_global || 0)} highlight />
             <InfoCard label="Natureza Juridica" value={lead.natureza_juridica || '-'} />
             <InfoCard label="Vendedor" value={lead.vendedor_nome || '-'} />
+            {(!allEmendas || allEmendas.length <= 1) && (
+              <InfoCard label="Valor Emenda" value={formatCurrency(lead.valor_emenda || lead.valor_global || 0)} highlight />
+            )}
           </div>
+
+          {/* Emendas list (cascade) */}
+          {allEmendas && allEmendas.length > 1 ? (
+            <div className="space-y-2">
+              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Emendas ({allEmendas.length})
+              </h3>
+              {allEmendas.map((emenda, idx) => (
+                <div key={emenda.id} className="bg-white/5 rounded-xl p-3 border border-white/5 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sigma-neon font-bold text-sm">
+                      {formatCurrency(Number(emenda.valor_emenda) || 0)}
+                    </span>
+                    <span className={`text-[10px] font-medium rounded-full px-2 py-0.5 border ${STATUS_COLORS[emenda.status_contato] || STATUS_COLORS['Não Contatado']}`}>
+                      {emenda.status_contato}
+                    </span>
+                  </div>
+                  {emenda.parlamentar && (
+                    <p className="text-xs text-gray-300">{emenda.parlamentar}</p>
+                  )}
+                  <p className="text-xs text-gray-500 whitespace-normal break-words">{emenda.orgao_concedente || '-'}</p>
+                  {emenda.link_externo && (
+                    <a
+                      href={emenda.link_externo}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-cyan-400 hover:text-cyan-300"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      TransferGov &rarr;
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <InfoCard label="Ministerio" value={lead.orgao_concedente || '-'} />
+                <InfoCard label="Parlamentar" value={lead.parlamentar || '-'} />
+              </div>
+              {lead.link_externo && (
+                <a
+                  href={lead.link_externo}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full text-center px-4 py-2.5 rounded-xl text-sm font-medium text-cyan-400 border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 transition-colors"
+                >
+                  Abrir no TransferGov &rarr;
+                </a>
+              )}
+            </>
+          )}
 
           {/* Sale Value & Commission Info */}
           {localLead.status_contato === 'Fechado' && localLead.valor_venda && (

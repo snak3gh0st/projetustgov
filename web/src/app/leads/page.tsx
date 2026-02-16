@@ -445,6 +445,7 @@ export default function LeadsPage() {
 
       <LeadSlideOver
         lead={selectedLead}
+        allEmendas={selectedLead ? leads.filter(l => l.cnpj === selectedLead.cnpj) : undefined}
         onClose={() => setSelectedLead(null)}
         canModify={sessionUser?.role !== 'visualizador'}
       />
