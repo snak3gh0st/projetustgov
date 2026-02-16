@@ -104,24 +104,22 @@
 | 9 | Fix critical CRM bugs and UX improvements | 2026-02-13 | 32e9187 | [5-fix-critical-crm-bugs-and-ux-improvement](./quick/5-fix-critical-crm-bugs-and-ux-improvement/) |
 | 10 | Fix import-spreadsheet for PROGRAMAS 2026 format + dedup fix + 314 leads imported | 2026-02-16 | 0064fc5 | [6-verificar-populacao-db-e-importar-base-p](./quick/6-verificar-populacao-db-e-importar-base-p/) |
 | 11 | Fix critical client bugs - lead assignment | 2026-02-16 | 7af8385 | [7-fix-critical-client-bugs-lead-assignment](./quick/7-fix-critical-client-bugs-lead-assignment/) |
-| 12 | Add valor_venda column + fix commission formula (valor_venda not valor_emenda) | 2026-02-16 | pending | - |
+| 12 | Add valor_venda column + fix commission formula (valor_venda not valor_emenda) | 2026-02-16 | 997e9b3 | - |
+| 13 | Fix all 11 client-reported bugs (commission, UI, auth, BrasilAPI enrichment) | 2026-02-16 | 01407bf | - |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-16
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 10: Import PROGRAMAS 2026 spreadsheet + dedup fix
+**Activity:** Quick task 13: Fix all 11 client-reported bugs + BrasilAPI enrichment cleanup
 
 **Completed:**
-- Fixed import-spreadsheet to handle PROGRAMAS 2026 Beneficiario-style headers
-- Updated VENDEDOR_MAP to @projetus.org, fixed sheet name normalization (accents, spaces)
-- Added Vitória header-shift auto-detection and Gabriel unnamed column extraction
-- Spreadsheet contact data now preferred over proponentes enrichment
-- Fixed dedup key: uses cnpj|parlamentar when nr_emenda absent (prevents data loss)
-- Successfully imported 314 leads from PRIMEIROS TESTES VENDAS - PROGRAMAS 2026.xlsx
-- File has 419 real data rows (2185 raw rows include 1766 empty Excel formatting rows)
-- Wellington: 70 leads, Elisson: 71 leads, Gabriel: 75 leads, Vitória: 98 leads
+- Added valor_venda column, fixed commission formula (valor_venda * 10% * vendedor%)
+- Fixed all 11 client-reported bugs (login, commission, UI, passwords, BrasilAPI)
+- BrasilAPI enrichment: 73/84 CNPJs enriched locally (11 truly have no data at Receita Federal)
+- Cleaned up leads table from 14 to 7 columns
+- Cleaned up setup-crm debug logging for production
 
 **Next Actions:**
 - Plan Phase 12 - Pipeline Kanban board

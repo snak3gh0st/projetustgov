@@ -264,26 +264,15 @@ async function runSetup() {
     `).catch(() => ({ rows: [] }))
 
     let apiEnrichedCount = 0
-    let apiCalled = 0
-    let apiErrors = 0
-    let apiNoData = 0
-    const apiDebug: string[] = []
     const cnpjsToEnrich = (missingContacts.rows || []) as { cnpj: string }[]
-    apiDebug.push(`found ${cnpjsToEnrich.length} cnpjs missing contacts`)
 
     for (const row of cnpjsToEnrich) {
-      apiCalled++
       try {
         const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${row.cnpj}`, {
           signal: AbortSignal.timeout(8000),
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ProjetusCRM/1.0)' },
         })
-        if (!res.ok) {
-          apiErrors++
-          apiDebug.push(`${row.cnpj}: HTTP ${res.status}`)
-          await new Promise(r => setTimeout(r, 300))
-          continue
-        }
+        if (!res.ok) { await new Promise(r => setTimeout(r, 300)); continue }
         const data = await res.json()
         const phoneRaw = data.ddd_telefone_1 || ''
         const phoneDigits = phoneRaw.replace(/\D/g, '')
@@ -293,12 +282,7 @@ async function runSetup() {
         const rawEmail = (data.email || '').trim().toLowerCase()
         const email = rawEmail && rawEmail !== 'none' && rawEmail !== 'null' && rawEmail.includes('@') ? rawEmail : null
 
-        if (!phone && !email) {
-          apiNoData++
-          apiDebug.push(`${row.cnpj}: no useful data (tel="${phoneRaw}" email="${data.email || ''}")`)
-          await new Promise(r => setTimeout(r, 300))
-          continue
-        }
+        if (!phone && !email) { await new Promise(r => setTimeout(r, 300)); continue }
 
         const updates: string[] = []
         const params: unknown[] = []
@@ -307,15 +291,13 @@ async function runSetup() {
         if (email) { updates.push(`email = $${idx++}`); params.push(email) }
         updates.push('updated_at = NOW()')
         params.push(row.cnpj)
-        const updateResult = await pool.query(
+        await pool.query(
           `UPDATE vendedor_projetos SET ${updates.join(', ')} WHERE cnpj = $${idx} AND (telefone IS NULL OR telefone = '') AND (email IS NULL OR email = '')`,
           params
         )
         apiEnrichedCount++
-        apiDebug.push(`${row.cnpj}: updated ${updateResult.rowCount} rows (phone=${phone ? 'yes' : 'no'} email=${email ? 'yes' : 'no'})`)
-      } catch (err) {
-        apiErrors++
-        apiDebug.push(`${row.cnpj}: ERROR ${String(err).slice(0, 80)}`)
+      } catch {
+        // BrasilAPI timeout or error — skip this CNPJ
       }
       await new Promise(r => setTimeout(r, 300))
     }
@@ -367,48 +349,22 @@ async function runSetup() {
       }
     }
 
-    // Diagnostics: check state of data
-    const diag: Record<string, unknown> = {}
-    const propCount = await pool.query(
-      `SELECT COUNT(*) as total, COUNT(email) as with_email, COUNT(telefone) as with_phone FROM proponentes`
-    ).catch(() => ({ rows: [{ total: 'TABLE_NOT_FOUND', with_email: 0, with_phone: 0 }] }))
-    diag.proponentes = propCount.rows[0]
-
+    // Summary diagnostics
     const vpCount = await pool.query(
       `SELECT COUNT(*) as total, COUNT(NULLIF(telefone,'')) as with_phone, COUNT(NULLIF(email,'')) as with_email FROM vendedor_projetos`
     )
-    diag.vendedor_projetos = vpCount.rows[0]
-
-    const overlap = await pool.query(
-      `SELECT COUNT(DISTINCT vp.cnpj) as matching FROM vendedor_projetos vp JOIN proponentes p ON p.cnpj = vp.cnpj`
-    ).catch(() => ({ rows: [{ matching: 0 }] }))
-    diag.cnpj_overlap = overlap.rows[0]
-
-    // Count truly missing contacts (both phone AND email empty)
     const noContact = await pool.query(`
-      SELECT COUNT(*) as rows_no_contact, COUNT(DISTINCT cnpj) as cnpjs_no_contact
-      FROM vendedor_projetos
+      SELECT COUNT(DISTINCT cnpj) as cnt FROM vendedor_projetos
       WHERE (telefone IS NULL OR telefone = '') AND (email IS NULL OR email = '')
-    `).catch(() => ({ rows: [{ rows_no_contact: 0, cnpjs_no_contact: 0 }] }))
-    diag.no_contact = noContact.rows[0]
-
-    const sampleVp = await pool.query(`SELECT cnpj FROM vendedor_projetos LIMIT 3`)
-    const sampleP = await pool.query(`SELECT cnpj FROM proponentes LIMIT 3`).catch(() => ({ rows: [] }))
-    diag.sample_cnpj_vp = sampleVp.rows.map((r: { cnpj: string }) => r.cnpj)
-    diag.sample_cnpj_prop = sampleP.rows.map((r: { cnpj: string }) => r.cnpj)
-
-    const statusDist = await pool.query(
-      `SELECT status_contato, COUNT(*)::int as cnt FROM vendedor_projetos GROUP BY status_contato ORDER BY cnt DESC`
-    )
-    diag.status_distribution = statusDist.rows
+    `).catch(() => ({ rows: [{ cnt: 0 }] }))
 
     return NextResponse.json({
       success: true,
       vendedores_created: created,
-      enriched_contacts: enrichedCount,
-      api_enriched: apiEnrichedCount,
-      api_debug: { called: apiCalled, errors: apiErrors, no_data: apiNoData, log: apiDebug.slice(0, 15) },
-      diagnostics: diag,
+      enriched_from_proponentes: enrichedCount,
+      enriched_from_brasil_api: apiEnrichedCount,
+      leads: vpCount.rows[0],
+      remaining_no_contact: Number(noContact.rows[0].cnt),
     })
   } catch (error) {
     console.error('Setup CRM error:', error)
