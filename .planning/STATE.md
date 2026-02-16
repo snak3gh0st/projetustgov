@@ -58,6 +58,7 @@
 | Date filter defaults to current month | 13-02 | Most relevant view for active commission tracking, prevents data overload | 2026-02-14 |
 | Vendedor commission breakdown in dashboard | 13-02 | Vendedores need self-service visibility into earnings by status | 2026-02-14 |
 | Separate confirmed vs pipeline commission cards | 13-02 | Clear distinction between guaranteed vs potential commissions for financial planning | 2026-02-14 |
+| PATCH returns updated commission data | quick-14 | Frontend needs recalculated values after tipo_vendedor change; prevents stale local state | 2026-02-16 |
 
 ### Technical Context (Next.js Stack)
 
@@ -106,6 +107,7 @@
 | 11 | Fix critical client bugs - lead assignment | 2026-02-16 | 7af8385 | [7-fix-critical-client-bugs-lead-assignment](./quick/7-fix-critical-client-bugs-lead-assignment/) |
 | 12 | Add valor_venda column + fix commission formula (valor_venda not valor_emenda) | 2026-02-16 | 997e9b3 | - |
 | 13 | Fix all 11 client-reported bugs (commission, UI, auth, BrasilAPI enrichment) | 2026-02-16 | 01407bf | - |
+| 14 | Fix commission not updating on tipo_vendedor change (stale local state) | 2026-02-16 | 2f0213e | - |
 
 ## Session Continuity
 
@@ -120,6 +122,7 @@
 - BrasilAPI enrichment: 73/84 CNPJs enriched locally (11 truly have no data at Receita Federal)
 - Cleaned up leads table from 14 to 7 columns
 - Cleaned up setup-crm debug logging for production
+- Fixed commission not updating on tipo_vendedor change (PATCH now returns updated values)
 
 **Next Actions:**
 - Plan Phase 12 - Pipeline Kanban board
