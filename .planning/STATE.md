@@ -143,9 +143,12 @@
 - Duplicate detection via normalized phone (digits only) and lowercase email
 - BrasilAPI phone2 inserted as separate lead_contacts row when different from phone1
 
+**Backfill Results (executed via curl):**
+- 290 CNPJs processed, 10 new contacts created, 480 skipped as duplicates, 0 API errors, ~100s elapsed
+
 **Next Actions:**
-- Run GET /api/enrich-contacts as gestor to backfill existing 240 leads
 - Verify lead_contacts table has 2+ rows for leads where BrasilAPI provides telefone_2
+- Daily repo-sync now auto-creates multi-contacts for new leads going forward
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
