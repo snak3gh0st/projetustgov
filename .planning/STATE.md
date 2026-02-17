@@ -123,26 +123,29 @@
 | 25 | Add gestor_vendedor role: vendedor that sells + read-only admin (Paulo Gabriel) | 2026-02-16 | - | - |
 | 26 | Daily auto-update leads from repo bases via Vercel cron (UPSERT, preserves CRM state) | 2026-02-17 | a4b7773 | [8-daily-auto-update-leads-from-repo-bases-](./quick/8-daily-auto-update-leads-from-repo-bases-/) |
 | 27 | Multi-contact per lead with telefone_status tracking + inline CRUD + Telefone Invalido status | 2026-02-17 | 91fb57d | [9-lead-contacts-table-multi-contact-ui-tel](./quick/9-lead-contacts-table-multi-contact-ui-tel/) |
-| 28 | Pipeline enhancements: days since last contact, phone validity indicator, principal contact emphasis, commission lock status | 2026-02-17 | 731ade0 | [10-pipeline-enhancements-days-since-last-co](./quick/10-pipeline-enhancements-days-since-last-co/) |
+| 28 | Pipeline enhancements: funnel cards, contact health alerts, stale leads, phone validity, principal emphasis, commission lock | 2026-02-17 | a0fa48f | [10-pipeline-enhancements-days-since-last-co](./quick/10-pipeline-enhancements-days-since-last-co/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-17
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 10: Pipeline enhancements (4 indicators)
+**Activity:** Quick task 28: Pipeline enhancements (dashboard + leads table + LeadContacts)
 
 **Completed:**
-- Extended leads API with days_since_last_contact subquery from contact_notes and principal_telefone_status from lead_contacts
-- Added sortable "Ult. Contato" column with color-coded badges (green <3d, amber 3-7d, red >7d, gray never)
-- Added phone validity colored dots next to phone numbers in leads table
-- Principal contacts in LeadContacts now have blue left border, blue-50 background, and filled star
+- Redesigned dashboard pipeline from flat bar to 4 funnel cards with counts, percentages, progress bars, conversion rates
+- Added contact health alert cards: stale leads (>7d), never contacted, invalid phones
+- Added "Leads Precisando de Atencao" section: top 8 stale leads with day badges, phone dots, clickable links
+- Extended dashboard-crm API with contact_health and stale_leads queries
+- Extended leads API with days_since_last_contact and principal_telefone_status subqueries
+- Added sortable "Ult. Contato" column with color-coded badges in leads table
+- Added phone validity dots next to phone numbers in leads table
+- Principal contacts in LeadContacts have blue left border, blue-50 background, filled star
 - Fechado leads with comissao_locked show lock icon + "Confirmada" label
 
 **Next Actions:**
-- Deploy to Vercel
-- Test pipeline indicators with real data
-- Verify days_since_last_contact calculates correctly from contact_notes
+- Verify contact_health queries perform well at scale
+- Consider adding per-vendedor stale lead counts to vendedor cards
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
