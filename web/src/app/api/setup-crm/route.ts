@@ -104,6 +104,21 @@ async function runSetup() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_status_contato ON vendedor_projetos(status_contato)`)
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_uf ON vendedor_projetos(uf)`)
 
+    // 2a. Deduplicate existing rows before creating unique constraint (keep lowest id)
+    await pool.query(`
+      DELETE FROM vendedor_projetos a
+      USING vendedor_projetos b
+      WHERE a.cnpj = b.cnpj
+        AND a.codigo_programa = b.codigo_programa
+        AND a.id > b.id
+    `).catch(() => {}) // safe if no duplicates exist
+
+    // 2b. Create unique index on (cnpj, codigo_programa) for UPSERT support
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_vp_cnpj_codigo_programa
+      ON vendedor_projetos(cnpj, codigo_programa)
+    `)
+
     // 2b. Add commission columns if they don't exist (Quick Task 4)
     await pool.query(`
       DO $$
