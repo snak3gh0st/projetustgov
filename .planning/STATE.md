@@ -121,26 +121,27 @@
 | 23 | Rebrand to Projete: brand colors (magenta/purple/blue), gradient logo, powered by SigmaIntel | 2026-02-16 | b16955c | - |
 | 24 | Add sortable column headers (asc/desc) to all 4 data tables (leads, monitoramento, comissoes, distribuir) | 2026-02-16 | 6674897 | - |
 | 25 | Add gestor_vendedor role: vendedor that sells + read-only admin (Paulo Gabriel) | 2026-02-16 | - | - |
+| 26 | Daily auto-update leads from repo bases via Vercel cron (UPSERT, preserves CRM state) | 2026-02-17 | a4b7773 | [8-daily-auto-update-leads-from-repo-bases-](./quick/8-daily-auto-update-leads-from-repo-bases-/) |
 
 ## Session Continuity
 
 ### Last Session Summary
-**Date:** 2026-02-16
+**Date:** 2026-02-17
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 16: Auto-import from 3 repo bases (siconv_programa + siconv_emenda + siconv_proponentes)
+**Activity:** Quick task 8 (new): Daily auto-update leads from repo bases via Vercel cron
 
 **Completed:**
-- Created import-repo-auto.mjs: auto-generates leads from 3 repo CSV bases
-- Chain: siconv_programa (2026+OSC) -> siconv_emenda (valor+parlamentar+nr) -> siconv_proponentes (contatos)
-- Spreadsheet used ONLY for vendedor distribution (CNPJ->vendedor mapping)
-- 240 leads inserted (240 unique prog+cnpj combos, vs 371 with duplicates before)
-- 100% coverage: codigo_programa, nome_programa, valor_emenda, nr_emenda, parlamentar, link, orgao
-- 98% contact coverage (234/240), 91% telefone, 80% email
-- BrasilAPI enriched 47 CNPJs missing from proponentes (100% success)
-- 12 NEW leads discovered (not in original spreadsheet)
-- Total valor: R$ 144M across 4 vendedores
+- Created repo-sync.ts: core sync library downloading 3 siconv ZIPs, streaming CSVs, UPSERTing leads
+- Created /api/cron/sync-leads endpoint with CRON_SECRET auth and 300s timeout
+- Added cron schedule to vercel.json: daily at 06:00 UTC (03:00 BRT)
+- Added unique constraint on (cnpj, codigo_programa) with dedup migration
+- UPSERT preserves CRM state (vendedor_id, status_contato, valor_venda, comissao_*) while refreshing repo data
+- Round-robin vendedor assignment for new leads only
+- BrasilAPI enrichment for new leads missing contact data (capped at 20 per sync)
 
 **Next Actions:**
+- Deploy to Vercel and verify cron execution
+- Add CRON_SECRET env var to Vercel project
 - Plan Phase 12 - Pipeline Kanban board
 
 ---
