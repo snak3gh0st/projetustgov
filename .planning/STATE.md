@@ -124,28 +124,25 @@
 | 26 | Daily auto-update leads from repo bases via Vercel cron (UPSERT, preserves CRM state) | 2026-02-17 | a4b7773 | [8-daily-auto-update-leads-from-repo-bases-](./quick/8-daily-auto-update-leads-from-repo-bases-/) |
 | 27 | Multi-contact per lead with telefone_status tracking + inline CRUD + Telefone Invalido status | 2026-02-17 | 91fb57d | [9-lead-contacts-table-multi-contact-ui-tel](./quick/9-lead-contacts-table-multi-contact-ui-tel/) |
 | 28 | Pipeline enhancements: funnel cards, contact health alerts, stale leads, phone validity, principal emphasis, commission lock | 2026-02-17 | a0fa48f | [10-pipeline-enhancements-days-since-last-co](./quick/10-pipeline-enhancements-days-since-last-co/) |
+| 29 | BI Analytics dashboard at /bi: 4 KPI cards + 4 Recharts charts (funnel, commission, UF, activity) with role-based filtering | 2026-02-17 | 45f3772 | [11-bi-dashboard-with-basic-kpis-from-existi](./quick/11-bi-dashboard-with-basic-kpis-from-existi/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-17
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 28: Pipeline enhancements (dashboard + leads table + LeadContacts)
+**Activity:** Quick task 29: BI Analytics dashboard (/bi page + /api/bi endpoint + sidebar link)
 
 **Completed:**
-- Redesigned dashboard pipeline from flat bar to 4 funnel cards with counts, percentages, progress bars, conversion rates
-- Added contact health alert cards: stale leads (>7d), never contacted, invalid phones
-- Added "Leads Precisando de Atencao" section: top 8 stale leads with day badges, phone dots, clickable links
-- Extended dashboard-crm API with contact_health and stale_leads queries
-- Extended leads API with days_since_last_contact and principal_telefone_status subqueries
-- Added sortable "Ult. Contato" column with color-coded badges in leads table
-- Added phone validity dots next to phone numbers in leads table
-- Principal contacts in LeadContacts have blue left border, blue-50 background, filled star
-- Fechado leads with comissao_locked show lock icon + "Confirmada" label
+- Created /api/bi endpoint with 8 parallel queries (4 KPIs + 4 chart datasets) using same Promise.all pattern as dashboard-crm
+- Created /bi page with 4 KPI cards (conversion rate, avg days to close, pipeline value, commission earned)
+- 4 Recharts charts: horizontal funnel bar, stacked commission by vendedor, UF distribution, activity area trend
+- Role-based: vendedor sees own data with "Meu Desempenho" title; gestor sees all data
+- Added "BI Analytics" sidebar link with Heroicons chart icon for all roles
 
 **Next Actions:**
-- Verify contact_health queries perform well at scale
-- Consider adding per-vendedor stale lead counts to vendedor cards
+- Verify /bi page renders correctly with real data in production
+- Consider adding date range filters to BI dashboard for time-scoped analysis
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
