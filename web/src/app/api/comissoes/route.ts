@@ -51,8 +51,8 @@ export async function GET(request: NextRequest) {
 
     const whereClause = filters.join(' AND ')
 
-    // Check if requesting user is Paulo (gestor_vendedor) for special 3-type breakdown
-    const isPauloView = session.role === 'gestor_vendedor'
+    // Show Paulo's 3-type breakdown for gestor_vendedor (Paulo himself) and gestor (admins)
+    const isPauloView = session.role === 'gestor_vendedor' || session.role === 'gestor'
 
     // Run all queries in parallel
     const showPerVendedor = (session.role !== 'vendedor') && !vendedorId
@@ -134,9 +134,21 @@ export async function GET(request: NextRequest) {
       fechados_count: Number(v.fechados_count) || 0,
     }))
 
-    // Paulo's 3-type commission breakdown
+    // Paulo's 3-type commission breakdown (visible to Paulo and gestors)
     let pauloBreakdown = null
     if (isPauloView) {
+      // Resolve Paulo's ID: if gestor is viewing, look up Paulo; if Paulo himself, use session
+      let pauloUserId = session.userId
+      if (session.role === 'gestor') {
+        const pauloLookup = await query(
+          "SELECT id FROM users WHERE email = 'paulo@projetus.org' AND active = true LIMIT 1"
+        )
+        pauloUserId = pauloLookup[0]?.id as string ?? null
+      }
+
+      if (!pauloUserId) {
+        // Paulo not found — skip breakdown
+      } else {
       // Build date filters for Paulo queries
       const pauloFilters: string[] = ["vp.status_contato = 'Fechado'"]
       const pauloParams: unknown[] = []
@@ -156,7 +168,7 @@ export async function GET(request: NextRequest) {
           WHERE ${pauloWhere}
             AND vp.tipo_vendedor = 'Exclusivo'
             AND vp.vendedor_id = $${pIdx}
-        `, [...pauloParams, session.userId]),
+        `, [...pauloParams, pauloUserId]),
 
         // Closer: leads where Paulo is closer_id + Fechado
         query(`
@@ -169,7 +181,7 @@ export async function GET(request: NextRequest) {
             AND vp.closer_id = $${pIdx}
             AND vp.closer_comissao_valor IS NOT NULL
             AND vp.closer_comissao_valor > 0
-        `, [...pauloParams, session.userId]),
+        `, [...pauloParams, pauloUserId]),
 
         // Coordenador: 1% of ALL vendedores' Fechado sales
         query(`
@@ -206,7 +218,8 @@ export async function GET(request: NextRequest) {
         },
         total_geral: exclusivoTotal + closerTotal + coordenadorTotal,
       }
-    }
+    } // else pauloUserId found
+    } // isPauloView
 
     return NextResponse.json({
       summary: {
