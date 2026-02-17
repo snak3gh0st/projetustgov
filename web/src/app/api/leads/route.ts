@@ -69,7 +69,19 @@ export async function GET(request: NextRequest) {
           SELECT SUM(vp2.valor_emenda)
           FROM vendedor_projetos vp2
           WHERE vp2.cnpj = vp.cnpj
-        ) as total_valor_emendas
+        ) as total_valor_emendas,
+        (
+          SELECT EXTRACT(DAY FROM NOW() - MAX(cn.created_at))::int
+          FROM contact_notes cn
+          WHERE cn.lead_cnpj = vp.cnpj
+        ) as days_since_last_contact,
+        (
+          SELECT lc.telefone_status
+          FROM lead_contacts lc
+          WHERE lc.lead_cnpj = vp.cnpj
+          ORDER BY lc.principal DESC, lc.created_at ASC
+          LIMIT 1
+        ) as principal_telefone_status
       FROM vendedor_projetos vp
       LEFT JOIN users u ON vp.vendedor_id = u.id
       LEFT JOIN existing_clients ec ON vp.cnpj = ec.cnpj

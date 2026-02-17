@@ -47,6 +47,9 @@ export interface VendedorProjeto {
   executed_count?: number | null
   emenda_count?: number
   total_valor_emendas?: number | null
+  days_since_last_contact?: number | null
+  principal_telefone_status?: 'valido' | 'invalido' | 'nao_atende' | 'desconhecido' | null
+  comissao_locked?: boolean
 }
 
 // Client grouped by CNPJ
