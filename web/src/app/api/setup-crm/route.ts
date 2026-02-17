@@ -104,19 +104,29 @@ async function runSetup() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_status_contato ON vendedor_projetos(status_contato)`)
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_uf ON vendedor_projetos(uf)`)
 
-    // 2a. Deduplicate existing rows before creating unique constraint (keep lowest id)
+    // 2a. Deduplicate on new granularity: (cnpj, codigo_programa, nr_emenda).
+    // Old concatenated rows (nr_emenda = "EM1 | EM2") are cleaned up in repo-sync.ts AFTER
+    // reading existing assignments, so vendedor assignments are preserved during migration.
     await pool.query(`
       DELETE FROM vendedor_projetos a
       USING vendedor_projetos b
       WHERE a.cnpj = b.cnpj
         AND a.codigo_programa = b.codigo_programa
+        AND COALESCE(a.nr_emenda, '') = COALESCE(b.nr_emenda, '')
         AND a.id > b.id
     `).catch(() => {}) // safe if no duplicates exist
 
-    // 2b. Create unique index on (cnpj, codigo_programa) for UPSERT support
+    // 2c. Drop old (cnpj, codigo_programa) unique index — now replaced by per-emenda granularity
     await pool.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_vp_cnpj_codigo_programa
-      ON vendedor_projetos(cnpj, codigo_programa)
+      DROP INDEX IF EXISTS idx_vp_cnpj_codigo_programa
+    `).catch(() => {})
+
+    // 2d. Create unique expression index on (cnpj, codigo_programa, COALESCE(nr_emenda, ''))
+    // This allows multiple emendas per (cnpj, programa) while still preventing exact duplicates.
+    // Named idx_vp_cnpj_prog_emenda — referenced by ON CONFLICT in repo-sync.ts
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_vp_cnpj_prog_emenda
+      ON vendedor_projetos(cnpj, codigo_programa, COALESCE(nr_emenda, ''))
     `)
 
     // 2b. Add commission columns if they don't exist (Quick Task 4)

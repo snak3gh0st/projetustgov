@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
         p.cnpj IS NULL as is_max_priority,
         p.total_convenios as executed_count,
         (
-          SELECT COUNT(DISTINCT vp2.nr_emenda)
+          SELECT COUNT(*)
           FROM vendedor_projetos vp2
           WHERE vp2.cnpj = vp.cnpj
         ) as emenda_count,

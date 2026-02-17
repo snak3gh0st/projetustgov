@@ -20,7 +20,7 @@
 //   Current coverage: 97% telefone, 81% email, 100% endereco, 100% nome
 //   9 leads have no contact (neither source had data)
 //
-// SYNC BEHAVIOR (UPSERT via ON CONFLICT cnpj+codigo_programa):
+// SYNC BEHAVIOR (UPSERT via ON CONFLICT cnpj+codigo_programa+nr_emenda, one row per emenda):
 //   - ALWAYS updates: valor_emenda, nr_emenda, parlamentar, nome_programa,
 //     orgao_concedente, link_externo, qualificacao (repo data)
 //   - NEVER updates: vendedor_id, status_contato, valor_venda, comissao_*,
@@ -425,30 +425,24 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       ? `https://discricionarias.transferegov.sistema.gov.br/voluntarias/ConsultarPrograma/ResultadoDaConsultaDeProgramaDeConvenioDetalhar.do?id=${idProg}&Usr=guest&Pwd=guest`
       : ''
 
-    const totalValor = emendas.reduce((s: number, e: EmendaRecord) => s + e.valor, 0)
-    const nrEmendas = emendas.map((e: EmendaRecord) => e.nr_emenda).filter(Boolean).join(' | ')
-    const parlamentarSet = new Set<string>()
-    emendas.forEach((e: EmendaRecord) => {
-      const p = fixText(e.parlamentar)
-      if (p) parlamentarSet.add(p)
-    })
-    const parlamentares = Array.from(parlamentarSet).join(' | ')
-
-    leads.push({
-      cnpj,
-      nome: prop?.nome || null,
-      uf: prop?.uf || null,
-      municipio: prop?.municipio || null,
-      email: prop?.email || null,
-      telefone: formatPhone(prop?.telefone) || null,
-      codigo_programa: codProg,
-      nome_programa: fixText(prog?.nome) || null,
-      orgao_concedente: fixText(prog?.orgao) || null,
-      link_externo: link,
-      valor_emenda: totalValor > 0 ? totalValor : null,
-      nr_emenda: nrEmendas || null,
-      parlamentar: parlamentares || null,
-      qualificacao: emendas[0]?.qualificacao || null,
+    // Create one lead row per emenda so each parlamentar gets its own cascade row
+    emendas.forEach((emenda: EmendaRecord) => {
+      leads.push({
+        cnpj,
+        nome: prop?.nome || null,
+        uf: prop?.uf || null,
+        municipio: prop?.municipio || null,
+        email: prop?.email || null,
+        telefone: formatPhone(prop?.telefone) || null,
+        codigo_programa: codProg,
+        nome_programa: fixText(prog?.nome) || null,
+        orgao_concedente: fixText(prog?.orgao) || null,
+        link_externo: link,
+        valor_emenda: emenda.valor > 0 ? emenda.valor : null,
+        nr_emenda: emenda.nr_emenda || null,
+        parlamentar: fixText(emenda.parlamentar) || null,
+        qualificacao: emenda.qualificacao || null,
+      })
     })
   })
   stats.leads_total = leads.length
@@ -468,12 +462,22 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     const vendedorIds: string[] = vendedoresRes.rows.map((u: { id: string }) => u.id)
 
     // Get existing lead assignments (to preserve vendedor_id on updates)
+    // Also build a CNPJ-level map so if all emenda rows for a CNPJ were deleted during migration,
+    // we can still restore the vendedor assignment to the newly-split emenda rows.
     const assignmentsRes = await client.query(
-      'SELECT cnpj, codigo_programa, vendedor_id FROM vendedor_projetos WHERE vendedor_id IS NOT NULL'
+      "SELECT cnpj, codigo_programa, COALESCE(nr_emenda, '') as nr_emenda, vendedor_id FROM vendedor_projetos WHERE vendedor_id IS NOT NULL"
     )
-    const existingAssignments = new Map<string, string>()
+    const existingAssignments = new Map<string, string>() // cnpj|nr_emenda -> vendedor_id
+    const cnpjAssignments = new Map<string, string>()    // cnpj -> vendedor_id (fallback)
     for (const r of assignmentsRes.rows) {
-      existingAssignments.set(`${r.cnpj}|${r.codigo_programa}`, r.vendedor_id)
+      const key = r.nr_emenda
+        ? `${r.cnpj}|${r.nr_emenda}`
+        : `${r.cnpj}|${r.codigo_programa}`
+      existingAssignments.set(key, r.vendedor_id)
+      // CNPJ-level fallback: first vendedor found for a CNPJ (all emendas share same vendedor)
+      if (!cnpjAssignments.has(r.cnpj)) {
+        cnpjAssignments.set(r.cnpj, r.vendedor_id)
+      }
     }
 
     // Get vendedor lead counts for round-robin
@@ -499,6 +503,18 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     }
 
     // ========================================================================
+    // STEP 5b: Clean up old concatenated emenda rows (migration from pre-emenda scheme)
+    // Old sync stored multiple emendas per (cnpj, codigo_programa) as one row with pipe-separated
+    // nr_emenda/parlamentar. Now that we read assignments above, we can safely delete these rows.
+    // The next upsert will re-insert them as separate per-emenda rows with assignments preserved.
+    // ========================================================================
+    await client.query(`
+      DELETE FROM vendedor_projetos
+      WHERE importado_de = 'auto-repo-sync'
+        AND (nr_emenda LIKE '%|%' OR parlamentar LIKE '%|%')
+    `).catch(() => {})
+
+    // ========================================================================
     // STEP 6: Load existing clients for flagging
     // ========================================================================
     const clientsRes = await client.query('SELECT cnpj FROM existing_clients').catch(() => ({ rows: [] as { cnpj: string }[] }))
@@ -519,7 +535,7 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
         uf, municipio, qualificacao, nr_emenda, parlamentar,
         nome, valor_emenda, vendedor_id, observacoes, importado_de
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'auto-repo-sync')
-      ON CONFLICT (cnpj, codigo_programa) DO UPDATE SET
+      ON CONFLICT (cnpj, codigo_programa, COALESCE(nr_emenda, '')) DO UPDATE SET
         nome_programa = EXCLUDED.nome_programa,
         link_externo = EXCLUDED.link_externo,
         orgao_concedente = EXCLUDED.orgao_concedente,
@@ -541,15 +557,19 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     const newCnpjsNeedingContacts = new Set<string>()
 
     for (const lead of leads) {
-      const assignmentKey = `${lead.cnpj}|${lead.codigo_programa}`
-      const isExisting = existingAssignments.has(assignmentKey)
+      // Use nr_emenda-based key if available, otherwise fall back to codigo_programa
+      const assignmentKey = lead.nr_emenda
+        ? `${lead.cnpj}|${lead.nr_emenda}`
+        : `${lead.cnpj}|${lead.codigo_programa}`
+      const isExisting = existingAssignments.has(assignmentKey) || cnpjAssignments.has(lead.cnpj)
       const isExistingClient = existingClients.has(lead.cnpj)
 
       // For new leads, assign vendedor via round-robin
       let vendedorId: string | null = null
       if (isExisting) {
-        // Existing lead: keep current vendedor (pass it to INSERT to avoid overwrite)
-        vendedorId = existingAssignments.get(assignmentKey)!
+        // Existing lead: keep current vendedor assignment.
+        // Prefer exact emenda key match; fall back to CNPJ-level assignment (migration case).
+        vendedorId = existingAssignments.get(assignmentKey) ?? cnpjAssignments.get(lead.cnpj) ?? null
       } else {
         // New lead: round-robin
         vendedorId = pickNextVendedor()
