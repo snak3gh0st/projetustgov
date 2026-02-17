@@ -127,28 +127,28 @@
 | 29 | BI Analytics dashboard at /bi: 4 KPI cards + 4 Recharts charts (funnel, commission, UF, activity) with role-based filtering | 2026-02-17 | 45f3772 | [11-bi-dashboard-with-basic-kpis-from-existi](./quick/11-bi-dashboard-with-basic-kpis-from-existi/) |
 | 30 | Multi-contact per lead from BrasilAPI (telefone_2) + proponentes in repo-sync STEP 9 + /api/enrich-contacts backfill endpoint | 2026-02-17 | 2fcf30d | [12-sobre-os-contatos-se-tiver-2-ou-mais-ent](./quick/12-sobre-os-contatos-se-tiver-2-ou-mais-ent/) |
 | 31 | Fix cascade grouping: separate rows per parlamentar/emenda (386→421 leads) + gestor auth for cron sync | 2026-02-17 | 82cf535 | [13-fix-cascade-grouping-to-separate-rows-pe](./quick/13-fix-cascade-grouping-to-separate-rows-pe/) |
+| 32 | Transform vendedores to usuarios: role management UI + existing client routing to Paulo Gabriel | 2026-02-17 | b5f17ac | [14-transform-vendedores-page-to-usuarios-wi](./quick/14-transform-vendedores-page-to-usuarios-wi/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-17
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 31: Fix cascade parlamentar grouping
+**Activity:** Quick task 32: Transform vendedores page to usuarios with role management
 
 **Completed:**
-- Changed repo-sync.ts data model from one-row-per-program to one-row-per-emenda
-- Each parlamentar now gets its own DB row with individual nr_emenda, valor_emenda
-- Added STEP 5b to delete old concatenated rows while preserving vendedor assignments via CNPJ fallback
-- New expression index idx_vp_cnpj_prog_emenda on (cnpj, codigo_programa, COALESCE(nr_emenda, ''))
-- Fixed emenda_count query in leads API (COUNT(*) instead of COUNT(DISTINCT nr_emenda))
-- Added gestor session auth fallback to cron/sync-leads for manual browser triggers
-
-**Migration Results:**
-- Leads: 386 → 421 rows (35 previously hidden parlamentar rows now separate)
-- Verified on production: cascade shows separate sub-rows per parlamentar (e.g., SENAI with ROGERIO MARINHO R$500K + BENES LEOCADIO R$200K)
+- Created GET /api/usuarios endpoint (all users, all roles, with lead counts)
+- Created PATCH /api/usuarios/[id]/role endpoint (gestor-only role updates, blocks gestor demotion)
+- Updated createUsuario server action to accept role parameter
+- Rewrote cadastro-vendedor page as "Usuarios" with role select in create form
+- Added inline role dropdowns (color-coded) per user row with optimistic updates
+- Sidebar label changed from "Vendedores" to "Usuarios"
+- repo-sync routes existing client CNPJs to Paulo Gabriel (paulo@projetus.org) instead of round-robin
 
 **Next Actions:**
-- Monitor that daily cron sync correctly inserts new leads as separate per-emenda rows
+- Verify Usuarios page visually in browser
+- Test role change dropdown functionality
+- Run repo-sync to verify Paulo Gabriel routing for existing clients
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
