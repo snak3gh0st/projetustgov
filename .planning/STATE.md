@@ -122,27 +122,26 @@
 | 24 | Add sortable column headers (asc/desc) to all 4 data tables (leads, monitoramento, comissoes, distribuir) | 2026-02-16 | 6674897 | - |
 | 25 | Add gestor_vendedor role: vendedor that sells + read-only admin (Paulo Gabriel) | 2026-02-16 | - | - |
 | 26 | Daily auto-update leads from repo bases via Vercel cron (UPSERT, preserves CRM state) | 2026-02-17 | a4b7773 | [8-daily-auto-update-leads-from-repo-bases-](./quick/8-daily-auto-update-leads-from-repo-bases-/) |
+| 27 | Multi-contact per lead with telefone_status tracking + inline CRUD + Telefone Invalido status | 2026-02-17 | 91fb57d | [9-lead-contacts-table-multi-contact-ui-tel](./quick/9-lead-contacts-table-multi-contact-ui-tel/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-17
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 8 (new): Daily auto-update leads from repo bases via Vercel cron
+**Activity:** Quick task 9: Multi-contact per lead with telefone_status tracking
 
 **Completed:**
-- Created repo-sync.ts: core sync library downloading 3 siconv ZIPs, streaming CSVs, UPSERTing leads
-- Created /api/cron/sync-leads endpoint with CRON_SECRET auth and 300s timeout
-- Added cron schedule to vercel.json: daily at 06:00 UTC (03:00 BRT)
-- Added unique constraint on (cnpj, codigo_programa) with dedup migration
-- UPSERT preserves CRM state (vendedor_id, status_contato, valor_venda, comissao_*) while refreshing repo data
-- Round-robin vendedor assignment for new leads only
-- BrasilAPI enrichment for new leads missing contact data (capped at 20 per sync)
+- Created lead_contacts table with schema, indexes, and migration from vendedor_projetos
+- Built CRUD API at /api/leads/[cnpj]/contacts (GET/POST/PATCH/DELETE)
+- Built LeadContacts UI component with inline add/edit/delete, telefone_status dropdown, principal toggle
+- Added 'Telefone Invalido' as 5th status_contato option on emendas
+- Integrated LeadContacts component into lead detail page between contact info and emendas
 
 **Next Actions:**
-- Deploy to Vercel and verify cron execution
-- Add CRON_SECRET env var to Vercel project
-- Plan Phase 12 - Pipeline Kanban board
+- Deploy to Vercel
+- Visit /api/setup-crm as gestor to create lead_contacts table + migrate data
+- Verify multi-contact CRUD on any lead detail page
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
