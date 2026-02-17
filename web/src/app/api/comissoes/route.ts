@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
       // Summary query
       query(`
         SELECT
-          COUNT(*)::int as total_leads,
+          COUNT(DISTINCT vp.cnpj)::int as total_leads,
           SUM(vp.comissao_valor)::numeric as total_comissao,
           SUM(COALESCE(vp.comissao_bonus, 0))::numeric as total_bonus,
           SUM(CASE WHEN vp.status_contato = 'Fechado' THEN vp.comissao_valor ELSE 0 END)::numeric as comissao_fechado,
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
         SELECT
           vp.vendedor_id,
           u.nome as vendedor_nome,
-          COUNT(*)::int as lead_count,
+          COUNT(DISTINCT vp.cnpj)::int as lead_count,
           SUM(vp.comissao_valor)::numeric as total_comissao,
           SUM(COALESCE(vp.comissao_bonus, 0))::numeric as total_bonus,
           SUM(CASE WHEN vp.status_contato = 'Fechado' THEN 1 ELSE 0 END)::int as fechados_count

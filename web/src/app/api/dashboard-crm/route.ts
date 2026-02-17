@@ -20,14 +20,14 @@ export async function GET() {
       // 1. Global stats with status breakdown
       query(`
         SELECT
-          COUNT(*)::int as total_leads,
-          COUNT(CASE WHEN vendedor_id IS NOT NULL THEN 1 END)::int as total_assigned,
-          COUNT(CASE WHEN vendedor_id IS NULL THEN 1 END)::int as total_unassigned,
+          COUNT(DISTINCT cnpj)::int as total_leads,
+          COUNT(DISTINCT CASE WHEN vendedor_id IS NOT NULL THEN cnpj END)::int as total_assigned,
+          COUNT(DISTINCT CASE WHEN vendedor_id IS NULL THEN cnpj END)::int as total_unassigned,
           COALESCE(SUM(valor_emenda::numeric), 0) as total_valor_emenda,
-          SUM(CASE WHEN COALESCE(status_contato, 'Não Contatado') IN ('Não Contatado', 'Novo', 'Contactado') THEN 1 ELSE 0 END)::int as status_nao_contatado,
-          SUM(CASE WHEN status_contato = 'Retorno' THEN 1 ELSE 0 END)::int as status_retorno,
-          SUM(CASE WHEN status_contato = 'Proposta' THEN 1 ELSE 0 END)::int as status_proposta,
-          SUM(CASE WHEN status_contato = 'Fechado' THEN 1 ELSE 0 END)::int as status_fechado
+          COUNT(DISTINCT CASE WHEN COALESCE(status_contato, 'Não Contatado') IN ('Não Contatado', 'Novo', 'Contactado') THEN cnpj END)::int as status_nao_contatado,
+          COUNT(DISTINCT CASE WHEN status_contato = 'Retorno' THEN cnpj END)::int as status_retorno,
+          COUNT(DISTINCT CASE WHEN status_contato = 'Proposta' THEN cnpj END)::int as status_proposta,
+          COUNT(DISTINCT CASE WHEN status_contato = 'Fechado' THEN cnpj END)::int as status_fechado
         FROM vendedor_projetos${vendedorFilter}
       `, vendedorParams),
 
@@ -36,11 +36,11 @@ export async function GET() {
         SELECT
           vp.vendedor_id,
           u.nome as vendedor_nome,
-          COUNT(*)::int as total_leads,
-          SUM(CASE WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Não Contatado', 'Novo', 'Contactado') THEN 1 ELSE 0 END)::int as nao_contatado,
-          SUM(CASE WHEN vp.status_contato = 'Retorno' THEN 1 ELSE 0 END)::int as retorno,
-          SUM(CASE WHEN vp.status_contato = 'Proposta' THEN 1 ELSE 0 END)::int as proposta,
-          SUM(CASE WHEN vp.status_contato = 'Fechado' THEN 1 ELSE 0 END)::int as fechado,
+          COUNT(DISTINCT vp.cnpj)::int as total_leads,
+          COUNT(DISTINCT CASE WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Não Contatado', 'Novo', 'Contactado') THEN vp.cnpj END)::int as nao_contatado,
+          COUNT(DISTINCT CASE WHEN vp.status_contato = 'Retorno' THEN vp.cnpj END)::int as retorno,
+          COUNT(DISTINCT CASE WHEN vp.status_contato = 'Proposta' THEN vp.cnpj END)::int as proposta,
+          COUNT(DISTINCT CASE WHEN vp.status_contato = 'Fechado' THEN vp.cnpj END)::int as fechado,
           COALESCE(SUM(vp.valor_emenda::numeric), 0) as valor_total_emenda,
           COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' THEN vp.comissao_valor::numeric ELSE 0 END), 0) as comissao_total,
           MAX(vp.updated_at) as last_activity

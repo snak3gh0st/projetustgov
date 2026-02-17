@@ -31,8 +31,8 @@ export async function GET() {
       // 1. KPI: Conversion Rate
       query(`
         SELECT
-          COUNT(*) FILTER (WHERE vp.status_contato = 'Fechado')::int as fechado_count,
-          COUNT(*) FILTER (WHERE vp.vendedor_id IS NOT NULL)::int as assigned_count
+          COUNT(DISTINCT vp.cnpj) FILTER (WHERE vp.status_contato = 'Fechado')::int as fechado_count,
+          COUNT(DISTINCT vp.cnpj) FILTER (WHERE vp.vendedor_id IS NOT NULL)::int as assigned_count
         FROM vendedor_projetos vp
         ${vendedorFilter}
       `, vendedorParams),
@@ -76,7 +76,7 @@ export async function GET() {
             WHEN COALESCE(vp.status_contato, 'Nao Contatado') IN ('Nao Contatado', 'Não Contatado', 'Novo', 'Contactado') THEN 'Nao Contatado'
             ELSE vp.status_contato
           END as status,
-          COUNT(*)::int as count
+          COUNT(DISTINCT vp.cnpj)::int as count
         FROM vendedor_projetos vp
         WHERE vp.vendedor_id IS NOT NULL
         ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
@@ -110,7 +110,7 @@ export async function GET() {
       query(`
         SELECT
           vp.uf,
-          COUNT(*)::int as count,
+          COUNT(DISTINCT vp.cnpj)::int as count,
           COALESCE(SUM(vp.valor_emenda::numeric), 0) as valor_emenda
         FROM vendedor_projetos vp
         WHERE vp.uf IS NOT NULL AND vp.uf != ''

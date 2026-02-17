@@ -12,7 +12,7 @@ export async function GET() {
     }
 
     const rows = await query(`
-      SELECT u.id, u.nome, u.email, u.active, COUNT(vp.id)::int as lead_count
+      SELECT u.id, u.nome, u.email, u.active, COUNT(DISTINCT vp.cnpj)::int as lead_count
       FROM users u
       LEFT JOIN vendedor_projetos vp ON u.id = vp.vendedor_id
       WHERE u.role IN ('vendedor', 'gestor_vendedor') AND u.active = true
