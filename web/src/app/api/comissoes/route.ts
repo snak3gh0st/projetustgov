@@ -95,8 +95,7 @@ export async function GET(request: NextRequest) {
           COUNT(DISTINCT vp.cnpj)::int as total_leads,
           SUM(vp.comissao_valor)::numeric as total_comissao,
           SUM(COALESCE(vp.comissao_bonus, 0))::numeric as total_bonus,
-          SUM(CASE WHEN vp.status_contato = 'Fechado' THEN vp.comissao_valor ELSE 0 END)::numeric as comissao_fechado,
-          SUM(CASE WHEN vp.status_contato != 'Fechado' THEN vp.comissao_valor ELSE 0 END)::numeric as comissao_pipeline,
+          SUM(COALESCE(vp.closer_comissao_valor, 0))::numeric as total_closer_comissao,
           COALESCE(SUM(vp.valor_venda), 0)::numeric as total_valor_venda,
           SUM(vp.valor_emenda)::numeric as total_valor_emenda
         FROM vendedor_projetos vp
@@ -232,8 +231,7 @@ export async function GET(request: NextRequest) {
         total_leads: Number(summary.total_leads) || 0,
         total_comissao: Number(summary.total_comissao) || 0,
         total_bonus: Number(summary.total_bonus) || 0,
-        comissao_fechado: Number(summary.comissao_fechado) || 0,
-        comissao_pipeline: Number(summary.comissao_pipeline) || 0,
+        total_closer_comissao: Number(summary.total_closer_comissao) || 0,
         total_valor_venda: Number(summary.total_valor_venda) || 0,
         total_valor_emenda: Number(summary.total_valor_emenda) || 0,
       },

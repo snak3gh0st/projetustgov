@@ -49,8 +49,7 @@ interface ComissaoData {
     total_leads: number
     total_comissao: number
     total_bonus: number
-    comissao_fechado: number
-    comissao_pipeline: number
+    total_closer_comissao: number
     total_valor_venda: number
     total_valor_emenda: number
   }
@@ -325,41 +324,102 @@ export default function ComissoesPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">
-            {data.paulo_breakdown ? 'Comissao Total (Paulo)' : 'Comissao (percentual)'}
-          </p>
-          <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
-            {formatCurrency(data.paulo_breakdown ? data.paulo_breakdown.total_geral : data.summary.total_comissao)}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            {data.paulo_breakdown ? 'Exclusivo + Closer + Coordenador' : 'Somente leads Fechados'}
-          </p>
+      {data.role === 'gestor_vendedor' && data.paulo_breakdown ? (
+        /* Paulo's view: show his personal commission total */
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white border-2 border-[#0072F7] shadow-sm rounded-xl p-5">
+            <p className="text-xs text-[#0072F7] uppercase tracking-wider font-medium">Minha Comissao Total</p>
+            <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
+              {formatCurrency(data.paulo_breakdown.total_geral)}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">Exclusivo + Closer + Coordenador</p>
+          </div>
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Bonus</p>
+            <p className="text-3xl font-heading font-bold text-green-600 mt-2">
+              {formatCurrency(data.summary.total_bonus)}
+            </p>
+          </div>
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Leads Fechados</p>
+            <p className="text-3xl font-heading font-bold text-gray-900 mt-2">{data.summary.total_leads}</p>
+          </div>
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Valor Vendas</p>
+            <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
+              {formatCurrency(data.summary.total_valor_venda)}
+            </p>
+          </div>
         </div>
-
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Bonus Fechamentos</p>
-          <p className="text-3xl font-heading font-bold text-green-600 mt-2">
-            {formatCurrency(data.summary.total_bonus)}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">R$ 50 por lead fechado</p>
+      ) : data.role === 'gestor' ? (
+        /* Gestor view: show total paid out to everyone */
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Comissoes Vendedores</p>
+            <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
+              {formatCurrency(data.summary.total_comissao)}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">SDR + Exclusivo + Closer</p>
+          </div>
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Comissao Paulo (Closer)</p>
+            <p className="text-2xl font-heading font-bold text-purple-600 mt-2">
+              {formatCurrency(data.summary.total_closer_comissao)}
+            </p>
+          </div>
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Coordenador 1%</p>
+            <p className="text-2xl font-heading font-bold text-amber-600 mt-2">
+              {formatCurrency(data.paulo_breakdown?.coordenador.total || 0)}
+            </p>
+          </div>
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Bonus</p>
+            <p className="text-3xl font-heading font-bold text-green-600 mt-2">
+              {formatCurrency(data.summary.total_bonus)}
+            </p>
+          </div>
+          <div className="bg-white border-2 border-gray-900 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-900 uppercase tracking-wider font-medium">Total Pago</p>
+            <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
+              {formatCurrency(
+                data.summary.total_comissao
+                + data.summary.total_closer_comissao
+                + (data.paulo_breakdown?.coordenador.total || 0)
+                + data.summary.total_bonus
+              )}
+            </p>
+          </div>
         </div>
-
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Leads Fechados</p>
-          <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
-            {data.summary.total_leads}
-          </p>
+      ) : (
+        /* Vendedor view: show their own commission */
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Minha Comissao</p>
+            <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
+              {formatCurrency(data.summary.total_comissao)}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">Somente leads Fechados</p>
+          </div>
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Bonus Fechamentos</p>
+            <p className="text-3xl font-heading font-bold text-green-600 mt-2">
+              {formatCurrency(data.summary.total_bonus)}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">R$ 50 por lead fechado</p>
+          </div>
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Leads Fechados</p>
+            <p className="text-3xl font-heading font-bold text-gray-900 mt-2">{data.summary.total_leads}</p>
+          </div>
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Valor Vendas</p>
+            <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
+              {formatCurrency(data.summary.total_valor_venda)}
+            </p>
+          </div>
         </div>
-
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Valor Total Emendas</p>
-          <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
-            {formatCurrency(data.summary.total_valor_emenda)}
-          </p>
-        </div>
-      </div>
+      )}
 
       {/* Paulo's 3-type commission breakdown */}
       {data.paulo_breakdown && (
@@ -410,37 +470,79 @@ export default function ComissoesPage() {
       {showPerVendedor && (
         <div>
           <h2 className="text-lg font-heading font-semibold text-gray-900 mb-3">
-            Resumo por Vendedor
+            Resumo por Pessoa
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {data.per_vendedor.map(v => (
               <div
                 key={v.vendedor_id}
-                className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 hover:scale-[1.02] transition-transform"
+                className="bg-white border border-gray-200 shadow-sm rounded-xl p-4"
               >
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-bold text-gray-900">{v.vendedor_nome}</h3>
-                  <span className="text-xl font-heading font-bold text-[#0072F7]">{v.lead_count}</span>
+                  <span className="text-xs px-2 py-0.5 bg-blue-50 text-[#0072F7] rounded font-medium">
+                    {v.fechados_count} fechados
+                  </span>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400">Comissao (%)</span>
-                    <span className="text-base font-semibold text-[#0072F7]">
+                    <span className="text-xs text-gray-400">Comissao</span>
+                    <span className="text-lg font-semibold text-[#0072F7]">
                       {formatCurrency(v.total_comissao)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400">Bonus (R$50/fechamento)</span>
+                    <span className="text-xs text-gray-400">Bonus</span>
                     <span className="text-sm font-semibold text-green-600">
                       {formatCurrency(v.total_bonus)}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-500 text-right">
-                    {v.fechados_count} leads fechados
+                  <div className="flex items-center justify-between border-t border-gray-100 pt-1 mt-1">
+                    <span className="text-xs text-gray-600 font-medium">Total</span>
+                    <span className="text-base font-bold text-gray-900">
+                      {formatCurrency(v.total_comissao + v.total_bonus)}
+                    </span>
                   </div>
                 </div>
               </div>
             ))}
+            {/* Paulo card — closer + coordenador commissions */}
+            {data.paulo_breakdown && isGestor && (
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-bold text-purple-900">Paulo (Coordenador)</h3>
+                  <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded font-medium">
+                    {data.paulo_breakdown.closer.count + data.paulo_breakdown.exclusivo.count} fechados
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-purple-500">Exclusivo (3%)</span>
+                    <span className="text-sm font-semibold text-emerald-700">
+                      {formatCurrency(data.paulo_breakdown.exclusivo.total)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-purple-500">Closer (3%)</span>
+                    <span className="text-sm font-semibold text-purple-700">
+                      {formatCurrency(data.paulo_breakdown.closer.total)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-purple-500">Coordenador (1%)</span>
+                    <span className="text-sm font-semibold text-amber-700">
+                      {formatCurrency(data.paulo_breakdown.coordenador.total)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-purple-200 pt-1 mt-1">
+                    <span className="text-xs text-purple-700 font-medium">Total Paulo</span>
+                    <span className="text-base font-bold text-purple-900">
+                      {formatCurrency(data.paulo_breakdown.total_geral)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
