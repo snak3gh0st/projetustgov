@@ -6,14 +6,16 @@ import Link from 'next/link'
 import { formatCNPJ, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import ContactNotesTimeline from '@/components/ContactNotesTimeline'
+import LeadContacts from '@/components/LeadContacts'
 import SaleModal from '@/components/SaleModal'
 
-const STATUS_OPTIONS = ['Não Contatado', 'Retorno', 'Proposta', 'Fechado']
+const STATUS_OPTIONS = ['Não Contatado', 'Retorno', 'Proposta', 'Fechado', 'Telefone Invalido']
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-red-500/20 text-red-500',
   'Retorno': 'bg-amber-500/20 text-amber-600',
   'Proposta': 'bg-blue-500/20 text-[#0072F7]',
   'Fechado': 'bg-green-500/20 text-green-600',
+  'Telefone Invalido': 'bg-gray-500/20 text-gray-600',
 }
 
 export default function LeadDetailPage() {
@@ -383,6 +385,9 @@ export default function LeadDetailPage() {
           )}
         </div>
       )}
+
+      {/* Lead contacts (multi-contact per CNPJ) */}
+      <LeadContacts cnpj={cnpj} canModify={canModify} />
 
       <div className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
         <div className="p-4 border-b border-gray-200">

@@ -1,0 +1,366 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import type { LeadContact, TelefoneStatus } from '@/lib/types'
+
+interface LeadContactsProps {
+  cnpj: string
+  canModify: boolean
+}
+
+const TELEFONE_STATUS_CONFIG: Record<TelefoneStatus, { label: string; color: string }> = {
+  valido: { label: 'Valido', color: 'bg-green-100 text-green-700 border-green-200' },
+  invalido: { label: 'Invalido', color: 'bg-red-100 text-red-700 border-red-200' },
+  nao_atende: { label: 'Nao Atende', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  desconhecido: { label: 'Desconhecido', color: 'bg-gray-100 text-gray-600 border-gray-200' },
+}
+
+const EMPTY_FORM = { nome_pessoa: '', cargo: '', telefone: '', email: '' }
+
+export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
+  const [contacts, setContacts] = useState<LeadContact[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [formData, setFormData] = useState(EMPTY_FORM)
+  const [editData, setEditData] = useState(EMPTY_FORM)
+  const [submitting, setSubmitting] = useState(false)
+
+  const apiBase = `/api/leads/${encodeURIComponent(cnpj)}/contacts`
+
+  async function fetchContacts() {
+    try {
+      const res = await fetch(apiBase)
+      const data = await res.json()
+      setContacts(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error('Failed to fetch contacts:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchContacts()
+  }, [cnpj])
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault()
+    if (!formData.telefone.trim() && !formData.email.trim()) return
+
+    setSubmitting(true)
+    try {
+      const res = await fetch(apiBase, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+      if (res.ok) {
+        setFormData(EMPTY_FORM)
+        setShowForm(false)
+        fetchContacts()
+      }
+    } catch (err) {
+      console.error('Failed to create contact:', err)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleUpdate(id: number, fields: Partial<LeadContact>) {
+    try {
+      const res = await fetch(apiBase, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...fields }),
+      })
+      if (res.ok) {
+        fetchContacts()
+        if (editingId === id) setEditingId(null)
+      }
+    } catch (err) {
+      console.error('Failed to update contact:', err)
+    }
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm('Remover este contato?')) return
+    try {
+      const res = await fetch(apiBase, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      if (res.ok) {
+        fetchContacts()
+      }
+    } catch (err) {
+      console.error('Failed to delete contact:', err)
+    }
+  }
+
+  function startEdit(contact: LeadContact) {
+    setEditingId(contact.id)
+    setEditData({
+      nome_pessoa: contact.nome_pessoa || '',
+      cargo: contact.cargo || '',
+      telefone: contact.telefone || '',
+      email: contact.email || '',
+    })
+  }
+
+  function handleEditSave(id: number) {
+    handleUpdate(id, editData)
+  }
+
+  if (loading) {
+    return <div className="text-gray-500 text-sm">Carregando contatos...</div>
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-heading font-semibold text-gray-900">Contatos</h2>
+          <p className="text-xs text-gray-500">{contacts.length} contato{contacts.length !== 1 ? 's' : ''} cadastrado{contacts.length !== 1 ? 's' : ''}</p>
+        </div>
+        {canModify && (
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-3 py-1.5 rounded-lg bg-[#0072F7] text-white text-sm font-medium hover:bg-[#0058C4] transition-all"
+          >
+            + Novo Contato
+          </button>
+        )}
+      </div>
+
+      {/* Add form */}
+      {showForm && canModify && (
+        <form onSubmit={handleCreate} className="p-4 border-b border-gray-200 bg-gray-50">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+            <label className="block">
+              <span className="text-xs text-gray-500 block mb-1">Nome da Pessoa</span>
+              <input
+                type="text"
+                value={formData.nome_pessoa}
+                onChange={e => setFormData({ ...formData, nome_pessoa: e.target.value })}
+                placeholder="Ex: Joao Silva"
+                className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-[#0072F7] placeholder-gray-400"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs text-gray-500 block mb-1">Cargo</span>
+              <input
+                type="text"
+                value={formData.cargo}
+                onChange={e => setFormData({ ...formData, cargo: e.target.value })}
+                placeholder="Ex: Prefeito, Secretario"
+                className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-[#0072F7] placeholder-gray-400"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs text-gray-500 block mb-1">Telefone</span>
+              <input
+                type="text"
+                value={formData.telefone}
+                onChange={e => setFormData({ ...formData, telefone: e.target.value })}
+                placeholder="(XX) XXXXX-XXXX"
+                className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-[#0072F7] placeholder-gray-400"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs text-gray-500 block mb-1">Email</span>
+              <input
+                type="text"
+                value={formData.email}
+                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                placeholder="email@exemplo.com"
+                className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-[#0072F7] placeholder-gray-400"
+              />
+            </label>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => { setShowForm(false); setFormData(EMPTY_FORM) }}
+              className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-sm hover:bg-gray-100"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || (!formData.telefone.trim() && !formData.email.trim())}
+              className="px-3 py-1.5 rounded-lg bg-[#0072F7] text-white text-sm font-medium hover:bg-[#0058C4] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Contact list */}
+      <div className="divide-y divide-gray-200">
+        {contacts.length === 0 ? (
+          <div className="p-8 text-center text-gray-500 text-sm">
+            Nenhum contato cadastrado
+          </div>
+        ) : (
+          contacts.map((contact) => (
+            <div key={contact.id} className="p-4 hover:bg-gray-50 transition-colors">
+              {editingId === contact.id ? (
+                /* Edit mode */
+                <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    <input
+                      type="text"
+                      value={editData.nome_pessoa}
+                      onChange={e => setEditData({ ...editData, nome_pessoa: e.target.value })}
+                      placeholder="Nome da Pessoa"
+                      className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-[#0072F7] placeholder-gray-400"
+                    />
+                    <input
+                      type="text"
+                      value={editData.cargo}
+                      onChange={e => setEditData({ ...editData, cargo: e.target.value })}
+                      placeholder="Cargo"
+                      className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-[#0072F7] placeholder-gray-400"
+                    />
+                    <input
+                      type="text"
+                      value={editData.telefone}
+                      onChange={e => setEditData({ ...editData, telefone: e.target.value })}
+                      placeholder="Telefone"
+                      className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-[#0072F7] placeholder-gray-400"
+                    />
+                    <input
+                      type="text"
+                      value={editData.email}
+                      onChange={e => setEditData({ ...editData, email: e.target.value })}
+                      placeholder="Email"
+                      className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-[#0072F7] placeholder-gray-400"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-sm hover:bg-gray-100"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() => handleEditSave(contact.id)}
+                      className="px-3 py-1.5 rounded-lg bg-[#0072F7] text-white text-sm font-medium hover:bg-[#0058C4]"
+                    >
+                      Salvar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Read mode */
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      {contact.nome_pessoa && (
+                        <span className="text-sm font-medium text-gray-900">{contact.nome_pessoa}</span>
+                      )}
+                      {contact.cargo && (
+                        <span className="text-xs text-gray-500">{contact.cargo}</span>
+                      )}
+                      {contact.principal && (
+                        <span className="text-xs bg-[#0072F7]/10 text-[#0072F7] px-2 py-0.5 rounded-full border border-[#0072F7]/20 font-medium">
+                          Principal
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm">
+                      {contact.telefone && (
+                        <a
+                          href={`https://wa.me/55${contact.telefone.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener"
+                          className="text-green-600 hover:text-green-700"
+                        >
+                          {contact.telefone}
+                        </a>
+                      )}
+                      {contact.email && (
+                        <a
+                          href={`mailto:${contact.email}`}
+                          className="text-[#0072F7] hover:text-blue-700"
+                        >
+                          {contact.email}
+                        </a>
+                      )}
+                    </div>
+                    {contact.created_by_nome && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Adicionado por {contact.created_by_nome}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Telefone status */}
+                    {canModify ? (
+                      <select
+                        value={contact.telefone_status}
+                        onChange={e => handleUpdate(contact.id, { telefone_status: e.target.value as TelefoneStatus })}
+                        className={`text-xs rounded px-2 py-1 border cursor-pointer focus:outline-none ${TELEFONE_STATUS_CONFIG[contact.telefone_status].color}`}
+                      >
+                        {Object.entries(TELEFONE_STATUS_CONFIG).map(([key, cfg]) => (
+                          <option key={key} value={key}>{cfg.label}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className={`text-xs rounded px-2 py-1 border ${TELEFONE_STATUS_CONFIG[contact.telefone_status].color}`}>
+                        {TELEFONE_STATUS_CONFIG[contact.telefone_status].label}
+                      </span>
+                    )}
+
+                    {/* Principal toggle */}
+                    {canModify && !contact.principal && (
+                      <button
+                        onClick={() => handleUpdate(contact.id, { principal: true })}
+                        className="text-xs text-gray-400 hover:text-[#0072F7] transition-colors px-1"
+                        title="Marcar como principal"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M8 1l2.1 4.3L15 6l-3.5 3.4.8 4.6L8 11.7 3.7 14l.8-4.6L1 6l4.9-.7L8 1z"/>
+                        </svg>
+                      </button>
+                    )}
+
+                    {/* Edit / Delete */}
+                    {canModify && (
+                      <>
+                        <button
+                          onClick={() => startEdit(contact)}
+                          className="text-gray-400 hover:text-[#0072F7] transition-colors"
+                          title="Editar contato"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11.5 2.5a1.5 1.5 0 012 2L5 13l-4 1 1-4L11.5 2.5z"/>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(contact.id)}
+                          className="text-gray-400 hover:text-red-500 transition-colors"
+                          title="Remover contato"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="4" y1="4" x2="12" y2="12"/>
+                            <line x1="12" y1="4" x2="4" y2="12"/>
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
