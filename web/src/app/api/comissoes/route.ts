@@ -74,11 +74,16 @@ export async function GET(request: NextRequest) {
           COALESCE(vp.status_contato, 'Nao Contatado') as status_contato,
           u.nome as vendedor_nome,
           vp.vendedor_id,
+          vp.closer_id,
+          uc.nome as closer_nome,
+          vp.closer_comissao_percentual,
+          COALESCE(vp.closer_comissao_valor, 0) as closer_comissao_valor,
           vp.updated_at,
           CASE WHEN co.id IS NOT NULL THEN true ELSE false END as has_override,
           co.motivo as override_motivo
         FROM vendedor_projetos vp
         JOIN users u ON u.id = vp.vendedor_id
+        LEFT JOIN users uc ON uc.id = vp.closer_id
         LEFT JOIN commission_overrides co ON co.lead_id = vp.id AND co.active = true
         WHERE ${whereClause}
         ORDER BY vp.updated_at DESC
@@ -248,6 +253,10 @@ export async function GET(request: NextRequest) {
         status_contato: lead.status_contato,
         vendedor_nome: lead.vendedor_nome,
         vendedor_id: lead.vendedor_id,
+        closer_id: lead.closer_id || null,
+        closer_nome: lead.closer_nome || null,
+        closer_comissao_percentual: Number(lead.closer_comissao_percentual) || 0,
+        closer_comissao_valor: Number(lead.closer_comissao_valor) || 0,
         updated_at: lead.updated_at,
         has_override: Boolean(lead.has_override),
         override_motivo: lead.override_motivo,

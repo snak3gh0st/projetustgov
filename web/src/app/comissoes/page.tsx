@@ -17,6 +17,10 @@ interface ComissaoLead {
   status_contato: string
   vendedor_nome: string
   vendedor_id: string
+  closer_id: string | null
+  closer_nome: string | null
+  closer_comissao_percentual: number
+  closer_comissao_valor: number
   updated_at: string
   has_override: boolean
   override_motivo: string | null
@@ -451,11 +455,12 @@ export default function ComissoesPage() {
               <thead>
                 <tr className="border-b border-gray-200 text-xs text-gray-400 uppercase tracking-wider">
                   <th onClick={() => handleSort('nome')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Lead<SortIcon col="nome" /></th>
-                  <th onClick={() => handleSort('vendedor')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Vendedor<SortIcon col="vendedor" /></th>
+                  <th onClick={() => handleSort('vendedor')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">SDR / Vendedor<SortIcon col="vendedor" /></th>
                   <th onClick={() => handleSort('tipo')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Tipo<SortIcon col="tipo" /></th>
                   <th onClick={() => handleSort('valor_venda')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Valor Venda<SortIcon col="valor_venda" /></th>
                   <th onClick={() => handleSort('percentual')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">%<SortIcon col="percentual" /></th>
-                  <th onClick={() => handleSort('comissao')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Comissao<SortIcon col="comissao" /></th>
+                  <th onClick={() => handleSort('comissao')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Comissao SDR<SortIcon col="comissao" /></th>
+                  <th className="text-right px-6 py-3">Closer</th>
                   <th onClick={() => handleSort('bonus')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Bonus<SortIcon col="bonus" /></th>
                   <th onClick={() => handleSort('data')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Data Fechamento<SortIcon col="data" /></th>
                   {isGestor && <th className="text-center px-4 py-3">Acao</th>}
@@ -473,7 +478,12 @@ export default function ComissoesPage() {
                       </a>
                       <p className="text-xs text-gray-500 mt-1">{lead.cnpj}</p>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{lead.vendedor_nome}</td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-900">{lead.vendedor_nome}</span>
+                      {lead.closer_nome && (
+                        <p className="text-xs text-purple-600 mt-0.5">Closer: {lead.closer_nome}</p>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`text-xs font-semibold px-2 py-1 rounded ${
                         lead.tipo_vendedor === 'SDR'
@@ -508,6 +518,20 @@ export default function ComissoesPage() {
                           </span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {lead.closer_comissao_valor > 0 ? (
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="text-sm font-semibold text-purple-600">
+                            {formatCurrency(lead.closer_comissao_valor)}
+                          </span>
+                          <span className="text-xs text-purple-400">
+                            {lead.closer_comissao_percentual}% • {lead.closer_nome}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-right text-green-600 font-medium">
                       {formatCurrency(lead.comissao_bonus || 0)}
