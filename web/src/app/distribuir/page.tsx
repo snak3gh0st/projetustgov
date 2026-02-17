@@ -110,6 +110,10 @@ export default function DistribuirPage() {
     return counts
   }, [activeLeads])
 
+  // Unique CNPJ counts for display
+  const uniqueUnassignedCount = useMemo(() => new Set(leads.map(l => l.cnpj)).size, [leads])
+  const uniqueAssignedCount = useMemo(() => new Set(assignedLeads.map(l => l.cnpj)).size, [assignedLeads])
+
   // Compute extra leads that would be auto-included via CNPJ grouping
   const extraByCnpj = useMemo(() => {
     const selectedCnpjs = new Set<string>()
@@ -175,17 +179,21 @@ export default function DistribuirPage() {
     })
   }, [filteredLeads, sortCol, sortDir, cnpjCounts])
 
-  // Group assigned leads by vendedor for summary cards
+  const uniqueFilteredCount = useMemo(() => new Set(sortedLeads.map(l => l.cnpj)).size, [sortedLeads])
+
+  // Group assigned leads by vendedor for summary cards (unique CNPJs)
   const assignedByVendedor = useMemo(() => {
-    const groups: Record<string, { nome: string; count: number }> = {}
+    const groups: Record<string, { nome: string; cnpjs: Set<string> }> = {}
     for (const l of assignedLeads) {
       const vid = l.vendedor_id || 'unknown'
       if (!groups[vid]) {
-        groups[vid] = { nome: l.vendedor_nome || 'Desconhecido', count: 0 }
+        groups[vid] = { nome: l.vendedor_nome || 'Desconhecido', cnpjs: new Set() }
       }
-      groups[vid].count++
+      groups[vid].cnpjs.add(l.cnpj)
     }
-    return groups
+    return Object.fromEntries(
+      Object.entries(groups).map(([k, v]) => [k, { nome: v.nome, count: v.cnpjs.size }])
+    )
   }, [assignedLeads])
 
   function toggleLead(id: number) {
@@ -318,7 +326,7 @@ export default function DistribuirPage() {
           <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
             tab === 'unassigned' ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-500'
           }`}>
-            {leads.length}
+            {uniqueUnassignedCount}
           </span>
         </button>
         <button
@@ -333,7 +341,7 @@ export default function DistribuirPage() {
           <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
             tab === 'assigned' ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-500'
           }`}>
-            {assignedLeads.length}
+            {uniqueAssignedCount}
           </span>
         </button>
       </div>
@@ -526,8 +534,8 @@ export default function DistribuirPage() {
           {selectedLeadIds.size > 0
             ? `${selectedLeadIds.size} leads selecionados${extraByCnpj > 0 ? ` (+${extraByCnpj} por CNPJ)` : ''}`
             : tab === 'unassigned'
-              ? `${sortedLeads.length} leads nao atribuidos`
-              : `${sortedLeads.length} leads distribuidos`
+              ? `${uniqueFilteredCount} leads nao atribuidos`
+              : `${uniqueFilteredCount} leads distribuidos`
           }
         </span>
         <div className="flex items-center gap-3">
