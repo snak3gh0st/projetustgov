@@ -18,6 +18,8 @@ const VENDEDOR_MAP = {
   'elisson': 'elisson@projetus.org',
   'gabriel': 'gabriel@projetus.org',
   'vitoria': 'vitoria@projetus.org',
+  'paulo': 'paulo@projetus.org',
+  'paulo gabriel': 'paulo@projetus.org',
 }
 
 // --- DB Connection ---
@@ -188,7 +190,7 @@ async function main() {
   console.log(`  Spreadsheet CNPJ->vendedor mappings: ${cnpjToVendedor.size}`)
 
   // Load vendedor users from DB
-  const usersRes = await pool.query("SELECT id, email, nome FROM users WHERE role = 'vendedor' AND active = true ORDER BY nome")
+  const usersRes = await pool.query("SELECT id, email, nome FROM users WHERE role IN ('vendedor', 'gestor_vendedor') AND active = true ORDER BY nome")
   const usersByEmail = {}
   for (const u of usersRes.rows) usersByEmail[u.email] = u.id
   const vendedorIds = usersRes.rows.map(u => u.id)

@@ -22,6 +22,8 @@ const VENDEDOR_MAP: Record<string, string> = {
   'elisson': 'elisson@projetus.org',
   'gabriel': 'gabriel@projetus.org',
   'vitoria': 'vitoria@projetus.org',
+  'paulo': 'paulo@projetus.org',
+  'paulo gabriel': 'paulo@projetus.org',
 }
 
 function normalizeHeader(h: string): string {

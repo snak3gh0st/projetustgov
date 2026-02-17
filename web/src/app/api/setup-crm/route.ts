@@ -44,7 +44,7 @@ async function runSetup() {
         nome VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(20) NOT NULL DEFAULT 'vendedor' CHECK (role IN ('gestor', 'vendedor', 'visualizador')),
+        role VARCHAR(20) NOT NULL DEFAULT 'vendedor' CHECK (role IN ('gestor', 'vendedor', 'visualizador', 'gestor_vendedor')),
         active BOOLEAN DEFAULT true,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -56,7 +56,7 @@ async function runSetup() {
       DO $$
       BEGIN
         ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-        ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('gestor', 'vendedor', 'visualizador'));
+        ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('gestor', 'vendedor', 'visualizador', 'gestor_vendedor'));
       END $$;
     `).catch(() => {}) // Ignore if constraint doesn't exist or already updated
 
@@ -369,14 +369,14 @@ async function runSetup() {
       { nome: 'Vitória', email: 'vitoria@projetus.org', role: 'vendedor', password: 'Vitoria#904' },
       { nome: 'Philipe', email: 'philipe@projetus.org', role: 'gestor', password: 'Philipe#268' },
       { nome: 'Tito', email: 'tito@projetus.org', role: 'gestor', password: 'Tito#351' },
-      { nome: 'Paulo', email: 'paulo@projetus.org', role: 'gestor', password: 'Paulo#649' },
+      { nome: 'Paulo', email: 'paulo@projetus.org', role: 'gestor_vendedor', password: 'Paulo#649' },
       { nome: 'Admin', email: 'admin@projetus.org', role: 'gestor', password: 'admin123' },
     ]
 
-    // Update passwords for all existing users
+    // Update passwords and roles for all existing users
     for (const u of allUsers) {
       const hash = await bcrypt.hash(u.password, 10)
-      await pool.query('UPDATE users SET password_hash = $1 WHERE email = $2', [hash, u.email])
+      await pool.query('UPDATE users SET password_hash = $1, role = $3 WHERE email = $2', [hash, u.email, u.role])
     }
 
     const created: string[] = []

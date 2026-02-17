@@ -60,7 +60,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // On sign-in, copy user.id and user.role to token
       if (user) {
         token.id = user.id as string
-        token.role = (user as { role: 'gestor' | 'vendedor' | 'visualizador' }).role
+        token.role = (user as { role: 'gestor' | 'vendedor' | 'visualizador' | 'gestor_vendedor' }).role
       }
       return token
     },
@@ -68,7 +68,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Copy token.id and token.role to session.user
       if (session.user) {
         session.user.id = token.id as string
-        session.user.role = token.role as 'gestor' | 'vendedor' | 'visualizador'
+        session.user.role = token.role as 'gestor' | 'vendedor' | 'visualizador' | 'gestor_vendedor'
       }
       return session
     },

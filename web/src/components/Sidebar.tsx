@@ -7,7 +7,7 @@ import { logout } from '@/lib/auth-actions'
 interface SidebarProps {
   user: {
     name?: string | null
-    role: 'gestor' | 'vendedor' | 'visualizador'
+    role: 'gestor' | 'vendedor' | 'visualizador' | 'gestor_vendedor'
     email?: string | null
   }
 }
@@ -50,6 +50,11 @@ export default function Sidebar({ user }: SidebarProps) {
         { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
         { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
         { href: '/cadastro-vendedor', label: 'Vendedores', icon: 'vendedores' },
+      ]
+    : user.role === 'gestor_vendedor'
+    ? [
+        ...BASE_NAV_ITEMS,
+        { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
       ]
     : BASE_NAV_ITEMS
 
@@ -96,11 +101,13 @@ export default function Sidebar({ user }: SidebarProps) {
           <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${
             user.role === 'gestor'
               ? 'bg-blue-50 text-blue-600'
+              : user.role === 'gestor_vendedor'
+              ? 'bg-indigo-50 text-indigo-600'
               : user.role === 'visualizador'
               ? 'bg-purple-50 text-purple-600'
               : 'bg-green-50 text-green-600'
           }`}>
-            {user.role === 'gestor' ? 'Gestor' : user.role === 'visualizador' ? 'Visualizador' : 'Vendedor'}
+            {user.role === 'gestor' ? 'Gestor' : user.role === 'gestor_vendedor' ? 'Gestor Vendedor' : user.role === 'visualizador' ? 'Visualizador' : 'Vendedor'}
           </span>
         </div>
         <form action={logout}>

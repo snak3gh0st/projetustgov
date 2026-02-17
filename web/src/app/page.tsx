@@ -128,7 +128,7 @@ export default function CRMDashboard() {
   }
 
   const { global: g, vendedores, recent_activity, role } = data
-  const isVendedor = role === 'vendedor'
+  const isVendedor = role === 'vendedor' || role === 'gestor_vendedor'
   const totalForPipeline = Object.values(g.by_status).reduce((a, b) => a + b, 0) || 1
 
   return (

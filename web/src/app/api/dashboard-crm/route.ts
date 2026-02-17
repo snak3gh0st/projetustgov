@@ -11,7 +11,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const isVendedor = session.role === 'vendedor'
+    const isVendedor = session.role === 'vendedor' || session.role === 'gestor_vendedor'
     const vendedorFilter = isVendedor ? ' WHERE vendedor_id = $1' : ''
     const vendedorParams = isVendedor ? [session.userId] : []
 

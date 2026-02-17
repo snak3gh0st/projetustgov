@@ -80,9 +80,9 @@ export async function PATCH(
     updates.push(`updated_at = NOW()`)
     values.push(projectId)
 
-    // Vendedor can only update their own projects
+    // Vendedor and gestor_vendedor can only update their own projects
     let vendedorCondition = ''
-    if (session.role === 'vendedor') {
+    if (session.role === 'vendedor' || session.role === 'gestor_vendedor') {
       values.push(session.userId)
       vendedorCondition = `AND vendedor_id = $${paramIndex + 1}`
     }

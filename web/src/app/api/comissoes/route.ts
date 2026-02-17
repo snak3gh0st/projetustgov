@@ -24,11 +24,12 @@ export async function GET(request: NextRequest) {
     let paramIndex = 1
 
     // Role-based filtering: vendedor always sees only their own
+    // gestor_vendedor sees all (read-only admin view)
     if (session.role === 'vendedor') {
       filters.push(`vp.vendedor_id = $${paramIndex++}`)
       params.push(session.userId)
     } else if (vendedorId) {
-      // Gestor can filter by specific vendedor
+      // Gestor and gestor_vendedor can filter by specific vendedor
       filters.push(`vp.vendedor_id = $${paramIndex++}`)
       params.push(vendedorId)
     }
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
     const whereClause = filters.join(' AND ')
 
     // Run all queries in parallel
-    const showPerVendedor = session.role !== 'vendedor' && !vendedorId
+    const showPerVendedor = (session.role !== 'vendedor') && !vendedorId
 
     const [leadsRows, summaryRows, perVendedorRows, vendedoresRows] = await Promise.all([
       // Main query: Individual leads with commission details
@@ -110,7 +111,7 @@ export async function GET(request: NextRequest) {
         SELECT DISTINCT u.id, u.nome
         FROM users u
         JOIN vendedor_projetos vp ON vp.vendedor_id = u.id
-        WHERE u.role = 'vendedor' AND u.active = true
+        WHERE u.role IN ('vendedor', 'gestor_vendedor') AND u.active = true
         ORDER BY u.nome
       `),
     ])

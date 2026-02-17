@@ -15,7 +15,7 @@ export async function GET() {
       SELECT u.id, u.nome, u.email, u.active, COUNT(vp.id)::int as lead_count
       FROM users u
       LEFT JOIN vendedor_projetos vp ON u.id = vp.vendedor_id
-      WHERE u.role = 'vendedor' AND u.active = true
+      WHERE u.role IN ('vendedor', 'gestor_vendedor') AND u.active = true
       GROUP BY u.id, u.nome, u.email, u.active
       ORDER BY u.nome
     `)

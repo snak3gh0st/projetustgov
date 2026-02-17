@@ -119,6 +119,8 @@
 | 21 | Cascade differentiates emendas by parlamentar (show on main row + sub-rows) | 2026-02-16 | dcbec6a | - |
 | 22 | BrasilAPI enrichment pulls address (endereco, uf, municipio) + display in UI | 2026-02-16 | - | - |
 | 23 | Rebrand to Projete: brand colors (magenta/purple/blue), gradient logo, powered by SigmaIntel | 2026-02-16 | b16955c | - |
+| 24 | Add sortable column headers (asc/desc) to all 4 data tables (leads, monitoramento, comissoes, distribuir) | 2026-02-16 | 6674897 | - |
+| 25 | Add gestor_vendedor role: vendedor that sells + read-only admin (Paulo Gabriel) | 2026-02-16 | - | - |
 
 ## Session Continuity
 
