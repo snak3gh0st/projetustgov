@@ -145,6 +145,13 @@ export default function LeadsPage() {
     return result
   }, [leads, clientFilter, sortCol, sortDir])
 
+  function isNewLead(createdAt: string | null): boolean {
+    if (!createdAt) return false
+    const created = new Date(createdAt)
+    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000) // 48h ago
+    return created > cutoff
+  }
+
   function handleSort(col: string) {
     if (sortCol === col) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -354,6 +361,11 @@ export default function LeadsPage() {
                             {lead.is_existing_client && (
                               <span className="ml-2 text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-200">
                                 CLIENTE
+                              </span>
+                            )}
+                            {isNewLead(lead.created_at) && (
+                              <span className="ml-2 text-[10px] bg-green-50 text-green-600 px-1.5 py-0.5 rounded border border-green-200 font-semibold">
+                                NOVO
                               </span>
                             )}
                           </div>
