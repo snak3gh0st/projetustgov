@@ -1,7 +1,7 @@
 'use server'
 
 import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, auth } from './auth'
-import { LoginSchema, CreateVendedorSchema, type LoginInput, type CreateVendedorInput } from './validations'
+import { LoginSchema, CreateVendedorSchema, CreateUsuarioSchema, type LoginInput, type CreateVendedorInput, type CreateUsuarioInput } from './validations'
 import { query } from './db'
 import * as bcrypt from 'bcryptjs'
 import { redirect } from 'next/navigation'
@@ -113,6 +113,59 @@ export async function createVendedor(
       return { error: firstError.message }
     }
     return { error: 'Erro ao criar vendedor' }
+  }
+}
+
+export async function createUsuario(
+  prevState: { error?: string; success?: boolean } | null,
+  formData: FormData
+): Promise<{ error?: string; success?: boolean }> {
+  try {
+    // Verify session and check if user is gestor
+    const session = await auth()
+
+    if (!session?.user || !('role' in session.user) || session.user.role !== 'gestor') {
+      return { error: 'Apenas gestores podem criar usuarios' }
+    }
+
+    // Extract and validate form data
+    const rawData = {
+      nome: formData.get('nome'),
+      email: formData.get('email'),
+      password: formData.get('password'),
+      role: formData.get('role') ?? 'vendedor',
+    }
+
+    const validatedData = CreateUsuarioSchema.parse(rawData) as CreateUsuarioInput
+
+    // Check if email already exists
+    const existing = await query(
+      `SELECT id FROM users WHERE email = $1`,
+      [validatedData.email]
+    )
+
+    if (existing.length > 0) {
+      return { error: 'Email ja cadastrado' }
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(validatedData.password, 10)
+
+    // Insert new user with selected role
+    await query(
+      `INSERT INTO users (nome, email, password_hash, role) VALUES ($1, $2, $3, $4)`,
+      [validatedData.nome, validatedData.email, passwordHash, validatedData.role]
+    )
+
+    return { success: true }
+  } catch (error) {
+    console.error('Create usuario error:', error)
+    if (error instanceof ZodError) {
+      // Return the first validation error message
+      const firstError = error.issues[0]
+      return { error: firstError.message }
+    }
+    return { error: 'Erro ao criar usuario' }
   }
 }
 
