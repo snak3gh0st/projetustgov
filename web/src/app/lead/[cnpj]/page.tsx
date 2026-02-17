@@ -9,11 +9,12 @@ import ContactNotesTimeline from '@/components/ContactNotesTimeline'
 import LeadContacts from '@/components/LeadContacts'
 import SaleModal from '@/components/SaleModal'
 
-const STATUS_OPTIONS = ['Não Contatado', 'Retorno', 'Proposta', 'Fechado', 'Telefone Invalido']
+const STATUS_OPTIONS = ['Não Contatado', 'Retorno', 'Proposta', 'Aguardando Closer', 'Fechado', 'Telefone Invalido']
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-red-500/20 text-red-500',
   'Retorno': 'bg-amber-500/20 text-amber-600',
   'Proposta': 'bg-blue-500/20 text-[#0072F7]',
+  'Aguardando Closer': 'bg-purple-500/20 text-purple-600',
   'Fechado': 'bg-green-500/20 text-green-600',
   'Telefone Invalido': 'bg-gray-500/20 text-gray-600',
 }
@@ -27,11 +28,13 @@ export default function LeadDetailPage() {
   const [isPriority, setIsPriority] = useState(false)
   const [isExistingClient, setIsExistingClient] = useState(false)
   const [canModify, setCanModify] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [editingField, setEditingField] = useState<'telefone' | 'email' | null>(null)
   const [editValue, setEditValue] = useState('')
   const [saleModal, setSaleModal] = useState<{
     projetoId: number
     tipoVendedor: string | null
+    isExclusivo: boolean
   } | null>(null)
 
   useEffect(() => {
@@ -56,6 +59,7 @@ export default function LeadDetailPage() {
       .then(session => {
         if (session?.user?.role) {
           setCanModify(session.user.role !== 'visualizador')
+          setUserRole(session.user.role)
         }
       })
       .catch(() => {})
@@ -63,12 +67,13 @@ export default function LeadDetailPage() {
 
   async function updateProjeto(id: number, field: string, value: string) {
     try {
-      // If status is changing to "Fechado", open SaleModal instead
-      if (field === 'status_contato' && value === 'Fechado') {
+      // If status is changing to "Fechado" or "Aguardando Closer", open SaleModal instead
+      if (field === 'status_contato' && (value === 'Fechado' || value === 'Aguardando Closer')) {
         const projeto = projetos.find(p => p.id === id)
         setSaleModal({
           projetoId: id,
           tipoVendedor: projeto?.tipo_vendedor || null,
+          isExclusivo: projeto?.tipo_vendedor === 'Exclusivo',
         })
         return
       }
@@ -100,11 +105,12 @@ export default function LeadDetailPage() {
     }
   }
 
-  async function submitFechado(projetoId: number, saleData: { valor_venda: number; tipo_vendedor: string }) {
+  async function submitFechado(projetoId: number, saleData: { valor_venda: number; tipo_vendedor: string; status_contato?: string }) {
     try {
+      const finalStatus = saleData.status_contato || 'Fechado'
       const body = {
         id: projetoId,
-        status_contato: 'Fechado',
+        status_contato: finalStatus,
         valor_venda: saleData.valor_venda,
         tipo_vendedor: saleData.tipo_vendedor,
       }
@@ -122,12 +128,15 @@ export default function LeadDetailPage() {
       setProjetos(prev => prev.map(p =>
         p.id === projetoId ? {
           ...p,
-          status_contato: 'Fechado',
+          status_contato: finalStatus,
           valor_venda: saleData.valor_venda,
-          tipo_vendedor: saleData.tipo_vendedor as 'SDR' | 'Closer',
+          tipo_vendedor: saleData.tipo_vendedor as 'SDR' | 'Closer' | 'Exclusivo',
           ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
           ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
           ...(data.comissao_bonus != null ? { comissao_bonus: Number(data.comissao_bonus) } : {}),
+          ...(data.closer_id != null ? { closer_id: data.closer_id } : {}),
+          ...(data.closer_comissao_percentual != null ? { closer_comissao_percentual: Number(data.closer_comissao_percentual) } : {}),
+          ...(data.closer_comissao_valor != null ? { closer_comissao_valor: Number(data.closer_comissao_valor) } : {}),
         } : p
       ))
       setSaleModal(null)
@@ -220,13 +229,54 @@ export default function LeadDetailPage() {
         </div>
       </div>
 
+      {/* Aguardando Closer banner */}
+      {first.status_contato === 'Aguardando Closer' && (
+        <div className="bg-purple-50 border border-purple-200 rounded-xl p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-purple-700">Aguardando Closer (Paulo)</p>
+              <p className="text-xs text-purple-500 mt-1">
+                Este lead foi enviado pelo SDR e aguarda fechamento pelo coordenador
+              </p>
+            </div>
+            {userRole === 'gestor_vendedor' && canModify && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setSaleModal({
+                      projetoId: first.id,
+                      tipoVendedor: first.tipo_vendedor || null,
+                      isExclusivo: false,
+                    })
+                  }}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-500 transition-colors"
+                >
+                  Fechar Venda
+                </button>
+                <button
+                  onClick={() => updateProjeto(first.id, 'status_contato', 'Proposta')}
+                  className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            )}
+          </div>
+          {first.valor_venda && first.valor_venda > 0 && (
+            <p className="text-sm text-purple-600 mt-2">
+              Valor estimado: {formatCurrency(first.valor_venda)}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Commission Info */}
       {first.vendedor_id && first.comissao_valor && first.comissao_valor > 0 && (
         <div className="bg-sigma-neon/10 border border-sigma-neon/30 rounded-xl p-5">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-xs text-gray-500 uppercase">Tipo Vendedor</p>
-              {canModify ? (
+              {canModify && !first.closer_id ? (
                 <select
                   value={first.tipo_vendedor || 'SDR'}
                   onChange={(e) => updateProjeto(first.id, 'tipo_vendedor', e.target.value)}
@@ -234,6 +284,7 @@ export default function LeadDetailPage() {
                 >
                   <option value="SDR">SDR (1%)</option>
                   <option value="Closer">Closer (4%)</option>
+                  <option value="Exclusivo">Exclusivo (3%)</option>
                 </select>
               ) : (
                 <p className="text-lg font-semibold text-gray-900 mt-1">
@@ -242,17 +293,34 @@ export default function LeadDetailPage() {
               )}
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase">Comissao ({Number(first.comissao_percentual || 0).toFixed(1)}%)</p>
+              <p className="text-xs text-gray-500 uppercase">
+                {first.closer_id ? `SDR (${Number(first.comissao_percentual || 0).toFixed(1)}%)` : `Comissao (${Number(first.comissao_percentual || 0).toFixed(1)}%)`}
+              </p>
               <p className="text-2xl font-heading font-bold text-sigma-neon mt-1">
                 {formatCurrency(first.comissao_valor)}
               </p>
+              {first.closer_id && first.vendedor_nome && (
+                <p className="text-xs text-gray-400 mt-0.5">{first.vendedor_nome}</p>
+              )}
             </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase">Bonus por Fechamento</p>
-              <p className="text-lg font-semibold text-green-600 mt-1">
-                {formatCurrency(first.comissao_bonus || 0)}
-              </p>
-            </div>
+            {first.closer_id && first.closer_comissao_valor && first.closer_comissao_valor > 0 ? (
+              <div>
+                <p className="text-xs text-gray-500 uppercase">Closer ({Number(first.closer_comissao_percentual || 0).toFixed(1)}%)</p>
+                <p className="text-2xl font-heading font-bold text-purple-600 mt-1">
+                  {formatCurrency(first.closer_comissao_valor)}
+                </p>
+                {first.closer_nome && (
+                  <p className="text-xs text-gray-400 mt-0.5">{first.closer_nome}</p>
+                )}
+              </div>
+            ) : (
+              <div>
+                <p className="text-xs text-gray-500 uppercase">Bonus por Fechamento</p>
+                <p className="text-lg font-semibold text-green-600 mt-1">
+                  {formatCurrency(first.comissao_bonus || 0)}
+                </p>
+              </div>
+            )}
             <div>
               <p className="text-xs text-gray-500 uppercase">Valor da Venda</p>
               <p className="text-lg font-semibold text-gray-900 mt-1">
@@ -454,6 +522,8 @@ export default function LeadDetailPage() {
         open={!!saleModal}
         leadNome={first.nome || 'Sem nome'}
         currentTipoVendedor={saleModal?.tipoVendedor}
+        userRole={userRole}
+        isExclusivo={saleModal?.isExclusivo}
         onCancel={() => setSaleModal(null)}
         onConfirm={(data) => {
           if (saleModal) {

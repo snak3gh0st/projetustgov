@@ -64,9 +64,9 @@ export async function verifyLeadAccess(cnpj: string, userId: string, role: strin
   // Gestor and visualizador have access to all leads
   if (role === 'gestor' || role === 'visualizador') return true
 
-  // Vendedor and gestor_vendedor must have the lead assigned
+  // Vendedor and gestor_vendedor must have the lead assigned (or be closer)
   const assignments = await query(
-    `SELECT 1 FROM vendedor_projetos WHERE cnpj = $1 AND vendedor_id = $2 LIMIT 1`,
+    `SELECT 1 FROM vendedor_projetos WHERE cnpj = $1 AND (vendedor_id = $2 OR closer_id = $2) LIMIT 1`,
     [cnpj, userId]
   )
 

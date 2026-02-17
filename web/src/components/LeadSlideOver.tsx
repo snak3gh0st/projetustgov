@@ -9,6 +9,7 @@ const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-red-50 text-red-500 border-red-200',
   'Retorno': 'bg-amber-50 text-amber-600 border-amber-200',
   'Proposta': 'bg-blue-50 text-[#0072F7] border-blue-200',
+  'Aguardando Closer': 'bg-purple-50 text-purple-600 border-purple-200',
   'Fechado': 'bg-green-50 text-green-600 border-green-200',
 }
 
@@ -106,9 +107,11 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
             <span className={`inline-block mt-2 text-xs font-medium rounded-full px-3 py-1 border ${
               localLead.tipo_vendedor === 'SDR'
                 ? 'bg-blue-50 text-[#0072F7] border-blue-200'
+                : localLead.tipo_vendedor === 'Exclusivo'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 : 'bg-purple-50 text-purple-600 border-purple-200'
             }`}>
-              {localLead.tipo_vendedor} ({localLead.tipo_vendedor === 'SDR' ? '1%' : '4%'})
+              {localLead.tipo_vendedor} ({localLead.tipo_vendedor === 'SDR' ? '1%' : localLead.tipo_vendedor === 'Exclusivo' ? '3%' : '4%'})
             </span>
           )}
         </div>

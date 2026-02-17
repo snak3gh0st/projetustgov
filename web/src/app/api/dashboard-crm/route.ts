@@ -11,9 +11,16 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const isVendedor = session.role === 'vendedor' || session.role === 'gestor_vendedor'
-    const vendedorFilter = isVendedor ? ' WHERE vendedor_id = $1' : ''
-    const vendedorParams = isVendedor ? [session.userId] : []
+    const isVendedor = session.role === 'vendedor'
+    const isGestorVendedor = session.role === 'gestor_vendedor'
+    const isFiltered = isVendedor || isGestorVendedor
+    // gestor_vendedor (Paulo) sees leads where vendedor_id = id OR closer_id = id
+    const vendedorFilter = isVendedor
+      ? ' WHERE vendedor_id = $1'
+      : isGestorVendedor
+      ? ' WHERE (vendedor_id = $1 OR closer_id = $1)'
+      : ''
+    const vendedorParams = isFiltered ? [session.userId] : []
 
     // Run all queries in parallel to avoid sequential connection queuing
     const [globalRows, vendedorRows, todayRows, recentRows, commissionRows, contactHealthRows, staleLeadsRows] = await Promise.all([
@@ -27,6 +34,7 @@ export async function GET() {
           COUNT(DISTINCT CASE WHEN COALESCE(status_contato, 'Não Contatado') IN ('Não Contatado', 'Novo', 'Contactado') THEN cnpj END)::int as status_nao_contatado,
           COUNT(DISTINCT CASE WHEN status_contato = 'Retorno' THEN cnpj END)::int as status_retorno,
           COUNT(DISTINCT CASE WHEN status_contato = 'Proposta' THEN cnpj END)::int as status_proposta,
+          COUNT(DISTINCT CASE WHEN status_contato = 'Aguardando Closer' THEN cnpj END)::int as status_aguardando_closer,
           COUNT(DISTINCT CASE WHEN status_contato = 'Fechado' THEN cnpj END)::int as status_fechado
         FROM vendedor_projetos${vendedorFilter}
       `, vendedorParams),
@@ -40,13 +48,14 @@ export async function GET() {
           COUNT(DISTINCT CASE WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Não Contatado', 'Novo', 'Contactado') THEN vp.cnpj END)::int as nao_contatado,
           COUNT(DISTINCT CASE WHEN vp.status_contato = 'Retorno' THEN vp.cnpj END)::int as retorno,
           COUNT(DISTINCT CASE WHEN vp.status_contato = 'Proposta' THEN vp.cnpj END)::int as proposta,
+          COUNT(DISTINCT CASE WHEN vp.status_contato = 'Aguardando Closer' THEN vp.cnpj END)::int as aguardando_closer,
           COUNT(DISTINCT CASE WHEN vp.status_contato = 'Fechado' THEN vp.cnpj END)::int as fechado,
           COALESCE(SUM(vp.valor_emenda::numeric), 0) as valor_total_emenda,
           COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' THEN vp.comissao_valor::numeric ELSE 0 END), 0) as comissao_total,
           MAX(vp.updated_at) as last_activity
         FROM vendedor_projetos vp
         JOIN users u ON u.id = vp.vendedor_id
-        WHERE vp.vendedor_id IS NOT NULL${isVendedor ? ' AND vp.vendedor_id = $1' : ''}
+        WHERE vp.vendedor_id IS NOT NULL${isFiltered ? ' AND (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
         GROUP BY vp.vendedor_id, u.nome
         ORDER BY total_leads DESC
       `, vendedorParams),
@@ -61,7 +70,7 @@ export async function GET() {
         FROM vendedor_projetos vp
         WHERE vp.vendedor_id IS NOT NULL
           AND vp.updated_at >= CURRENT_DATE
-          AND vp.status_contato IN ('Retorno', 'Proposta', 'Fechado')${isVendedor ? ' AND vp.vendedor_id = $1' : ''}
+          AND vp.status_contato IN ('Retorno', 'Proposta', 'Fechado')${isFiltered ? ' AND (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
         GROUP BY vp.vendedor_id
       `, vendedorParams),
 
@@ -75,7 +84,7 @@ export async function GET() {
           vp.updated_at
         FROM vendedor_projetos vp
         LEFT JOIN users u ON u.id = vp.vendedor_id
-        WHERE vp.updated_at IS NOT NULL${isVendedor ? ' AND vp.vendedor_id = $1' : ''}
+        WHERE vp.updated_at IS NOT NULL${isFiltered ? ' AND (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
         ORDER BY vp.updated_at DESC
         LIMIT 10
       `, vendedorParams),
@@ -93,7 +102,7 @@ export async function GET() {
           AND vp.comissao_valor IS NOT NULL
           AND vp.comissao_valor > 0
           AND vp.status_contato = 'Fechado'
-          ${isVendedor ? ' AND vp.vendedor_id = $1' : ''}
+          ${isFiltered ? ' AND (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
       `, vendedorParams),
 
       // 6. Contact health: stale leads (no contact_notes in >7d or never), invalid phones
@@ -120,7 +129,7 @@ export async function GET() {
             )
           )::int as invalid_phone_count
         FROM vendedor_projetos vp
-        WHERE vp.vendedor_id IS NOT NULL${isVendedor ? ' AND vp.vendedor_id = $1' : ''}
+        WHERE vp.vendedor_id IS NOT NULL${isFiltered ? ' AND (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
       `, vendedorParams),
 
       // 7. Top stale leads needing follow-up (oldest contact or never contacted)
@@ -151,7 +160,7 @@ export async function GET() {
         LEFT JOIN users u ON u.id = vp.vendedor_id
         WHERE vp.vendedor_id IS NOT NULL
           AND vp.status_contato NOT IN ('Fechado')
-          ${isVendedor ? ' AND vp.vendedor_id = $1' : ''}
+          ${isFiltered ? ' AND (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
         GROUP BY vp.cnpj, vp.nome, u.nome, vp.status_contato, vp.updated_at
         ORDER BY
           CASE WHEN NOT EXISTS (SELECT 1 FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj)
@@ -182,6 +191,7 @@ export async function GET() {
           'Não Contatado': Number(g.status_nao_contatado) || 0,
           'Retorno': Number(g.status_retorno) || 0,
           'Proposta': Number(g.status_proposta) || 0,
+          'Aguardando Closer': Number(g.status_aguardando_closer) || 0,
           'Fechado': Number(g.status_fechado) || 0,
         },
       },
@@ -194,6 +204,7 @@ export async function GET() {
           nao_contatado: Number(v.nao_contatado),
           retorno: Number(v.retorno),
           proposta: Number(v.proposta),
+          aguardando_closer: Number(v.aguardando_closer) || 0,
           fechado: Number(v.fechado),
           valor_total_emenda: Number(v.valor_total_emenda),
           comissao_total: Number(v.comissao_total),

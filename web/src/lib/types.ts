@@ -31,10 +31,13 @@ export interface VendedorProjeto {
   email: string | null
   endereco: string | null
   status_contato: string
-  tipo_vendedor: 'SDR' | 'Closer' | null
+  tipo_vendedor: 'SDR' | 'Closer' | 'Exclusivo' | null
   comissao_percentual: number | null
   comissao_valor: number | null
   comissao_bonus: number | null
+  closer_id: string | null
+  closer_comissao_percentual: number | null
+  closer_comissao_valor: number | null
   valor_venda: number | null
   observacoes: string | null
   // Metadata
@@ -42,6 +45,7 @@ export interface VendedorProjeto {
   created_at: string
   updated_at: string
   vendedor_nome?: string | null
+  closer_nome?: string | null
   is_existing_client?: boolean
   is_max_priority?: boolean
   executed_count?: number | null
@@ -74,6 +78,7 @@ export interface DashboardStats {
     'Não Contatado': number
     Retorno: number
     Proposta: number
+    'Aguardando Closer': number
     Fechado: number
   }
 }

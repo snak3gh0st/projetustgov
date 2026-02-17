@@ -157,14 +157,16 @@ async function runSetup() {
         comissao_percentual = CASE
           WHEN tipo_vendedor = 'SDR' THEN 1.00
           WHEN tipo_vendedor = 'Closer' THEN 4.00
+          WHEN tipo_vendedor = 'Exclusivo' THEN 3.00
           ELSE 1.00
         END,
         comissao_valor = CASE
           WHEN tipo_vendedor = 'SDR' THEN COALESCE(valor_venda, 0) * 0.01
           WHEN tipo_vendedor = 'Closer' THEN COALESCE(valor_venda, 0) * 0.04
+          WHEN tipo_vendedor = 'Exclusivo' THEN COALESCE(valor_venda, 0) * 0.03
           ELSE COALESCE(valor_venda, 0) * 0.01
         END,
-        comissao_bonus = 50.00
+        comissao_bonus = CASE WHEN tipo_vendedor = 'Exclusivo' THEN 0 ELSE 50.00 END
       WHERE valor_venda IS NOT NULL AND valor_venda > 0
         AND (comissao_valor IS NULL OR comissao_percentual IS NULL);
     `).catch(() => {})
@@ -212,7 +214,7 @@ async function runSetup() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS commission_config (
         id SERIAL PRIMARY KEY,
-        tipo_vendedor VARCHAR(20) NOT NULL CHECK (tipo_vendedor IN ('SDR', 'Closer')),
+        tipo_vendedor VARCHAR(20) NOT NULL CHECK (tipo_vendedor IN ('SDR', 'Closer', 'Exclusivo', 'Coordenador')),
         percentual_default NUMERIC(5,2) NOT NULL,
         taxa_fixa NUMERIC(15,2) NOT NULL DEFAULT 0,
         vendedor_id UUID REFERENCES users(id),
@@ -221,6 +223,15 @@ async function runSetup() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
+    `).catch(() => {})
+
+    // 6b2. Update commission_config CHECK to include Exclusivo and Coordenador
+    await pool.query(`
+      DO $$
+      BEGIN
+        ALTER TABLE commission_config DROP CONSTRAINT IF EXISTS commission_config_tipo_vendedor_check;
+        ALTER TABLE commission_config ADD CONSTRAINT commission_config_tipo_vendedor_check CHECK (tipo_vendedor IN ('SDR', 'Closer', 'Exclusivo', 'Coordenador'));
+      END $$;
     `).catch(() => {})
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_cc_tipo_vendedor ON commission_config(tipo_vendedor);`).catch(() => {})
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_cc_active ON commission_config(active);`).catch(() => {})
@@ -241,7 +252,7 @@ async function runSetup() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_co_lead_id ON commission_overrides(lead_id);`).catch(() => {})
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_co_active ON commission_overrides(active);`).catch(() => {})
 
-    // 6d. Seed default commission config (SDR: 1%+R$50, Closer: 4%+R$50)
+    // 6d. Seed default commission config (SDR: 1%+R$50, Closer: 4%+R$50, Exclusivo: 3%, Coordenador: 1%)
     await pool.query(`
       INSERT INTO commission_config (tipo_vendedor, percentual_default, taxa_fixa, active)
       SELECT 'SDR', 1.00, 50.00, true
@@ -252,8 +263,23 @@ async function runSetup() {
       SELECT 'Closer', 4.00, 50.00, true
       WHERE NOT EXISTS (SELECT 1 FROM commission_config WHERE tipo_vendedor = 'Closer' AND active = true);
     `).catch(() => {})
+    // Paulo's Exclusivo: 3% commission for his own clients, no fixed bonus
+    const pauloRow = await pool.query("SELECT id FROM users WHERE email = 'paulo@projetus.org' LIMIT 1").catch(() => ({ rows: [] }))
+    const pauloId = pauloRow.rows[0]?.id ?? null
+    if (pauloId) {
+      await pool.query(`
+        INSERT INTO commission_config (tipo_vendedor, percentual_default, taxa_fixa, vendedor_id, active)
+        SELECT 'Exclusivo', 3.00, 0, $1, true
+        WHERE NOT EXISTS (SELECT 1 FROM commission_config WHERE tipo_vendedor = 'Exclusivo' AND active = true);
+      `, [pauloId]).catch(() => {})
+      await pool.query(`
+        INSERT INTO commission_config (tipo_vendedor, percentual_default, taxa_fixa, vendedor_id, active)
+        SELECT 'Coordenador', 1.00, 0, $1, true
+        WHERE NOT EXISTS (SELECT 1 FROM commission_config WHERE tipo_vendedor = 'Coordenador' AND active = true);
+      `, [pauloId]).catch(() => {})
+    }
 
-    // 6e. Add comissao_locked and comissao_bonus columns to vendedor_projetos
+    // 6e. Add comissao_locked, comissao_bonus, endereco, closer columns to vendedor_projetos
     await pool.query(`
       DO $$
       BEGIN
@@ -266,7 +292,36 @@ async function runSetup() {
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='endereco') THEN
           ALTER TABLE vendedor_projetos ADD COLUMN endereco TEXT;
         END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='closer_id') THEN
+          ALTER TABLE vendedor_projetos ADD COLUMN closer_id UUID REFERENCES users(id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='closer_comissao_percentual') THEN
+          ALTER TABLE vendedor_projetos ADD COLUMN closer_comissao_percentual NUMERIC(5,2);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='closer_comissao_valor') THEN
+          ALTER TABLE vendedor_projetos ADD COLUMN closer_comissao_valor NUMERIC(15,2);
+        END IF;
       END $$;
+    `).catch(() => {})
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_closer ON vendedor_projetos(closer_id)`).catch(() => {})
+
+    // 6e2. Update tipo_vendedor CHECK to include 'Exclusivo'
+    await pool.query(`
+      DO $$
+      BEGIN
+        ALTER TABLE vendedor_projetos DROP CONSTRAINT IF EXISTS vendedor_projetos_tipo_vendedor_check;
+        ALTER TABLE vendedor_projetos ADD CONSTRAINT vendedor_projetos_tipo_vendedor_check CHECK (tipo_vendedor IN ('SDR', 'Closer', 'Exclusivo'));
+      END $$;
+    `).catch(() => {})
+
+    // 6e3. Migration: existing clients with Paulo → SET tipo_vendedor = 'Exclusivo'
+    await pool.query(`
+      UPDATE vendedor_projetos vp
+      SET tipo_vendedor = 'Exclusivo'
+      FROM existing_clients ec
+      WHERE vp.cnpj = ec.cnpj
+        AND vp.vendedor_id = (SELECT id FROM users WHERE email = 'paulo@projetus.org' LIMIT 1)
+        AND (vp.tipo_vendedor IS NULL OR vp.tipo_vendedor != 'Exclusivo')
     `).catch(() => {})
 
     // 6f. Lock commission for existing Fechado leads

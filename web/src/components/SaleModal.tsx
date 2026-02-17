@@ -6,26 +6,35 @@ interface SaleModalProps {
   open: boolean
   leadNome: string
   currentTipoVendedor?: string | null
-  onConfirm: (data: { valor_venda: number; tipo_vendedor: string }) => void
+  userRole?: string | null
+  isExclusivo?: boolean
+  onConfirm: (data: { valor_venda: number; tipo_vendedor: string; status_contato?: string }) => void
   onCancel: () => void
 }
 
-export default function SaleModal({ open, leadNome, currentTipoVendedor, onConfirm, onCancel }: SaleModalProps) {
+export default function SaleModal({ open, leadNome, currentTipoVendedor, userRole, isExclusivo, onConfirm, onCancel }: SaleModalProps) {
   const [valorStr, setValorStr] = useState('')
   const [tipoVendedor, setTipoVendedor] = useState(currentTipoVendedor || 'SDR')
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const isVendedor = userRole === 'vendedor'
+  const isGestorVendedor = userRole === 'gestor_vendedor'
+
   // Reset state when modal opens
   useEffect(() => {
     if (open) {
       setValorStr('')
-      setTipoVendedor(currentTipoVendedor || 'SDR')
+      if (isExclusivo) {
+        setTipoVendedor('Exclusivo')
+      } else {
+        setTipoVendedor(currentTipoVendedor || 'SDR')
+      }
       setError('')
       // Focus input after a brief delay for animation
       setTimeout(() => inputRef.current?.focus(), 100)
     }
-  }, [open, currentTipoVendedor])
+  }, [open, currentTipoVendedor, isExclusivo])
 
   // Handle escape key
   useEffect(() => {
@@ -45,7 +54,12 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, onConfi
       setError('Informe um valor de venda valido (maior que zero)')
       return
     }
-    onConfirm({ valor_venda: valor, tipo_vendedor: tipoVendedor })
+    // SDR → Closer flow: vendedor selects SDR, lead goes to Aguardando Closer
+    if (isVendedor && tipoVendedor === 'SDR') {
+      onConfirm({ valor_venda: valor, tipo_vendedor: 'SDR', status_contato: 'Aguardando Closer' })
+    } else {
+      onConfirm({ valor_venda: valor, tipo_vendedor: tipoVendedor })
+    }
   }
 
   if (!open) return null
@@ -53,8 +67,12 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, onConfi
   // Compute preview commission
   const cleaned = valorStr.replace(/[^\d.,]/g, '').replace(',', '.')
   const previewValor = parseFloat(cleaned) || 0
-  const pct = tipoVendedor === 'Closer' ? 4 : 1
+  const pct = tipoVendedor === 'Closer' ? 4 : tipoVendedor === 'Exclusivo' ? 3 : 1
   const previewComissao = previewValor * (pct / 100)
+  // For SDR → Closer flow: show split preview
+  const isSdrCloserFlow = isVendedor && tipoVendedor === 'SDR'
+  const closerPct = 3
+  const previewCloserComissao = previewValor * (closerPct / 100)
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
@@ -102,45 +120,77 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, onConfi
             <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
               Tipo de Vendedor *
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setTipoVendedor('SDR')}
-                className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all ${
-                  tipoVendedor === 'SDR'
-                    ? 'bg-blue-50 border-blue-200 text-[#0072F7]'
-                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'
-                }`}
-              >
-                SDR (1%)
-              </button>
-              <button
-                type="button"
-                onClick={() => setTipoVendedor('Closer')}
-                className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all ${
-                  tipoVendedor === 'Closer'
-                    ? 'bg-purple-50 border-purple-200 text-purple-600'
-                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'
-                }`}
-              >
-                Closer (4%)
-              </button>
-            </div>
+            {isExclusivo ? (
+              <div className="px-4 py-3 rounded-xl text-sm font-semibold border bg-emerald-50 border-emerald-200 text-emerald-700">
+                Exclusivo (3%)
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTipoVendedor('SDR')}
+                  className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all ${
+                    tipoVendedor === 'SDR'
+                      ? 'bg-blue-50 border-blue-200 text-[#0072F7]'
+                      : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'
+                  }`}
+                >
+                  {isVendedor ? 'SDR → Paulo Closer' : 'SDR (1%)'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTipoVendedor('Closer')}
+                  className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all ${
+                    tipoVendedor === 'Closer'
+                      ? 'bg-purple-50 border-purple-200 text-purple-600'
+                      : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'
+                  }`}
+                >
+                  Closer (4%)
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Preview */}
           {previewValor > 0 && (
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-1.5">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Comissao ({pct}%)</span>
-                <span className="text-[#0072F7] font-semibold">
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(previewComissao)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Bonus por fechamento</span>
-                <span className="text-green-600 font-semibold">R$ 50</span>
-              </div>
+              {isSdrCloserFlow ? (
+                <>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">Sua comissao SDR (1%)</span>
+                    <span className="text-[#0072F7] font-semibold">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(previewComissao)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">Paulo Closer (3%)</span>
+                    <span className="text-purple-600 font-semibold">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(previewCloserComissao)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">Bonus por fechamento</span>
+                    <span className="text-green-600 font-semibold">R$ 50</span>
+                  </div>
+                  <p className="text-xs text-amber-600 mt-1">Lead sera enviado para Paulo fechar</p>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">Comissao ({pct}%)</span>
+                    <span className="text-[#0072F7] font-semibold">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(previewComissao)}
+                    </span>
+                  </div>
+                  {tipoVendedor !== 'Exclusivo' && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">Bonus por fechamento</span>
+                      <span className="text-green-600 font-semibold">R$ 50</span>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
 
@@ -156,7 +206,7 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, onConfi
               onClick={handleSubmit}
               className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-sigma-navy-dark bg-green-500 hover:bg-green-400 transition-colors"
             >
-              Confirmar Venda
+              {isSdrCloserFlow ? 'Enviar para Closer' : 'Confirmar Venda'}
             </button>
           </div>
         </div>

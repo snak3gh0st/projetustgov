@@ -24,10 +24,15 @@ export async function GET(request: NextRequest) {
     // Check for exclude_existing parameter (for gestor assignment view)
     const excludeExisting = searchParams.get('exclude_existing')
 
-    // Vendedor and gestor_vendedor -> only their assigned projects
-    if (session.role === 'vendedor' || session.role === 'gestor_vendedor') {
+    // Vendedor -> only their assigned projects
+    // gestor_vendedor (Paulo) -> their projects + leads where they are closer
+    if (session.role === 'vendedor') {
       conditions.push(`vp.vendedor_id = $${paramIndex++}`)
       params.push(session.userId)
+    } else if (session.role === 'gestor_vendedor') {
+      conditions.push(`(vp.vendedor_id = $${paramIndex} OR vp.closer_id = $${paramIndex})`)
+      params.push(session.userId)
+      paramIndex++
     } else if (vendedorId === 'unassigned') {
       conditions.push(`vp.vendedor_id IS NULL`)
     } else if (vendedorId) {
@@ -57,6 +62,7 @@ export async function GET(request: NextRequest) {
       SELECT
         vp.*,
         u.nome as vendedor_nome,
+        uc.nome as closer_nome,
         ec.cnpj IS NOT NULL as is_existing_client,
         p.cnpj IS NULL as is_max_priority,
         p.total_convenios as executed_count,
@@ -84,6 +90,7 @@ export async function GET(request: NextRequest) {
         ) as principal_telefone_status
       FROM vendedor_projetos vp
       LEFT JOIN users u ON vp.vendedor_id = u.id
+      LEFT JOIN users uc ON vp.closer_id = uc.id
       LEFT JOIN existing_clients ec ON vp.cnpj = ec.cnpj
       LEFT JOIN proponentes p ON vp.cnpj = p.cnpj
       WHERE ${conditions.join(' AND ')}

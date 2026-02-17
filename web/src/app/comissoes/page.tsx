@@ -9,7 +9,7 @@ interface ComissaoLead {
   nome: string
   valor_emenda: number
   valor_venda: number
-  tipo_vendedor: 'SDR' | 'Closer'
+  tipo_vendedor: 'SDR' | 'Closer' | 'Exclusivo'
   comissao_percentual: number
   comissao_valor: number
   comissao_bonus: number
@@ -20,6 +20,13 @@ interface ComissaoLead {
   updated_at: string
   has_override: boolean
   override_motivo: string | null
+}
+
+interface PauloBreakdown {
+  exclusivo: { total: number; count: number; valor_venda: number }
+  closer: { total: number; count: number; valor_venda: number }
+  coordenador: { total: number; count: number; valor_venda: number }
+  total_geral: number
 }
 
 interface ComissaoData {
@@ -40,6 +47,7 @@ interface ComissaoData {
     total_bonus: number
     fechados_count: number
   }>
+  paulo_breakdown: PauloBreakdown | null
   leads: ComissaoLead[]
   vendedores_list: Array<{ id: string; nome: string }>
   filters_applied: {
@@ -294,6 +302,51 @@ export default function ComissoesPage() {
         </div>
       </div>
 
+      {/* Paulo's 3-type commission breakdown */}
+      {data.paulo_breakdown && (
+        <div>
+          <h2 className="text-lg font-heading font-semibold text-gray-900 mb-3">
+            Comissao do Coordenador
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
+              <p className="text-xs text-emerald-600 uppercase tracking-wider font-medium">Exclusivo (3%)</p>
+              <p className="text-2xl font-heading font-bold text-emerald-700 mt-2">
+                {formatCurrency(data.paulo_breakdown.exclusivo.total)}
+              </p>
+              <p className="text-xs text-emerald-500 mt-1">
+                {data.paulo_breakdown.exclusivo.count} clientes • {formatCurrency(data.paulo_breakdown.exclusivo.valor_venda)} em vendas
+              </p>
+            </div>
+            <div className="bg-purple-50 border border-purple-200 rounded-xl p-5">
+              <p className="text-xs text-purple-600 uppercase tracking-wider font-medium">Closer (3%)</p>
+              <p className="text-2xl font-heading font-bold text-purple-700 mt-2">
+                {formatCurrency(data.paulo_breakdown.closer.total)}
+              </p>
+              <p className="text-xs text-purple-500 mt-1">
+                {data.paulo_breakdown.closer.count} leads fechados • {formatCurrency(data.paulo_breakdown.closer.valor_venda)} em vendas
+              </p>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+              <p className="text-xs text-amber-600 uppercase tracking-wider font-medium">Coordenador (1%)</p>
+              <p className="text-2xl font-heading font-bold text-amber-700 mt-2">
+                {formatCurrency(data.paulo_breakdown.coordenador.total)}
+              </p>
+              <p className="text-xs text-amber-500 mt-1">
+                {data.paulo_breakdown.coordenador.count} leads da equipe • {formatCurrency(data.paulo_breakdown.coordenador.valor_venda)} em vendas
+              </p>
+            </div>
+            <div className="bg-white border-2 border-[#0072F7] rounded-xl p-5">
+              <p className="text-xs text-[#0072F7] uppercase tracking-wider font-medium">Total Geral</p>
+              <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
+                {formatCurrency(data.paulo_breakdown.total_geral)}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Exclusivo + Closer + Coordenador</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Per-vendedor breakdown (gestor only) */}
       {showPerVendedor && (
         <div>
@@ -373,6 +426,8 @@ export default function ComissoesPage() {
                       <span className={`text-xs font-semibold px-2 py-1 rounded ${
                         lead.tipo_vendedor === 'SDR'
                           ? 'bg-blue-50 text-[#0072F7]'
+                          : lead.tipo_vendedor === 'Exclusivo'
+                          ? 'bg-emerald-50 text-emerald-700'
                           : 'bg-purple-50 text-purple-600'
                       }`}>
                         {lead.tipo_vendedor}

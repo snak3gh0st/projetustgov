@@ -24,12 +24,17 @@ export async function GET(request: NextRequest) {
     let paramIndex = 1
 
     // Role-based filtering: vendedor always sees only their own
-    // gestor_vendedor sees all (read-only admin view)
+    // gestor_vendedor sees their own + leads where they are closer
     if (session.role === 'vendedor') {
       filters.push(`vp.vendedor_id = $${paramIndex++}`)
       params.push(session.userId)
+    } else if (session.role === 'gestor_vendedor' && !vendedorId) {
+      // Paulo sees leads where he is vendedor OR closer
+      filters.push(`(vp.vendedor_id = $${paramIndex} OR vp.closer_id = $${paramIndex})`)
+      params.push(session.userId)
+      paramIndex++
     } else if (vendedorId) {
-      // Gestor and gestor_vendedor can filter by specific vendedor
+      // Gestor can filter by specific vendedor
       filters.push(`vp.vendedor_id = $${paramIndex++}`)
       params.push(vendedorId)
     }
@@ -45,6 +50,9 @@ export async function GET(request: NextRequest) {
     }
 
     const whereClause = filters.join(' AND ')
+
+    // Check if requesting user is Paulo (gestor_vendedor) for special 3-type breakdown
+    const isPauloView = session.role === 'gestor_vendedor'
 
     // Run all queries in parallel
     const showPerVendedor = (session.role !== 'vendedor') && !vendedorId
@@ -126,6 +134,80 @@ export async function GET(request: NextRequest) {
       fechados_count: Number(v.fechados_count) || 0,
     }))
 
+    // Paulo's 3-type commission breakdown
+    let pauloBreakdown = null
+    if (isPauloView) {
+      // Build date filters for Paulo queries
+      const pauloFilters: string[] = ["vp.status_contato = 'Fechado'"]
+      const pauloParams: unknown[] = []
+      let pIdx = 1
+      if (startDate) { pauloFilters.push(`vp.updated_at >= $${pIdx++}::timestamp`); pauloParams.push(`${startDate} 00:00:00`) }
+      if (endDate) { pauloFilters.push(`vp.updated_at <= $${pIdx++}::timestamp`); pauloParams.push(`${endDate} 23:59:59`) }
+      const pauloWhere = pauloFilters.join(' AND ')
+
+      const [exclusivoRows, closerRows, coordenadorRows] = await Promise.all([
+        // Exclusivo: Paulo's own clients (tipo_vendedor = 'Exclusivo', vendedor_id = Paulo)
+        query(`
+          SELECT
+            COALESCE(SUM(vp.comissao_valor), 0)::numeric as total,
+            COUNT(DISTINCT vp.cnpj)::int as count,
+            COALESCE(SUM(vp.valor_venda), 0)::numeric as valor_venda
+          FROM vendedor_projetos vp
+          WHERE ${pauloWhere}
+            AND vp.tipo_vendedor = 'Exclusivo'
+            AND vp.vendedor_id = $${pIdx}
+        `, [...pauloParams, session.userId]),
+
+        // Closer: leads where Paulo is closer_id + Fechado
+        query(`
+          SELECT
+            COALESCE(SUM(vp.closer_comissao_valor), 0)::numeric as total,
+            COUNT(DISTINCT vp.cnpj)::int as count,
+            COALESCE(SUM(vp.valor_venda), 0)::numeric as valor_venda
+          FROM vendedor_projetos vp
+          WHERE ${pauloWhere}
+            AND vp.closer_id = $${pIdx}
+            AND vp.closer_comissao_valor IS NOT NULL
+            AND vp.closer_comissao_valor > 0
+        `, [...pauloParams, session.userId]),
+
+        // Coordenador: 1% of ALL vendedores' Fechado sales
+        query(`
+          SELECT
+            COALESCE(SUM(vp.valor_venda) * 0.01, 0)::numeric as total,
+            COUNT(DISTINCT vp.cnpj)::int as count,
+            COALESCE(SUM(vp.valor_venda), 0)::numeric as valor_venda
+          FROM vendedor_projetos vp
+          WHERE ${pauloWhere}
+            AND vp.vendedor_id IS NOT NULL
+            AND vp.valor_venda > 0
+        `, pauloParams),
+      ])
+
+      const exclusivoTotal = Number(exclusivoRows[0]?.total) || 0
+      const closerTotal = Number(closerRows[0]?.total) || 0
+      const coordenadorTotal = Number(coordenadorRows[0]?.total) || 0
+
+      pauloBreakdown = {
+        exclusivo: {
+          total: exclusivoTotal,
+          count: Number(exclusivoRows[0]?.count) || 0,
+          valor_venda: Number(exclusivoRows[0]?.valor_venda) || 0,
+        },
+        closer: {
+          total: closerTotal,
+          count: Number(closerRows[0]?.count) || 0,
+          valor_venda: Number(closerRows[0]?.valor_venda) || 0,
+        },
+        coordenador: {
+          total: coordenadorTotal,
+          count: Number(coordenadorRows[0]?.count) || 0,
+          valor_venda: Number(coordenadorRows[0]?.valor_venda) || 0,
+        },
+        total_geral: exclusivoTotal + closerTotal + coordenadorTotal,
+      }
+    }
+
     return NextResponse.json({
       summary: {
         total_leads: Number(summary.total_leads) || 0,
@@ -137,6 +219,7 @@ export async function GET(request: NextRequest) {
         total_valor_emenda: Number(summary.total_valor_emenda) || 0,
       },
       per_vendedor: perVendedor,
+      paulo_breakdown: pauloBreakdown,
       leads: leadsRows.map(lead => ({
         id: lead.id,
         cnpj: lead.cnpj,

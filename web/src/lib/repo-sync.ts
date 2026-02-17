@@ -543,8 +543,8 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       INSERT INTO vendedor_projetos (
         cnpj, codigo_programa, nome_programa, link_externo, orgao_concedente,
         uf, municipio, qualificacao, nr_emenda, parlamentar,
-        nome, valor_emenda, vendedor_id, observacoes, importado_de
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'auto-repo-sync')
+        nome, valor_emenda, vendedor_id, observacoes, importado_de, tipo_vendedor
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'auto-repo-sync',$15)
       ON CONFLICT (cnpj, codigo_programa, COALESCE(nr_emenda, '')) DO UPDATE SET
         nome_programa = EXCLUDED.nome_programa,
         link_externo = EXCLUDED.link_externo,
@@ -562,7 +562,7 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
         updated_at = NOW()
     `
     // Note: vendedor_id, status_contato, valor_venda, comissao_*, tipo_vendedor,
-    //       observacoes, comissao_locked, comissao_bonus are NEVER touched by the UPDATE clause.
+    //       observacoes, comissao_locked, comissao_bonus, closer_id are NEVER touched by the UPDATE clause.
 
     const newCnpjsNeedingContacts = new Set<string>()
 
@@ -593,6 +593,8 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       }
 
       const obs = isExistingClient ? 'JA E CLIENTE PROJETUS' : null
+      // Existing clients routed to Paulo get tipo_vendedor = 'Exclusivo'
+      const tipoVendedor = (isExistingClient && pauloId && vendedorId === pauloId) ? 'Exclusivo' : 'SDR'
 
       const values = [
         lead.cnpj,
@@ -609,6 +611,7 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
         lead.valor_emenda,
         vendedorId,
         obs,
+        tipoVendedor,
       ]
 
       try {
