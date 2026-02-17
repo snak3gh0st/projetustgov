@@ -29,7 +29,18 @@ interface PauloBreakdown {
   total_geral: number
 }
 
+interface OverrideForm {
+  lead_id: number
+  lead_nome: string
+  current_percentual: number
+  current_valor: number
+  percentual_override: number
+  taxa_fixa_override: number
+  motivo: string
+}
+
 interface ComissaoData {
+  role: string
   summary: {
     total_leads: number
     total_comissao: number
@@ -71,6 +82,9 @@ export default function ComissoesPage() {
   const [error, setError] = useState(false)
   const [sortCol, setSortCol] = useState('')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [overrideForm, setOverrideForm] = useState<OverrideForm | null>(null)
+  const [overrideLoading, setOverrideLoading] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   // Filter state
   const [vendedorFilter, setVendedorFilter] = useState<string>('')
@@ -96,7 +110,7 @@ export default function ComissoesPage() {
       .then(setData)
       .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }, [vendedorFilter, startDate, endDate])
+  }, [vendedorFilter, startDate, endDate, refreshKey])
 
   // Quick period helpers
   const setCurrentMonth = () => {
@@ -130,6 +144,43 @@ export default function ComissoesPage() {
   function SortIcon({ col }: { col: string }) {
     if (sortCol !== col) return <span className="ml-1 text-gray-300">↕</span>
     return <span className="ml-1">{sortDir === 'asc' ? '▲' : '▼'}</span>
+  }
+
+  const isGestor = data?.role === 'gestor'
+
+  function openOverride(lead: ComissaoLead) {
+    setOverrideForm({
+      lead_id: Number(lead.id),
+      lead_nome: lead.nome,
+      current_percentual: lead.comissao_percentual,
+      current_valor: lead.comissao_valor,
+      percentual_override: lead.comissao_percentual,
+      taxa_fixa_override: lead.comissao_bonus,
+      motivo: '',
+    })
+  }
+
+  async function submitOverride() {
+    if (!overrideForm || !overrideForm.motivo.trim()) return
+    setOverrideLoading(true)
+    try {
+      const res = await fetch('/api/commission-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: overrideForm.lead_id,
+          percentual_override: overrideForm.percentual_override,
+          taxa_fixa_override: overrideForm.taxa_fixa_override,
+          motivo: overrideForm.motivo.trim(),
+        }),
+      })
+      if (res.ok) {
+        setOverrideForm(null)
+        setRefreshKey(k => k + 1)
+      }
+    } finally {
+      setOverrideLoading(false)
+    }
   }
 
   const sortedLeads = useMemo(() => {
@@ -407,6 +458,7 @@ export default function ComissoesPage() {
                   <th onClick={() => handleSort('comissao')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Comissao<SortIcon col="comissao" /></th>
                   <th onClick={() => handleSort('bonus')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Bonus<SortIcon col="bonus" /></th>
                   <th onClick={() => handleSort('data')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Data Fechamento<SortIcon col="data" /></th>
+                  {isGestor && <th className="text-center px-4 py-3">Acao</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -468,6 +520,17 @@ export default function ComissoesPage() {
                         minute: '2-digit'
                       })}
                     </td>
+                    {isGestor && (
+                      <td className="px-4 py-4 text-center">
+                        <button
+                          onClick={() => openOverride(lead)}
+                          className="text-xs px-3 py-1.5 bg-gray-100 hover:bg-[#0072F7]/10 hover:text-[#0072F7] text-gray-600 rounded-lg transition-colors"
+                          title="Alterar comissao deste lead"
+                        >
+                          Editar
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -480,6 +543,74 @@ export default function ComissoesPage() {
           </div>
         )}
       </div>
+      {/* Override Modal */}
+      {overrideForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setOverrideForm(null)}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-heading font-bold text-gray-900 mb-1">Alterar Comissao</h3>
+            <p className="text-sm text-gray-500 mb-4 truncate">{overrideForm.lead_nome}</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-gray-400 uppercase tracking-wider">Percentual Atual</label>
+                <p className="text-sm text-gray-500">{overrideForm.current_percentual}% = {formatCurrency(overrideForm.current_valor)}</p>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 uppercase tracking-wider mb-1">Novo Percentual (%)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  max="100"
+                  value={overrideForm.percentual_override}
+                  onChange={e => setOverrideForm(f => f ? { ...f, percentual_override: Number(e.target.value) } : null)}
+                  className="w-full bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 uppercase tracking-wider mb-1">Bonus (R$)</label>
+                <input
+                  type="number"
+                  step="10"
+                  min="0"
+                  value={overrideForm.taxa_fixa_override}
+                  onChange={e => setOverrideForm(f => f ? { ...f, taxa_fixa_override: Number(e.target.value) } : null)}
+                  className="w-full bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 uppercase tracking-wider mb-1">Motivo *</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Ajuste negociado com vendedor"
+                  value={overrideForm.motivo}
+                  onChange={e => setOverrideForm(f => f ? { ...f, motivo: e.target.value } : null)}
+                  className="w-full bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setOverrideForm(null)}
+                className="flex-1 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={submitOverride}
+                disabled={overrideLoading || !overrideForm.motivo.trim()}
+                className="flex-1 px-4 py-2 bg-[#0072F7] text-white rounded-lg text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                {overrideLoading ? 'Salvando...' : 'Salvar Override'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

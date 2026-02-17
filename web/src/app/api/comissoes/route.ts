@@ -222,6 +222,7 @@ export async function GET(request: NextRequest) {
     } // isPauloView
 
     return NextResponse.json({
+      role: session.role,
       summary: {
         total_leads: Number(summary.total_leads) || 0,
         total_comissao: Number(summary.total_comissao) || 0,
