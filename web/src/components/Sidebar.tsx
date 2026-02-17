@@ -52,7 +52,7 @@ export default function Sidebar({ user }: SidebarProps) {
         { href: '/upload', label: 'Importar Planilha', icon: 'upload' },
         { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
         { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
-        { href: '/cadastro-vendedor', label: 'Vendedores', icon: 'vendedores' },
+        { href: '/cadastro-vendedor', label: 'Usuarios', icon: 'vendedores' },
       ]
     : user.role === 'gestor_vendedor'
     ? [
