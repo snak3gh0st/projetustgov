@@ -327,11 +327,15 @@ export default function ComissoesPage() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-400 uppercase tracking-wider">Comissao (percentual)</p>
-          <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
-            {formatCurrency(data.summary.total_comissao)}
+          <p className="text-xs text-gray-400 uppercase tracking-wider">
+            {data.paulo_breakdown ? 'Comissao Total (Paulo)' : 'Comissao (percentual)'}
           </p>
-          <p className="text-xs text-gray-500 mt-1">Somente leads Fechados</p>
+          <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
+            {formatCurrency(data.paulo_breakdown ? data.paulo_breakdown.total_geral : data.summary.total_comissao)}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            {data.paulo_breakdown ? 'Exclusivo + Closer + Coordenador' : 'Somente leads Fechados'}
+          </p>
         </div>
 
         <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
