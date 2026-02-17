@@ -5,15 +5,20 @@
 
 import { NextResponse } from 'next/server'
 import { syncLeadsFromRepo } from '@/lib/repo-sync'
+import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300 // Vercel Pro max timeout
 
 export async function GET(request: Request) {
-  // Verify cron secret to prevent unauthorized access
+  // Allow cron secret OR gestor session for manual triggers
   const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`
+  if (!isCron) {
+    const session = await getApiSession()
+    if (!session || session.role !== 'gestor') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
   }
 
   try {
