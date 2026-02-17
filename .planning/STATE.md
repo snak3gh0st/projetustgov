@@ -129,24 +129,24 @@
 | 31 | Fix cascade grouping: separate rows per parlamentar/emenda (386→421 leads) + gestor auth for cron sync | 2026-02-17 | 82cf535 | [13-fix-cascade-grouping-to-separate-rows-pe](./quick/13-fix-cascade-grouping-to-separate-rows-pe/) |
 | 32 | Transform vendedores to usuarios: role management UI + existing client routing to Paulo Gabriel | 2026-02-17 | b5f17ac | [14-transform-vendedores-page-to-usuarios-wi](./quick/14-transform-vendedores-page-to-usuarios-wi/) |
 | 33 | Fix total leads count: COUNT(DISTINCT cnpj) in all APIs + distribuir page unique CNPJ display | 2026-02-17 | 2caddee | [15-fix-total-leads-count-total-leads-count-](./quick/15-fix-total-leads-count-total-leads-count-/) |
+| 34 | Bulk reassign 73 target CNPJs to paulo@projetus.org (3 found in DB, 70 not found) | 2026-02-17 | c6f182d | [16-redistribuir-cnpjs-espec-ficos-para-paul](./quick/16-redistribuir-cnpjs-espec-ficos-para-paul/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-17
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 33: Fix total leads count to use COUNT(DISTINCT cnpj)
+**Activity:** Quick task 34: Bulk reassign specific CNPJs to paulo@projetus.org
 
 **Completed:**
-- Fixed 4 API endpoints (dashboard-crm, bi, vendedores, comissoes) to use COUNT(DISTINCT cnpj) for all lead count metrics
-- Fixed distribuir page tab badges, vendedor cards, and bottom bar to show unique CNPJ counts
-- Preserved all value SUM aggregations (emenda, venda, comissao) unchanged
-- Pattern established: COUNT(DISTINCT cnpj) for lead metrics, Set-based dedup in frontend
+- Created web/scripts/assign-paulo-cnpjs.js (one-shot bulk CNPJ reassignment script)
+- Script ran: 5 rows updated, 3 distinct CNPJs confirmed assigned to Paulo
+- 70 of 73 target CNPJs not found in vendedor_projetos (reported, not an error)
+- Fixed .env.local quote-stripping bug in script (quoted values caused hostname parse failure)
 
 **Next Actions:**
-- Verify lead counts in CRM dashboard match unique CNPJ reality
-- Check BI conversion rate and funnel reflect distinct CNPJs
-- Confirm distribuir page tabs show correct unique counts
+- Verify Paulo can see his 3 assigned leads in the CRM
+- If more CNPJs from the list need to be imported, they can be added via the standard repo-sync process
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
