@@ -130,23 +130,25 @@
 | 32 | Transform vendedores to usuarios: role management UI + existing client routing to Paulo Gabriel | 2026-02-17 | b5f17ac | [14-transform-vendedores-page-to-usuarios-wi](./quick/14-transform-vendedores-page-to-usuarios-wi/) |
 | 33 | Fix total leads count: COUNT(DISTINCT cnpj) in all APIs + distribuir page unique CNPJ display | 2026-02-17 | 2caddee | [15-fix-total-leads-count-total-leads-count-](./quick/15-fix-total-leads-count-total-leads-count-/) |
 | 34 | Bulk reassign 73 target CNPJs to paulo@projetus.org (3 found in DB, 70 not found) | 2026-02-17 | c6f182d | [16-redistribuir-cnpjs-espec-ficos-para-paul](./quick/16-redistribuir-cnpjs-espec-ficos-para-paul/) |
+| 35 | Add missing status filters (Aguardando Closer, Telefone Invalido) + NOVO badge for leads within 48h | 2026-02-17 | 5eda288 | [17-add-missing-status-filters-new-leads-tag](./quick/17-add-missing-status-filters-new-leads-tag/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-17
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 34: Bulk reassign specific CNPJs to paulo@projetus.org
+**Activity:** Quick task 35: Add missing status filters and NOVO badge for recent leads
 
 **Completed:**
-- Created web/scripts/assign-paulo-cnpjs.js (one-shot bulk CNPJ reassignment script)
-- Script ran: 5 rows updated, 3 distinct CNPJs confirmed assigned to Paulo
-- 70 of 73 target CNPJs not found in vendedor_projetos (reported, not an error)
-- Fixed .env.local quote-stripping bug in script (quoted values caused hostname parse failure)
+- Added Aguardando Closer and Telefone Invalido to STATUS_OPTIONS in leads/page.tsx (4 → 6 statuses)
+- Added STATUS_COLORS for both new statuses in leads/page.tsx
+- Added Telefone Invalido to STATUS_COLORS in LeadSlideOver.tsx (was missing)
+- Added isNewLead() helper and green NOVO badge for leads created within last 48h
+- Build passed with no TypeScript errors
 
 **Next Actions:**
-- Verify Paulo can see his 3 assigned leads in the CRM
-- If more CNPJs from the list need to be imported, they can be added via the standard repo-sync process
+- Verify all 6 statuses appear in filter dropdown and per-row dropdowns on /leads
+- Verify NOVO badge appears for recently imported leads
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
