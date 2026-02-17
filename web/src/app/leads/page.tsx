@@ -132,6 +132,7 @@ export default function LeadsPage() {
           case 'local': va = `${a.uf || ''} ${a.municipio || ''}`.toLowerCase(); vb = `${b.uf || ''} ${b.municipio || ''}`.toLowerCase(); break
           case 'status': va = a.status_contato || ''; vb = b.status_contato || ''; break
           case 'vendedor': va = (a.vendedor_nome || '').toLowerCase(); vb = (b.vendedor_nome || '').toLowerCase(); break
+          case 'dias': va = a.days_since_last_contact ?? 9999; vb = b.days_since_last_contact ?? 9999; break
         }
         if (va < vb) return sortDir === 'asc' ? -1 : 1
         if (va > vb) return sortDir === 'asc' ? 1 : -1
@@ -312,6 +313,7 @@ export default function LeadsPage() {
                   <th onClick={() => handleSort('orgao')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Ministério<SortIcon col="orgao" /></th>
                   <th onClick={() => handleSort('local')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Local<SortIcon col="local" /></th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contato</th>
+                  <th onClick={() => handleSort('dias')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Ult. Contato<SortIcon col="dias" /></th>
                   <th onClick={() => handleSort('status')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Status<SortIcon col="status" /></th>
                   {sessionUser?.role === 'gestor' && (
                     <th onClick={() => handleSort('vendedor')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Vendedor<SortIcon col="vendedor" /></th>
@@ -363,7 +365,14 @@ export default function LeadsPage() {
                           <span className="text-green-600 font-semibold text-sm">
                             {formatCompactCurrency(lead.comissao_valor)}
                           </span>
-                          <span className="block text-[10px] text-gray-400">comissao</span>
+                          {lead.comissao_locked && (
+                            <span className="inline-block ml-1 text-green-500 align-middle" title="Comissao confirmada">
+                              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a4 4 0 0 0-4 4v2H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-1V5a4 4 0 0 0-4-4zm-2 4a2 2 0 1 1 4 0v2H6V5z"/></svg>
+                            </span>
+                          )}
+                          <span className="block text-[10px] text-gray-400">
+                            comissao{lead.comissao_locked ? <span className="ml-1 text-green-500">Confirmada</span> : null}
+                          </span>
                         </div>
                       ) : (
                         <div>
@@ -388,7 +397,18 @@ export default function LeadsPage() {
                       {hasContact ? (
                         <div className="space-y-0.5">
                           {lead.telefone && (
-                            <div className="text-xs text-gray-600 truncate">{lead.telefone}</div>
+                            <div className="flex items-center text-xs text-gray-600 truncate">
+                              {lead.principal_telefone_status === 'valido' && (
+                                <span className="w-2 h-2 rounded-full bg-green-500 inline-block mr-1 flex-shrink-0" title="Telefone valido" />
+                              )}
+                              {lead.principal_telefone_status === 'invalido' && (
+                                <span className="w-2 h-2 rounded-full bg-red-500 inline-block mr-1 flex-shrink-0" title="Telefone invalido" />
+                              )}
+                              {lead.principal_telefone_status === 'nao_atende' && (
+                                <span className="w-2 h-2 rounded-full bg-amber-500 inline-block mr-1 flex-shrink-0" title="Nao atende" />
+                              )}
+                              {lead.telefone}
+                            </div>
                           )}
                           {lead.email && (
                             <div className="text-xs text-gray-400 truncate">{lead.email}</div>
@@ -396,6 +416,17 @@ export default function LeadsPage() {
                         </div>
                       ) : (
                         <span className="text-xs text-red-500/70">Sem contato</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {lead.days_since_last_contact == null ? (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Nunca</span>
+                      ) : lead.days_since_last_contact <= 2 ? (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">{lead.days_since_last_contact}d</span>
+                      ) : lead.days_since_last_contact <= 7 ? (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">{lead.days_since_last_contact}d</span>
+                      ) : (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">{lead.days_since_last_contact}d</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -453,7 +484,7 @@ export default function LeadsPage() {
                       <td className="px-4 py-2">
                         <div className="text-gray-400 text-xs">{sub.orgao_concedente || '-'}</div>
                       </td>
-                      <td className="px-4 py-2" colSpan={sessionUser?.role === 'gestor' ? 4 : 3}>
+                      <td className="px-4 py-2" colSpan={sessionUser?.role === 'gestor' ? 5 : 4}>
                         <select
                           value={sub.status_contato || 'Não Contatado'}
                           onClick={e => e.stopPropagation()}

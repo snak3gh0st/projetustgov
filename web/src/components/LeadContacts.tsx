@@ -207,7 +207,7 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
           </div>
         ) : (
           contacts.map((contact) => (
-            <div key={contact.id} className="p-4 hover:bg-gray-50 transition-colors">
+            <div key={contact.id} className={`p-4 transition-colors ${contact.principal ? 'bg-blue-50/50 border-l-2 border-l-[#0072F7]' : 'hover:bg-gray-50'}`}>
               {editingId === contact.id ? (
                 /* Edit mode */
                 <div>
@@ -317,8 +317,14 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
                       </span>
                     )}
 
-                    {/* Principal toggle */}
-                    {canModify && !contact.principal && (
+                    {/* Principal indicator / toggle */}
+                    {contact.principal ? (
+                      <span className="text-[#0072F7] px-1" title="Contato principal">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                          <path d="M8 1l2.1 4.3L15 6l-3.5 3.4.8 4.6L8 11.7 3.7 14l.8-4.6L1 6l4.9-.7L8 1z"/>
+                        </svg>
+                      </span>
+                    ) : canModify ? (
                       <button
                         onClick={() => handleUpdate(contact.id, { principal: true })}
                         className="text-xs text-gray-400 hover:text-[#0072F7] transition-colors px-1"
@@ -328,7 +334,7 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
                           <path d="M8 1l2.1 4.3L15 6l-3.5 3.4.8 4.6L8 11.7 3.7 14l.8-4.6L1 6l4.9-.7L8 1z"/>
                         </svg>
                       </button>
-                    )}
+                    ) : null}
 
                     {/* Edit / Delete */}
                     {canModify && (
