@@ -220,45 +220,70 @@ export default function CRMDashboard() {
         )}
       </div>
 
-      {/* 3. Status pipeline horizontal bar */}
-      <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Pipeline de Status</p>
-        <div className="flex h-10 rounded-lg overflow-hidden">
-          {STATUS_ORDER.map(status => {
+      {/* 3. Status pipeline — funnel cards */}
+      <div className="space-y-3">
+        <p className="text-xs text-gray-500 uppercase tracking-wider">Pipeline de Vendas</p>
+
+        {/* Status cards row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {STATUS_ORDER.map((status, idx) => {
             const count = g.by_status[status] || 0
-            const pct = (count / totalForPipeline) * 100
-            if (pct === 0) return null
+            const pct = totalForPipeline > 0 ? (count / totalForPipeline) * 100 : 0
             const cfg = STATUS_CONFIG[status]
+            const prevCount = idx > 0 ? (g.by_status[STATUS_ORDER[idx - 1]] || 0) : null
+            const conversionRate = prevCount && prevCount > 0 ? ((count / prevCount) * 100).toFixed(0) : null
             return (
               <div
                 key={status}
-                className={`${cfg.bar} flex items-center justify-center transition-all relative group`}
-                style={{ width: `${Math.max(pct, 3)}%` }}
+                className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow"
               >
-                <span className="text-xs font-medium text-white truncate px-2">
-                  {cfg.label} {count}
-                </span>
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                  {cfg.label}: {count} ({pct.toFixed(1)}%)
+                {/* Colored top bar */}
+                <div className={`h-1.5 ${cfg.bar}`} />
+                <div className="p-4">
+                  {/* Count + percentage */}
+                  <div className="flex items-baseline justify-between">
+                    <span className={`text-3xl font-heading font-bold ${cfg.color}`}>{count}</span>
+                    <span className="text-xs text-gray-400 font-medium">{pct.toFixed(0)}%</span>
+                  </div>
+
+                  {/* Label */}
+                  <p className="text-sm font-medium text-gray-700 mt-1">{cfg.label}</p>
+
+                  {/* Progress bar */}
+                  <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className={`h-full ${cfg.bar} rounded-full transition-all`} style={{ width: `${Math.max(pct, 2)}%` }} />
+                  </div>
+
+                  {/* Conversion rate from previous stage */}
+                  {conversionRate && (
+                    <p className="text-[10px] text-gray-400 mt-1.5">
+                      {conversionRate}% de {STATUS_CONFIG[STATUS_ORDER[idx - 1]].label}
+                    </p>
+                  )}
+
+                  {/* Vendedor bonus on Fechado */}
+                  {isVendedor && status === 'Fechado' && count > 0 && (
+                    <p className="text-xs text-green-600 font-medium mt-1">
+                      {count} × R$50 = {formatCurrency(count * 50)}
+                    </p>
+                  )}
                 </div>
               </div>
             )
           })}
         </div>
-        <div className="flex gap-4 mt-2">
-          {STATUS_ORDER.map(status => {
+
+        {/* Flow bar with arrows */}
+        <div className="hidden md:flex items-center justify-center gap-1 py-1">
+          {STATUS_ORDER.map((status, idx) => {
             const cfg = STATUS_CONFIG[status]
-            const count = g.by_status[status] || 0
             return (
-              <div key={status} className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                  <div className={`w-2 h-2 rounded-full ${cfg.bar}`} />
-                  {cfg.label}
-                </div>
-                {isVendedor && status === 'Fechado' && count > 0 && (
-                  <div className="text-xs text-green-600 ml-3.5">
-                    {count} × R$50 = {formatCurrency(count * 50)}
-                  </div>
+              <div key={status} className="flex items-center gap-1 flex-1">
+                <div className={`h-2 ${cfg.bar} rounded-full flex-1 transition-all opacity-80`} style={{ minWidth: '8px' }} />
+                {idx < STATUS_ORDER.length - 1 && (
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-gray-300 flex-shrink-0">
+                    <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                 )}
               </div>
             )
