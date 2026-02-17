@@ -407,6 +407,38 @@ async function runSetup() {
       }
     }
 
+    // 11. Create lead_contacts table (Quick Task 9 — multi-contact per lead)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS lead_contacts (
+        id SERIAL PRIMARY KEY,
+        lead_cnpj VARCHAR(20) NOT NULL,
+        nome_pessoa VARCHAR(255),
+        cargo VARCHAR(255),
+        telefone VARCHAR(100),
+        email VARCHAR(500),
+        telefone_status VARCHAR(20) DEFAULT 'desconhecido' CHECK (telefone_status IN ('valido', 'invalido', 'nao_atende', 'desconhecido')),
+        principal BOOLEAN DEFAULT false,
+        created_by UUID REFERENCES users(id),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_lead_contacts_cnpj ON lead_contacts(lead_cnpj);`)
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_lead_contacts_principal ON lead_contacts(lead_cnpj, principal);`)
+
+    // 11b. Migrate existing vendedor_projetos telefone/email as principal contacts
+    await pool.query(`
+      INSERT INTO lead_contacts (lead_cnpj, telefone, email, principal, telefone_status)
+      SELECT DISTINCT ON (cnpj)
+        cnpj,
+        NULLIF(telefone, ''),
+        NULLIF(email, ''),
+        true,
+        'desconhecido'
+      FROM vendedor_projetos
+      WHERE ((telefone IS NOT NULL AND telefone != '') OR (email IS NOT NULL AND email != ''))
+        AND NOT EXISTS (SELECT 1 FROM lead_contacts WHERE lead_cnpj = vendedor_projetos.cnpj)
+    `).catch(() => {}) // safe — handles re-runs gracefully
+
     // Summary diagnostics
     const vpCount = await pool.query(
       `SELECT COUNT(*) as total, COUNT(NULLIF(telefone,'')) as with_phone, COUNT(NULLIF(email,'')) as with_email FROM vendedor_projetos`

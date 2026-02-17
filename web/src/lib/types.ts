@@ -106,3 +106,19 @@ export interface ContactNote {
   created_at: string
   updated_at: string
 }
+
+export type TelefoneStatus = 'valido' | 'invalido' | 'nao_atende' | 'desconhecido'
+
+export interface LeadContact {
+  id: number
+  lead_cnpj: string
+  nome_pessoa: string | null
+  cargo: string | null
+  telefone: string | null
+  email: string | null
+  telefone_status: TelefoneStatus
+  principal: boolean
+  created_by: string | null
+  created_by_nome?: string | null
+  created_at: string
+}
