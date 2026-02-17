@@ -524,6 +524,16 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       if (cc) existingClients.add(cc)
     }
 
+    // Look up Paulo Gabriel for existing client routing
+    const pauloRes = await client.query(
+      "SELECT id FROM users WHERE email = 'paulo@projetus.org' AND active = true LIMIT 1"
+    )
+    const pauloId: string | null = pauloRes.rows[0]?.id ?? null
+    if (!pauloId) {
+      console.warn('[repo-sync] WARNING: Paulo Gabriel (paulo@projetus.org) not found or inactive, existing clients will use normal round-robin')
+    }
+    console.log(`[repo-sync] Existing client routing: Paulo ID=${pauloId}, existing client CNPJs=${existingClients.size}`)
+
     // ========================================================================
     // STEP 7: UPSERT leads in batches
     // ========================================================================
@@ -570,8 +580,12 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
         // Existing lead: keep current vendedor assignment.
         // Prefer exact emenda key match; fall back to CNPJ-level assignment (migration case).
         vendedorId = existingAssignments.get(assignmentKey) ?? cnpjAssignments.get(lead.cnpj) ?? null
+      } else if (isExistingClient && pauloId) {
+        // New lead from existing paying client: route directly to Paulo Gabriel
+        vendedorId = pauloId
+        vendedorCounts.set(pauloId, (vendedorCounts.get(pauloId) ?? 0) + 1)
       } else {
-        // New lead: round-robin
+        // New lead: normal round-robin
         vendedorId = pickNextVendedor()
         if (vendedorId) {
           vendedorCounts.set(vendedorId, (vendedorCounts.get(vendedorId) ?? 0) + 1)
