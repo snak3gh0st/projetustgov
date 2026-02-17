@@ -1,4 +1,35 @@
-// Core sync logic: download 3 siconv ZIP files, stream-parse CSVs, upsert leads
+// ============================================================================
+// repo-sync.ts — Daily lead sync from TransferenciaGov open data
+// ============================================================================
+//
+// ENRICHMENT PIPELINE:
+//
+//   Source 1: siconv_proponentes (CSV from repositorio.dados.gov.br)
+//   - Covers 64% of CNPJs (238/374)
+//   - Provides: telefone, email, nome, UF, municipio
+//   - Does NOT provide: endereco
+//
+//   Source 2: BrasilAPI (https://brasilapi.com.br/api/cnpj/v1/)
+//   - Covers the remaining 36% + fills gaps from Source 1
+//   - Provides: telefone, email, endereco, nome, natureza_juridica, UF, municipio
+//   - Only source of endereco data
+//
+//   COALESCE rule: proponentes fills first, BrasilAPI fills empty fields.
+//   Manually-edited CRM data (by vendedores) is NEVER overwritten.
+//
+//   Current coverage: 97% telefone, 81% email, 100% endereco, 100% nome
+//   9 leads have no contact (neither source had data)
+//
+// SYNC BEHAVIOR (UPSERT via ON CONFLICT cnpj+codigo_programa):
+//   - ALWAYS updates: valor_emenda, nr_emenda, parlamentar, nome_programa,
+//     orgao_concedente, link_externo, qualificacao (repo data)
+//   - NEVER updates: vendedor_id, status_contato, valor_venda, comissao_*,
+//     tipo_vendedor, observacoes, comissao_locked, comissao_bonus (CRM state)
+//   - COALESCE updates: uf, municipio, telefone, email, nome (fill if empty)
+//
+// CRON: Vercel cron triggers /api/cron/sync-leads daily at 06:00 UTC (03:00 BRT)
+// ============================================================================
+//
 // Used by /api/cron/sync-leads for daily automated sync
 // Ported from scripts/import-repo-auto.mjs with UPSERT instead of TRUNCATE+INSERT
 
@@ -36,7 +67,7 @@ function parseBRNumber(val: string | null | undefined): number {
   return isNaN(num) ? 0 : num
 }
 
-function formatPhone(raw: string | null | undefined): string | null {
+export function formatPhone(raw: string | null | undefined): string | null {
   if (!raw) return null
   let digits = String(raw).replace(/\D/g, '')
   // Strip trunk prefix 0 (e.g., 09132264140 -> 9132264140)
@@ -218,6 +249,7 @@ interface SyncStats {
   inserted: number
   updated: number
   enriched_api: number
+  contacts_created: number
   errors: number
   duration_ms: number
 }
@@ -279,6 +311,7 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     inserted: 0,
     updated: 0,
     enriched_api: 0,
+    contacts_created: 0,
     errors: 0,
     duration_ms: 0,
   }
@@ -572,6 +605,14 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     const elapsed = Date.now() - startTime
     const cnpjsToEnrich = Array.from(newCnpjsNeedingContacts).slice(0, 20)
 
+    // Map to store BrasilAPI contact data per CNPJ for use in STEP 9
+    interface BrasilApiContactData {
+      phone1: string | null
+      phone2: string | null
+      email: string | null
+    }
+    const brasilApiContacts = new Map<string, BrasilApiContactData>()
+
     if (cnpjsToEnrich.length > 0 && elapsed < 200000) {
       console.log(`[repo-sync] STEP 8: BrasilAPI enrichment for ${cnpjsToEnrich.length} CNPJs...`)
 
@@ -592,6 +633,8 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
           const data = await apiRes.json()
           const phoneRaw = data.ddd_telefone_1 || ''
           const phone = formatPhone(phoneRaw)
+          const phone2Raw = data.ddd_telefone_2 || ''
+          const phone2 = formatPhone(phone2Raw)
           const rawEmail = (data.email || '').trim().toLowerCase()
           const email = rawEmail && rawEmail !== 'none' && rawEmail !== 'null' && rawEmail.includes('@') ? rawEmail : null
           const nome = data.razao_social || data.nome_fantasia || null
@@ -610,6 +653,11 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
             : null
           const apiUf = data.uf || null
           const apiMunicipio = data.municipio || null
+
+          // Store BrasilAPI contact data for STEP 9
+          if (phone || phone2 || email) {
+            brasilApiContacts.set(cnpj, { phone1: phone, phone2, email })
+          }
 
           if (!phone && !email && !nome && !endereco) { await delay(300); continue }
 
@@ -640,11 +688,124 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     } else {
       console.log('[repo-sync] STEP 8: Skipped BrasilAPI enrichment (no new leads missing contacts or timeout approaching)')
     }
+
+    // ========================================================================
+    // STEP 9: Populate lead_contacts from enrichment data (ALL CNPJs in batch)
+    // ========================================================================
+    const elapsedBeforeStep9 = Date.now() - startTime
+    if (elapsedBeforeStep9 < 200000) {
+      console.log('[repo-sync] STEP 9: Populating lead_contacts from enrichment data...')
+
+      // Get all unique CNPJs from the current sync batch
+      const allSyncCnpjs = Array.from(new Set(leads.map(l => l.cnpj)))
+
+      // Helper: normalize phone by stripping non-digits
+      const normalizePhone = (phone: string | null | undefined): string =>
+        phone ? String(phone).replace(/\D/g, '') : ''
+
+      // Helper: normalize email by lowercasing and trimming
+      const normalizeEmail = (email: string | null | undefined): string =>
+        email ? String(email).trim().toLowerCase() : ''
+
+      for (const cnpj of allSyncCnpjs) {
+        // Check timeout
+        if (Date.now() - startTime > 250000) {
+          console.log('[repo-sync] STEP 9: Approaching timeout, stopping contact population')
+          break
+        }
+
+        try {
+          // Query existing contacts for this CNPJ
+          const existingRes = await client.query(
+            'SELECT telefone, email FROM lead_contacts WHERE lead_cnpj = $1',
+            [cnpj]
+          )
+          const existingContacts: { telefone: string | null; email: string | null }[] = existingRes.rows
+          const hasExistingContacts = existingContacts.length > 0
+
+          // Build set of existing normalized phones and emails for duplicate detection
+          const existingPhones = new Set<string>()
+          const existingEmails = new Set<string>()
+          for (const c of existingContacts) {
+            const p = normalizePhone(c.telefone)
+            const e = normalizeEmail(c.email)
+            if (p) existingPhones.add(p)
+            if (e) existingEmails.add(e)
+          }
+
+          // Helper: check if a contact would be a duplicate
+          const isDuplicate = (telefone: string | null, email: string | null): boolean => {
+            const p = normalizePhone(telefone)
+            const e = normalizeEmail(email)
+            if (p && existingPhones.has(p)) return true
+            if (e && existingEmails.has(e)) return true
+            return false
+          }
+
+          // Helper: insert a contact and track it
+          let firstContactForCnpj = !hasExistingContacts
+          const insertContact = async (telefone: string | null, email: string | null): Promise<boolean> => {
+            if (!telefone && !email) return false
+            if (isDuplicate(telefone, email)) return false
+
+            const principal = firstContactForCnpj
+            firstContactForCnpj = false
+
+            await client.query(
+              `INSERT INTO lead_contacts (lead_cnpj, telefone, email, principal, telefone_status)
+               VALUES ($1, $2, $3, $4, 'desconhecido')`,
+              [cnpj, telefone || null, email || null, principal]
+            )
+
+            // Update tracking sets to avoid duplicates within the same CNPJ batch
+            const p = normalizePhone(telefone)
+            const e = normalizeEmail(email)
+            if (p) existingPhones.add(p)
+            if (e) existingEmails.add(e)
+            stats.contacts_created++
+            return true
+          }
+
+          // Source 1: siconv_proponentes data
+          const prop = proponentes.get(cnpj)
+          if (prop) {
+            const propPhone = formatPhone(prop.telefone)
+            const propEmail = prop.email && prop.email.includes('@') ? prop.email.trim().toLowerCase() : null
+            if (propPhone || propEmail) {
+              await insertContact(propPhone, propEmail)
+            }
+          }
+
+          // Source 2: BrasilAPI data (phone1 + email)
+          const apiData = brasilApiContacts.get(cnpj)
+          if (apiData) {
+            if (apiData.phone1 || apiData.email) {
+              await insertContact(apiData.phone1, apiData.email)
+            }
+            // BrasilAPI phone2 as separate entry (no email, only if different from phone1)
+            if (apiData.phone2) {
+              const phone2Digits = normalizePhone(apiData.phone2)
+              const phone1Digits = normalizePhone(apiData.phone1)
+              if (phone2Digits && phone2Digits !== phone1Digits) {
+                await insertContact(apiData.phone2, null)
+              }
+            }
+          }
+        } catch (err) {
+          console.error(`[repo-sync] STEP 9: Error processing contacts for CNPJ ${cnpj}: ${err}`)
+        }
+      }
+
+      console.log(`[repo-sync] STEP 9: Contacts created: ${stats.contacts_created}`)
+    } else {
+      console.log('[repo-sync] STEP 9: Skipped (timeout approaching)')
+    }
+
   } finally {
     client.release()
   }
 
   stats.duration_ms = Date.now() - startTime
-  console.log(`[repo-sync] Complete in ${(stats.duration_ms / 1000).toFixed(1)}s`)
+  console.log(`[repo-sync] Complete in ${(stats.duration_ms / 1000).toFixed(1)}s | contacts_created: ${stats.contacts_created}`)
   return stats
 }
