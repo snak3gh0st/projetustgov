@@ -16,7 +16,7 @@ export async function GET() {
     const vendedorParams = isVendedor ? [session.userId] : []
 
     // Run all queries in parallel to avoid sequential connection queuing
-    const [globalRows, vendedorRows, todayRows, recentRows, commissionRows] = await Promise.all([
+    const [globalRows, vendedorRows, todayRows, recentRows, commissionRows, contactHealthRows, staleLeadsRows] = await Promise.all([
       // 1. Global stats with status breakdown
       query(`
         SELECT
@@ -95,6 +95,70 @@ export async function GET() {
           AND vp.status_contato = 'Fechado'
           ${isVendedor ? ' AND vp.vendedor_id = $1' : ''}
       `, vendedorParams),
+
+      // 6. Contact health: stale leads (no contact_notes in >7d or never), invalid phones
+      query(`
+        SELECT
+          COUNT(DISTINCT vp.cnpj) FILTER (
+            WHERE NOT EXISTS (
+              SELECT 1 FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj
+              AND cn.created_at >= NOW() - INTERVAL '7 days'
+            )
+            AND vp.status_contato NOT IN ('Fechado')
+          )::int as stale_count,
+          COUNT(DISTINCT vp.cnpj) FILTER (
+            WHERE NOT EXISTS (
+              SELECT 1 FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj
+            )
+            AND vp.status_contato NOT IN ('Fechado')
+          )::int as never_contacted_count,
+          COUNT(DISTINCT vp.cnpj) FILTER (
+            WHERE EXISTS (
+              SELECT 1 FROM lead_contacts lc
+              WHERE lc.lead_cnpj = vp.cnpj AND lc.telefone_status = 'invalido'
+              AND lc.principal = true
+            )
+          )::int as invalid_phone_count
+        FROM vendedor_projetos vp
+        WHERE vp.vendedor_id IS NOT NULL${isVendedor ? ' AND vp.vendedor_id = $1' : ''}
+      `, vendedorParams),
+
+      // 7. Top stale leads needing follow-up (oldest contact or never contacted)
+      query(`
+        SELECT
+          vp.cnpj,
+          vp.nome,
+          COALESCE(u.nome, 'Sem vendedor') as vendedor_nome,
+          vp.status_contato,
+          (
+            SELECT MAX(cn.created_at)
+            FROM contact_notes cn
+            WHERE cn.lead_cnpj = vp.cnpj
+          ) as last_contact_date,
+          (
+            SELECT EXTRACT(DAY FROM NOW() - MAX(cn.created_at))::int
+            FROM contact_notes cn
+            WHERE cn.lead_cnpj = vp.cnpj
+          ) as days_since_last_contact,
+          (
+            SELECT lc.telefone_status
+            FROM lead_contacts lc
+            WHERE lc.lead_cnpj = vp.cnpj
+            ORDER BY lc.principal DESC, lc.created_at ASC
+            LIMIT 1
+          ) as principal_telefone_status
+        FROM vendedor_projetos vp
+        LEFT JOIN users u ON u.id = vp.vendedor_id
+        WHERE vp.vendedor_id IS NOT NULL
+          AND vp.status_contato NOT IN ('Fechado')
+          ${isVendedor ? ' AND vp.vendedor_id = $1' : ''}
+        GROUP BY vp.cnpj, vp.nome, u.nome, vp.status_contato, vp.updated_at
+        ORDER BY
+          CASE WHEN NOT EXISTS (SELECT 1 FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj)
+            THEN 0 ELSE 1 END,
+          (SELECT MAX(cn.created_at) FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj) ASC NULLS FIRST
+        LIMIT 8
+      `, vendedorParams),
     ])
 
     const g = globalRows[0] || {}
@@ -152,6 +216,20 @@ export async function GET() {
         total_comissao: Number(r.total_comissao) || 0,
         total_venda: Number(r.total_venda) || 0,
         locked_count: Number(r.locked_count) || 0,
+      })),
+      contact_health: {
+        stale_count: Number(contactHealthRows[0]?.stale_count) || 0,
+        never_contacted_count: Number(contactHealthRows[0]?.never_contacted_count) || 0,
+        invalid_phone_count: Number(contactHealthRows[0]?.invalid_phone_count) || 0,
+      },
+      stale_leads: staleLeadsRows.map(r => ({
+        cnpj: r.cnpj,
+        nome: r.nome,
+        vendedor_nome: r.vendedor_nome,
+        status_contato: r.status_contato,
+        last_contact_date: r.last_contact_date,
+        days_since_last_contact: r.days_since_last_contact != null ? Number(r.days_since_last_contact) : null,
+        principal_telefone_status: r.principal_telefone_status,
       })),
     })
   } catch (error) {

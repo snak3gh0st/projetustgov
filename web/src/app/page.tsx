@@ -43,6 +43,22 @@ interface RecentActivity {
   updated_at: string
 }
 
+interface ContactHealth {
+  stale_count: number
+  never_contacted_count: number
+  invalid_phone_count: number
+}
+
+interface StaleLead {
+  cnpj: string
+  nome: string
+  vendedor_nome: string
+  status_contato: string
+  last_contact_date: string | null
+  days_since_last_contact: number | null
+  principal_telefone_status: string | null
+}
+
 interface DashboardData {
   role?: string
   global: GlobalStats
@@ -55,6 +71,8 @@ interface DashboardData {
     total_venda: number
     locked_count: number
   }[]
+  contact_health?: ContactHealth
+  stale_leads?: StaleLead[]
 }
 
 // --- Status config ---
@@ -247,6 +265,101 @@ export default function CRMDashboard() {
           })}
         </div>
       </div>
+
+      {/* 3b. Contact health alerts */}
+      {data.contact_health && (data.contact_health.stale_count > 0 || data.contact_health.invalid_phone_count > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white border border-red-200 shadow-sm rounded-xl p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-500">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-2xl font-heading font-bold text-red-600">{data.contact_health.stale_count}</p>
+              <p className="text-xs text-gray-500">Leads sem contato ha +7 dias</p>
+            </div>
+          </div>
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                <line x1="1" y1="1" x2="23" y2="23" strokeWidth="2"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-2xl font-heading font-bold text-gray-600">{data.contact_health.never_contacted_count}</p>
+              <p className="text-xs text-gray-500">Nunca contatados</p>
+            </div>
+          </div>
+          {data.contact_health.invalid_phone_count > 0 && (
+            <div className="bg-white border border-amber-200 shadow-sm rounded-xl p-4 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-500">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-2xl font-heading font-bold text-amber-600">{data.contact_health.invalid_phone_count}</p>
+                <p className="text-xs text-gray-500">Telefone invalido (principal)</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 3c. Stale leads needing follow-up */}
+      {data.stale_leads && data.stale_leads.length > 0 && (
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="text-lg font-heading font-semibold text-gray-900">Leads Precisando de Atencao</h2>
+            <p className="text-xs text-gray-400">Leads com mais tempo sem contato (exceto Fechados)</p>
+          </div>
+          <div className="divide-y divide-gray-200">
+            {data.stale_leads.map((lead, i) => {
+              const cfg = STATUS_CONFIG[lead.status_contato] || STATUS_CONFIG['Não Contatado']
+              const daysLabel = lead.days_since_last_contact == null
+                ? { text: 'Nunca', cls: 'bg-gray-100 text-gray-500' }
+                : lead.days_since_last_contact <= 2
+                ? { text: `${lead.days_since_last_contact}d`, cls: 'bg-green-100 text-green-700' }
+                : lead.days_since_last_contact <= 7
+                ? { text: `${lead.days_since_last_contact}d`, cls: 'bg-amber-100 text-amber-700' }
+                : { text: `${lead.days_since_last_contact}d`, cls: 'bg-red-100 text-red-700' }
+              const phoneIcon = lead.principal_telefone_status === 'invalido'
+                ? 'bg-red-500'
+                : lead.principal_telefone_status === 'nao_atende'
+                ? 'bg-amber-500'
+                : lead.principal_telefone_status === 'valido'
+                ? 'bg-green-500'
+                : null
+              return (
+                <a
+                  key={lead.cnpj}
+                  href={`/lead/${encodeURIComponent(lead.cnpj)}`}
+                  className={`px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors ${i % 2 === 0 ? 'bg-gray-50/50' : ''}`}
+                >
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${daysLabel.cls}`}>
+                    {daysLabel.text}
+                  </span>
+                  {phoneIcon && (
+                    <span className={`w-2 h-2 rounded-full ${phoneIcon} flex-shrink-0`} />
+                  )}
+                  <span className="text-sm text-gray-900 font-medium truncate flex-1">{lead.nome || lead.cnpj}</span>
+                  <span className="text-xs text-gray-400 hidden sm:block">{lead.vendedor_nome}</span>
+                  <span className={`px-2 py-0.5 rounded border text-[10px] font-medium ${cfg.bg} ${cfg.color}`}>
+                    {lead.status_contato}
+                  </span>
+                </a>
+              )
+            })}
+          </div>
+          <div className="p-3 border-t border-gray-200 text-center">
+            <a href="/leads" className="text-sm text-[#0072F7] hover:text-blue-800 transition-colors">
+              Ver todos os leads →
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Commission breakdown for vendedor */}
       {isVendedor && data.commission_breakdown && data.commission_breakdown.length > 0 && (
