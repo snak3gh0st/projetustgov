@@ -128,27 +128,25 @@
 | 30 | Multi-contact per lead from BrasilAPI (telefone_2) + proponentes in repo-sync STEP 9 + /api/enrich-contacts backfill endpoint | 2026-02-17 | 2fcf30d | [12-sobre-os-contatos-se-tiver-2-ou-mais-ent](./quick/12-sobre-os-contatos-se-tiver-2-ou-mais-ent/) |
 | 31 | Fix cascade grouping: separate rows per parlamentar/emenda (386→421 leads) + gestor auth for cron sync | 2026-02-17 | 82cf535 | [13-fix-cascade-grouping-to-separate-rows-pe](./quick/13-fix-cascade-grouping-to-separate-rows-pe/) |
 | 32 | Transform vendedores to usuarios: role management UI + existing client routing to Paulo Gabriel | 2026-02-17 | b5f17ac | [14-transform-vendedores-page-to-usuarios-wi](./quick/14-transform-vendedores-page-to-usuarios-wi/) |
+| 33 | Fix total leads count: COUNT(DISTINCT cnpj) in all APIs + distribuir page unique CNPJ display | 2026-02-17 | 2caddee | [15-fix-total-leads-count-total-leads-count-](./quick/15-fix-total-leads-count-total-leads-count-/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-17
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 32: Transform vendedores page to usuarios with role management
+**Activity:** Quick task 33: Fix total leads count to use COUNT(DISTINCT cnpj)
 
 **Completed:**
-- Created GET /api/usuarios endpoint (all users, all roles, with lead counts)
-- Created PATCH /api/usuarios/[id]/role endpoint (gestor-only role updates, blocks gestor demotion)
-- Updated createUsuario server action to accept role parameter
-- Rewrote cadastro-vendedor page as "Usuarios" with role select in create form
-- Added inline role dropdowns (color-coded) per user row with optimistic updates
-- Sidebar label changed from "Vendedores" to "Usuarios"
-- repo-sync routes existing client CNPJs to Paulo Gabriel (paulo@projetus.org) instead of round-robin
+- Fixed 4 API endpoints (dashboard-crm, bi, vendedores, comissoes) to use COUNT(DISTINCT cnpj) for all lead count metrics
+- Fixed distribuir page tab badges, vendedor cards, and bottom bar to show unique CNPJ counts
+- Preserved all value SUM aggregations (emenda, venda, comissao) unchanged
+- Pattern established: COUNT(DISTINCT cnpj) for lead metrics, Set-based dedup in frontend
 
 **Next Actions:**
-- Verify Usuarios page visually in browser
-- Test role change dropdown functionality
-- Run repo-sync to verify Paulo Gabriel routing for existing clients
+- Verify lead counts in CRM dashboard match unique CNPJ reality
+- Check BI conversion rate and funnel reflect distinct CNPJs
+- Confirm distribuir page tabs show correct unique counts
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
