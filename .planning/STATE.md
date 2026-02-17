@@ -125,24 +125,27 @@
 | 27 | Multi-contact per lead with telefone_status tracking + inline CRUD + Telefone Invalido status | 2026-02-17 | 91fb57d | [9-lead-contacts-table-multi-contact-ui-tel](./quick/9-lead-contacts-table-multi-contact-ui-tel/) |
 | 28 | Pipeline enhancements: funnel cards, contact health alerts, stale leads, phone validity, principal emphasis, commission lock | 2026-02-17 | a0fa48f | [10-pipeline-enhancements-days-since-last-co](./quick/10-pipeline-enhancements-days-since-last-co/) |
 | 29 | BI Analytics dashboard at /bi: 4 KPI cards + 4 Recharts charts (funnel, commission, UF, activity) with role-based filtering | 2026-02-17 | 45f3772 | [11-bi-dashboard-with-basic-kpis-from-existi](./quick/11-bi-dashboard-with-basic-kpis-from-existi/) |
+| 30 | Multi-contact per lead from BrasilAPI (telefone_2) + proponentes in repo-sync STEP 9 + /api/enrich-contacts backfill endpoint | 2026-02-17 | 2fcf30d | [12-sobre-os-contatos-se-tiver-2-ou-mais-ent](./quick/12-sobre-os-contatos-se-tiver-2-ou-mais-ent/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-17
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 29: BI Analytics dashboard (/bi page + /api/bi endpoint + sidebar link)
+**Activity:** Quick task 30: Multi-contact population from BrasilAPI + siconv_proponentes
 
 **Completed:**
-- Created /api/bi endpoint with 8 parallel queries (4 KPIs + 4 chart datasets) using same Promise.all pattern as dashboard-crm
-- Created /bi page with 4 KPI cards (conversion rate, avg days to close, pipeline value, commission earned)
-- 4 Recharts charts: horizontal funnel bar, stacked commission by vendedor, UF distribution, activity area trend
-- Role-based: vendedor sees own data with "Meu Desempenho" title; gestor sees all data
-- Added "BI Analytics" sidebar link with Heroicons chart icon for all roles
+- Modified repo-sync.ts to capture ddd_telefone_2 from BrasilAPI and populate lead_contacts in new STEP 9
+- Exported formatPhone from repo-sync.ts for reuse in backfill endpoint
+- Added contacts_created to SyncStats, logged at end of sync
+- Created /api/enrich-contacts backfill endpoint (gestor-only, maxDuration=120)
+- Backfill pre-loads all existing lead_contacts into memory Map (no N+1 queries)
+- Duplicate detection via normalized phone (digits only) and lowercase email
+- BrasilAPI phone2 inserted as separate lead_contacts row when different from phone1
 
 **Next Actions:**
-- Verify /bi page renders correctly with real data in production
-- Consider adding date range filters to BI dashboard for time-scoped analysis
+- Run GET /api/enrich-contacts as gestor to backfill existing 240 leads
+- Verify lead_contacts table has 2+ rows for leads where BrasilAPI provides telefone_2
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
