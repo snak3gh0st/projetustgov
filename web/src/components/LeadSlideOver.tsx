@@ -11,6 +11,7 @@ const STATUS_COLORS: Record<string, string> = {
   'Proposta': 'bg-blue-50 text-[#0072F7] border-blue-200',
   'Aguardando Closer': 'bg-purple-50 text-purple-600 border-purple-200',
   'Fechado': 'bg-green-50 text-green-600 border-green-200',
+  'Telefone Invalido': 'bg-gray-50 text-gray-500 border-gray-300',
 }
 
 interface LeadSlideOverProps {
