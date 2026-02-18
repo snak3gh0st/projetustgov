@@ -133,20 +133,20 @@
 | 35 | Add missing status filters (Aguardando Closer, Telefone Invalido) + NOVO badge for leads within 48h | 2026-02-17 | 5eda288 | [17-add-missing-status-filters-new-leads-tag](./quick/17-add-missing-status-filters-new-leads-tag/) |
 | 36 | Fix 6 CRM issues: AINDA NÃO color, commission % base, cascade dedup, CNPJ monitor for Paulo, clickable pipeline, edit notes | 2026-02-18 | 6f17a7d | [18-fix-multiple-crm-issues-ainda-n-o-filter](./quick/18-fix-multiple-crm-issues-ainda-n-o-filter/) |
 | 37 | Add AINDA NÃO yellow color scheme to all status surfaces + filter dropdown option for legacy leads | 2026-02-18 | 8a81eb5 | [19-filtro-ainda-n-o-com-esquema-de-cor-dife](./quick/19-filtro-ainda-n-o-com-esquema-de-cor-dife/) |
+| 38 | Fix pipeline card pct denominator (g.total_leads) + STATUS_CONFIG fallback key accent | 2026-02-18 | 717c6a7 | [20-percentuais-apresentado-a-aba-comissiona](./quick/20-percentuais-apresentado-a-aba-comissiona/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-18
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 37: Add AINDA NÃO yellow color scheme to all status surfaces
+**Activity:** Quick task 38: Fix pipeline pct denominator + STATUS_CONFIG fallback key
 
 **Completed:**
-- 'AINDA NÃO' added to STATUS_OPTIONS in /leads so filter dropdown exposes the legacy status
-- Yellow color scheme (bg-yellow-50 text-yellow-700) applied in leads/page.tsx STATUS_COLORS
-- Yellow color scheme with border applied in LeadSlideOver.tsx STATUS_COLORS
-- Yellow palette entry added to STATUS_CONFIG in page.tsx (not in STATUS_ORDER)
-- 'Não Contatado' in LeadSlideOver.tsx corrected from stale red to orange
+- Removed totalForPipeline; pipeline card pct now uses g.total_leads as denominator
+- All 5 pipeline status cards now sum to ~100% (proportional to total leads)
+- STATUS_CONFIG fallback in Detalhamento Comissoes corrected: 'Nao Contatado' → 'Não Contatado'
+- TypeScript compilation passes with no new errors
 
 **Next Actions:**
 - None outstanding from this task
