@@ -116,8 +116,20 @@ export default function BIDashboard() {
 
   if (error || !data) {
     return (
-      <div className="flex items-center justify-center py-20 text-gray-400">
-        Erro ao carregar BI dashboard
+      <div className="space-y-4 max-w-7xl">
+        <div>
+          <h1 className="font-heading text-2xl font-bold text-gray-900">BI Analytics</h1>
+        </div>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex flex-col items-center gap-3">
+          <p className="text-red-700 font-medium">Erro ao carregar dados do BI dashboard</p>
+          <p className="text-red-500 text-sm">Nao foi possivel conectar ao servidor. Verifique sua conexao e tente novamente.</p>
+          <button
+            onClick={() => { window.location.reload() }}
+            className="mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            Tentar novamente
+          </button>
+        </div>
       </div>
     )
   }

@@ -121,6 +121,8 @@ export async function GET() {
       `, vendedorParams),
 
       // 8. Chart: Activity Trend (last 6 months from contact_notes)
+      // Use EXISTS subquery instead of JOIN to avoid multiplying rows when a CNPJ
+      // has multiple entries in vendedor_projetos (one per emenda/programa)
       isVendedor
         ? query(`
           SELECT
@@ -128,9 +130,12 @@ export async function GET() {
             COUNT(*)::int as total_notes,
             COUNT(DISTINCT cn.lead_cnpj)::int as unique_leads
           FROM contact_notes cn
-          JOIN vendedor_projetos vp ON vp.cnpj = cn.lead_cnpj
           WHERE cn.created_at >= NOW() - INTERVAL '6 months'
-            AND vp.vendedor_id = $1
+            AND EXISTS (
+              SELECT 1 FROM vendedor_projetos vp
+              WHERE vp.cnpj = cn.lead_cnpj
+                AND vp.vendedor_id = $1
+            )
           GROUP BY 1
           ORDER BY 1 ASC
         `, vendedorParams)
