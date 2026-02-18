@@ -134,13 +134,14 @@
 | 36 | Fix 6 CRM issues: AINDA NÃO color, commission % base, cascade dedup, CNPJ monitor for Paulo, clickable pipeline, edit notes | 2026-02-18 | 6f17a7d | [18-fix-multiple-crm-issues-ainda-n-o-filter](./quick/18-fix-multiple-crm-issues-ainda-n-o-filter/) |
 | 37 | Add AINDA NÃO yellow color scheme to all status surfaces + filter dropdown option for legacy leads | 2026-02-18 | 8a81eb5 | [19-filtro-ainda-n-o-com-esquema-de-cor-dife](./quick/19-filtro-ainda-n-o-com-esquema-de-cor-dife/) |
 | 38 | Fix pipeline card pct denominator (g.total_leads) + STATUS_CONFIG fallback key accent | 2026-02-18 | 717c6a7 | [20-percentuais-apresentado-a-aba-comissiona](./quick/20-percentuais-apresentado-a-aba-comissiona/) |
+| 39 | Remove summed valor from multi-emenda main row: show highest individual emenda instead of sum | 2026-02-18 | 9fe9024 | [21-remove-summed-valor-from-multi-emenda-ma](./quick/21-remove-summed-valor-from-multi-emenda-ma/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-18
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 21 (sequence 39): Remove summed valor from multi-emenda main rows
+**Activity:** Quick task 39 (quick-21): Remove summed valor from multi-emenda main rows
 
 **Completed:**
 - Removed subLeads.reduce sum from multi-emenda main row valor display; always shows lead.valor_emenda
