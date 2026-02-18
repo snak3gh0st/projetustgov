@@ -80,16 +80,16 @@ const TOOLTIP_STYLE = {
 export default function BIDashboard() {
   const [data, setData] = useState<BIData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/bi')
       .then(r => r.json())
       .then(d => {
-        if (d.error) { setError(true); return }
+        if (d.error) { setError(d.error); return }
         setData(d)
       })
-      .catch(() => setError(true))
+      .catch((e) => setError(String(e)))
       .finally(() => setLoading(false))
   }, [])
 
@@ -122,7 +122,9 @@ export default function BIDashboard() {
         </div>
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex flex-col items-center gap-3">
           <p className="text-red-700 font-medium">Erro ao carregar dados do BI dashboard</p>
-          <p className="text-red-500 text-sm">Nao foi possivel conectar ao servidor. Verifique sua conexao e tente novamente.</p>
+          {error && (
+            <code className="text-red-600 text-xs bg-red-100 px-3 py-2 rounded font-mono max-w-full break-all">{error}</code>
+          )}
           <button
             onClick={() => { window.location.reload() }}
             className="mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
