@@ -41,6 +41,108 @@ export async function GET(
   }
 }
 
+// PATCH /api/leads/[cnpj]/notes - Update an existing contact note
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { cnpj: string } }
+) {
+  try {
+    const session = await getApiSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!canModifyData(session.role)) {
+      return NextResponse.json({ error: 'Forbidden: read-only role' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { note_id, tipo, observacao } = body
+
+    if (!note_id) {
+      return NextResponse.json({ error: 'note_id is required' }, { status: 400 })
+    }
+
+    // Check author ownership
+    const noteRows = await query(
+      `SELECT vendedor_id FROM contact_notes WHERE id = $1`,
+      [note_id]
+    )
+    if (noteRows.length === 0) {
+      return NextResponse.json({ error: 'Note not found' }, { status: 404 })
+    }
+    const note = noteRows[0]
+    if (note.vendedor_id !== session.userId && session.role !== 'gestor') {
+      return NextResponse.json({ error: 'Forbidden: not note author' }, { status: 403 })
+    }
+
+    if (tipo) {
+      const validTipos = ['ligacao', 'email', 'whatsapp', 'reuniao', 'outro']
+      if (!validTipos.includes(tipo)) {
+        return NextResponse.json({ error: 'Invalid tipo' }, { status: 400 })
+      }
+    }
+
+    const result = await query(`
+      UPDATE contact_notes
+      SET tipo = COALESCE($2, tipo),
+          observacao = COALESCE($3, observacao),
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [note_id, tipo || null, observacao !== undefined ? observacao : null])
+
+    return NextResponse.json(result[0])
+  } catch (error) {
+    console.error('Contact note update error:', error)
+    return NextResponse.json({ error: 'Failed to update note' }, { status: 500 })
+  }
+}
+
+// DELETE /api/leads/[cnpj]/notes - Delete an existing contact note
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { cnpj: string } }
+) {
+  try {
+    const session = await getApiSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!canModifyData(session.role)) {
+      return NextResponse.json({ error: 'Forbidden: read-only role' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { note_id } = body
+
+    if (!note_id) {
+      return NextResponse.json({ error: 'note_id is required' }, { status: 400 })
+    }
+
+    // Check author ownership
+    const noteRows = await query(
+      `SELECT vendedor_id FROM contact_notes WHERE id = $1`,
+      [note_id]
+    )
+    if (noteRows.length === 0) {
+      return NextResponse.json({ error: 'Note not found' }, { status: 404 })
+    }
+    const note = noteRows[0]
+    if (note.vendedor_id !== session.userId && session.role !== 'gestor') {
+      return NextResponse.json({ error: 'Forbidden: not note author' }, { status: 403 })
+    }
+
+    await query(`DELETE FROM contact_notes WHERE id = $1`, [note_id])
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Contact note deletion error:', error)
+    return NextResponse.json({ error: 'Failed to delete note' }, { status: 500 })
+  }
+}
+
 // POST /api/leads/[cnpj]/notes - Create new contact note
 export async function POST(
   request: NextRequest,

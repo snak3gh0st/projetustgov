@@ -22,6 +22,9 @@ export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTi
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({ tipo: 'ligacao', observacao: '' })
   const [submitting, setSubmitting] = useState(false)
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({ tipo: 'ligacao', observacao: '' })
+  const [editSubmitting, setEditSubmitting] = useState(false)
 
   async function fetchNotes() {
     try {
@@ -60,6 +63,53 @@ export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTi
       console.error('Failed to create note:', err)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  function startEdit(note: ContactNote) {
+    setEditingNoteId(note.id)
+    setEditForm({ tipo: note.tipo, observacao: note.observacao || '' })
+  }
+
+  function cancelEdit() {
+    setEditingNoteId(null)
+    setEditForm({ tipo: 'ligacao', observacao: '' })
+  }
+
+  async function handleEditSubmit(noteId: string) {
+    setEditSubmitting(true)
+    try {
+      const res = await fetch(`/api/leads/${encodeURIComponent(cnpj)}/notes`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note_id: noteId, tipo: editForm.tipo, observacao: editForm.observacao })
+      })
+
+      if (res.ok) {
+        setEditingNoteId(null)
+        fetchNotes()
+      }
+    } catch (err) {
+      console.error('Failed to update note:', err)
+    } finally {
+      setEditSubmitting(false)
+    }
+  }
+
+  async function handleDelete(noteId: string) {
+    if (!confirm('Tem certeza que deseja excluir esta nota?')) return
+    try {
+      const res = await fetch(`/api/leads/${encodeURIComponent(cnpj)}/notes`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note_id: noteId })
+      })
+
+      if (res.ok) {
+        fetchNotes()
+      }
+    } catch (err) {
+      console.error('Failed to delete note:', err)
     }
   }
 
@@ -152,24 +202,96 @@ export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTi
         ) : (
           notes.map((note) => {
             const cfg = TIPO_CONFIG[note.tipo as keyof typeof TIPO_CONFIG]
+            const isEditing = editingNoteId === note.id
+
             return (
               <div key={note.id} className="p-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 mt-1">
-                    <span className={`inline-block px-2 py-1 rounded text-xs border ${cfg.color}`}>
-                      {cfg.icon} {cfg.label}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2 mb-1">
+                {isEditing ? (
+                  /* Inline edit form */
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 mb-2">
                       <span className="text-sm font-medium text-gray-900">{note.vendedor_nome}</span>
                       <span className="text-xs text-gray-500">{formatDate(note.created_at)}</span>
+                      <span className="text-xs text-amber-600 ml-auto">Editando...</span>
                     </div>
-                    {note.observacao && (
-                      <p className="text-sm text-gray-600 whitespace-pre-wrap">{note.observacao}</p>
-                    )}
+                    <label className="block">
+                      <span className="text-xs text-gray-400 block mb-1">Tipo de Contato</span>
+                      <select
+                        value={editForm.tipo}
+                        onChange={e => setEditForm({ ...editForm, tipo: e.target.value })}
+                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-[#0072F7]"
+                      >
+                        {Object.entries(TIPO_CONFIG).map(([key, tipoConfig]) => (
+                          <option key={key} value={key}>
+                            {tipoConfig.icon} {tipoConfig.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="text-xs text-gray-400 block mb-1">Observação</span>
+                      <textarea
+                        value={editForm.observacao}
+                        onChange={e => setEditForm({ ...editForm, observacao: e.target.value })}
+                        rows={3}
+                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm focus:outline-none focus:border-[#0072F7]"
+                      />
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={cancelEdit}
+                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-sm hover:bg-gray-50"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleEditSubmit(note.id)}
+                        disabled={editSubmitting}
+                        className="px-3 py-1.5 rounded-lg bg-[#0072F7] text-white text-sm font-medium hover:bg-[#0058C4] disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {editSubmitting ? 'Salvando...' : 'Salvar'}
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  /* Normal note display */
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-1">
+                      <span className={`inline-block px-2 py-1 rounded text-xs border ${cfg.color}`}>
+                        {cfg.icon} {cfg.label}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <span className="text-sm font-medium text-gray-900">{note.vendedor_nome}</span>
+                        <span className="text-xs text-gray-500">{formatDate(note.created_at)}</span>
+                        {canModify && (
+                          <div className="ml-auto flex items-center gap-1.5">
+                            <button
+                              onClick={() => startEdit(note)}
+                              className="text-xs text-gray-400 hover:text-[#0072F7] transition-colors px-1.5 py-0.5 rounded hover:bg-blue-50"
+                              title="Editar nota"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => handleDelete(note.id)}
+                              className="text-xs text-gray-400 hover:text-red-500 transition-colors px-1.5 py-0.5 rounded hover:bg-red-50"
+                              title="Excluir nota"
+                            >
+                              Excluir
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {note.observacao && (
+                        <p className="text-sm text-gray-600 whitespace-pre-wrap">{note.observacao}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })
