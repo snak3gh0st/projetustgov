@@ -30,6 +30,10 @@ export default function DistribuirPage() {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [sortCol, setSortCol] = useState('')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [monitorCnpj, setMonitorCnpj] = useState('')
+  const [monitorLoading, setMonitorLoading] = useState(false)
+  const [monitorResult, setMonitorResult] = useState<{ type: 'success' | 'error' | 'conflict'; message: string } | null>(null)
+  const [pendingForce, setPendingForce] = useState(false)
 
   const fetchLeads = useCallback(async () => {
     setLoading(true)
@@ -294,6 +298,40 @@ export default function DistribuirPage() {
     }
   }
 
+  async function handleMonitorCnpj(force = false) {
+    const cleaned = monitorCnpj.replace(/\D/g, '')
+    if (cleaned.length !== 14) {
+      setMonitorResult({ type: 'error', message: 'CNPJ deve ter 14 dígitos' })
+      return
+    }
+    setMonitorLoading(true)
+    setMonitorResult(null)
+    setPendingForce(false)
+    try {
+      const res = await fetch('/api/monitorar-cnpj', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cnpj: cleaned, force }),
+      })
+      const data = await res.json()
+      if (res.status === 409) {
+        setMonitorResult({ type: 'conflict', message: data.error || 'CNPJ já atribuído a outro vendedor' })
+        setPendingForce(true)
+      } else if (res.ok) {
+        setMonitorResult({ type: 'success', message: data.message || 'CNPJ atribuído com sucesso' })
+        setMonitorCnpj('')
+        fetchAssignedLeads()
+        fetchVendedores()
+      } else {
+        setMonitorResult({ type: 'error', message: data.error || 'Erro ao atribuir CNPJ' })
+      }
+    } catch {
+      setMonitorResult({ type: 'error', message: 'Erro de conexão' })
+    } finally {
+      setMonitorLoading(false)
+    }
+  }
+
   if (userRole !== 'gestor') {
     return <div className="flex items-center justify-center py-20 text-gray-500">Verificando permissoes...</div>
   }
@@ -310,6 +348,47 @@ export default function DistribuirPage() {
             : 'Visualize e redistribua leads ja atribuidos'
           }
         </p>
+      </div>
+
+      {/* CNPJ Monitoring section - gestor only, assign directly to Paulo Gabriel */}
+      <div className="border border-amber-200 bg-amber-50 rounded-xl p-4">
+        <h2 className="text-sm font-semibold text-amber-800 mb-3">Adicionar CNPJ Monitorado (Paulo Gabriel)</h2>
+        <div className="flex flex-wrap gap-3 items-start">
+          <input
+            type="text"
+            placeholder="CNPJ (somente números ou formatado)"
+            value={monitorCnpj}
+            onChange={e => { setMonitorCnpj(e.target.value); setMonitorResult(null); setPendingForce(false) }}
+            className="flex-1 min-w-[200px] bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-amber-400 transition-colors"
+          />
+          <button
+            onClick={() => handleMonitorCnpj(false)}
+            disabled={monitorLoading || monitorCnpj.replace(/\D/g, '').length !== 14}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            {monitorLoading ? 'Atribuindo...' : 'Atribuir a Paulo'}
+          </button>
+        </div>
+        {monitorResult && (
+          <div className={`mt-3 text-sm rounded-lg px-3 py-2 ${
+            monitorResult.type === 'success'
+              ? 'bg-green-50 text-green-700 border border-green-200'
+              : monitorResult.type === 'conflict'
+                ? 'bg-orange-50 text-orange-700 border border-orange-200'
+                : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
+            {monitorResult.message}
+            {monitorResult.type === 'conflict' && pendingForce && (
+              <button
+                onClick={() => handleMonitorCnpj(true)}
+                disabled={monitorLoading}
+                className="ml-3 text-xs font-medium underline hover:no-underline"
+              >
+                Forçar Reatribuição
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
