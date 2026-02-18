@@ -140,12 +140,12 @@
 ### Last Session Summary
 **Date:** 2026-02-18
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 38: Fix pipeline pct denominator + STATUS_CONFIG fallback key
+**Activity:** Quick task 21 (sequence 39): Remove summed valor from multi-emenda main rows
 
 **Completed:**
-- Removed totalForPipeline; pipeline card pct now uses g.total_leads as denominator
-- All 5 pipeline status cards now sum to ~100% (proportional to total leads)
-- STATUS_CONFIG fallback in Detalhamento Comissoes corrected: 'Nao Contatado' → 'Não Contatado'
+- Removed subLeads.reduce sum from multi-emenda main row valor display; always shows lead.valor_emenda
+- Removed subLeads.reduce sum from sort-by-valor logic; sorts by lead.valor_emenda directly
+- Sub-row individual valor display unchanged (already correct)
 - TypeScript compilation passes with no new errors
 
 **Next Actions:**
