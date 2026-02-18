@@ -131,24 +131,27 @@
 | 33 | Fix total leads count: COUNT(DISTINCT cnpj) in all APIs + distribuir page unique CNPJ display | 2026-02-17 | 2caddee | [15-fix-total-leads-count-total-leads-count-](./quick/15-fix-total-leads-count-total-leads-count-/) |
 | 34 | Bulk reassign 73 target CNPJs to paulo@projetus.org (3 found in DB, 70 not found) | 2026-02-17 | c6f182d | [16-redistribuir-cnpjs-espec-ficos-para-paul](./quick/16-redistribuir-cnpjs-espec-ficos-para-paul/) |
 | 35 | Add missing status filters (Aguardando Closer, Telefone Invalido) + NOVO badge for leads within 48h | 2026-02-17 | 5eda288 | [17-add-missing-status-filters-new-leads-tag](./quick/17-add-missing-status-filters-new-leads-tag/) |
+| 36 | Fix 6 CRM issues: AINDA NÃO color, commission % base, cascade dedup, CNPJ monitor for Paulo, clickable pipeline, edit notes | 2026-02-18 | 6f17a7d | [18-fix-multiple-crm-issues-ainda-n-o-filter](./quick/18-fix-multiple-crm-issues-ainda-n-o-filter/) |
 
 ## Session Continuity
 
 ### Last Session Summary
-**Date:** 2026-02-17
+**Date:** 2026-02-18
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 35: Add missing status filters and NOVO badge for recent leads
+**Activity:** Quick task 36: Fix 6 CRM issues (status colors, cascade dedup, clickable pipeline, commission %, CNPJ monitor, edit notes)
 
 **Completed:**
-- Added Aguardando Closer and Telefone Invalido to STATUS_OPTIONS in leads/page.tsx (4 → 6 statuses)
-- Added STATUS_COLORS for both new statuses in leads/page.tsx
-- Added Telefone Invalido to STATUS_COLORS in LeadSlideOver.tsx (was missing)
-- Added isNewLead() helper and green NOVO badge for leads created within last 48h
-- Build passed with no TypeScript errors
+- "Não Contatado" is now orange (distinct from error-red) in status badge + STATUS_CONFIG
+- Cascade parent row value sums subLeads individually (no double-counting with total_valor_emendas)
+- Pipeline quadrant cards are clickable → navigate to /leads?status_contato=... filter
+- Pipeline % denominator excludes Fechado (active pipeline only)
+- Contact notes have edit/delete: PATCH+DELETE on /api/leads/[cnpj]/notes + inline edit UI in timeline
+- New /api/monitorar-cnpj endpoint + gestor UI on /distribuir to assign CNPJ directly to Paulo Gabriel
 
 **Next Actions:**
-- Verify all 6 statuses appear in filter dropdown and per-row dropdowns on /leads
-- Verify NOVO badge appears for recently imported leads
+- Verify all 6 pipeline cards are clickable on the home dashboard
+- Verify cascade parent value no longer double-counts emenda values
+- Test contact note edit/delete flow in LeadSlideOver
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
