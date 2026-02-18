@@ -301,9 +301,16 @@ async function runSetup() {
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='closer_comissao_valor') THEN
           ALTER TABLE vendedor_projetos ADD COLUMN closer_comissao_valor NUMERIC(15,2);
         END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='uf') THEN
+          ALTER TABLE vendedor_projetos ADD COLUMN uf VARCHAR(5);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='municipio') THEN
+          ALTER TABLE vendedor_projetos ADD COLUMN municipio VARCHAR(255);
+        END IF;
       END $$;
     `).catch(() => {})
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_closer ON vendedor_projetos(closer_id)`).catch(() => {})
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_uf ON vendedor_projetos(uf)`).catch(() => {})
 
     // 6e2. Update tipo_vendedor CHECK to include 'Exclusivo'
     await pool.query(`
