@@ -8,7 +8,10 @@ interface StatusCounts {
   'Não Contatado': number
   'Retorno': number
   'Proposta': number
+  'Aguardando Closer'?: number
   'Fechado': number
+  'Telefone Invalido'?: number
+  [key: string]: number | undefined
 }
 
 interface GlobalStats {
@@ -77,13 +80,15 @@ interface DashboardData {
 
 // --- Status config ---
 const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; label: string }> = {
-  'Não Contatado': { color: 'text-red-600', bg: 'bg-red-50 border-red-200', bar: 'bg-red-500', label: 'Não Contatado' },
+  'Não Contatado': { color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200', bar: 'bg-orange-500', label: 'Não Contatado' },
   'Retorno': { color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', bar: 'bg-amber-500', label: 'Retorno' },
   'Proposta': { color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', bar: 'bg-blue-500', label: 'Proposta' },
+  'Aguardando Closer': { color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200', bar: 'bg-purple-500', label: 'Aguardando Closer' },
   'Fechado': { color: 'text-green-600', bg: 'bg-green-50 border-green-200', bar: 'bg-green-500', label: 'Fechado' },
+  'Telefone Invalido': { color: 'text-gray-500', bg: 'bg-gray-50 border-gray-200', bar: 'bg-gray-400', label: 'Telefone Invalido' },
 }
 
-const STATUS_ORDER = ['Não Contatado', 'Retorno', 'Proposta', 'Fechado'] as const
+const STATUS_ORDER = ['Não Contatado', 'Retorno', 'Proposta', 'Aguardando Closer', 'Fechado'] as const
 
 function timeAgo(date: string | null): string {
   if (!date) return 'nunca'
@@ -147,7 +152,12 @@ export default function CRMDashboard() {
 
   const { global: g, vendedores, recent_activity, role } = data
   const isVendedor = role === 'vendedor' || role === 'gestor_vendedor'
-  const totalForPipeline = Object.values(g.by_status).reduce((a, b) => a + b, 0) || 1
+  const totalForPipeline = (
+    (g.by_status['Não Contatado'] || 0) +
+    (g.by_status['Retorno'] || 0) +
+    (g.by_status['Proposta'] || 0) +
+    (g.by_status['Aguardando Closer'] || 0)
+  ) || 1
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -225,7 +235,7 @@ export default function CRMDashboard() {
         <p className="text-xs text-gray-500 uppercase tracking-wider">Pipeline de Vendas</p>
 
         {/* Status cards row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {STATUS_ORDER.map((status, idx) => {
             const count = g.by_status[status] || 0
             const pct = totalForPipeline > 0 ? (count / totalForPipeline) * 100 : 0
@@ -235,7 +245,9 @@ export default function CRMDashboard() {
             return (
               <div
                 key={status}
-                className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+                role="button"
+                onClick={() => { window.location.href = `/leads?status_contato=${encodeURIComponent(status)}` }}
+                className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
               >
                 {/* Colored top bar */}
                 <div className={`h-1.5 ${cfg.bar}`} />
