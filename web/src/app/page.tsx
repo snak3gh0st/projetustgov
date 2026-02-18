@@ -153,12 +153,6 @@ export default function CRMDashboard() {
 
   const { global: g, vendedores, recent_activity, role } = data
   const isVendedor = role === 'vendedor' || role === 'gestor_vendedor'
-  const totalForPipeline = (
-    (g.by_status['Não Contatado'] || 0) +
-    (g.by_status['Retorno'] || 0) +
-    (g.by_status['Proposta'] || 0) +
-    (g.by_status['Aguardando Closer'] || 0)
-  ) || 1
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -239,7 +233,7 @@ export default function CRMDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {STATUS_ORDER.map((status, idx) => {
             const count = g.by_status[status] || 0
-            const pct = totalForPipeline > 0 ? (count / totalForPipeline) * 100 : 0
+            const pct = g.total_leads > 0 ? (count / g.total_leads) * 100 : 0
             const cfg = STATUS_CONFIG[status]
             const prevCount = idx > 0 ? (g.by_status[STATUS_ORDER[idx - 1]] || 0) : null
             const conversionRate = prevCount && prevCount > 0 ? ((count / prevCount) * 100).toFixed(0) : null
@@ -407,7 +401,7 @@ export default function CRMDashboard() {
           </h2>
           <div className="space-y-2">
             {data.commission_breakdown.map(item => {
-              const cfg = STATUS_CONFIG[item.status_contato] || STATUS_CONFIG['Nao Contatado']
+              const cfg = STATUS_CONFIG[item.status_contato] || STATUS_CONFIG['Não Contatado']
               return (
                 <div key={item.status_contato} className="flex items-center justify-between py-2 border-b border-gray-200 last:border-0">
                   <div className="flex items-center gap-2">
