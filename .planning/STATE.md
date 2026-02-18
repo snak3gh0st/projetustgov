@@ -132,26 +132,24 @@
 | 34 | Bulk reassign 73 target CNPJs to paulo@projetus.org (3 found in DB, 70 not found) | 2026-02-17 | c6f182d | [16-redistribuir-cnpjs-espec-ficos-para-paul](./quick/16-redistribuir-cnpjs-espec-ficos-para-paul/) |
 | 35 | Add missing status filters (Aguardando Closer, Telefone Invalido) + NOVO badge for leads within 48h | 2026-02-17 | 5eda288 | [17-add-missing-status-filters-new-leads-tag](./quick/17-add-missing-status-filters-new-leads-tag/) |
 | 36 | Fix 6 CRM issues: AINDA NÃO color, commission % base, cascade dedup, CNPJ monitor for Paulo, clickable pipeline, edit notes | 2026-02-18 | 6f17a7d | [18-fix-multiple-crm-issues-ainda-n-o-filter](./quick/18-fix-multiple-crm-issues-ainda-n-o-filter/) |
+| 37 | Add AINDA NÃO yellow color scheme to all status surfaces + filter dropdown option for legacy leads | 2026-02-18 | 8a81eb5 | [19-filtro-ainda-n-o-com-esquema-de-cor-dife](./quick/19-filtro-ainda-n-o-com-esquema-de-cor-dife/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-18
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 36: Fix 6 CRM issues (status colors, cascade dedup, clickable pipeline, commission %, CNPJ monitor, edit notes)
+**Activity:** Quick task 37: Add AINDA NÃO yellow color scheme to all status surfaces
 
 **Completed:**
-- "Não Contatado" is now orange (distinct from error-red) in status badge + STATUS_CONFIG
-- Cascade parent row value sums subLeads individually (no double-counting with total_valor_emendas)
-- Pipeline quadrant cards are clickable → navigate to /leads?status_contato=... filter
-- Pipeline % denominator excludes Fechado (active pipeline only)
-- Contact notes have edit/delete: PATCH+DELETE on /api/leads/[cnpj]/notes + inline edit UI in timeline
-- New /api/monitorar-cnpj endpoint + gestor UI on /distribuir to assign CNPJ directly to Paulo Gabriel
+- 'AINDA NÃO' added to STATUS_OPTIONS in /leads so filter dropdown exposes the legacy status
+- Yellow color scheme (bg-yellow-50 text-yellow-700) applied in leads/page.tsx STATUS_COLORS
+- Yellow color scheme with border applied in LeadSlideOver.tsx STATUS_COLORS
+- Yellow palette entry added to STATUS_CONFIG in page.tsx (not in STATUS_ORDER)
+- 'Não Contatado' in LeadSlideOver.tsx corrected from stale red to orange
 
 **Next Actions:**
-- Verify all 6 pipeline cards are clickable on the home dashboard
-- Verify cascade parent value no longer double-counts emenda values
-- Test contact note edit/delete flow in LeadSlideOver
+- None outstanding from this task
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
