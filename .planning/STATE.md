@@ -140,23 +140,22 @@
 | 42 | Fix Aguardando Closer flow: gestor_vendedor can set status on any lead + Paulo user lookup without active filter | 2026-02-19 | b68eb7d | [24-quando-o-vendedor-coloca-aguardando-clos](./quick/24-quando-o-vendedor-coloca-aguardando-clos/) |
 | 43 | Fix application error on Usuarios tab: remove useSession (no SessionProvider), move self-detection server-side via is_self in API | 2026-02-19 | e319f51 | [25-fix-application-error-on-usuarios-tab](./quick/25-fix-application-error-on-usuarios-tab/) |
 | 44 | Fix Aguardando Closer from lead detail page: remove SaleModal intercept, closer_id set directly via PATCH + debug endpoint enhanced | 2026-02-19 | e5e488c | [26-quando-o-vendedor-coloca-aguardando-clos](./quick/26-quando-o-vendedor-coloca-aguardando-clos/) |
+| 45 | AINDA NÃO rose color scheme (distinct from Não Contatado orange) + pipeline % sub-label guard (hide when >100%) | 2026-02-19 | b9ddb8e | [27-filtro-ainda-nao-com-esquema-de-cor-dife](./quick/27-filtro-ainda-nao-com-esquema-de-cor-dife/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-19
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 44 (quick-26): Fix Aguardando Closer from lead detail page
+**Activity:** Quick task 45 (quick-27): AINDA NÃO rose color + pipeline % sub-label guard
 
 **Completed:**
-- Removed 'Aguardando Closer' from SaleModal intercept condition in lead/[cnpj]/page.tsx — only 'Fechado' now opens modal
-- Added diagnostic console.log lines to Aguardando Closer block in PATCH /api/leads/[cnpj] for Vercel log verification
-- Added recent_closer_assignments field to /api/debug-closer endpoint (last 5 rows with closer_id, ordered by updated_at DESC)
-- TypeScript compilation passes with zero errors across all 3 modified files
+- Changed AINDA NÃO color from yellow to rose (#f43f5e) across STATUS_CONFIG (page.tsx), STATUS_COLORS (leads/page.tsx, LeadSlideOver.tsx), and CAT_COLORS (DashboardCharts.tsx)
+- Added conversionRate guard in pipeline cards: sub-label hidden when value > 100% (e.g. "300% de Aguardando Closer" suppressed)
 
 **Key decisions:**
-- Aguardando Closer bypasses SaleModal — no valor_venda required at handoff stage
-- Diagnostic logs enable post-deploy verification without changing business logic
+- Rose/pink (#f43f5e) visually distinct from orange (Não Contatado) and amber (Retorno)
+- Pipeline sub-label guard: Number(conversionRate) <= 100 prevents nonsensical ratios
 
 **Next Actions:**
 - None outstanding from this task
