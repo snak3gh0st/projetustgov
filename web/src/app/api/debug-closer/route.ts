@@ -32,10 +32,20 @@ export async function GET() {
       `SELECT id, cnpj, nome, status_contato, closer_id FROM vendedor_projetos WHERE status_contato = 'Aguardando Closer' ORDER BY updated_at DESC LIMIT 10`
     )
 
+    // Most recent closer assignments (for instant post-deploy verification)
+    const recentRows = await query(
+      `SELECT id, cnpj, nome, status_contato, closer_id, updated_at
+       FROM vendedor_projetos
+       WHERE closer_id IS NOT NULL
+       ORDER BY updated_at DESC
+       LIMIT 5`
+    )
+
     return NextResponse.json({
       paulo_user: pauloRows[0] ?? null,
       leads_with_closer_id_count: closerCountRows[0]?.count ?? 0,
       aguardando_closer_sample: sampleRows,
+      recent_closer_assignments: recentRows,
     })
   } catch (error) {
     console.error('Debug closer error:', error)
