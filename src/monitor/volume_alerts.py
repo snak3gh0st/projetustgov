@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from src.loader.database import get_engine
 from src.loader.extraction_log import get_last_extraction
+from .bot_messages import get_lang, t
 
 
 def _get_entity_counts() -> dict[str, int]:
@@ -95,10 +96,12 @@ def get_volume_alert_message(
     Returns:
         Formatted message describing the volume comparison.
     """
+    lang = get_lang()
+
     if previous is None:
         entity_parts = [f"{entity}: {count}" for entity, count in current.items()]
         entities_str = ", ".join(entity_parts)
-        return f"First extraction run with counts: {entities_str}"
+        return t("volume_first_run", lang, entities=entities_str)
 
     changes = []
 
@@ -115,16 +118,16 @@ def get_volume_alert_message(
                     f"{'+' if change_percent >= 0 else ''}{change_percent:.1f}%"
                 )
                 changes.append(
-                    f"{entity}: {previous_count} → {current_count} ({change_str})"
+                    f"{entity}: {previous_count} -> {current_count} ({change_str})"
                 )
             else:
-                changes.append(f"{entity}: {previous_count} → {current_count}")
+                changes.append(f"{entity}: {previous_count} -> {current_count}")
         else:
             current_count = current[entity]
-            changes.append(f"{entity}: {current_count} (new)")
+            changes.append(t("volume_entry_new", lang, entity=entity, count=current_count))
 
-    changes_str = "\n".join(f"  • {change}" for change in changes)
-    return f"Volume comparison:\n{changes_str}"
+    changes_str = "\n".join(f"  - {change}" for change in changes)
+    return t("volume_comparison", lang, changes=changes_str)
 
 
 def check_volume_anomaly(
@@ -167,6 +170,8 @@ def check_volume_anomaly(
         # For now, let's return based on what we can determine
         previous_counts = {"total": last_extraction.total_records}
 
+    lang = get_lang()
+
     # Check if we should alert
     if should_alert_volume(current_counts, previous_counts or {}, tolerance_percent):
         message = get_volume_alert_message(
@@ -179,11 +184,11 @@ def check_volume_anomaly(
             curr_total = sum(current_counts.values())
             if prev_total > 0:
                 change_percent = abs(curr_total - prev_total) / prev_total * 100
-                summary = f"Volume anomaly: {change_percent:.1f}% change ({prev_total} → {curr_total} total records)"
+                summary = t("volume_anomaly", lang, change_pct=f"{change_percent:.1f}", prev=prev_total, curr=curr_total)
             else:
-                summary = f"Volume spike: {curr_total} vs {prev_total} previously"
+                summary = t("volume_spike", lang, curr=curr_total, prev=prev_total)
         else:
-            summary = "Volume anomaly detected (first run comparison)"
+            summary = t("volume_anomaly_first", lang)
 
         return False, summary
 
@@ -193,10 +198,10 @@ def check_volume_anomaly(
         curr_total = sum(current_counts.values())
         if prev_total > 0:
             change_percent = abs(curr_total - prev_total) / prev_total * 100
-            summary = f"Volume normal: {change_percent:.1f}% change"
+            summary = t("volume_normal", lang, change_pct=f"{change_percent:.1f}")
         else:
-            summary = "Volume normal: First extraction"
+            summary = t("volume_normal_first", lang)
     else:
-        summary = "Volume normal: No previous extraction to compare"
+        summary = t("volume_normal_no_prev", lang)
 
     return True, summary

@@ -11,15 +11,19 @@ from typing import Optional
 
 import httpx
 
+from .bot_messages import get_lang, t
 
-def _get_severity_prefix(severity: str) -> str:
-    """Get prefix for alert severity."""
-    prefixes = {
-        "CRITICAL": "[CRITICAL]",
-        "WARNING": "[WARNING]",
-        "INFO": "[INFO]",
-    }
-    return prefixes.get(severity.upper(), "[INFO]")
+
+def _get_severity_prefix(severity: str, lang: str = None) -> str:
+    """Get prefix for alert severity in the configured language."""
+    if lang is None:
+        lang = get_lang()
+    key = {
+        "CRITICAL": "severity_critical",
+        "WARNING": "severity_warning",
+        "INFO": "severity_info",
+    }.get(severity.upper(), "severity_info")
+    return t(key, lang)
 
 
 def _get_config():
@@ -65,8 +69,9 @@ def send_telegram_alert(
         if not bot_token or not chat_id:
             return False
 
-        # Format message with severity prefix
-        prefix = _get_severity_prefix(severity)
+        # Format message with severity prefix (language-aware)
+        lang = get_lang()
+        prefix = _get_severity_prefix(severity, lang)
         message = f"{prefix} {subject}\n\n{body}"
 
         # Send to Telegram API
@@ -130,8 +135,9 @@ def send_email_alert(
         smtp_user = os.getenv("EMAIL_USER")
         smtp_pass = os.getenv("EMAIL_PASS")
 
-        # Format message with severity prefix
-        prefix = _get_severity_prefix(severity)
+        # Format message with severity prefix (language-aware)
+        lang = get_lang()
+        prefix = _get_severity_prefix(severity, lang)
         full_subject = f"{prefix} {subject}"
 
         # Build email
