@@ -138,24 +138,26 @@
 | 40 | Quadrantes clicareis: clickable top stat cards in Meu Pipeline + leads URL-param filter pre-population | 2026-02-19 | c3701c2 | [22-quadrantes-clic-veis-no-ambiente-meu-pip](./quick/22-quadrantes-clic-veis-no-ambiente-meu-pip/) |
 | 41 | Faturamento Total card in /comissoes: added to gestor view (6th card), renamed in vendedor/gestor_vendedor views | 2026-02-19 | 43d4a16 | [23-valor-total-vendido-faturamento-na-aba-d](./quick/23-valor-total-vendido-faturamento-na-aba-d/) |
 | 42 | Fix Aguardando Closer flow: gestor_vendedor can set status on any lead + Paulo user lookup without active filter | 2026-02-19 | b68eb7d | [24-quando-o-vendedor-coloca-aguardando-clos](./quick/24-quando-o-vendedor-coloca-aguardando-clos/) |
+| 43 | Fix application error on Usuarios tab: remove useSession (no SessionProvider), move self-detection server-side via is_self in API | 2026-02-19 | e319f51 | [25-fix-application-error-on-usuarios-tab](./quick/25-fix-application-error-on-usuarios-tab/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-19
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 42 (quick-24): Fix Aguardando Closer closer_id assignment
+**Activity:** Quick task 43 (quick-25): Fix application error on Usuarios tab
 
 **Completed:**
-- Fixed gestor_vendedor vendedorCondition skipped when status = Aguardando Closer (any lead can be handed off to Paulo)
-- Removed AND active = true from Paulo's user lookup (silent closer_id failure when account inactive)
-- Added console.warn/error logging for observability
-- Created /api/debug-closer endpoint for post-deploy verification (gestor-only)
+- Removed useSession import from cadastro-vendedor/page.tsx (no SessionProvider in layout — Auth.js v5 server-side auth)
+- Added is_self: boolean to GET /api/usuarios response (server-side self-detection via session.userId)
+- Added is_self field to Usuario interface in page component
+- Replaced isSelf = usuario.id === currentUserId with isSelf = usuario.is_self
 - TypeScript compilation passes with zero errors
+- Production build succeeds
 
 **Key decisions:**
-- gestor_vendedor bypasses row-level restriction only for Aguardando Closer transitions (not all status changes)
-- Paulo closer lookup: no active filter, still assigns closer_id regardless of active state
+- Server-side self-detection via is_self API field eliminates useSession dependency on client
+- No SessionProvider in layout — useSession was causing the crash
 
 **Next Actions:**
 - None outstanding from this task
