@@ -7,7 +7,7 @@ import type { VendedorProjeto } from '@/lib/types'
 
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-orange-50 text-orange-600 border-orange-200',
-  'AINDA NÃO': 'bg-yellow-50 text-yellow-700 border-yellow-300',
+  'AINDA NÃO': 'bg-rose-50 text-rose-600 border-rose-300',
   'Retorno': 'bg-amber-50 text-amber-600 border-amber-200',
   'Proposta': 'bg-blue-50 text-[#0072F7] border-blue-200',
   'Aguardando Closer': 'bg-purple-50 text-purple-600 border-purple-200',
