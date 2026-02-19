@@ -29,7 +29,12 @@ export async function GET() {
       ORDER BY u.nome
     `)
 
-    return NextResponse.json(rows)
+    const result = rows.map((row: Record<string, unknown>) => ({
+      ...row,
+      is_self: row.id === session.userId,
+    }))
+
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Usuarios query error:', error)
     return NextResponse.json({ error: 'Failed to fetch usuarios' }, { status: 500 })
