@@ -135,18 +135,19 @@
 | 37 | Add AINDA NÃO yellow color scheme to all status surfaces + filter dropdown option for legacy leads | 2026-02-18 | 8a81eb5 | [19-filtro-ainda-n-o-com-esquema-de-cor-dife](./quick/19-filtro-ainda-n-o-com-esquema-de-cor-dife/) |
 | 38 | Fix pipeline card pct denominator (g.total_leads) + STATUS_CONFIG fallback key accent | 2026-02-18 | 717c6a7 | [20-percentuais-apresentado-a-aba-comissiona](./quick/20-percentuais-apresentado-a-aba-comissiona/) |
 | 39 | Remove summed valor from multi-emenda main row: show highest individual emenda instead of sum | 2026-02-18 | 9fe9024 | [21-remove-summed-valor-from-multi-emenda-ma](./quick/21-remove-summed-valor-from-multi-emenda-ma/) |
+| 40 | Quadrantes clicareis: clickable top stat cards in Meu Pipeline + leads URL-param filter pre-population | 2026-02-19 | c3701c2 | [22-quadrantes-clic-veis-no-ambiente-meu-pip](./quick/22-quadrantes-clic-veis-no-ambiente-meu-pip/) |
 
 ## Session Continuity
 
 ### Last Session Summary
-**Date:** 2026-02-18
+**Date:** 2026-02-19
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 39 (quick-21): Remove summed valor from multi-emenda main rows
+**Activity:** Quick task 40 (quick-22): Quadrantes clicareis no ambiente Meu Pipeline
 
 **Completed:**
-- Removed subLeads.reduce sum from multi-emenda main row valor display; always shows lead.valor_emenda
-- Removed subLeads.reduce sum from sort-by-valor logic; sorts by lead.valor_emenda directly
-- Sub-row individual valor display unchanged (already correct)
+- Made top stat cards clickable in page.tsx (Total Leads, Valor em Emendas, Comissao Vendas -> /comissoes, Taxa Fechamento -> /leads?status_contato=Fechado)
+- Added useSearchParams to leads/page.tsx with lazy useState initializer for status_contato URL param
+- Pipeline funnel cards already had onClick (confirmed, no change needed)
 - TypeScript compilation passes with no new errors
 
 **Next Actions:**
