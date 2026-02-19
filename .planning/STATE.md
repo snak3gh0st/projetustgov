@@ -136,18 +136,20 @@
 | 38 | Fix pipeline card pct denominator (g.total_leads) + STATUS_CONFIG fallback key accent | 2026-02-18 | 717c6a7 | [20-percentuais-apresentado-a-aba-comissiona](./quick/20-percentuais-apresentado-a-aba-comissiona/) |
 | 39 | Remove summed valor from multi-emenda main row: show highest individual emenda instead of sum | 2026-02-18 | 9fe9024 | [21-remove-summed-valor-from-multi-emenda-ma](./quick/21-remove-summed-valor-from-multi-emenda-ma/) |
 | 40 | Quadrantes clicareis: clickable top stat cards in Meu Pipeline + leads URL-param filter pre-population | 2026-02-19 | c3701c2 | [22-quadrantes-clic-veis-no-ambiente-meu-pip](./quick/22-quadrantes-clic-veis-no-ambiente-meu-pip/) |
+| 41 | Faturamento Total card in /comissoes: added to gestor view (6th card), renamed in vendedor/gestor_vendedor views | 2026-02-19 | 43d4a16 | [23-valor-total-vendido-faturamento-na-aba-d](./quick/23-valor-total-vendido-faturamento-na-aba-d/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-19
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 40 (quick-22): Quadrantes clicareis no ambiente Meu Pipeline
+**Activity:** Quick task 41 (quick-23): Faturamento Total card in /comissoes
 
 **Completed:**
-- Made top stat cards clickable in page.tsx (Total Leads, Valor em Emendas, Comissao Vendas -> /comissoes, Taxa Fechamento -> /leads?status_contato=Fechado)
-- Added useSearchParams to leads/page.tsx with lazy useState initializer for status_contato URL param
-- Pipeline funnel cards already had onClick (confirmed, no change needed)
+- Added "Faturamento Total" card to gestor view (6th card, grid updated to md:grid-cols-3 xl:grid-cols-6)
+- Renamed "Valor Vendas" to "Faturamento Total" in gestor_vendedor view + added subtitle
+- Renamed "Valor Vendas" to "Faturamento Total" in vendedor view + added subtitle
+- No API changes needed (data.summary.total_valor_venda already returned)
 - TypeScript compilation passes with no new errors
 
 **Next Actions:**
