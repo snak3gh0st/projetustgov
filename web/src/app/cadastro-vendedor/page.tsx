@@ -3,7 +3,6 @@
 import { useFormState, useFormStatus } from 'react-dom'
 import { createUsuario } from '@/lib/auth-actions'
 import { useEffect, useState, useCallback } from 'react'
-import { useSession } from 'next-auth/react'
 
 interface Usuario {
   id: string
@@ -13,6 +12,7 @@ interface Usuario {
   active: boolean
   created_at: string
   lead_count: number
+  is_self: boolean
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -53,7 +53,6 @@ export default function CadastroVendedorPage() {
   const [state, formAction] = useFormState(createUsuario, null)
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [loading, setLoading] = useState(true)
-  const { data: session } = useSession()
 
   const fetchUsuarios = useCallback(() => {
     setLoading(true)
@@ -98,8 +97,6 @@ export default function CadastroVendedorPage() {
       fetchUsuarios()
     }
   }
-
-  const currentUserId = (session?.user as { id?: string })?.id
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -217,7 +214,7 @@ export default function CadastroVendedorPage() {
               <tbody>
                 {usuarios.map((usuario) => {
                   const isGestor = usuario.role === 'gestor'
-                  const isSelf = usuario.id === currentUserId
+                  const isSelf = usuario.is_self
 
                   return (
                     <tr key={usuario.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
