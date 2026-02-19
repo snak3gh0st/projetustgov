@@ -83,7 +83,7 @@ export default function BIDashboard() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/bi')
+    fetch('/api/bi', { signal: AbortSignal.timeout(20000) })
       .then(r => r.json())
       .then(d => {
         if (d.error) { setError(d.error); return }
