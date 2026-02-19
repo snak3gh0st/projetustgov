@@ -345,15 +345,16 @@ export default function ComissoesPage() {
             <p className="text-3xl font-heading font-bold text-gray-900 mt-2">{data.summary.total_leads}</p>
           </div>
           <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Valor Vendas</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Faturamento Total</p>
             <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
               {formatCurrency(data.summary.total_valor_venda)}
             </p>
+            <p className="text-xs text-gray-500 mt-1">Valor vendas fechadas</p>
           </div>
         </div>
       ) : data.role === 'gestor' ? (
         /* Gestor view: show total paid out to everyone */
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
           <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
             <p className="text-xs text-gray-400 uppercase tracking-wider">Comissoes Vendedores</p>
             <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
@@ -378,6 +379,13 @@ export default function ComissoesPage() {
             <p className="text-3xl font-heading font-bold text-green-600 mt-2">
               {formatCurrency(data.summary.total_bonus)}
             </p>
+          </div>
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Faturamento Total</p>
+            <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
+              {formatCurrency(data.summary.total_valor_venda)}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">Valor vendas fechadas</p>
           </div>
           <div className="bg-white border-2 border-gray-900 shadow-sm rounded-xl p-5">
             <p className="text-xs text-gray-900 uppercase tracking-wider font-medium">Total Pago</p>
@@ -413,10 +421,11 @@ export default function ComissoesPage() {
             <p className="text-3xl font-heading font-bold text-gray-900 mt-2">{data.summary.total_leads}</p>
           </div>
           <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Valor Vendas</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Faturamento Total</p>
             <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
               {formatCurrency(data.summary.total_valor_venda)}
             </p>
+            <p className="text-xs text-gray-500 mt-1">Valor vendas fechadas</p>
           </div>
         </div>
       )}
