@@ -137,20 +137,25 @@
 | 39 | Remove summed valor from multi-emenda main row: show highest individual emenda instead of sum | 2026-02-18 | 9fe9024 | [21-remove-summed-valor-from-multi-emenda-ma](./quick/21-remove-summed-valor-from-multi-emenda-ma/) |
 | 40 | Quadrantes clicareis: clickable top stat cards in Meu Pipeline + leads URL-param filter pre-population | 2026-02-19 | c3701c2 | [22-quadrantes-clic-veis-no-ambiente-meu-pip](./quick/22-quadrantes-clic-veis-no-ambiente-meu-pip/) |
 | 41 | Faturamento Total card in /comissoes: added to gestor view (6th card), renamed in vendedor/gestor_vendedor views | 2026-02-19 | 43d4a16 | [23-valor-total-vendido-faturamento-na-aba-d](./quick/23-valor-total-vendido-faturamento-na-aba-d/) |
+| 42 | Fix Aguardando Closer flow: gestor_vendedor can set status on any lead + Paulo user lookup without active filter | 2026-02-19 | b68eb7d | [24-quando-o-vendedor-coloca-aguardando-clos](./quick/24-quando-o-vendedor-coloca-aguardando-clos/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-19
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 41 (quick-23): Faturamento Total card in /comissoes
+**Activity:** Quick task 42 (quick-24): Fix Aguardando Closer closer_id assignment
 
 **Completed:**
-- Added "Faturamento Total" card to gestor view (6th card, grid updated to md:grid-cols-3 xl:grid-cols-6)
-- Renamed "Valor Vendas" to "Faturamento Total" in gestor_vendedor view + added subtitle
-- Renamed "Valor Vendas" to "Faturamento Total" in vendedor view + added subtitle
-- No API changes needed (data.summary.total_valor_venda already returned)
-- TypeScript compilation passes with no new errors
+- Fixed gestor_vendedor vendedorCondition skipped when status = Aguardando Closer (any lead can be handed off to Paulo)
+- Removed AND active = true from Paulo's user lookup (silent closer_id failure when account inactive)
+- Added console.warn/error logging for observability
+- Created /api/debug-closer endpoint for post-deploy verification (gestor-only)
+- TypeScript compilation passes with zero errors
+
+**Key decisions:**
+- gestor_vendedor bypasses row-level restriction only for Aguardando Closer transitions (not all status changes)
+- Paulo closer lookup: no active filter, still assigns closer_id regardless of active state
 
 **Next Actions:**
 - None outstanding from this task
