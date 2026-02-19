@@ -139,25 +139,24 @@
 | 41 | Faturamento Total card in /comissoes: added to gestor view (6th card), renamed in vendedor/gestor_vendedor views | 2026-02-19 | 43d4a16 | [23-valor-total-vendido-faturamento-na-aba-d](./quick/23-valor-total-vendido-faturamento-na-aba-d/) |
 | 42 | Fix Aguardando Closer flow: gestor_vendedor can set status on any lead + Paulo user lookup without active filter | 2026-02-19 | b68eb7d | [24-quando-o-vendedor-coloca-aguardando-clos](./quick/24-quando-o-vendedor-coloca-aguardando-clos/) |
 | 43 | Fix application error on Usuarios tab: remove useSession (no SessionProvider), move self-detection server-side via is_self in API | 2026-02-19 | e319f51 | [25-fix-application-error-on-usuarios-tab](./quick/25-fix-application-error-on-usuarios-tab/) |
+| 44 | Fix Aguardando Closer from lead detail page: remove SaleModal intercept, closer_id set directly via PATCH + debug endpoint enhanced | 2026-02-19 | e5e488c | [26-quando-o-vendedor-coloca-aguardando-clos](./quick/26-quando-o-vendedor-coloca-aguardando-clos/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-19
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 43 (quick-25): Fix application error on Usuarios tab
+**Activity:** Quick task 44 (quick-26): Fix Aguardando Closer from lead detail page
 
 **Completed:**
-- Removed useSession import from cadastro-vendedor/page.tsx (no SessionProvider in layout — Auth.js v5 server-side auth)
-- Added is_self: boolean to GET /api/usuarios response (server-side self-detection via session.userId)
-- Added is_self field to Usuario interface in page component
-- Replaced isSelf = usuario.id === currentUserId with isSelf = usuario.is_self
-- TypeScript compilation passes with zero errors
-- Production build succeeds
+- Removed 'Aguardando Closer' from SaleModal intercept condition in lead/[cnpj]/page.tsx — only 'Fechado' now opens modal
+- Added diagnostic console.log lines to Aguardando Closer block in PATCH /api/leads/[cnpj] for Vercel log verification
+- Added recent_closer_assignments field to /api/debug-closer endpoint (last 5 rows with closer_id, ordered by updated_at DESC)
+- TypeScript compilation passes with zero errors across all 3 modified files
 
 **Key decisions:**
-- Server-side self-detection via is_self API field eliminates useSession dependency on client
-- No SessionProvider in layout — useSession was causing the crash
+- Aguardando Closer bypasses SaleModal — no valor_venda required at handoff stage
+- Diagnostic logs enable post-deploy verification without changing business logic
 
 **Next Actions:**
 - None outstanding from this task
