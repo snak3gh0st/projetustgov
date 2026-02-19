@@ -168,14 +168,22 @@ export default function CRMDashboard() {
 
       {/* 2. Global stats cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+        <div
+          role="button"
+          onClick={() => { window.location.href = '/leads' }}
+          className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+        >
           <p className="text-xs text-gray-500 uppercase tracking-wider">Total Leads</p>
           <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
             {g.total_leads.toLocaleString('pt-BR')}
           </p>
         </div>
         {!isVendedor && (
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+          <div
+            role="button"
+            onClick={() => { window.location.href = '/leads' }}
+            className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+          >
             <p className="text-xs text-gray-500 uppercase tracking-wider">Atribuidos</p>
             <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
               {g.total_assigned.toLocaleString('pt-BR')}
@@ -186,7 +194,11 @@ export default function CRMDashboard() {
           </div>
         )}
         {!isVendedor && (
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+          <div
+            role="button"
+            onClick={() => { window.location.href = '/leads' }}
+            className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+          >
             <p className="text-xs text-gray-500 uppercase tracking-wider">Nao Atribuidos</p>
             <p className="text-3xl font-heading font-bold text-amber-600 mt-2">
               {g.total_unassigned.toLocaleString('pt-BR')}
@@ -196,7 +208,11 @@ export default function CRMDashboard() {
             </p>
           </div>
         )}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+        <div
+          role="button"
+          onClick={() => { window.location.href = '/leads' }}
+          className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+        >
           <p className="text-xs text-gray-500 uppercase tracking-wider">Valor em Emendas</p>
           <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
             {formatCompactCurrency(g.total_valor_emenda)}
@@ -205,14 +221,22 @@ export default function CRMDashboard() {
         </div>
         {isVendedor && vendedores.length > 0 && (
           <>
-            <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <div
+              role="button"
+              onClick={() => { window.location.href = '/comissoes' }}
+              className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+            >
               <p className="text-xs text-gray-500 uppercase tracking-wider">Comissão Vendas</p>
               <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
                 {formatCompactCurrency(vendedores[0]?.comissao_total || 0)}
               </p>
               <p className="text-xs text-gray-400 mt-1">{formatCurrency(vendedores[0]?.comissao_total || 0)}</p>
             </div>
-            <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <div
+              role="button"
+              onClick={() => { window.location.href = '/leads?status_contato=Fechado' }}
+              className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+            >
               <p className="text-xs text-gray-500 uppercase tracking-wider">Taxa Fechamento</p>
               <p className="text-3xl font-heading font-bold text-green-600 mt-2">
                 {formatCompactCurrency((vendedores[0]?.fechado || 0) * 50)}
