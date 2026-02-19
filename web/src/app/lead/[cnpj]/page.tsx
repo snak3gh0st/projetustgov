@@ -67,8 +67,9 @@ export default function LeadDetailPage() {
 
   async function updateProjeto(id: number, field: string, value: string) {
     try {
-      // If status is changing to "Fechado" or "Aguardando Closer", open SaleModal instead
-      if (field === 'status_contato' && (value === 'Fechado' || value === 'Aguardando Closer')) {
+      // If status is changing to "Fechado", open SaleModal to collect valor_venda
+      // "Aguardando Closer" does NOT open SaleModal — it goes directly to PATCH API
+      if (field === 'status_contato' && value === 'Fechado') {
         const projeto = projetos.find(p => p.id === id)
         setSaleModal({
           projetoId: id,
