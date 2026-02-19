@@ -70,27 +70,30 @@ export async function GET() {
       `, vendedorParams),
 
       // 5. Chart: Pipeline Funnel — status counts for assigned leads
+      // Wrapped in subquery so ORDER BY can reference the computed 'status' column
+      // (PostgreSQL disallows referencing raw vp.status_contato in ORDER BY after GROUP BY)
       query(`
-        SELECT
-          CASE
-            WHEN COALESCE(vp.status_contato, 'Nao Contatado') IN ('Nao Contatado', 'Não Contatado', 'Novo', 'Contactado') THEN 'Nao Contatado'
-            ELSE vp.status_contato
-          END as status,
-          COUNT(DISTINCT vp.cnpj)::int as count
-        FROM vendedor_projetos vp
-        WHERE vp.vendedor_id IS NOT NULL
-        ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
-        GROUP BY 1
+        SELECT * FROM (
+          SELECT
+            CASE
+              WHEN COALESCE(vp.status_contato, 'Nao Contatado') IN ('Nao Contatado', 'Não Contatado', 'Novo', 'Contactado') THEN 'Nao Contatado'
+              ELSE vp.status_contato
+            END as status,
+            COUNT(DISTINCT vp.cnpj)::int as count
+          FROM vendedor_projetos vp
+          WHERE vp.vendedor_id IS NOT NULL
+          ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
+          GROUP BY 1
+        ) funnel
         ORDER BY
-          CASE
-            WHEN COALESCE(vp.status_contato, 'Nao Contatado') IN ('Nao Contatado', 'Não Contatado', 'Novo', 'Contactado') THEN 1
-            WHEN vp.status_contato = 'Retorno' THEN 2
-            WHEN vp.status_contato = 'Proposta' THEN 3
-            WHEN vp.status_contato = 'Fechado' THEN 4
+          CASE status
+            WHEN 'Nao Contatado' THEN 1
+            WHEN 'Retorno' THEN 2
+            WHEN 'Proposta' THEN 3
+            WHEN 'Fechado' THEN 4
             ELSE 5
           END
       `, vendedorParams),
-
       // 6. Chart: Commission by Vendedor (Fechado leads only)
       query(`
         SELECT
