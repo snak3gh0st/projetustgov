@@ -82,13 +82,18 @@ export async function PATCH(
 
     // Vendedor and gestor_vendedor can only update their own projects
     // gestor_vendedor (Paulo) can also update leads where closer_id = their id
+    // Exception: gestor_vendedor can set Aguardando Closer on ANY lead (privileged action to hand off to closer)
     let vendedorCondition = ''
     if (session.role === 'vendedor') {
       values.push(session.userId)
       vendedorCondition = `AND vendedor_id = $${paramIndex + 1}`
     } else if (session.role === 'gestor_vendedor') {
-      values.push(session.userId)
-      vendedorCondition = `AND (vendedor_id = $${paramIndex + 1} OR closer_id = $${paramIndex + 1})`
+      // gestor_vendedor can set Aguardando Closer on any lead (no restriction)
+      // but for other status changes, restrict to their own leads
+      if (body.status_contato !== 'Aguardando Closer') {
+        values.push(session.userId)
+        vendedorCondition = `AND (vendedor_id = $${paramIndex + 1} OR closer_id = $${paramIndex + 1})`
+      }
     }
 
     await query(`
@@ -101,16 +106,22 @@ export async function PATCH(
     if (body.status_contato === 'Aguardando Closer') {
       // SDR → Closer flow: SDR sends lead to Paulo as Closer
       // Set closer_id = Paulo, keep vendedor_id = SDR original
+      // Note: active filter removed so inactive accounts are still found (avoids silent failures)
       const pauloRes = await query(
-        "SELECT id FROM users WHERE email = 'paulo@projetus.org' AND active = true LIMIT 1"
+        "SELECT id, active FROM users WHERE email = 'paulo@projetus.org' LIMIT 1"
       )
       const pauloCloserId = pauloRes[0]?.id ?? null
       if (pauloCloserId) {
+        if (!pauloRes[0]?.active) {
+          console.warn('[PATCH] Paulo Gabriel account is inactive — still assigning as closer')
+        }
         await query(`
           UPDATE vendedor_projetos
           SET closer_id = $2, updated_at = NOW()
           WHERE id = $1
         `, [projectId, pauloCloserId])
+      } else {
+        console.error('[PATCH] Paulo Gabriel (paulo@projetus.org) NOT FOUND in users table — closer_id not set')
       }
     } else if (body.status_contato === 'Fechado') {
       // Step 1: Ensure vendedor_id is set. If NULL, assign current user as vendedor.
