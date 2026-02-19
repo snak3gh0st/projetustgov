@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { formatCNPJ, formatCompactCurrency, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
@@ -31,11 +32,12 @@ interface SessionUser {
 }
 
 export default function LeadsPage() {
+  const searchParams = useSearchParams()
   const [leads, setLeads] = useState<VendedorProjeto[]>([])
   const [selectedLead, setSelectedLead] = useState<VendedorProjeto | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status_contato') || '')
   const [vendedorFilter, setVendedorFilter] = useState('')
   const [vendedores, setVendedores] = useState<Vendedor[]>([])
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null)
