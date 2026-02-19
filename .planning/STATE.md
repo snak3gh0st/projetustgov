@@ -52,6 +52,7 @@
 | Inline edit pattern for contact fields | 11-05 | Cleaner UX than always-visible inputs, maintains read-only appearance | 2026-02-12 |
 | Optimistic updates in slide-over | 11-05 | Faster perceived performance, acceptable for MVP without parent refresh | 2026-02-12 |
 | Database-driven commission config | 13-01 | Enables gestor to adjust rates without code deployment, supports future per-vendedor rates | 2026-02-14 |
+| bot_config table for language setting | quick-27 | Language switchable from dashboard without code deployment; get_lang() falls back to pt-BR on DB error | 2026-02-19 |
 | Separate commission_overrides table | 13-01 | Preserves audit trail, tracks approval + motivo for each override | 2026-02-14 |
 | Commission locking on Fechado status | 13-01 | Prevents retroactive rate changes affecting closed deals, allows re-opening leads | 2026-02-14 |
 | PostgreSQL NUMERIC for commission math | 13-01 | Avoids floating-point precision errors, keeps calculation logic close to data | 2026-02-14 |
@@ -140,23 +141,29 @@
 | 42 | Fix Aguardando Closer flow: gestor_vendedor can set status on any lead + Paulo user lookup without active filter | 2026-02-19 | b68eb7d | [24-quando-o-vendedor-coloca-aguardando-clos](./quick/24-quando-o-vendedor-coloca-aguardando-clos/) |
 | 43 | Fix application error on Usuarios tab: remove useSession (no SessionProvider), move self-detection server-side via is_self in API | 2026-02-19 | e319f51 | [25-fix-application-error-on-usuarios-tab](./quick/25-fix-application-error-on-usuarios-tab/) |
 | 44 | Fix Aguardando Closer from lead detail page: remove SaleModal intercept, closer_id set directly via PATCH + debug endpoint enhanced | 2026-02-19 | e5e488c | [26-quando-o-vendedor-coloca-aguardando-clos](./quick/26-quando-o-vendedor-coloca-aguardando-clos/) |
+| 45 | Multi-language bot alerts (pt-BR / en-US) with /configuracoes settings page + bot_config DB table | 2026-02-19 | 60cfe41 | [27-i-need-to-add-more-languages-supports-to](./quick/27-i-need-to-add-more-languages-supports-to/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-19
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 44 (quick-26): Fix Aguardando Closer from lead detail page
+**Activity:** Quick task 45 (quick-27): Multi-language bot alerts with /configuracoes settings page
 
 **Completed:**
-- Removed 'Aguardando Closer' from SaleModal intercept condition in lead/[cnpj]/page.tsx — only 'Fechado' now opens modal
-- Added diagnostic console.log lines to Aguardando Closer block in PATCH /api/leads/[cnpj] for Vercel log verification
-- Added recent_closer_assignments field to /api/debug-closer endpoint (last 5 rows with closer_id, ordered by updated_at DESC)
-- TypeScript compilation passes with zero errors across all 3 modified files
+- Created bot_config PostgreSQL table (auto-init on first GET, default language 'pt-BR')
+- Created GET/PUT /api/bot-config endpoint with gestor auth and language validation
+- Created /configuracoes page (server component with gestor guard + client island radio selector)
+- Added settings cog icon + Configuracoes nav item to gestor sidebar only
+- Created src/monitor/bot_messages.py with MESSAGES dict for pt-BR and en-US + get_lang() + t() helpers
+- Updated alerting.py: _get_severity_prefix is now language-aware
+- Updated volume_alerts.py and scheduler_health.py to use t() for all message strings
+- TypeScript compilation passes with zero errors
 
 **Key decisions:**
-- Aguardando Closer bypasses SaleModal — no valor_venda required at handoff stage
-- Diagnostic logs enable post-deploy verification without changing business logic
+- get_lang() silently falls back to pt-BR if DB unavailable — no alerting disruption
+- Auto-create table on first GET (same inline migration pattern as commission-config)
+- Language selector is immediate on radio select, no separate save button
 
 **Next Actions:**
 - None outstanding from this task
