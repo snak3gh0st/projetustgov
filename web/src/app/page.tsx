@@ -286,7 +286,7 @@ export default function CRMDashboard() {
                   </div>
 
                   {/* Conversion rate from previous stage */}
-                  {conversionRate && (
+                  {conversionRate && Number(conversionRate) <= 100 && (
                     <p className="text-[10px] text-gray-400 mt-1.5">
                       {conversionRate}% de {STATUS_CONFIG[STATUS_ORDER[idx - 1]].label}
                     </p>
