@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from src.loader.database import get_engine
 from src.loader.extraction_log import get_last_extraction
 from src.loader.db_models import ExtractionLog
-from .bot_messages import get_lang, t
 
 
 def _get_extraction_hour() -> int:
@@ -90,8 +89,6 @@ def get_scheduler_status() -> dict:
     # Determine status
     now = datetime.now()
 
-    lang = get_lang()
-
     if last_extraction is None:
         return {
             "status": "unhealthy",
@@ -116,16 +113,20 @@ def get_scheduler_status() -> dict:
     # Allow 25 hours window (one missed day)
     if last_time >= expected_run_time:
         status = "healthy"
-        details = t("scheduler_healthy", lang, last=last_time.strftime('%Y-%m-%d %H:%M'))
+        details = (
+            f"Scheduler healthy: Last ran at {last_time.strftime('%Y-%m-%d %H:%M')}"
+        )
     elif last_time >= expected_run_time - timedelta(hours=1):
         status = "healthy"  # Still within acceptable window
-        details = t("scheduler_healthy", lang, last=last_time.strftime('%Y-%m-%d %H:%M'))
+        details = (
+            f"Scheduler healthy: Last ran at {last_time.strftime('%Y-%m-%d %H:%M')}"
+        )
     else:
         status = "degraded"
-        details = t(
-            "scheduler_degraded", lang,
-            last=last_time.strftime('%Y-%m-%d %H:%M'),
-            expected=expected_run_time.strftime('%Y-%m-%d %H:%M'),
+        details = (
+            f"Scheduler degraded: Last extraction was at "
+            f"{last_time.strftime('%Y-%m-%d %H:%M')}, "
+            f"expected by {expected_run_time.strftime('%Y-%m-%d %H:%M')}"
         )
 
     return {
@@ -174,13 +175,11 @@ def check_scheduler_health(
     else:
         expected_run_time = expected_time_today - timedelta(days=1)
 
-    lang = get_lang()
-
     # No extractions yet
     if last_extraction is None:
-        return False, t(
-            "scheduler_miss_no_records", lang,
-            expected=expected_run_time.strftime('%Y-%m-%d %H:%M'),
+        return False, (
+            f"Scheduler miss: No extraction records found. "
+            f"Expected by {expected_run_time.strftime('%Y-%m-%d %H:%M')}"
         )
 
     last_time = last_extraction.run_date
@@ -191,12 +190,13 @@ def check_scheduler_health(
     if last_time >= alert_threshold:
         # Last extraction was too long ago
         hours_overdue = (alert_threshold - last_time).total_seconds() / 3600
-        return False, t(
-            "scheduler_miss_overdue", lang,
-            hours=hours_overdue,
-            expected=expected_run_time.strftime('%Y-%m-%d %H:%M'),
-            last=last_time.strftime('%Y-%m-%d %H:%M'),
+        return False, (
+            f"Scheduler miss: Last extraction was {hours_overdue:.1f} hours overdue. "
+            f"Expected by {expected_run_time.strftime('%Y-%m-%d %H:%M')}, "
+            f"last ran at {last_time.strftime('%Y-%m-%d %H:%M')}"
         )
 
     # Everything is fine
-    return True, t("scheduler_healthy", lang, last=last_time.strftime('%Y-%m-%d %H:%M'))
+    return True, (
+        f"Scheduler healthy: Last ran at {last_time.strftime('%Y-%m-%d %H:%M')}"
+    )
