@@ -24,12 +24,9 @@ export async function GET(request: NextRequest) {
     // Check for exclude_existing parameter (for gestor assignment view)
     const excludeExisting = searchParams.get('exclude_existing')
 
-    // Vendedor -> only their assigned projects
-    // gestor_vendedor (Paulo) -> their projects + leads where they are closer
-    if (session.role === 'vendedor') {
-      conditions.push(`vp.vendedor_id = $${paramIndex++}`)
-      params.push(session.userId)
-    } else if (session.role === 'gestor_vendedor') {
+    // Vendedor -> their assigned projects + leads where they are closer
+    // gestor_vendedor (Paulo) -> same: vendedor_id OR closer_id
+    if (session.role === 'vendedor' || session.role === 'gestor_vendedor') {
       conditions.push(`(vp.vendedor_id = $${paramIndex} OR vp.closer_id = $${paramIndex})`)
       params.push(session.userId)
       paramIndex++

@@ -80,16 +80,10 @@ export async function PATCH(
     updates.push(`updated_at = NOW()`)
     values.push(projectId)
 
-    // Vendedor and gestor_vendedor can only update their own projects
-    // gestor_vendedor (Paulo) can also update leads where closer_id = their id
-    // Exception: gestor_vendedor can set Aguardando Closer on ANY lead (privileged action to hand off to closer)
+    // Vendedor/gestor_vendedor can update their own leads or leads where they are closer
+    // Exception: setting Aguardando Closer is allowed on ANY lead (SDR hands off to closer)
     let vendedorCondition = ''
-    if (session.role === 'vendedor') {
-      values.push(session.userId)
-      vendedorCondition = `AND vendedor_id = $${paramIndex + 1}`
-    } else if (session.role === 'gestor_vendedor') {
-      // gestor_vendedor can set Aguardando Closer on any lead (no restriction)
-      // but for other status changes, restrict to their own leads
+    if (session.role === 'vendedor' || session.role === 'gestor_vendedor') {
       if (body.status_contato !== 'Aguardando Closer') {
         values.push(session.userId)
         vendedorCondition = `AND (vendedor_id = $${paramIndex + 1} OR closer_id = $${paramIndex + 1})`
