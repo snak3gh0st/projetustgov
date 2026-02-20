@@ -337,10 +337,11 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     const is2026 = ano === '2026' || codeYear === '2026'
     totalProgramsScanned++
     if (!is2026) return
-    if (!natJur.toLowerCase().includes('civil') && !natJur.toLowerCase().includes('organiza')) {
-      programsDroppedNatJur++
-      if (droppedNatJurSamples.length < 3) droppedNatJurSamples.push(natJur)
-      return
+    // natJur filter removed — was too restrictive, blocked Ministério do Esporte and other valid programs
+    // Log for observability only
+    if (natJur) {
+      programsDroppedNatJur++ // repurposed: counts programs WITH a natJur value (for logging)
+      if (droppedNatJurSamples.length < 5) droppedNatJurSamples.push(natJur)
     }
 
     const idProg = row.ID_PROGRAMA || ''
@@ -354,9 +355,9 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
   })
   stats.downloaded++
   stats.programs_scanned = totalProgramsScanned
-  stats.programs_dropped_nat_jur = programsDroppedNatJur
-  console.log(`[repo-sync] Programs dropped by natJur filter: ${programsDroppedNatJur} of ${totalProgramsScanned} scanned`)
-  console.log('[repo-sync] Dropped natJur samples:', droppedNatJurSamples)
+  stats.programs_dropped_nat_jur = 0 // no longer filtering by natJur
+  console.log(`[repo-sync] Programs scanned (2026): ${totalProgramsScanned}, loaded: ${programas.size}`)
+  console.log('[repo-sync] natJur samples seen:', droppedNatJurSamples)
 
   const validCods = new Set<string>()
   const codToId = new Map<string, string>()
