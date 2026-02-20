@@ -155,13 +155,14 @@
 | 56 | Fix comissoes: closer (Paulo) no longer receives SDR's R$50 bonus in split commission display | 2026-02-20 | 6ca928f | [39-quando-sdr-passa-para-o-closer-closer-re](./quick/39-quando-sdr-passa-para-o-closer-closer-re/) |
 | 57 | Fix STATUS_CONFIG accent key in comissoes page: 'Nao Contatado' → 'Não Contatado' so badge styling resolves correctly | 2026-02-20 | e58ff6b | [40-percentuais-apresentado-a-aba-comissiona](./quick/40-percentuais-apresentado-a-aba-comissiona/) |
 | 58 | CNPJ Monitorado: personal watchlist + web push notifications on emenda sync via service worker + VAPID | 2026-02-20 | 7134a0f | [41-ambiente-para-adi-o-do-cnpj-monitorado-e](./quick/41-ambiente-para-adi-o-do-cnpj-monitorado-e/) |
+| 59 | AINDA NÃO no pipeline administrativo: API count + 6th pipeline card (rose) | 2026-02-20 | 8a1a538 | [42-ainda-n-o-no-pipeline-administrativo](./quick/42-ainda-n-o-no-pipeline-administrativo/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-20
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 58 (quick-41): CNPJ Monitorado + web push notifications
+**Activity:** Quick task 59 (quick-42): AINDA NÃO no pipeline administrativo
 
 **Completed:**
 - quick-41 (#58): CNPJ Monitorado personal watchlist at /monitorar, cnpj_monitorado + push_subscriptions DB tables, web push infrastructure via VAPID, cron sync STEP 7b triggers push notifications for watched CNPJs. Commits: 1bf7d2d, e32226e, 7134a0f
