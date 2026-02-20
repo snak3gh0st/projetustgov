@@ -252,6 +252,8 @@ interface SyncStats {
   contacts_created: number
   errors: number
   duration_ms: number
+  programs_scanned: number
+  programs_dropped_nat_jur: number
 }
 
 interface ProgramaInfo {
@@ -314,6 +316,8 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     contacts_created: 0,
     errors: 0,
     duration_ms: 0,
+    programs_scanned: 0,
+    programs_dropped_nat_jur: 0,
   }
 
   // ========================================================================
@@ -321,6 +325,9 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
   // ========================================================================
   console.log('[repo-sync] STEP 1: Loading siconv_programa (2026 + OSC)...')
   const programas = new Map<string, ProgramaInfo>() // id_programa -> info
+  let totalProgramsScanned = 0
+  let programsDroppedNatJur = 0
+  const droppedNatJurSamples: string[] = []
 
   await downloadAndStreamCSV(ZIP_FILES.programa, (row) => {
     const ano = row.ANO_DISPONIBILIZACAO || ''
@@ -328,8 +335,13 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     const natJur = row.NATUREZA_JURIDICA_PROGRAMA || ''
     const codeYear = cod.length >= 9 ? cod.substring(5, 9) : ''
     const is2026 = ano === '2026' || codeYear === '2026'
+    totalProgramsScanned++
     if (!is2026) return
-    if (!natJur.toLowerCase().includes('civil') && !natJur.toLowerCase().includes('organiza')) return
+    if (!natJur.toLowerCase().includes('civil') && !natJur.toLowerCase().includes('organiza')) {
+      programsDroppedNatJur++
+      if (droppedNatJurSamples.length < 3) droppedNatJurSamples.push(natJur)
+      return
+    }
 
     const idProg = row.ID_PROGRAMA || ''
     if (!idProg || programas.has(idProg)) return
@@ -341,6 +353,10 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     })
   })
   stats.downloaded++
+  stats.programs_scanned = totalProgramsScanned
+  stats.programs_dropped_nat_jur = programsDroppedNatJur
+  console.log(`[repo-sync] Programs dropped by natJur filter: ${programsDroppedNatJur} of ${totalProgramsScanned} scanned`)
+  console.log('[repo-sync] Dropped natJur samples:', droppedNatJurSamples)
 
   const validCods = new Set<string>()
   const codToId = new Map<string, string>()
@@ -560,6 +576,7 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
         telefone = COALESCE(NULLIF(vendedor_projetos.telefone, ''), EXCLUDED.telefone),
         email = COALESCE(NULLIF(vendedor_projetos.email, ''), EXCLUDED.email),
         updated_at = NOW()
+      RETURNING (xmax = 0) AS was_inserted
     `
     // Note: vendedor_id, status_contato, valor_venda, comissao_*, tipo_vendedor,
     //       observacoes, comissao_locked, comissao_bonus, closer_id are NEVER touched by the UPDATE clause.
@@ -571,7 +588,9 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       const assignmentKey = lead.nr_emenda
         ? `${lead.cnpj}|${lead.nr_emenda}`
         : `${lead.cnpj}|${lead.codigo_programa}`
-      const isExisting = existingAssignments.has(assignmentKey) || cnpjAssignments.has(lead.cnpj)
+      // Bug fix: use ONLY exact assignmentKey — cnpjAssignments.has(lead.cnpj) caused false positives
+      // where a new emenda row for an existing CNPJ was incorrectly marked as isExisting=true.
+      const isExisting = existingAssignments.has(assignmentKey)
       const isExistingClient = existingClients.has(lead.cnpj)
 
       // For new leads, assign vendedor via round-robin
@@ -617,16 +636,15 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       try {
         const result = await client.query(UPSERT_SQL, values)
         // xmax = 0 means INSERT (new row), xmax != 0 means UPDATE (existing row)
-        if (result.rows && result.rows.length > 0) {
-          // query doesn't return rows without RETURNING
-        }
-        if (isExisting) {
-          stats.updated++
-        } else {
+        // Use actual DB result to track insert vs update — more reliable than isExisting proxy
+        const wasInserted = result.rows[0]?.was_inserted === true
+        if (wasInserted) {
           stats.inserted++
           if (!lead.telefone && !lead.email) {
             newCnpjsNeedingContacts.add(lead.cnpj)
           }
+        } else {
+          stats.updated++
         }
       } catch (err) {
         console.error(`[repo-sync] Upsert error CNPJ ${lead.cnpj}: ${err}`)
