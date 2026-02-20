@@ -151,6 +151,7 @@
 | 53 | Cron rescheduled to 09:30 BRT (12:30 UTC) + BrasilAPI refiner expanded to all CNPJs missing nome/email/telefone/endereco | 2026-02-20 | 212b37a | [35-documentar-sessao-cron-09-30-brt-brasila](./quick/35-documentar-sessao-cron-09-30-brt-brasila/) |
 | 54 | SDR column + purple CLOSER badge for gestor_vendedor in leads list (Paulo sees who sent each mirrored lead) | 2026-02-20 | 6cf50c8 | [37-paulo-o-closer-precisa-espelhar-o-lead-p](./quick/37-paulo-o-closer-precisa-espelhar-o-lead-p/) |
 | 55 | Scope closer_id visibility to Aguardando Closer only: GET filter + PATCH unconditional clear + 5 stale rows cleaned | 2026-02-20 | 0962a42 | [38-paulo-precisa-ver-somente-aguardando-clo](./quick/38-paulo-precisa-ver-somente-aguardando-clo/) |
+| 56 | Fix comissoes: closer (Paulo) no longer receives SDR's R$50 bonus in split commission display | 2026-02-20 | 6ca928f | [39-quando-sdr-passa-para-o-closer-closer-re](./quick/39-quando-sdr-passa-para-o-closer-closer-re/) |
 
 ## Session Continuity
 
