@@ -144,13 +144,14 @@
 | 46 | Fix sync bugs: isExisting false-positive, UPSERT RETURNING xmax for accurate counts, natJur filter logging + /api/debug-sync endpoint | 2026-02-20 | d4f0675 | [28-veja-report-do-cliente-veja-se-estamos-a](./quick/28-veja-report-do-cliente-veja-se-estamos-a/) |
 | 47 | Verificar status dos ajustes CRM de 18/02 — todos os 8 itens confirmados implementados | 2026-02-20 | - | [29-verificar-status-dos-ajustes-crm-de-18-0](./quick/29-verificar-status-dos-ajustes-crm-de-18-0/) |
 | 48 | Add sync visibility panel to gestor dashboard: cron_sync_log table + SyncPanel with Sincronizar Agora | 2026-02-20 | 1d7abc6 | [30-add-sync-visibility-panel-to-gestor-dash](./quick/30-add-sync-visibility-panel-to-gestor-dash/) |
+| 49 | Fix Paulo roleta exclusion (gestor_vendedor removed from round-robin) + redistribute 442 leads + cascade shows totalValor (soma emendas) | 2026-02-20 | c90a7f8 | [31-fix-paulo-roleta-exclusion-cascade-sum-v](./quick/31-fix-paulo-roleta-exclusion-cascade-sum-v/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-20
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 48 (quick-30): Add sync visibility panel to gestor dashboard
+**Activity:** Quick task 49 (quick-31): Paulo roleta exclusion + cascade sum fix
 
 **Completed:**
 - Created cron_sync_log DB table (auto-created via CREATE TABLE IF NOT EXISTS inside syncLeadsFromRepo)
