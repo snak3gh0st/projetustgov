@@ -9,7 +9,7 @@ import {
 // ─── Category Donut ───
 const CAT_COLORS: Record<string, string> = {
   'PROPOSTA': '#3b82f6',
-  'AINDA NÃO': '#f43f5e',
+  'Ainda Não': '#f43f5e',
   'RETORNO': '#22c55e',
 }
 

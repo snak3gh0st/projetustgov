@@ -32,7 +32,7 @@ export async function GET() {
           COUNT(DISTINCT CASE WHEN vendedor_id IS NULL THEN cnpj END)::int as total_unassigned,
           COALESCE(SUM(valor_emenda::numeric), 0) as total_valor_emenda,
           COUNT(DISTINCT CASE WHEN COALESCE(status_contato, 'Não Contatado') IN ('Não Contatado', 'Novo', 'Contactado') THEN cnpj END)::int as status_nao_contatado,
-          COUNT(DISTINCT CASE WHEN status_contato = 'AINDA NÃO' THEN cnpj END)::int as status_ainda_nao,
+          COUNT(DISTINCT CASE WHEN status_contato = 'Ainda Não' THEN cnpj END)::int as status_ainda_nao,
           COUNT(DISTINCT CASE WHEN status_contato = 'Retorno' THEN cnpj END)::int as status_retorno,
           COUNT(DISTINCT CASE WHEN status_contato = 'Proposta' THEN cnpj END)::int as status_proposta,
           COUNT(DISTINCT CASE WHEN status_contato = 'Aguardando Closer' THEN cnpj END)::int as status_aguardando_closer,
@@ -190,7 +190,7 @@ export async function GET() {
         total_valor_emenda: Number(g.total_valor_emenda) || 0,
         by_status: {
           'Não Contatado': Number(g.status_nao_contatado) || 0,
-          'AINDA NÃO': Number(g.status_ainda_nao) || 0,
+          'Ainda Não': Number(g.status_ainda_nao) || 0,
           'Retorno': Number(g.status_retorno) || 0,
           'Proposta': Number(g.status_proposta) || 0,
           'Aguardando Closer': Number(g.status_aguardando_closer) || 0,

@@ -89,7 +89,7 @@ interface SyncLog {
 // --- Status config ---
 const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; label: string }> = {
   'Não Contatado': { color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200', bar: 'bg-orange-500', label: 'Não Contatado' },
-  'AINDA NÃO': { color: 'text-rose-600', bg: 'bg-rose-50 border-rose-200', bar: 'bg-rose-500', label: 'AINDA NÃO' },
+  'Ainda Não': { color: 'text-rose-600', bg: 'bg-rose-50 border-rose-200', bar: 'bg-rose-500', label: 'Ainda Não' },
   'Retorno': { color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', bar: 'bg-amber-500', label: 'Retorno' },
   'Proposta': { color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', bar: 'bg-blue-500', label: 'Proposta' },
   'Aguardando Closer': { color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200', bar: 'bg-purple-500', label: 'Aguardando Closer' },
@@ -97,7 +97,7 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; la
   'Telefone Invalido': { color: 'text-gray-500', bg: 'bg-gray-50 border-gray-200', bar: 'bg-gray-400', label: 'Telefone Invalido' },
 }
 
-const STATUS_ORDER = ['Não Contatado', 'AINDA NÃO', 'Retorno', 'Proposta', 'Aguardando Closer', 'Fechado'] as const
+const STATUS_ORDER = ['Não Contatado', 'Ainda Não', 'Retorno', 'Proposta', 'Aguardando Closer', 'Fechado'] as const
 
 function timeAgo(date: string | null): string {
   if (!date) return 'nunca'
