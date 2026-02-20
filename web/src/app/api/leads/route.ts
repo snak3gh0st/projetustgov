@@ -87,7 +87,27 @@ export async function GET(request: NextRequest) {
           WHERE lc.lead_cnpj = vp.cnpj
           ORDER BY lc.principal DESC, lc.created_at ASC
           LIMIT 1
-        ) as principal_telefone_status
+        ) as principal_telefone_status,
+        COALESCE(
+          (
+            SELECT lc.telefone
+            FROM lead_contacts lc
+            WHERE lc.lead_cnpj = vp.cnpj
+            ORDER BY lc.principal DESC, lc.created_at ASC
+            LIMIT 1
+          ),
+          vp.telefone
+        ) AS telefone,
+        COALESCE(
+          (
+            SELECT lc.email
+            FROM lead_contacts lc
+            WHERE lc.lead_cnpj = vp.cnpj
+            ORDER BY lc.principal DESC, lc.created_at ASC
+            LIMIT 1
+          ),
+          vp.email
+        ) AS email
       FROM vendedor_projetos vp
       LEFT JOIN users u ON vp.vendedor_id = u.id
       LEFT JOIN users uc ON vp.closer_id = uc.id
