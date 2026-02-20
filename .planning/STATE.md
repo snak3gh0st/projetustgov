@@ -147,6 +147,7 @@
 | 49 | Fix Paulo roleta exclusion (gestor_vendedor removed from round-robin) + redistribute 442 leads + cascade shows totalValor (soma emendas) | 2026-02-20 | c90a7f8 | [31-fix-paulo-roleta-exclusion-cascade-sum-v](./quick/31-fix-paulo-roleta-exclusion-cascade-sum-v/) |
 | 50 | Fix missing contacts: API now pulls telefone/email from lead_contacts (97% coverage) instead of vendedor_projetos (22%) | 2026-02-20 | 289d76c | [32-fix-missing-contacts-leads-fetched-from-](./quick/32-fix-missing-contacts-leads-fetched-from-/) |
 | 51 | Fix cascade sum: use client-side totalValor (sub-rows only) not DB-wide total_valor_emendas (ignores filters) | 2026-02-20 | 283df9e | [33-fix-cascade-valor-sum-total-valor-emenda](./quick/33-fix-cascade-valor-sum-total-valor-emenda/) |
+| 52 | Backfill sem-nome leads (316→42) via BrasilAPI + sync STEP 8 now enriches sem-nome CNPJs each run | 2026-02-20 | 50577ec | [34-audit-sem-nome-leads-fix-brasilapi-enric](./quick/34-audit-sem-nome-leads-fix-brasilapi-enric/) |
 
 ## Session Continuity
 
