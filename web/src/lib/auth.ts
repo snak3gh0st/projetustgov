@@ -61,6 +61,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id as string
         token.role = (user as { role: 'gestor' | 'vendedor' | 'visualizador' | 'gestor_vendedor' }).role
+        token.roleRefreshedAt = Date.now()
+      } else if (token.id) {
+        // Refresh role from DB every hour so role changes take effect without re-login
+        const REFRESH_MS = 60 * 60 * 1000
+        const lastRefresh = (token.roleRefreshedAt as number) || 0
+        if (Date.now() - lastRefresh > REFRESH_MS) {
+          const rows = await query<{ role: string; active: boolean }>(
+            `SELECT role, active FROM users WHERE id = $1`, [token.id]
+          )
+          if (rows[0]) {
+            token.role = rows[0].role
+            token.roleRefreshedAt = Date.now()
+          }
+        }
       }
       return token
     },
