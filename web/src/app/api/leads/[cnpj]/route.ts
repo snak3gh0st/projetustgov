@@ -210,13 +210,14 @@ export async function PATCH(
       }
     } else if (body.status_contato !== undefined && body.status_contato !== 'Fechado' && body.status_contato !== 'Aguardando Closer') {
       // Unlock commission if status changes away from Fechado
-      // Also clear closer_id if reverting from Aguardando Closer
+      // Always clear closer_id when status is not 'Aguardando Closer' or 'Fechado'
+      // This ensures stale closer_id values don't cause Paulo to see leads he should not see
       await query(`
         UPDATE vendedor_projetos
         SET comissao_locked = false, comissao_valor = NULL, comissao_percentual = NULL, comissao_bonus = NULL,
             closer_comissao_percentual = NULL, closer_comissao_valor = NULL,
-            closer_id = CASE WHEN status_contato = 'Aguardando Closer' THEN NULL ELSE closer_id END
-        WHERE id = $1 AND (comissao_locked = true OR status_contato = 'Aguardando Closer')
+            closer_id = NULL
+        WHERE id = $1 AND (comissao_locked = true OR closer_id IS NOT NULL)
       `, [projectId])
     } else if (body.tipo_vendedor !== undefined && !body.status_contato) {
       // If tipo_vendedor changed and lead is already Fechado, recalculate commission
