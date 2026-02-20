@@ -471,6 +471,17 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
   const client = await pool.connect()
 
   try {
+    // Ensure cron_sync_log table exists (runs on every call, no-op after first)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS cron_sync_log (
+        id SERIAL PRIMARY KEY,
+        ran_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        inserted INT NOT NULL DEFAULT 0,
+        updated INT NOT NULL DEFAULT 0,
+        errors INT NOT NULL DEFAULT 0,
+        duration_ms INT NOT NULL DEFAULT 0
+      )
+    `)
     // Get active vendedores
     const vendedoresRes = await client.query(
       "SELECT id, email FROM users WHERE role IN ('vendedor', 'gestor_vendedor') AND active = true ORDER BY nome"
@@ -857,10 +868,23 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     }
 
   } finally {
+    // Calculate duration before logging
+    stats.duration_ms = Date.now() - startTime
+
+    // Write sync log row — wrapped in try/catch so a logging failure never breaks the sync
+    try {
+      await client.query(
+        `INSERT INTO cron_sync_log (ran_at, inserted, updated, errors, duration_ms)
+         VALUES (NOW(), $1, $2, $3, $4)`,
+        [stats.inserted, stats.updated, stats.errors, stats.duration_ms]
+      )
+    } catch (logErr) {
+      console.warn('[repo-sync] Failed to write cron_sync_log row:', logErr)
+    }
+
     client.release()
   }
 
-  stats.duration_ms = Date.now() - startTime
   console.log(`[repo-sync] Complete in ${(stats.duration_ms / 1000).toFixed(1)}s | contacts_created: ${stats.contacts_created}`)
   return stats
 }
