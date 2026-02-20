@@ -141,14 +141,18 @@ export async function GET() {
           COALESCE(u.nome, 'Sem vendedor') as vendedor_nome,
           vp.status_contato,
           (
-            SELECT MAX(cn.created_at)
-            FROM contact_notes cn
-            WHERE cn.lead_cnpj = vp.cnpj
+            SELECT GREATEST(
+              (SELECT MAX(cn.created_at) FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj),
+              (SELECT MAX(vp2.updated_at) FROM vendedor_projetos vp2
+               WHERE vp2.cnpj = vp.cnpj AND vp2.status_contato != 'Não Contatado')
+            )
           ) as last_contact_date,
           (
-            SELECT EXTRACT(DAY FROM NOW() - MAX(cn.created_at))::int
-            FROM contact_notes cn
-            WHERE cn.lead_cnpj = vp.cnpj
+            SELECT EXTRACT(DAY FROM NOW() - GREATEST(
+              (SELECT MAX(cn.created_at) FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj),
+              (SELECT MAX(vp2.updated_at) FROM vendedor_projetos vp2
+               WHERE vp2.cnpj = vp.cnpj AND vp2.status_contato != 'Não Contatado')
+            ))::int
           ) as days_since_last_contact,
           (
             SELECT lc.telefone_status
