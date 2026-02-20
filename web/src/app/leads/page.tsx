@@ -468,21 +468,30 @@ export default function LeadsPage() {
                     {(sessionUser?.role === 'gestor' || sessionUser?.role === 'gestor_vendedor') && (
                       <td className="px-4 py-3">
                         {sessionUser?.role === 'gestor' ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500">{lead.vendedor_nome || '-'}</span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setAssignmentModal({
-                                  cnpj: lead.cnpj,
-                                  nome: lead.nome,
-                                  currentVendedor: lead.vendedor_nome || null
-                                })
-                              }}
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-[#0072F7] transition-colors"
-                            >
-                              {lead.vendedor_nome ? '↻' : '+'}
-                            </button>
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500">{lead.vendedor_nome || '-'}</span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setAssignmentModal({
+                                    cnpj: lead.cnpj,
+                                    nome: lead.nome,
+                                    currentVendedor: lead.vendedor_nome || null
+                                  })
+                                }}
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-[#0072F7] transition-colors"
+                              >
+                                {lead.vendedor_nome ? '↻' : '+'}
+                              </button>
+                            </div>
+                            {lead.closer_id && lead.status_contato === 'Aguardando Closer' && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-200 font-semibold">
+                                  CLOSER: {lead.closer_nome || 'Paulo'}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5">
