@@ -488,7 +488,7 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     `)
     // Get active vendedores
     const vendedoresRes = await client.query(
-      "SELECT id, email FROM users WHERE role IN ('vendedor', 'gestor_vendedor') AND active = true ORDER BY nome"
+      "SELECT id, email FROM users WHERE role = 'vendedor' AND active = true ORDER BY nome"
     )
     const vendedorIds: string[] = vendedoresRes.rows.map((u: { id: string }) => u.id)
 
