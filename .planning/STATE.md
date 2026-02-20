@@ -149,25 +149,22 @@
 | 51 | Fix cascade sum: use client-side totalValor (sub-rows only) not DB-wide total_valor_emendas (ignores filters) | 2026-02-20 | 283df9e | [33-fix-cascade-valor-sum-total-valor-emenda](./quick/33-fix-cascade-valor-sum-total-valor-emenda/) |
 | 52 | Backfill sem-nome leads (316→42) via BrasilAPI + sync STEP 8 now enriches sem-nome CNPJs each run | 2026-02-20 | 50577ec | [34-audit-sem-nome-leads-fix-brasilapi-enric](./quick/34-audit-sem-nome-leads-fix-brasilapi-enric/) |
 | 53 | Cron rescheduled to 09:30 BRT (12:30 UTC) + BrasilAPI refiner expanded to all CNPJs missing nome/email/telefone/endereco | 2026-02-20 | 212b37a | [35-documentar-sessao-cron-09-30-brt-brasila](./quick/35-documentar-sessao-cron-09-30-brt-brasila/) |
+| 54 | SDR column + purple CLOSER badge for gestor_vendedor in leads list (Paulo sees who sent each mirrored lead) | 2026-02-20 | 6cf50c8 | [37-paulo-o-closer-precisa-espelhar-o-lead-p](./quick/37-paulo-o-closer-precisa-espelhar-o-lead-p/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-20
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick tasks 50-53 (quick-32, 33, 34, 35): Fix contacts, cascade sum, BrasilAPI backfill, cron + refiner
+**Activity:** Quick task 54 (quick-37): SDR column + CLOSER badge for gestor_vendedor leads view
 
 **Completed:**
-- quick-32 (#50): Added COALESCE subqueries to /api/leads/route.ts to pull telefone/email from lead_contacts table (97% coverage) instead of vendedor_projetos (22%). Commit: 289d76c
-- quick-33 (#51): Fixed cascade sum on leads page — client-side totalValor (reduce over cnpjLeads sub-rows) replaces DB-side total_valor_emendas which ignored active filters. Commit: 283df9e
-- quick-34 (#52): Created backfill script to enrich 316 "Sem nome" CNPJs via BrasilAPI. Added automatic sem-nome enrichment to repo-sync STEP 8. Result: 0 sem-nome remaining. Commit: 50577ec
-- quick-35 (#53): Rescheduled Vercel cron from 06:00 UTC (03:00 BRT) to 12:30 UTC (09:30 BRT). Expanded STEP 8 BrasilAPI enrichment from new/sem-nome CNPJs only to ALL CNPJs missing nome, email, telefone, or endereco. Commit: 212b37a
+- quick-37 (#54): Added SDR column visibility and purple CLOSER badge to gestor_vendedor view in /leads. Subtitle updated to "Seus leads + leads aguardando seu fechamento". colSpan on cascade sub-rows fixed for gestor_vendedor. Build passes. Commit: 6cf50c8
 
 **Key decisions:**
-- lead_contacts is the authoritative source for telefone/email (not vendedor_projetos)
-- totalValor computed client-side via reduce to respect any active filters
-- BrasilAPI refiner in STEP 8 runs on every sync, covering any CNPJ still missing basic fields
-- Cron fires at 09:30 BRT so gestor sees fresh data at start of business day
+- CLOSER badge only shown when both closer_id is set AND status is 'Aguardando Closer'
+- gestor_vendedor sees 'SDR' header label (not 'Vendedor') to clarify column semantics
+- No assignment button for gestor_vendedor (SDR leads are not reassignable by closer)
 
 **Next Actions:**
 - Monitor next cron run (tomorrow 09:30 BRT) to confirm STEP 8 refiner coverage in sync logs
