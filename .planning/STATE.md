@@ -59,6 +59,7 @@
 | Vendedor commission breakdown in dashboard | 13-02 | Vendedores need self-service visibility into earnings by status | 2026-02-14 |
 | Separate confirmed vs pipeline commission cards | 13-02 | Clear distinction between guaranteed vs potential commissions for financial planning | 2026-02-14 |
 | PATCH returns updated commission data | quick-14 | Frontend needs recalculated values after tipo_vendedor change; prevents stale local state | 2026-02-16 |
+| Personal CNPJ watchlist + web push via VAPID in /monitorar page | quick-41 | Any user can build a personal watchlist and receive browser push alerts on emenda updates | 2026-02-20 |
 | Spreadsheet-only DB for MVP | quick-15 | No propostas/convenios from REPO in DB; only gestor-uploaded spreadsheet enriched by REPO contacts + BrasilAPI | 2026-02-16 |
 | Auto-import from 3 repo bases | quick-16 | siconv_programa + siconv_emenda + siconv_proponentes replace manual spreadsheet; spreadsheet only used for vendedor distribution | 2026-02-16 |
 
@@ -153,24 +154,26 @@
 | 55 | Scope closer_id visibility to Aguardando Closer only: GET filter + PATCH unconditional clear + 5 stale rows cleaned | 2026-02-20 | 0962a42 | [38-paulo-precisa-ver-somente-aguardando-clo](./quick/38-paulo-precisa-ver-somente-aguardando-clo/) |
 | 56 | Fix comissoes: closer (Paulo) no longer receives SDR's R$50 bonus in split commission display | 2026-02-20 | 6ca928f | [39-quando-sdr-passa-para-o-closer-closer-re](./quick/39-quando-sdr-passa-para-o-closer-closer-re/) |
 | 57 | Fix STATUS_CONFIG accent key in comissoes page: 'Nao Contatado' → 'Não Contatado' so badge styling resolves correctly | 2026-02-20 | e58ff6b | [40-percentuais-apresentado-a-aba-comissiona](./quick/40-percentuais-apresentado-a-aba-comissiona/) |
+| 58 | CNPJ Monitorado: personal watchlist + web push notifications on emenda sync via service worker + VAPID | 2026-02-20 | 7134a0f | [41-ambiente-para-adi-o-do-cnpj-monitorado-e](./quick/41-ambiente-para-adi-o-do-cnpj-monitorado-e/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-20
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 57 (quick-40): Fix STATUS_CONFIG accent key in comissoes page
+**Activity:** Quick task 58 (quick-41): CNPJ Monitorado + web push notifications
 
 **Completed:**
-- quick-38 (#55): Fixed GET /api/leads to only include closer_id match when status = 'Aguardando Closer'. Fixed PATCH to unconditionally clear closer_id on status change away from Aguardando Closer/Fechado. Cleaned 5 stale DB rows. Commit: 0962a42
+- quick-41 (#58): CNPJ Monitorado personal watchlist at /monitorar, cnpj_monitorado + push_subscriptions DB tables, web push infrastructure via VAPID, cron sync STEP 7b triggers push notifications for watched CNPJs. Commits: 1bf7d2d, e32226e, 7134a0f
 
 **Key decisions:**
-- GET query adds AND vp.status_contato = 'Aguardando Closer' guard on closer_id match
-- PATCH clear uses closer_id IS NOT NULL condition (not comissao_locked) to ensure all stale values are wiped
-- DB cleanup cleared 5 leads that had closer_id set but were in non-qualifying statuses
+- Internal server-to-server calls to /api/push-notify use x-internal-key header (INTERNAL_API_KEY env var)
+- Visualizador role excluded from /monitorar nav item
+- Monitored CNPJ check fires on all CNPJs in sync batch to catch updates
 
 **Next Actions:**
-- Monitor next cron run (tomorrow 09:30 BRT) to confirm STEP 8 refiner coverage in sync logs
+- Run /api/setup-crm in production to create cnpj_monitorado + push_subscriptions tables
+- Add VAPID keys and INTERNAL_API_KEY to Vercel dashboard env vars for push to work in production
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
