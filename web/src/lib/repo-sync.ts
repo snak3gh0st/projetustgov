@@ -469,7 +469,9 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
   // STEP 5: Load vendedor state from DB for round-robin assignment
   // ========================================================================
   console.log('[repo-sync] STEP 5: Loading vendedor state...')
-  const client = await pool.connect()
+  // Call getPool() here (not the reference captured at start) — avoids stale pool if
+  // db.ts retry logic reset the singleton between STEP 1-4 and now.
+  const client = await getPool().connect()
 
   try {
     // Ensure cron_sync_log table exists (runs on every call, no-op after first)

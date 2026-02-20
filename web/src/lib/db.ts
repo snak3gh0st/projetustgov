@@ -31,9 +31,10 @@ export async function query<T = Record<string, unknown>>(
       return result.rows as T[]
     } catch (err) {
       lastError = err
-      // Reset pool on connection errors to force fresh connections
-      if (attempt < maxRetries && pool) {
-        try { await pool.end() } catch { /* ignore */ }
+      // Reset pool reference so next getPool() creates a fresh pool.
+      // Do NOT call pool.end() — it would invalidate pools held by concurrent long-running
+      // operations like syncLeadsFromRepo() which hold the same pool reference.
+      if (attempt < maxRetries) {
         pool = null
       }
     } finally {
