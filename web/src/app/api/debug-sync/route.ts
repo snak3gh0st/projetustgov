@@ -22,6 +22,21 @@ export async function GET() {
       query('SELECT COUNT(DISTINCT cnpj)::int as distinct_cnpjs FROM vendedor_projetos'),
     ])
 
+    // Fetch last sync log row — handle case where table doesn't exist yet
+    let lastSyncLog = null
+    try {
+      const logRows = await query(
+        `SELECT ran_at, inserted, updated, errors, duration_ms
+         FROM cron_sync_log
+         ORDER BY ran_at DESC
+         LIMIT 1`
+      )
+      lastSyncLog = logRows[0] ?? null
+    } catch {
+      // Table doesn't exist yet — return null
+      lastSyncLog = null
+    }
+
     return NextResponse.json({
       db_state: {
         total_rows: totalRows[0]?.total ?? 0,
@@ -29,6 +44,7 @@ export async function GET() {
         by_source: importSources,
         last_repo_sync: recentUpdates[0]?.last_updated ?? null,
       },
+      last_sync_log: lastSyncLog,
       cron_schedule: '06:00 UTC daily (03:00 BRT)',
       note: 'POST to this endpoint to manually trigger a sync (gestor only)',
     })

@@ -78,6 +78,14 @@ interface DashboardData {
   stale_leads?: StaleLead[]
 }
 
+interface SyncLog {
+  ran_at: string
+  inserted: number
+  updated: number
+  errors: number
+  duration_ms: number
+}
+
 // --- Status config ---
 const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; label: string }> = {
   'Não Contatado': { color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200', bar: 'bg-orange-500', label: 'Não Contatado' },
@@ -103,6 +111,114 @@ function timeAgo(date: string | null): string {
   if (hours < 24) return `ha ${hours}h`
   const days = Math.floor(hours / 24)
   return `ha ${days}d`
+}
+
+// --- SyncPanel: visible only to gestor role ---
+function SyncPanel({ role }: { role: string | undefined }) {
+  const [syncLog, setSyncLog] = useState<SyncLog | null>(null)
+  const [loadingLog, setLoadingLog] = useState(true)
+  const [syncing, setSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (role !== 'gestor') return
+    fetch('/api/debug-sync')
+      .then(r => r.json())
+      .then(d => {
+        setSyncLog(d.last_sync_log ?? null)
+      })
+      .catch(() => {})
+      .finally(() => setLoadingLog(false))
+  }, [role])
+
+  if (role !== 'gestor') return null
+
+  const handleSync = async () => {
+    setSyncing(true)
+    setSyncError(null)
+    try {
+      const res = await fetch('/api/debug-sync', { method: 'POST' })
+      const d = await res.json()
+      if (!res.ok) {
+        setSyncError(d.error || 'Erro ao sincronizar')
+        return
+      }
+      // Update panel with returned stats
+      if (d.stats) {
+        setSyncLog({
+          ran_at: new Date().toISOString(),
+          inserted: d.stats.inserted ?? 0,
+          updated: d.stats.updated ?? 0,
+          errors: d.stats.errors ?? 0,
+          duration_ms: d.stats.duration_ms ?? 0,
+        })
+      }
+    } catch {
+      setSyncError('Erro de conexao ao sincronizar')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs text-gray-500 uppercase tracking-wider">Ultimo Sync</p>
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className="text-xs px-3 py-1.5 bg-[#0072F7] text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+        >
+          {syncing ? (
+            <>
+              <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+              </svg>
+              Sincronizando...
+            </>
+          ) : 'Sincronizar Agora'}
+        </button>
+      </div>
+
+      {loadingLog ? (
+        <div className="h-12 bg-gray-100 rounded animate-pulse" />
+      ) : syncLog ? (
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-medium text-gray-900">{timeAgo(syncLog.ran_at)}</p>
+            <p className="text-xs text-gray-400">{new Date(syncLog.ran_at).toLocaleString('pt-BR')}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+              {syncLog.inserted} novos
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
+              {syncLog.updated} atualizados
+            </span>
+            {syncLog.errors > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-medium">
+                {syncLog.errors} erros
+              </span>
+            )}
+            <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
+              {(syncLog.duration_ms / 1000).toFixed(1)}s
+            </span>
+          </div>
+          <p className="text-xs text-gray-400">Proximo: diario as 03:00 BRT</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-sm text-gray-500">Nenhum sync registrado ainda</p>
+          <p className="text-xs text-gray-400">Proximo: diario as 03:00 BRT</p>
+        </div>
+      )}
+
+      {syncError && (
+        <p className="mt-2 text-xs text-red-600">{syncError}</p>
+      )}
+    </div>
+  )
 }
 
 export default function CRMDashboard() {
@@ -248,6 +364,9 @@ export default function CRMDashboard() {
           </>
         )}
       </div>
+
+      {/* 2b. Sync panel — gestor only */}
+      {role === 'gestor' && <SyncPanel role={role} />}
 
       {/* 3. Status pipeline — funnel cards */}
       <div className="space-y-3">
