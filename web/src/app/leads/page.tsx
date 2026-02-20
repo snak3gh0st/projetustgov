@@ -134,7 +134,7 @@ export default function LeadsPage() {
         let vb: string | number = ''
         switch (sortCol) {
           case 'nome': va = (a.nome || '').toLowerCase(); vb = (b.nome || '').toLowerCase(); break
-          case 'valor': va = Number(a.total_valor_emendas) || Number(a.valor_emenda) || 0; vb = Number(b.total_valor_emendas) || Number(b.valor_emenda) || 0; break
+          case 'valor': va = (a as any).totalValor || Number(a.valor_emenda) || 0; vb = (b as any).totalValor || Number(b.valor_emenda) || 0; break
           case 'orgao': va = (a.orgao_concedente || '').toLowerCase(); vb = (b.orgao_concedente || '').toLowerCase(); break
           case 'local': va = `${a.uf || ''} ${a.municipio || ''}`.toLowerCase(); vb = `${b.uf || ''} ${b.municipio || ''}`.toLowerCase(); break
           case 'status': va = a.status_contato || ''; vb = b.status_contato || ''; break
@@ -396,7 +396,7 @@ export default function LeadsPage() {
                       ) : (
                         <div>
                           <span className="text-sigma-neon font-semibold text-sm">
-                            {formatCompactCurrency(Number(lead.total_valor_emendas) || Number(lead.valor_emenda) || 0)}
+                            {formatCompactCurrency((lead as any).totalValor || Number(lead.valor_emenda) || 0)}
                           </span>
                           {hasMultipleEmendas && (
                             <span className="ml-1 text-gray-400 text-xs">({lead.emenda_count})</span>
