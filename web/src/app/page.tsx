@@ -97,7 +97,7 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; la
   'Telefone Invalido': { color: 'text-gray-500', bg: 'bg-gray-50 border-gray-200', bar: 'bg-gray-400', label: 'Telefone Invalido' },
 }
 
-const STATUS_ORDER = ['Não Contatado', 'Retorno', 'Proposta', 'Aguardando Closer', 'Fechado'] as const
+const STATUS_ORDER = ['Não Contatado', 'AINDA NÃO', 'Retorno', 'Proposta', 'Aguardando Closer', 'Fechado'] as const
 
 function timeAgo(date: string | null): string {
   if (!date) return 'nunca'
@@ -373,7 +373,7 @@ export default function CRMDashboard() {
         <p className="text-xs text-gray-500 uppercase tracking-wider">Pipeline de Vendas</p>
 
         {/* Status cards row */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           {STATUS_ORDER.map((status, idx) => {
             const count = g.by_status[status] || 0
             const pct = g.total_leads > 0 ? (count / g.total_leads) * 100 : 0
