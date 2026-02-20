@@ -148,29 +148,29 @@
 | 50 | Fix missing contacts: API now pulls telefone/email from lead_contacts (97% coverage) instead of vendedor_projetos (22%) | 2026-02-20 | 289d76c | [32-fix-missing-contacts-leads-fetched-from-](./quick/32-fix-missing-contacts-leads-fetched-from-/) |
 | 51 | Fix cascade sum: use client-side totalValor (sub-rows only) not DB-wide total_valor_emendas (ignores filters) | 2026-02-20 | 283df9e | [33-fix-cascade-valor-sum-total-valor-emenda](./quick/33-fix-cascade-valor-sum-total-valor-emenda/) |
 | 52 | Backfill sem-nome leads (316→42) via BrasilAPI + sync STEP 8 now enriches sem-nome CNPJs each run | 2026-02-20 | 50577ec | [34-audit-sem-nome-leads-fix-brasilapi-enric](./quick/34-audit-sem-nome-leads-fix-brasilapi-enric/) |
+| 53 | Cron rescheduled to 09:30 BRT (12:30 UTC) + BrasilAPI refiner expanded to all CNPJs missing nome/email/telefone/endereco | 2026-02-20 | 212b37a | [35-documentar-sessao-cron-09-30-brt-brasila](./quick/35-documentar-sessao-cron-09-30-brt-brasila/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-20
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 50 (quick-32): Fix missing contacts in leads API
+**Activity:** Quick tasks 50-53 (quick-32, 33, 34, 35): Fix contacts, cascade sum, BrasilAPI backfill, cron + refiner
 
 **Completed:**
-- Created cron_sync_log DB table (auto-created via CREATE TABLE IF NOT EXISTS inside syncLeadsFromRepo)
-- Every syncLeadsFromRepo() call now writes one row to cron_sync_log (try/catch isolated)
-- stats.duration_ms moved to finally block before client.release() for accurate logging
-- GET /api/debug-sync now returns last_sync_log object (or null if no rows yet)
-- Added SyncPanel component to page.tsx (gestor-only): last sync time, insert/update/error badges, duration, next schedule
-- "Sincronizar Agora" button: POST /api/debug-sync with loading spinner and panel update on success
+- quick-32 (#50): Added COALESCE subqueries to /api/leads/route.ts to pull telefone/email from lead_contacts table (97% coverage) instead of vendedor_projetos (22%). Commit: 289d76c
+- quick-33 (#51): Fixed cascade sum on leads page — client-side totalValor (reduce over cnpjLeads sub-rows) replaces DB-side total_valor_emendas which ignored active filters. Commit: 283df9e
+- quick-34 (#52): Created backfill script to enrich 316 "Sem nome" CNPJs via BrasilAPI. Added automatic sem-nome enrichment to repo-sync STEP 8. Result: 0 sem-nome remaining. Commit: 50577ec
+- quick-35 (#53): Rescheduled Vercel cron from 06:00 UTC (03:00 BRT) to 12:30 UTC (09:30 BRT). Expanded STEP 8 BrasilAPI enrichment from new/sem-nome CNPJs only to ALL CNPJs missing nome, email, telefone, or endereco. Commit: 212b37a
 
 **Key decisions:**
-- cron_sync_log table created inline in sync function, no separate migration file
-- Log INSERT wrapped in try/catch to never block sync if logging fails
-- SyncPanel only renders for role === 'gestor', not gestor_vendedor
+- lead_contacts is the authoritative source for telefone/email (not vendedor_projetos)
+- totalValor computed client-side via reduce to respect any active filters
+- BrasilAPI refiner in STEP 8 runs on every sync, covering any CNPJ still missing basic fields
+- Cron fires at 09:30 BRT so gestor sees fresh data at start of business day
 
 **Next Actions:**
-- Gestor can now see sync status directly from the dashboard without navigating to /api/debug-sync
+- Monitor next cron run (tomorrow 09:30 BRT) to confirm STEP 8 refiner coverage in sync logs
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
