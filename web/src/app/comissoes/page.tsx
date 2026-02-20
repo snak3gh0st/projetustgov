@@ -73,7 +73,7 @@ interface ComissaoData {
 }
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string }> = {
-  'Nao Contatado': { color: 'text-red-500', bg: 'bg-red-50 border-red-200' },
+  'Não Contatado': { color: 'text-red-500', bg: 'bg-red-50 border-red-200' },
   'Retorno': { color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
   'Proposta': { color: 'text-[#0072F7]', bg: 'bg-blue-50 border-blue-200' },
   'Fechado': { color: 'text-green-600', bg: 'bg-green-50 border-green-200' },
