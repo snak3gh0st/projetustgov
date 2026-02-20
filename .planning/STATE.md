@@ -150,21 +150,22 @@
 | 52 | Backfill sem-nome leads (316→42) via BrasilAPI + sync STEP 8 now enriches sem-nome CNPJs each run | 2026-02-20 | 50577ec | [34-audit-sem-nome-leads-fix-brasilapi-enric](./quick/34-audit-sem-nome-leads-fix-brasilapi-enric/) |
 | 53 | Cron rescheduled to 09:30 BRT (12:30 UTC) + BrasilAPI refiner expanded to all CNPJs missing nome/email/telefone/endereco | 2026-02-20 | 212b37a | [35-documentar-sessao-cron-09-30-brt-brasila](./quick/35-documentar-sessao-cron-09-30-brt-brasila/) |
 | 54 | SDR column + purple CLOSER badge for gestor_vendedor in leads list (Paulo sees who sent each mirrored lead) | 2026-02-20 | 6cf50c8 | [37-paulo-o-closer-precisa-espelhar-o-lead-p](./quick/37-paulo-o-closer-precisa-espelhar-o-lead-p/) |
+| 55 | Scope closer_id visibility to Aguardando Closer only: GET filter + PATCH unconditional clear + 5 stale rows cleaned | 2026-02-20 | 0962a42 | [38-paulo-precisa-ver-somente-aguardando-clo](./quick/38-paulo-precisa-ver-somente-aguardando-clo/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-20
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 54 (quick-37): SDR column + CLOSER badge for gestor_vendedor leads view
+**Activity:** Quick task 55 (quick-38): Scope closer_id visibility to Aguardando Closer status only
 
 **Completed:**
-- quick-37 (#54): Added SDR column visibility and purple CLOSER badge to gestor_vendedor view in /leads. Subtitle updated to "Seus leads + leads aguardando seu fechamento". colSpan on cascade sub-rows fixed for gestor_vendedor. Build passes. Commit: 6cf50c8
+- quick-38 (#55): Fixed GET /api/leads to only include closer_id match when status = 'Aguardando Closer'. Fixed PATCH to unconditionally clear closer_id on status change away from Aguardando Closer/Fechado. Cleaned 5 stale DB rows. Commit: 0962a42
 
 **Key decisions:**
-- CLOSER badge only shown when both closer_id is set AND status is 'Aguardando Closer'
-- gestor_vendedor sees 'SDR' header label (not 'Vendedor') to clarify column semantics
-- No assignment button for gestor_vendedor (SDR leads are not reassignable by closer)
+- GET query adds AND vp.status_contato = 'Aguardando Closer' guard on closer_id match
+- PATCH clear uses closer_id IS NOT NULL condition (not comissao_locked) to ensure all stale values are wiped
+- DB cleanup cleared 5 leads that had closer_id set but were in non-qualifying statuses
 
 **Next Actions:**
 - Monitor next cron run (tomorrow 09:30 BRT) to confirm STEP 8 refiner coverage in sync logs
