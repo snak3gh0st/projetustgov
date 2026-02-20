@@ -279,7 +279,11 @@ export default function LeadsPage() {
       <div>
         <h1 className="font-heading text-2xl font-bold text-gray-900">Lista de Leads</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {sessionUser?.role === 'vendedor' ? 'Seus leads atribuídos' : 'Todos os projetos dos vendedores'}
+          {sessionUser?.role === 'vendedor'
+            ? 'Seus leads atribuídos'
+            : sessionUser?.role === 'gestor_vendedor'
+            ? 'Seus leads + leads aguardando seu fechamento'
+            : 'Todos os projetos dos vendedores'}
         </p>
       </div>
 
@@ -329,8 +333,11 @@ export default function LeadsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contato</th>
                   <th onClick={() => handleSort('dias')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Ult. Contato<SortIcon col="dias" /></th>
                   <th onClick={() => handleSort('status')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Status<SortIcon col="status" /></th>
-                  {sessionUser?.role === 'gestor' && (
-                    <th onClick={() => handleSort('vendedor')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Vendedor<SortIcon col="vendedor" /></th>
+                  {(sessionUser?.role === 'gestor' || sessionUser?.role === 'gestor_vendedor') && (
+                    <th onClick={() => handleSort('vendedor')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">
+                      {sessionUser?.role === 'gestor_vendedor' ? 'SDR' : 'Vendedor'}
+                      <SortIcon col="vendedor" />
+                    </th>
                   )}
                 </tr>
               </thead>
@@ -458,24 +465,35 @@ export default function LeadsPage() {
                         {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </td>
-                    {sessionUser?.role === 'gestor' && (
+                    {(sessionUser?.role === 'gestor' || sessionUser?.role === 'gestor_vendedor') && (
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">{lead.vendedor_nome || '-'}</span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setAssignmentModal({
-                                cnpj: lead.cnpj,
-                                nome: lead.nome,
-                                currentVendedor: lead.vendedor_nome || null
-                              })
-                            }}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-[#0072F7] transition-colors"
-                          >
-                            {lead.vendedor_nome ? '↻' : '+'}
-                          </button>
-                        </div>
+                        {sessionUser?.role === 'gestor' ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">{lead.vendedor_nome || '-'}</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setAssignmentModal({
+                                  cnpj: lead.cnpj,
+                                  nome: lead.nome,
+                                  currentVendedor: lead.vendedor_nome || null
+                                })
+                              }}
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-[#0072F7] transition-colors"
+                            >
+                              {lead.vendedor_nome ? '↻' : '+'}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-gray-500">{lead.vendedor_nome || '-'}</span>
+                            {lead.closer_id && lead.status_contato === 'Aguardando Closer' && (
+                              <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-200 font-semibold">
+                                CLOSER
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                     )}
                   </tr>
@@ -503,7 +521,7 @@ export default function LeadsPage() {
                       <td className="px-4 py-2">
                         <div className="text-gray-400 text-xs">{sub.orgao_concedente || '-'}</div>
                       </td>
-                      <td className="px-4 py-2" colSpan={sessionUser?.role === 'gestor' ? 5 : 4}>
+                      <td className="px-4 py-2" colSpan={sessionUser?.role === 'gestor' || sessionUser?.role === 'gestor_vendedor' ? 5 : 4}>
                         <select
                           value={sub.status_contato || 'Não Contatado'}
                           onClick={e => e.stopPropagation()}
