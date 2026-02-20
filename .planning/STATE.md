@@ -142,13 +142,14 @@
 | 44 | Fix Aguardando Closer from lead detail page: remove SaleModal intercept, closer_id set directly via PATCH + debug endpoint enhanced | 2026-02-19 | e5e488c | [26-quando-o-vendedor-coloca-aguardando-clos](./quick/26-quando-o-vendedor-coloca-aguardando-clos/) |
 | 45 | AINDA NÃO rose color scheme (distinct from Não Contatado orange) + pipeline % sub-label guard (hide when >100%) | 2026-02-19 | b9ddb8e | [27-filtro-ainda-nao-com-esquema-de-cor-dife](./quick/27-filtro-ainda-nao-com-esquema-de-cor-dife/) |
 | 46 | Fix sync bugs: isExisting false-positive, UPSERT RETURNING xmax for accurate counts, natJur filter logging + /api/debug-sync endpoint | 2026-02-20 | d4f0675 | [28-veja-report-do-cliente-veja-se-estamos-a](./quick/28-veja-report-do-cliente-veja-se-estamos-a/) |
+| 47 | Verificar status dos ajustes CRM de 18/02 — todos os 8 itens confirmados implementados | 2026-02-20 | - | [29-verificar-status-dos-ajustes-crm-de-18-0](./quick/29-verificar-status-dos-ajustes-crm-de-18-0/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-20
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 46 (quick-28): Fix lead sync bugs + debug endpoint
+**Activity:** Quick task 47 (quick-29): Audit CRM adjustments from 18/02 — all 8 items confirmed done
 
 **Completed:**
 - Fixed `isExisting` false-positive in repo-sync.ts (cnpjAssignments.has caused new emendas for existing CNPJs to be counted as updates instead of inserts)
