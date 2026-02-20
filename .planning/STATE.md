@@ -145,13 +145,14 @@
 | 47 | Verificar status dos ajustes CRM de 18/02 — todos os 8 itens confirmados implementados | 2026-02-20 | - | [29-verificar-status-dos-ajustes-crm-de-18-0](./quick/29-verificar-status-dos-ajustes-crm-de-18-0/) |
 | 48 | Add sync visibility panel to gestor dashboard: cron_sync_log table + SyncPanel with Sincronizar Agora | 2026-02-20 | 1d7abc6 | [30-add-sync-visibility-panel-to-gestor-dash](./quick/30-add-sync-visibility-panel-to-gestor-dash/) |
 | 49 | Fix Paulo roleta exclusion (gestor_vendedor removed from round-robin) + redistribute 442 leads + cascade shows totalValor (soma emendas) | 2026-02-20 | c90a7f8 | [31-fix-paulo-roleta-exclusion-cascade-sum-v](./quick/31-fix-paulo-roleta-exclusion-cascade-sum-v/) |
+| 50 | Fix missing contacts: API now pulls telefone/email from lead_contacts (97% coverage) instead of vendedor_projetos (22%) | 2026-02-20 | 289d76c | [32-fix-missing-contacts-leads-fetched-from-](./quick/32-fix-missing-contacts-leads-fetched-from-/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-20
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 49 (quick-31): Paulo roleta exclusion + cascade sum fix
+**Activity:** Quick task 50 (quick-32): Fix missing contacts in leads API
 
 **Completed:**
 - Created cron_sync_log DB table (auto-created via CREATE TABLE IF NOT EXISTS inside syncLeadsFromRepo)
