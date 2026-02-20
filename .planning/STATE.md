@@ -143,26 +143,30 @@
 | 45 | AINDA NÃO rose color scheme (distinct from Não Contatado orange) + pipeline % sub-label guard (hide when >100%) | 2026-02-19 | b9ddb8e | [27-filtro-ainda-nao-com-esquema-de-cor-dife](./quick/27-filtro-ainda-nao-com-esquema-de-cor-dife/) |
 | 46 | Fix sync bugs: isExisting false-positive, UPSERT RETURNING xmax for accurate counts, natJur filter logging + /api/debug-sync endpoint | 2026-02-20 | d4f0675 | [28-veja-report-do-cliente-veja-se-estamos-a](./quick/28-veja-report-do-cliente-veja-se-estamos-a/) |
 | 47 | Verificar status dos ajustes CRM de 18/02 — todos os 8 itens confirmados implementados | 2026-02-20 | - | [29-verificar-status-dos-ajustes-crm-de-18-0](./quick/29-verificar-status-dos-ajustes-crm-de-18-0/) |
+| 48 | Add sync visibility panel to gestor dashboard: cron_sync_log table + SyncPanel with Sincronizar Agora | 2026-02-20 | 1d7abc6 | [30-add-sync-visibility-panel-to-gestor-dash](./quick/30-add-sync-visibility-panel-to-gestor-dash/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-20
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 47 (quick-29): Audit CRM adjustments from 18/02 — all 8 items confirmed done
+**Activity:** Quick task 48 (quick-30): Add sync visibility panel to gestor dashboard
 
 **Completed:**
-- Fixed `isExisting` false-positive in repo-sync.ts (cnpjAssignments.has caused new emendas for existing CNPJs to be counted as updates instead of inserts)
-- Added `RETURNING (xmax = 0) AS was_inserted` to UPSERT for accurate INSERT/UPDATE stats
-- Added natJur filter logging: programs_scanned, programs_dropped_nat_jur, droppedNatJurSamples
-- Created /api/debug-sync endpoint (GET: DB state diagnosis, POST: manual sync trigger) — gestor only
+- Created cron_sync_log DB table (auto-created via CREATE TABLE IF NOT EXISTS inside syncLeadsFromRepo)
+- Every syncLeadsFromRepo() call now writes one row to cron_sync_log (try/catch isolated)
+- stats.duration_ms moved to finally block before client.release() for accurate logging
+- GET /api/debug-sync now returns last_sync_log object (or null if no rows yet)
+- Added SyncPanel component to page.tsx (gestor-only): last sync time, insert/update/error badges, duration, next schedule
+- "Sincronizar Agora" button: POST /api/debug-sync with loading spinner and panel update on success
 
 **Key decisions:**
-- isExisting now uses only exact assignmentKey match (cnpj + emenda_id + parlamentar combo)
-- RETURNING xmax is the correct PostgreSQL pattern to distinguish INSERT from UPDATE in UPSERT
+- cron_sync_log table created inline in sync function, no separate migration file
+- Log INSERT wrapped in try/catch to never block sync if logging fails
+- SyncPanel only renders for role === 'gestor', not gestor_vendedor
 
 **Next Actions:**
-- Gestor can use POST /api/debug-sync to trigger a manual sync and verify new leads appear
+- Gestor can now see sync status directly from the dashboard without navigating to /api/debug-sync
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
