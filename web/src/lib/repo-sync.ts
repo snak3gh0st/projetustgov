@@ -670,6 +670,54 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     console.log(`[repo-sync] Upserted: ${stats.inserted} new, ${stats.updated} updated, ${stats.errors} errors`)
 
     // ========================================================================
+    // STEP 7b: Push notifications for monitored CNPJs that were inserted/updated
+    // ========================================================================
+    // Collect all CNPJs that were touched in this sync run
+    const touchedCnpjs = Array.from(new Set(leads.map(l => l.cnpj)))
+    if (touchedCnpjs.length > 0) {
+      try {
+        // Check which touched CNPJs are in cnpj_monitorado
+        const monitoredRes = await client.query<{ cnpj: string; nome: string | null }>(
+          `SELECT DISTINCT cm.cnpj, vp.nome
+           FROM cnpj_monitorado cm
+           JOIN vendedor_projetos vp ON vp.cnpj = cm.cnpj
+           WHERE cm.cnpj = ANY($1::text[])
+           LIMIT 100`,
+          [touchedCnpjs]
+        )
+
+        if (monitoredRes.rows.length > 0) {
+          console.log(`[repo-sync] STEP 7b: ${monitoredRes.rows.length} monitored CNPJs detected — sending push notifications`)
+          const nextauthUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+          const internalKey = process.env.INTERNAL_API_KEY || ''
+
+          for (const row of monitoredRes.rows) {
+            try {
+              await fetch(`${nextauthUrl}/api/push-notify`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-internal-key': internalKey,
+                },
+                body: JSON.stringify({
+                  cnpj: row.cnpj,
+                  title: 'Nova emenda detectada',
+                  body: `${row.nome || row.cnpj} recebeu atualização de emenda no TransferênciaGov`,
+                }),
+              })
+            } catch (pushErr) {
+              console.warn(`[repo-sync] STEP 7b: push-notify failed for CNPJ ${row.cnpj}:`, pushErr)
+            }
+          }
+        } else {
+          console.log('[repo-sync] STEP 7b: No monitored CNPJs in this sync batch — skipping push notifications')
+        }
+      } catch (err) {
+        console.warn('[repo-sync] STEP 7b: Error checking monitored CNPJs:', err)
+      }
+    }
+
+    // ========================================================================
     // STEP 8: BrasilAPI enrichment for new leads missing contact data + sem-nome
     // ========================================================================
     const elapsed = Date.now() - startTime
