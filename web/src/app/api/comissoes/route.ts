@@ -225,19 +225,14 @@ export async function GET(request: NextRequest) {
     } // else pauloUserId found
     } // isPauloView
 
-    return NextResponse.json({
-      role: session.role,
-      summary: {
-        total_leads: Number(summary.total_leads) || 0,
-        total_comissao: Number(summary.total_comissao) || 0,
-        total_bonus: Number(summary.total_bonus) || 0,
-        total_closer_comissao: Number(summary.total_closer_comissao) || 0,
-        total_valor_venda: Number(summary.total_valor_venda) || 0,
-        total_valor_emenda: Number(summary.total_valor_emenda) || 0,
-      },
-      per_vendedor: perVendedor,
-      paulo_breakdown: pauloBreakdown,
-      leads: leadsRows.map(lead => ({
+    // Map leads, zeroing out comissao_bonus for gestor_vendedor on split leads
+    // where they are the closer but not the vendedor (bonus belongs to the SDR)
+    const mappedLeads = leadsRows.map(lead => {
+      const isCloserNotVendedor =
+        session.role === 'gestor_vendedor' &&
+        lead.closer_id === session.userId &&
+        lead.vendedor_id !== session.userId
+      return {
         id: lead.id,
         cnpj: lead.cnpj,
         nome: lead.nome,
@@ -246,7 +241,7 @@ export async function GET(request: NextRequest) {
         tipo_vendedor: lead.tipo_vendedor,
         comissao_percentual: Number(lead.comissao_percentual) || 0,
         comissao_valor: Number(lead.comissao_valor) || 0,
-        comissao_bonus: Number(lead.comissao_bonus) || 0,
+        comissao_bonus: isCloserNotVendedor ? 0 : (Number(lead.comissao_bonus) || 0),
         comissao_locked: Boolean(lead.comissao_locked),
         status_contato: lead.status_contato,
         vendedor_nome: lead.vendedor_nome,
@@ -258,7 +253,25 @@ export async function GET(request: NextRequest) {
         updated_at: lead.updated_at,
         has_override: Boolean(lead.has_override),
         override_motivo: lead.override_motivo,
-      })),
+      }
+    })
+
+    // Recompute total_bonus from mapped leads so it reflects the corrected per-lead values
+    const total_bonus_corrected = mappedLeads.reduce((sum, l) => sum + (l.comissao_bonus || 0), 0)
+
+    return NextResponse.json({
+      role: session.role,
+      summary: {
+        total_leads: Number(summary.total_leads) || 0,
+        total_comissao: Number(summary.total_comissao) || 0,
+        total_bonus: total_bonus_corrected,
+        total_closer_comissao: Number(summary.total_closer_comissao) || 0,
+        total_valor_venda: Number(summary.total_valor_venda) || 0,
+        total_valor_emenda: Number(summary.total_valor_emenda) || 0,
+      },
+      per_vendedor: perVendedor,
+      paulo_breakdown: pauloBreakdown,
+      leads: mappedLeads,
       vendedores_list: vendedoresRows.map(v => ({
         id: v.id,
         nome: v.nome,
