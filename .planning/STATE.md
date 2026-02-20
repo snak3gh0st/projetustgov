@@ -141,24 +141,27 @@
 | 43 | Fix application error on Usuarios tab: remove useSession (no SessionProvider), move self-detection server-side via is_self in API | 2026-02-19 | e319f51 | [25-fix-application-error-on-usuarios-tab](./quick/25-fix-application-error-on-usuarios-tab/) |
 | 44 | Fix Aguardando Closer from lead detail page: remove SaleModal intercept, closer_id set directly via PATCH + debug endpoint enhanced | 2026-02-19 | e5e488c | [26-quando-o-vendedor-coloca-aguardando-clos](./quick/26-quando-o-vendedor-coloca-aguardando-clos/) |
 | 45 | AINDA NÃO rose color scheme (distinct from Não Contatado orange) + pipeline % sub-label guard (hide when >100%) | 2026-02-19 | b9ddb8e | [27-filtro-ainda-nao-com-esquema-de-cor-dife](./quick/27-filtro-ainda-nao-com-esquema-de-cor-dife/) |
+| 46 | Fix sync bugs: isExisting false-positive, UPSERT RETURNING xmax for accurate counts, natJur filter logging + /api/debug-sync endpoint | 2026-02-20 | d4f0675 | [28-veja-report-do-cliente-veja-se-estamos-a](./quick/28-veja-report-do-cliente-veja-se-estamos-a/) |
 
 ## Session Continuity
 
 ### Last Session Summary
-**Date:** 2026-02-19
+**Date:** 2026-02-20
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 45 (quick-27): AINDA NÃO rose color + pipeline % sub-label guard
+**Activity:** Quick task 46 (quick-28): Fix lead sync bugs + debug endpoint
 
 **Completed:**
-- Changed AINDA NÃO color from yellow to rose (#f43f5e) across STATUS_CONFIG (page.tsx), STATUS_COLORS (leads/page.tsx, LeadSlideOver.tsx), and CAT_COLORS (DashboardCharts.tsx)
-- Added conversionRate guard in pipeline cards: sub-label hidden when value > 100% (e.g. "300% de Aguardando Closer" suppressed)
+- Fixed `isExisting` false-positive in repo-sync.ts (cnpjAssignments.has caused new emendas for existing CNPJs to be counted as updates instead of inserts)
+- Added `RETURNING (xmax = 0) AS was_inserted` to UPSERT for accurate INSERT/UPDATE stats
+- Added natJur filter logging: programs_scanned, programs_dropped_nat_jur, droppedNatJurSamples
+- Created /api/debug-sync endpoint (GET: DB state diagnosis, POST: manual sync trigger) — gestor only
 
 **Key decisions:**
-- Rose/pink (#f43f5e) visually distinct from orange (Não Contatado) and amber (Retorno)
-- Pipeline sub-label guard: Number(conversionRate) <= 100 prevents nonsensical ratios
+- isExisting now uses only exact assignmentKey match (cnpj + emenda_id + parlamentar combo)
+- RETURNING xmax is the correct PostgreSQL pattern to distinguish INSERT from UPDATE in UPSERT
 
 **Next Actions:**
-- None outstanding from this task
+- Gestor can use POST /api/debug-sync to trigger a manual sync and verify new leads appear
 
 ---
 *State initialized: 2026-02-11 for milestone v3.0*
