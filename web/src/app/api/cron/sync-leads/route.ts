@@ -1,5 +1,5 @@
 // Vercel Cron Job: Daily lead sync from repositorio.dados.gov.br
-// Schedule: 06:00 UTC daily (configured in vercel.json)
+// Schedule: 12:30 UTC daily = 09:30 BRT (configured in vercel.json)
 // Env required: CRON_SECRET (auto-set by Vercel for cron jobs)
 // Manual trigger: curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain/api/cron/sync-leads
 

@@ -27,7 +27,7 @@
 //     tipo_vendedor, observacoes, comissao_locked, comissao_bonus (CRM state)
 //   - COALESCE updates: uf, municipio, telefone, email, nome (fill if empty)
 //
-// CRON: Vercel cron triggers /api/cron/sync-leads daily at 06:00 UTC (03:00 BRT)
+// CRON: Vercel cron triggers /api/cron/sync-leads daily at 12:30 UTC (09:30 BRT)
 // ============================================================================
 //
 // Used by /api/cron/sync-leads for daily automated sync
@@ -674,18 +674,24 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     // ========================================================================
     const elapsed = Date.now() - startTime
 
-    // Also enrich existing sem-nome CNPJs (up to 10 per run)
-    const semNomeRes = await client.query<{ cnpj: string }>(`
+    // Also enrich existing CNPJs missing any contact field (sem-nome, sem-email, sem-telefone, sem-endereco)
+    // BrasilAPI acts as a general post-import refiner after repo data is loaded
+    const missingDataRes = await client.query<{ cnpj: string }>(`
       SELECT DISTINCT cnpj FROM vendedor_projetos
-      WHERE (nome IS NULL OR nome = '' OR nome = 'Sem nome')
+      WHERE (
+        nome IS NULL OR nome = '' OR nome = 'Sem nome'
+        OR email IS NULL OR email = ''
+        OR telefone IS NULL OR telefone = ''
+        OR endereco IS NULL OR endereco = ''
+      )
       AND cnpj NOT IN (SELECT UNNEST($1::text[]))
       ORDER BY cnpj
-      LIMIT 10
+      LIMIT 20
     `, [Array.from(newCnpjsNeedingContacts)])
-    for (const row of semNomeRes.rows) {
+    for (const row of missingDataRes.rows) {
       newCnpjsNeedingContacts.add(row.cnpj)
     }
-    console.log(`[repo-sync] STEP 8: ${semNomeRes.rows.length} sem-nome CNPJs added to enrichment queue`)
+    console.log(`[repo-sync] STEP 8: ${missingDataRes.rows.length} CNPJs with missing data added to enrichment queue`)
 
     const cnpjsToEnrich = Array.from(newCnpjsNeedingContacts).slice(0, 20)
 
