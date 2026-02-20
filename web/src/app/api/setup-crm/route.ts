@@ -511,6 +511,33 @@ async function runSetup() {
         AND NOT EXISTS (SELECT 1 FROM lead_contacts WHERE lead_cnpj = vendedor_projetos.cnpj)
     `).catch(() => {}) // safe — handles re-runs gracefully
 
+    // 12. Create cnpj_monitorado table (Quick Task 41 — personal CNPJ watchlist per user)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS cnpj_monitorado (
+        id SERIAL PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        cnpj VARCHAR(14) NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(user_id, cnpj)
+      );
+    `).catch(() => {})
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_cm_user_id ON cnpj_monitorado(user_id)`).catch(() => {})
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_cm_cnpj ON cnpj_monitorado(cnpj)`).catch(() => {})
+
+    // 13. Create push_subscriptions table (Quick Task 41 — web push subscription per user)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(user_id, endpoint)
+      );
+    `).catch(() => {})
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_ps_user_id ON push_subscriptions(user_id)`).catch(() => {})
+
     // Summary diagnostics
     const vpCount = await pool.query(
       `SELECT COUNT(*) as total, COUNT(NULLIF(telefone,'')) as with_phone, COUNT(NULLIF(email,'')) as with_email FROM vendedor_projetos`
