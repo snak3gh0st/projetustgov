@@ -137,22 +137,21 @@ function SyncPanel({ role }: { role: string | undefined }) {
     setSyncing(true)
     setSyncError(null)
     try {
-      const res = await fetch('/api/debug-sync', { method: 'POST' })
+      // Use cron/sync-leads (maxDuration=300) instead of debug-sync (maxDuration=60)
+      const res = await fetch('/api/cron/sync-leads')
       const d = await res.json()
       if (!res.ok) {
         setSyncError(d.error || 'Erro ao sincronizar')
         return
       }
-      // Update panel with returned stats
-      if (d.stats) {
-        setSyncLog({
-          ran_at: new Date().toISOString(),
-          inserted: d.stats.inserted ?? 0,
-          updated: d.stats.updated ?? 0,
-          errors: d.stats.errors ?? 0,
-          duration_ms: d.stats.duration_ms ?? 0,
-        })
-      }
+      // cron/sync-leads spreads stats at top level: { success, inserted, updated, errors, duration_ms, ... }
+      setSyncLog({
+        ran_at: new Date().toISOString(),
+        inserted: d.inserted ?? 0,
+        updated: d.updated ?? 0,
+        errors: d.errors ?? 0,
+        duration_ms: d.duration_ms ?? 0,
+      })
     } catch {
       setSyncError('Erro de conexao ao sincronizar')
     } finally {
