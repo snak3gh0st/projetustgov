@@ -9,9 +9,10 @@ import ContactNotesTimeline from '@/components/ContactNotesTimeline'
 import LeadContacts from '@/components/LeadContacts'
 import SaleModal from '@/components/SaleModal'
 
-const STATUS_OPTIONS = ['Não Contatado', 'Retorno', 'Proposta', 'Aguardando Closer', 'Fechado', 'Telefone Invalido']
+const STATUS_OPTIONS = ['Não Contatado', 'Ainda Não', 'Retorno', 'Proposta', 'Aguardando Closer', 'Fechado', 'Telefone Invalido']
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-red-500/20 text-red-500',
+  'Ainda Não': 'bg-rose-500/20 text-rose-600',
   'Retorno': 'bg-amber-500/20 text-amber-600',
   'Proposta': 'bg-blue-500/20 text-[#0072F7]',
   'Aguardando Closer': 'bg-purple-500/20 text-purple-600',
