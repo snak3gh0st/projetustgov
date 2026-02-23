@@ -141,7 +141,12 @@ function SyncPanel({ role }: { role: string | undefined }) {
       const res = await fetch('/api/cron/sync-leads')
       const d = await res.json()
       if (!res.ok) {
-        setSyncError(d.error || 'Erro ao sincronizar')
+        // Show a friendly message when the government server is unavailable
+        const rawError: string = d.error || 'Erro ao sincronizar'
+        const friendlyError = rawError.includes('Servidor do governo indisponível')
+          ? 'Servidor do governo indisponível. Tente novamente em alguns minutos.'
+          : rawError
+        setSyncError(friendlyError)
         return
       }
       // cron/sync-leads spreads stats at top level: { success, inserted, updated, errors, duration_ms, ... }

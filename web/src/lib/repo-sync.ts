@@ -186,11 +186,40 @@ async function downloadAndStreamCSV(
   onRow: (row: Record<string, string>) => void
 ): Promise<number> {
   console.log(`[repo-sync] Downloading ${url}...`)
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Failed to download ${url}: ${res.status}`)
-  const zipBuffer = Buffer.from(await res.arrayBuffer())
-  console.log(`[repo-sync] Downloaded ${(zipBuffer.length / 1024 / 1024).toFixed(1)}MB`)
 
+  // Retry up to 2 times (3 total attempts) with a 3s delay between retries.
+  // Each attempt has a 120s timeout — long enough for large government ZIPs but
+  // short enough to fail fast if the server is truly down.
+  const MAX_ATTEMPTS = 3
+  const RETRY_DELAY_MS = 3000
+  const DOWNLOAD_TIMEOUT_MS = 120_000
+
+  let lastError: unknown
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) })
+      if (!res.ok) throw new Error(`Failed to download ${url}: ${res.status}`)
+      const zipBuffer = Buffer.from(await res.arrayBuffer())
+
+      // Successfully downloaded — break out of retry loop and continue processing
+      console.log(`[repo-sync] Downloaded ${(zipBuffer.length / 1024 / 1024).toFixed(1)}MB (attempt ${attempt})`)
+      return await _parseZipBuffer(zipBuffer, url, onRow)
+    } catch (err) {
+      lastError = err
+      if (attempt < MAX_ATTEMPTS) {
+        console.warn(`[repo-sync] Download attempt ${attempt} failed for ${url}: ${err}. Retrying in ${RETRY_DELAY_MS / 1000}s...`)
+        await delay(RETRY_DELAY_MS)
+      }
+    }
+  }
+  throw new Error(`Servidor do governo indisponível após ${MAX_ATTEMPTS} tentativas (${url}): ${lastError}`)
+}
+
+async function _parseZipBuffer(
+  zipBuffer: Buffer,
+  url: string,
+  onRow: (row: Record<string, string>) => void
+): Promise<number> {
   // Parse ZIP local file header to find compressed data
   const sig = zipBuffer.readUInt32LE(0)
   if (sig !== 0x04034b50) throw new Error('Not a valid ZIP file')
