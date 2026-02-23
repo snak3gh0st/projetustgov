@@ -241,7 +241,7 @@ export default function LeadDetailPage() {
                 Este lead foi enviado pelo SDR e aguarda fechamento pelo coordenador
               </p>
             </div>
-            {userRole === 'gestor_vendedor' && canModify && (
+            {userRole === 'coordenador' && canModify && (
               <div className="flex gap-2">
                 <button
                   onClick={() => {

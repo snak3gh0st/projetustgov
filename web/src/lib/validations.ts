@@ -15,7 +15,7 @@ export const CreateUsuarioSchema = z.object({
   nome: z.string().min(2, { message: 'Nome deve ter ao menos 2 caracteres' }),
   email: z.string().email({ message: 'Email invalido' }),
   password: z.string().min(8, { message: 'Senha deve ter ao menos 8 caracteres' }),
-  role: z.enum(['vendedor', 'visualizador', 'gestor_vendedor']).default('vendedor'),
+  role: z.enum(['vendedor', 'visualizador', 'coordenador']).default('vendedor'),
 })
 
 export type LoginInput = z.infer<typeof LoginSchema>

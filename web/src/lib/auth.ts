@@ -60,7 +60,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // On sign-in, copy user.id and user.role to token
       if (user) {
         token.id = user.id as string
-        token.role = (user as { role: 'gestor' | 'vendedor' | 'visualizador' | 'gestor_vendedor' }).role
+        token.role = (user as { role: 'gestor' | 'vendedor' | 'visualizador' | 'coordenador' }).role
         token.roleRefreshedAt = Date.now()
       } else if (token.id) {
         // Refresh role from DB every hour so role changes take effect without re-login
@@ -82,7 +82,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Copy token.id and token.role to session.user
       if (session.user) {
         session.user.id = token.id as string
-        session.user.role = token.role as 'gestor' | 'vendedor' | 'visualizador' | 'gestor_vendedor'
+        session.user.role = token.role as 'gestor' | 'vendedor' | 'visualizador' | 'coordenador'
       }
       return session
     },

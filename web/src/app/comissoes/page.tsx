@@ -324,7 +324,7 @@ export default function ComissoesPage() {
       </div>
 
       {/* Summary cards */}
-      {data.role === 'gestor_vendedor' && data.paulo_breakdown ? (
+      {data.role === 'coordenador' && data.paulo_breakdown ? (
         /* Paulo's view: show his personal commission total */
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white border-2 border-[#0072F7] shadow-sm rounded-xl p-5">

@@ -137,7 +137,7 @@ export default function BIDashboard() {
   }
 
   const { role, kpis } = data
-  const isVendedor = role === 'vendedor' || role === 'gestor_vendedor'
+  const isVendedor = role === 'vendedor' || role === 'coordenador'
 
   // --- KPI color helpers ---
   const conversionColor =

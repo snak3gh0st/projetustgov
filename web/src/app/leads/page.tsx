@@ -281,7 +281,7 @@ export default function LeadsPage() {
         <p className="text-sm text-gray-500 mt-1">
           {sessionUser?.role === 'vendedor'
             ? 'Seus leads atribuídos'
-            : sessionUser?.role === 'gestor_vendedor'
+            : sessionUser?.role === 'coordenador'
             ? 'Seus leads + leads aguardando seu fechamento'
             : 'Todos os projetos dos vendedores'}
         </p>
@@ -333,9 +333,9 @@ export default function LeadsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contato</th>
                   <th onClick={() => handleSort('dias')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Ult. Contato<SortIcon col="dias" /></th>
                   <th onClick={() => handleSort('status')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Status<SortIcon col="status" /></th>
-                  {(sessionUser?.role === 'gestor' || sessionUser?.role === 'gestor_vendedor') && (
+                  {(sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador') && (
                     <th onClick={() => handleSort('vendedor')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">
-                      {sessionUser?.role === 'gestor_vendedor' ? 'SDR' : 'Vendedor'}
+                      {sessionUser?.role === 'coordenador' ? 'SDR' : 'Vendedor'}
                       <SortIcon col="vendedor" />
                     </th>
                   )}
@@ -465,7 +465,7 @@ export default function LeadsPage() {
                         {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </td>
-                    {(sessionUser?.role === 'gestor' || sessionUser?.role === 'gestor_vendedor') && (
+                    {(sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador') && (
                       <td className="px-4 py-3">
                         {sessionUser?.role === 'gestor' ? (
                           <div className="flex flex-col gap-0.5">
@@ -530,7 +530,7 @@ export default function LeadsPage() {
                       <td className="px-4 py-2">
                         <div className="text-gray-400 text-xs">{sub.orgao_concedente || '-'}</div>
                       </td>
-                      <td className="px-4 py-2" colSpan={sessionUser?.role === 'gestor' || sessionUser?.role === 'gestor_vendedor' ? 5 : 4}>
+                      <td className="px-4 py-2" colSpan={sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador' ? 5 : 4}>
                         <select
                           value={sub.status_contato || 'Não Contatado'}
                           onClick={e => e.stopPropagation()}

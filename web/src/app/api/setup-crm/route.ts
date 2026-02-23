@@ -44,21 +44,29 @@ async function runSetup() {
         nome VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(20) NOT NULL DEFAULT 'vendedor' CHECK (role IN ('gestor', 'vendedor', 'visualizador', 'gestor_vendedor')),
+        role VARCHAR(20) NOT NULL DEFAULT 'vendedor' CHECK (role IN ('gestor', 'vendedor', 'visualizador', 'gestor_vendedor', 'coordenador')),
         active BOOLEAN DEFAULT true,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
     `)
 
-    // 1b. Update existing constraint to include visualizador (Phase 11 Plan 04)
+    // 1b. Update existing constraint to include coordenador (quick-48 hotfix)
     await pool.query(`
       DO $$
       BEGIN
         ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-        ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('gestor', 'vendedor', 'visualizador', 'gestor_vendedor'));
+        ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('gestor', 'vendedor', 'visualizador', 'gestor_vendedor', 'coordenador'));
       END $$;
     `).catch(() => {}) // Ignore if constraint doesn't exist or already updated
+
+    // 1c. Migrate gestor_vendedor -> coordenador (quick-48 hotfix)
+    await pool.query(`
+      DO $$
+      BEGIN
+        UPDATE users SET role = 'coordenador' WHERE role = 'gestor_vendedor';
+      END $$;
+    `).catch(() => {})
 
     // 2. Create vendedor_projetos if not exists (safe — never drops data)
     await pool.query(`
@@ -456,7 +464,7 @@ async function runSetup() {
       { nome: 'Vitória', email: 'vitoria@projetus.org', role: 'vendedor', password: 'Vitoria#904' },
       { nome: 'Philipe', email: 'philipe@projetus.org', role: 'gestor', password: 'Philipe#268' },
       { nome: 'Tito', email: 'tito@projetus.org', role: 'gestor', password: 'Tito#351' },
-      { nome: 'Paulo', email: 'paulo@projetus.org', role: 'gestor_vendedor', password: 'Paulo#649' },
+      { nome: 'Paulo', email: 'paulo@projetus.org', role: 'coordenador', password: 'Paulo#649' },
       { nome: 'Admin', email: 'admin@projetus.org', role: 'gestor', password: 'admin123' },
     ]
 

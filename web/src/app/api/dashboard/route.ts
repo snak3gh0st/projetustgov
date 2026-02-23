@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const vendedorId = searchParams.get('vendedor_id')
 
     // If vendedor role, force their own ID
-    const filterVendedorId = (session.role === 'vendedor' || session.role === 'gestor_vendedor') ? session.userId : vendedorId
+    const filterVendedorId = (session.role === 'vendedor' || session.role === 'coordenador') ? session.userId : vendedorId
 
     const vendedorFilter = filterVendedorId ? 'AND vp.vendedor_id = $1' : ''
     const params = filterVendedorId ? [filterVendedorId] : []

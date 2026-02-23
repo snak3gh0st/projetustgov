@@ -78,7 +78,7 @@ export default function DistribuirPage() {
 
   useEffect(() => {
     fetch('/api/auth/session').then(r => r.json()).then(s => {
-      if (s?.user?.role !== 'gestor' && s?.user?.role !== 'gestor_vendedor') {
+      if (s?.user?.role !== 'gestor' && s?.user?.role !== 'coordenador') {
         window.location.href = '/'
       } else {
         setUserRole(s.user.role)
@@ -87,7 +87,7 @@ export default function DistribuirPage() {
   }, [])
 
   useEffect(() => {
-    if (userRole === 'gestor' || userRole === 'gestor_vendedor') {
+    if (userRole === 'gestor' || userRole === 'coordenador') {
       fetchLeads()
       fetchAssignedLeads()
       fetchVendedores()
@@ -332,7 +332,7 @@ export default function DistribuirPage() {
     }
   }
 
-  if (userRole !== 'gestor' && userRole !== 'gestor_vendedor') {
+  if (userRole !== 'gestor' && userRole !== 'coordenador') {
     return <div className="flex items-center justify-center py-20 text-gray-500">Verificando permissoes...</div>
   }
 

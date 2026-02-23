@@ -12,7 +12,7 @@ export const verifySession = cache(async () => {
   return {
     isAuth: true,
     userId: session.user.id,
-    role: session.user.role as 'gestor' | 'vendedor' | 'visualizador' | 'gestor_vendedor',
+    role: session.user.role as 'gestor' | 'vendedor' | 'visualizador' | 'coordenador',
     email: session.user.email,
     name: session.user.name
   }
@@ -24,7 +24,7 @@ export async function getApiSession() {
   if (!session?.user?.id) return null
   return {
     userId: session.user.id,
-    role: session.user.role as 'gestor' | 'vendedor' | 'visualizador' | 'gestor_vendedor',
+    role: session.user.role as 'gestor' | 'vendedor' | 'visualizador' | 'coordenador',
     email: session.user.email,
     name: session.user.name
   }
@@ -32,7 +32,7 @@ export async function getApiSession() {
 
 // Helper: check if role acts as a seller (receives leads, earns commissions)
 export function isSeller(role: string): boolean {
-  return role === 'vendedor' || role === 'gestor_vendedor'
+  return role === 'vendedor' || role === 'coordenador'
 }
 
 // Helper: build vendedor filter clause for leads queries
@@ -41,7 +41,7 @@ export function buildVendedorFilter(role: string, userId: string, paramIndex: nu
   if (role === 'gestor' || role === 'visualizador') {
     return { clause: '', params: [], nextIndex: paramIndex }
   }
-  // Vendedor and gestor_vendedor see only their assigned leads
+  // Vendedor and coordenador see only their assigned leads
   return {
     clause: `AND la.vendedor_id = $${paramIndex}`,
     params: [userId],
@@ -51,7 +51,7 @@ export function buildVendedorFilter(role: string, userId: string, paramIndex: nu
 
 // Helper: check if user can modify data (write permissions)
 export function canModifyData(role: string): boolean {
-  return role === 'gestor' || role === 'vendedor' || role === 'gestor_vendedor'
+  return role === 'gestor' || role === 'vendedor' || role === 'coordenador'
 }
 
 // Helper: check if user has admin-level access (full control)
@@ -64,7 +64,7 @@ export async function verifyLeadAccess(cnpj: string, userId: string, role: strin
   // Gestor and visualizador have access to all leads
   if (role === 'gestor' || role === 'visualizador') return true
 
-  // Vendedor and gestor_vendedor must have the lead assigned (or be closer)
+  // Vendedor and coordenador must have the lead assigned (or be closer)
   const assignments = await query(
     `SELECT 1 FROM vendedor_projetos WHERE cnpj = $1 AND (vendedor_id = $2 OR closer_id = $2) LIMIT 1`,
     [cnpj, userId]

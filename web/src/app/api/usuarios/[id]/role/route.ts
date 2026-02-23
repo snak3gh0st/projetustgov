@@ -4,7 +4,7 @@ import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
 
-const ALLOWED_ROLES = ['vendedor', 'visualizador', 'gestor_vendedor'] as const
+const ALLOWED_ROLES = ['vendedor', 'visualizador', 'coordenador'] as const
 type AllowedRole = typeof ALLOWED_ROLES[number]
 
 export async function PATCH(

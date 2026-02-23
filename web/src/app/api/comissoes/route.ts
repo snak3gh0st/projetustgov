@@ -24,11 +24,11 @@ export async function GET(request: NextRequest) {
     let paramIndex = 1
 
     // Role-based filtering: vendedor always sees only their own
-    // gestor_vendedor sees their own + leads where they are closer
+    // coordenador sees their own + leads where they are closer
     if (session.role === 'vendedor') {
       filters.push(`vp.vendedor_id = $${paramIndex++}`)
       params.push(session.userId)
-    } else if (session.role === 'gestor_vendedor' && !vendedorId) {
+    } else if (session.role === 'coordenador' && !vendedorId) {
       // Paulo sees leads where he is vendedor OR closer
       filters.push(`(vp.vendedor_id = $${paramIndex} OR vp.closer_id = $${paramIndex})`)
       params.push(session.userId)
@@ -51,8 +51,8 @@ export async function GET(request: NextRequest) {
 
     const whereClause = filters.join(' AND ')
 
-    // Show Paulo's 3-type breakdown for gestor_vendedor (Paulo himself) and gestor (admins)
-    const isPauloView = session.role === 'gestor_vendedor' || session.role === 'gestor'
+    // Show Paulo's 3-type breakdown for coordenador (Paulo himself) and gestor (admins)
+    const isPauloView = session.role === 'coordenador' || session.role === 'gestor'
 
     // Run all queries in parallel
     const showPerVendedor = (session.role !== 'vendedor') && !vendedorId
@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
           vp.comissao_locked,
           COALESCE(vp.status_contato, 'Nao Contatado') as status_contato,
           u.nome as vendedor_nome,
+          u.role as vendedor_role,
           vp.vendedor_id,
           vp.closer_id,
           uc.nome as closer_nome,
@@ -123,7 +124,7 @@ export async function GET(request: NextRequest) {
         SELECT DISTINCT u.id, u.nome
         FROM users u
         JOIN vendedor_projetos vp ON vp.vendedor_id = u.id
-        WHERE u.role IN ('vendedor', 'gestor_vendedor') AND u.active = true
+        WHERE u.role IN ('vendedor', 'coordenador') AND u.active = true
         ORDER BY u.nome
       `),
     ])
@@ -225,13 +226,16 @@ export async function GET(request: NextRequest) {
     } // else pauloUserId found
     } // isPauloView
 
-    // Map leads, zeroing out comissao_bonus for gestor_vendedor on split leads
-    // where they are the closer but not the vendedor (bonus belongs to the SDR)
+    // Map leads, zeroing out comissao_bonus for coordenador on split leads
+    // where they are the closer but not the vendedor (bonus belongs to the SDR).
+    // Also zero out all commission fields for gestor-role vendedores (Tito) — gestors
+    // are socio/owners and never earn commission.
     const mappedLeads = leadsRows.map(lead => {
       const isCloserNotVendedor =
-        session.role === 'gestor_vendedor' &&
+        session.role === 'coordenador' &&
         lead.closer_id === session.userId &&
         lead.vendedor_id !== session.userId
+      const isGestorLead = lead.vendedor_role === 'gestor'
       return {
         id: lead.id,
         cnpj: lead.cnpj,
@@ -240,8 +244,8 @@ export async function GET(request: NextRequest) {
         valor_venda: Number(lead.valor_venda) || 0,
         tipo_vendedor: lead.tipo_vendedor,
         comissao_percentual: Number(lead.comissao_percentual) || 0,
-        comissao_valor: Number(lead.comissao_valor) || 0,
-        comissao_bonus: isCloserNotVendedor ? 0 : (Number(lead.comissao_bonus) || 0),
+        comissao_valor: isGestorLead ? 0 : (Number(lead.comissao_valor) || 0),
+        comissao_bonus: (isCloserNotVendedor || isGestorLead) ? 0 : (Number(lead.comissao_bonus) || 0),
         comissao_locked: Boolean(lead.comissao_locked),
         status_contato: lead.status_contato,
         vendedor_nome: lead.vendedor_nome,
@@ -249,7 +253,7 @@ export async function GET(request: NextRequest) {
         closer_id: lead.closer_id || null,
         closer_nome: lead.closer_nome || null,
         closer_comissao_percentual: Number(lead.closer_comissao_percentual) || 0,
-        closer_comissao_valor: Number(lead.closer_comissao_valor) || 0,
+        closer_comissao_valor: isGestorLead ? 0 : (Number(lead.closer_comissao_valor) || 0),
         updated_at: lead.updated_at,
         has_override: Boolean(lead.has_override),
         override_motivo: lead.override_motivo,

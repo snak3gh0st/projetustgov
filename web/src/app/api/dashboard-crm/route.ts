@@ -12,12 +12,12 @@ export async function GET() {
     }
 
     const isVendedor = session.role === 'vendedor'
-    const isGestorVendedor = session.role === 'gestor_vendedor'
-    const isFiltered = isVendedor || isGestorVendedor
-    // gestor_vendedor (Paulo) sees leads where vendedor_id = id OR closer_id = id
+    const isCoordenador = session.role === 'coordenador'
+    const isFiltered = isVendedor || isCoordenador
+    // coordenador (Paulo) sees leads where vendedor_id = id OR closer_id = id
     const vendedorFilter = isVendedor
       ? ' WHERE vendedor_id = $1'
-      : isGestorVendedor
+      : isCoordenador
       ? ' WHERE (vendedor_id = $1 OR closer_id = $1)'
       : ''
     const vendedorParams = isFiltered ? [session.userId] : []

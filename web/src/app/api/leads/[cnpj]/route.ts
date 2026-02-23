@@ -80,10 +80,10 @@ export async function PATCH(
     updates.push(`updated_at = NOW()`)
     values.push(projectId)
 
-    // Vendedor/gestor_vendedor can update their own leads or leads where they are closer
+    // Vendedor/coordenador can update their own leads or leads where they are closer
     // Exception: setting Aguardando Closer is allowed on ANY lead (SDR hands off to closer)
     let vendedorCondition = ''
-    if (session.role === 'vendedor' || session.role === 'gestor_vendedor') {
+    if (session.role === 'vendedor' || session.role === 'coordenador') {
       if (body.status_contato !== 'Aguardando Closer') {
         values.push(session.userId)
         vendedorCondition = `AND (vendedor_id = $${paramIndex + 1} OR closer_id = $${paramIndex + 1})`

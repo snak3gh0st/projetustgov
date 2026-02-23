@@ -8,7 +8,7 @@ interface Usuario {
   id: string
   nome: string
   email: string
-  role: 'gestor' | 'gestor_vendedor' | 'visualizador' | 'vendedor'
+  role: 'gestor' | 'coordenador' | 'visualizador' | 'vendedor'
   active: boolean
   created_at: string
   lead_count: number
@@ -17,21 +17,21 @@ interface Usuario {
 
 const ROLE_LABELS: Record<string, string> = {
   gestor: 'Gestor',
-  gestor_vendedor: 'Gestor Vendedor',
+  coordenador: 'Coordenador',
   visualizador: 'Visualizador',
   vendedor: 'Vendedor',
 }
 
 const ROLE_BADGE_CLASSES: Record<string, string> = {
   gestor: 'bg-blue-50 text-blue-600',
-  gestor_vendedor: 'bg-indigo-50 text-indigo-600',
+  coordenador: 'bg-indigo-50 text-indigo-600',
   visualizador: 'bg-purple-50 text-purple-600',
   vendedor: 'bg-green-50 text-green-600',
 }
 
 const ROLE_SELECT_BG: Record<string, string> = {
   gestor: 'bg-blue-50 text-blue-700 border-blue-200',
-  gestor_vendedor: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  coordenador: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   visualizador: 'bg-purple-50 text-purple-700 border-purple-200',
   vendedor: 'bg-green-50 text-green-700 border-green-200',
 }
@@ -181,7 +181,7 @@ export default function CadastroVendedorPage() {
             >
               <option value="vendedor">Vendedor</option>
               <option value="visualizador">Visualizador</option>
-              <option value="gestor_vendedor">Gestor Vendedor</option>
+              <option value="coordenador">Coordenador</option>
             </select>
           </div>
 
@@ -233,7 +233,7 @@ export default function CadastroVendedorPage() {
                           >
                             <option value="vendedor">Vendedor</option>
                             <option value="visualizador">Visualizador</option>
-                            <option value="gestor_vendedor">Gestor Vendedor</option>
+                            <option value="coordenador">Coordenador</option>
                             {usuario.role === 'gestor' && (
                               <option value="gestor" disabled>Gestor</option>
                             )}
