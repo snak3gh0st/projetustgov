@@ -632,12 +632,12 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       const assignmentKey = lead.nr_emenda
         ? `${lead.cnpj}|${lead.nr_emenda}`
         : `${lead.cnpj}|${lead.codigo_programa}`
-      // Bug fix: use ONLY exact assignmentKey — cnpjAssignments.has(lead.cnpj) caused false positives
-      // where a new emenda row for an existing CNPJ was incorrectly marked as isExisting=true.
+      // isExisting: this exact emenda row already exists in DB (preserve its vendedor assignment)
       const isExisting = existingAssignments.has(assignmentKey)
       const isExistingClient = existingClients.has(lead.cnpj)
 
-      // For new leads, assign vendedor via round-robin
+      // For new leads, assign vendedor via round-robin — but keep all emendas of a CNPJ
+      // under the same vendedor. If a CNPJ already has any assignment, inherit it.
       let vendedorId: string | null = null
       if (isExisting) {
         // Existing lead: keep current vendedor assignment.
@@ -647,11 +647,20 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
         // New lead from existing paying client: route directly to Paulo Gabriel
         vendedorId = pauloId
         vendedorCounts.set(pauloId, (vendedorCounts.get(pauloId) ?? 0) + 1)
+      } else if (cnpjAssignments.has(lead.cnpj)) {
+        // New emenda for a CNPJ that already has rows — inherit the existing vendedor.
+        // This ensures all emendas of the same organization go to the same vendedor,
+        // preventing split assignments where two vendedores unknowingly work the same org.
+        vendedorId = cnpjAssignments.get(lead.cnpj)!
+        // Do NOT increment vendedorCounts — this isn't a new allocation, it's inheritance.
       } else {
-        // New lead: normal round-robin
+        // Truly new CNPJ: normal round-robin
         vendedorId = pickNextVendedor()
         if (vendedorId) {
           vendedorCounts.set(vendedorId, (vendedorCounts.get(vendedorId) ?? 0) + 1)
+          // Track this assignment so subsequent emendas for the same CNPJ in this batch
+          // also inherit this vendedor (handles multiple new emendas in same sync run).
+          cnpjAssignments.set(lead.cnpj, vendedorId)
         }
       }
 
