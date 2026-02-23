@@ -164,13 +164,14 @@
 | 65 | Hotfix roles: gestor_vendedor → coordenador (Paulo), Tito=gestor com visão de vendedor e comissão 0 por ser sócio | 2026-02-23 | 985228c | [48-hotfix-de-roles-paulo-coordernador-e-man](./quick/48-hotfix-de-roles-paulo-coordernador-e-man/) |
 | 66 | Fix percentuais na aba Comissionamento: calcular sobre NÃO CONTATADO não TOTAL GERAL | 2026-02-23 | 35ba069 | [49-fix-percentuais-na-aba-comissionamento-c](./quick/49-fix-percentuais-na-aba-comissionamento-c/) |
 | 67 | Preserve scroll position in leads list on slide-over open/close: scrollPositionRef + handleOpenLead + requestAnimationFrame restore | 2026-02-23 | d195107 | [50-visualiza-o-voltar-para-o-mesmo-ponto-an](./quick/50-visualiza-o-voltar-para-o-mesmo-ponto-an/) |
+| 68 | Hot fix Tito: gestor hybrid view (Meu Pipeline + own leads default + Ver Todos toggle) with R$0 commission enforced | 2026-02-23 | 09d27b0 | [51-hot-fix-ambiente-tito-para-vendedor-sem-](./quick/51-hot-fix-ambiente-tito-para-vendedor-sem-/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-23
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 67 (quick-50): Preserve scroll position in leads list on slide-over open/close
+**Activity:** Quick task 68 (quick-51): Hot fix Tito gestor hybrid view with R$0 commission
 
 **Completed:**
 - quick-41 (#58): CNPJ Monitorado personal watchlist at /monitorar, cnpj_monitorado + push_subscriptions DB tables, web push infrastructure via VAPID, cron sync STEP 7b triggers push notifications for watched CNPJs. Commits: 1bf7d2d, e32226e, 7134a0f
