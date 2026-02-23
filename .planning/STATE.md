@@ -157,13 +157,14 @@
 | 58 | CNPJ Monitorado: personal watchlist + web push notifications on emenda sync via service worker + VAPID | 2026-02-20 | 7134a0f | [41-ambiente-para-adi-o-do-cnpj-monitorado-e](./quick/41-ambiente-para-adi-o-do-cnpj-monitorado-e/) |
 | 59 | AINDA NÃO no pipeline administrativo: API count + 6th pipeline card (rose) | 2026-02-20 | 8a1a538 | [42-ainda-n-o-no-pipeline-administrativo](./quick/42-ainda-n-o-no-pipeline-administrativo/) |
 | 60 | último contato desatualizado (nunca). Verificar isso antes | 2026-02-20 | cf47b5c | [43-ltimo-contato-desatualizado-nunca-verifi](./quick/43-ltimo-contato-desatualizado-nunca-verifi/) |
+| 61 | Adicionar status AINDA NÃO no dropdown de status da página de detalhes do lead | 2026-02-23 | e5dbdb8 | [44-adicionar-status-ainda-n-o-no-dropdown-d](./quick/44-adicionar-status-ainda-n-o-no-dropdown-d/) |
 
 ## Session Continuity
 
 ### Last Session Summary
-**Date:** 2026-02-20
+**Date:** 2026-02-23
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 60 (quick-43): último contato desatualizado (nunca). Verificar isso antes
+**Activity:** Quick task 61 (quick-44): Adicionar status AINDA NÃO no dropdown de status da página de detalhes do lead
 
 **Completed:**
 - quick-41 (#58): CNPJ Monitorado personal watchlist at /monitorar, cnpj_monitorado + push_subscriptions DB tables, web push infrastructure via VAPID, cron sync STEP 7b triggers push notifications for watched CNPJs. Commits: 1bf7d2d, e32226e, 7134a0f
