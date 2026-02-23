@@ -165,6 +165,7 @@
 | 66 | Fix percentuais na aba Comissionamento: calcular sobre NÃO CONTATADO não TOTAL GERAL | 2026-02-23 | 35ba069 | [49-fix-percentuais-na-aba-comissionamento-c](./quick/49-fix-percentuais-na-aba-comissionamento-c/) |
 | 67 | Preserve scroll position in leads list on slide-over open/close: scrollPositionRef + handleOpenLead + requestAnimationFrame restore | 2026-02-23 | d195107 | [50-visualiza-o-voltar-para-o-mesmo-ponto-an](./quick/50-visualiza-o-voltar-para-o-mesmo-ponto-an/) |
 | 68 | Hot fix Tito: gestor hybrid view (Meu Pipeline + own leads default + Ver Todos toggle) with R$0 commission enforced | 2026-02-23 | 09d27b0 | [51-hot-fix-ambiente-tito-para-vendedor-sem-](./quick/51-hot-fix-ambiente-tito-para-vendedor-sem-/) |
+| 69 | Fix multi-emenda commission: soma comissoes das emendas + fechar uma emenda nao fecha o lead inteiro | 2026-02-23 | 5079867 | [52-fix-multi-emenda-commission-soma-comisso](./quick/52-fix-multi-emenda-commission-soma-comisso/) |
 
 ## Session Continuity
 
