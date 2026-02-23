@@ -31,8 +31,8 @@ export async function GET(request: NextRequest) {
       conditions.push(`(vp.vendedor_id = $${paramIndex} OR (vp.closer_id = $${paramIndex} AND vp.status_contato = 'Aguardando Closer'))`)
       params.push(session.userId)
       paramIndex++
-    } else if (session.role === 'coordenador' && searchParams.get('all') !== 'true') {
-      // normal view (e.g. /leads page): only own leads
+    } else if ((session.role === 'coordenador' || session.role === 'gestor') && searchParams.get('all') !== 'true') {
+      // normal view (e.g. /leads page): only own leads (vendedor_id = self OR closer for Aguardando Closer)
       conditions.push(`(vp.vendedor_id = $${paramIndex} OR (vp.closer_id = $${paramIndex} AND vp.status_contato = 'Aguardando Closer'))`)
       params.push(session.userId)
       paramIndex++
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       conditions.push(`vp.vendedor_id = $${paramIndex++}`)
       params.push(vendedorId)
     }
-    // when coordenador + all=true and no vendedorId filter: no condition added, sees all leads (same as gestor)
+    // when coordenador/gestor + all=true and no vendedorId filter: no condition added, sees all leads
 
     // Optional filter for gestor to exclude existing clients
     if (excludeExisting === 'true' && session.role !== 'vendedor' && session.role !== 'coordenador') {
