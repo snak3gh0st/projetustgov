@@ -38,7 +38,7 @@ export default function DistribuirPage() {
   const fetchLeads = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/leads?vendedor_id=unassigned&limit=5000')
+      const res = await fetch('/api/leads?vendedor_id=unassigned&limit=5000&all=true')
       const data = await res.json()
       setLeads(Array.isArray(data) ? data : [])
     } catch (err) {
@@ -51,7 +51,7 @@ export default function DistribuirPage() {
   const fetchAssignedLeads = useCallback(async () => {
     setLoadingAssigned(true)
     try {
-      const res = await fetch('/api/leads?limit=5000')
+      const res = await fetch('/api/leads?limit=5000&all=true')
       const data = await res.json()
       const assigned = (Array.isArray(data) ? data : []).filter(
         (l: VendedorProjeto) => l.vendedor_id !== null
