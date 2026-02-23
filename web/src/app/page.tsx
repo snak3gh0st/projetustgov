@@ -379,10 +379,9 @@ export default function CRMDashboard() {
         {/* Status cards row */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           {(() => {
-            const naoContatadoCount = g.by_status['Não Contatado'] || 0
             return STATUS_ORDER.map((status, idx) => {
             const count = g.by_status[status] || 0
-            const pct = naoContatadoCount > 0 ? (count / naoContatadoCount) * 100 : 0
+            const pct = g.total_leads > 0 ? (count / g.total_leads) * 100 : 0
             const cfg = STATUS_CONFIG[status]
             const prevCount = idx > 0 ? (g.by_status[STATUS_ORDER[idx - 1]] || 0) : null
             const conversionRate = prevCount && prevCount > 0 ? ((count / prevCount) * 100).toFixed(0) : null
