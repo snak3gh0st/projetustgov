@@ -378,9 +378,11 @@ export default function CRMDashboard() {
 
         {/* Status cards row */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-          {STATUS_ORDER.map((status, idx) => {
+          {(() => {
+            const naoContatadoCount = g.by_status['Não Contatado'] || 0
+            return STATUS_ORDER.map((status, idx) => {
             const count = g.by_status[status] || 0
-            const pct = g.total_leads > 0 ? (count / g.total_leads) * 100 : 0
+            const pct = naoContatadoCount > 0 ? (count / naoContatadoCount) * 100 : 0
             const cfg = STATUS_CONFIG[status]
             const prevCount = idx > 0 ? (g.by_status[STATUS_ORDER[idx - 1]] || 0) : null
             const conversionRate = prevCount && prevCount > 0 ? ((count / prevCount) * 100).toFixed(0) : null
@@ -405,7 +407,7 @@ export default function CRMDashboard() {
 
                   {/* Progress bar */}
                   <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className={`h-full ${cfg.bar} rounded-full transition-all`} style={{ width: `${Math.max(pct, 2)}%` }} />
+                    <div className={`h-full ${cfg.bar} rounded-full transition-all`} style={{ width: `${Math.min(Math.max(pct, 2), 100)}%` }} />
                   </div>
 
                   {/* Conversion rate from previous stage */}
@@ -424,7 +426,8 @@ export default function CRMDashboard() {
                 </div>
               </div>
             )
-          })}
+          })
+          })()}
         </div>
 
         {/* Flow bar with arrows */}
