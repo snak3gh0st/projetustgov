@@ -53,6 +53,7 @@ export default function LeadsPage() {
     tipoVendedor: string | null
   } | null>(null)
   const [expandedCnpjs, setExpandedCnpjs] = useState<Set<string>>(new Set())
+  const [showAllLeads, setShowAllLeads] = useState(false)
   const [clientFilter, setClientFilter] = useState('')
   const [sortCol, setSortCol] = useState('')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -83,6 +84,10 @@ export default function LeadsPage() {
     if (statusFilter) params.set('status_contato', statusFilter)
     if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
     params.set('limit', '500')
+    // For gestor: pass all=true when showAllLeads is true or when a specific vendedorFilter is set
+    if (sessionUser?.role === 'gestor' && (showAllLeads || vendedorFilter)) {
+      params.set('all', 'true')
+    }
 
     try {
       const res = await fetch(`/api/leads?${params}`)
@@ -93,7 +98,7 @@ export default function LeadsPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, statusFilter, vendedorFilter])
+  }, [search, statusFilter, vendedorFilter, sessionUser, showAllLeads])
 
   useEffect(() => {
     const timer = setTimeout(fetchLeads, 300)
@@ -289,6 +294,8 @@ export default function LeadsPage() {
             ? 'Seus leads atribuídos'
             : sessionUser?.role === 'coordenador'
             ? 'Seus leads + leads aguardando seu fechamento'
+            : sessionUser?.role === 'gestor'
+            ? showAllLeads ? 'Todos os projetos dos vendedores' : 'Seu pipeline pessoal'
             : 'Todos os projetos dos vendedores'}
         </p>
       </div>
@@ -308,6 +315,16 @@ export default function LeadsPage() {
         </select>
         {sessionUser?.role === 'gestor' && (
           <>
+            <button
+              onClick={() => setShowAllLeads(v => !v)}
+              className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                showAllLeads
+                  ? 'bg-blue-50 border-blue-200 text-blue-600'
+                  : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+              }`}
+            >
+              {showAllLeads ? 'Meu Pipeline' : 'Ver Todos os Leads'}
+            </button>
             <select value={vendedorFilter} onChange={e => setVendedorFilter(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]">
               <option value="">Todos Vendedores</option>
               <option value="unassigned">Não atribuídos</option>

@@ -272,7 +272,7 @@ export default function CRMDashboard() {
   }
 
   const { global: g, vendedores, recent_activity, role } = data
-  const isVendedor = role === 'vendedor' || role === 'coordenador'
+  const isVendedor = role === 'vendedor' || role === 'coordenador' || role === 'gestor'
 
   return (
     <div className="space-y-6 max-w-7xl">
