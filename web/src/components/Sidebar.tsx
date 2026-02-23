@@ -60,6 +60,7 @@ export default function Sidebar({ user }: SidebarProps) {
     : user.role === 'gestor_vendedor'
     ? [
         ...BASE_NAV_ITEMS,
+        { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
         { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
       ]
     : user.role === 'visualizador'

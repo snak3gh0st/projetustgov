@@ -78,16 +78,16 @@ export default function DistribuirPage() {
 
   useEffect(() => {
     fetch('/api/auth/session').then(r => r.json()).then(s => {
-      if (s?.user?.role !== 'gestor') {
+      if (s?.user?.role !== 'gestor' && s?.user?.role !== 'gestor_vendedor') {
         window.location.href = '/'
       } else {
-        setUserRole('gestor')
+        setUserRole(s.user.role)
       }
     }).catch(() => { window.location.href = '/login' })
   }, [])
 
   useEffect(() => {
-    if (userRole === 'gestor') {
+    if (userRole === 'gestor' || userRole === 'gestor_vendedor') {
       fetchLeads()
       fetchAssignedLeads()
       fetchVendedores()
@@ -332,7 +332,7 @@ export default function DistribuirPage() {
     }
   }
 
-  if (userRole !== 'gestor') {
+  if (userRole !== 'gestor' && userRole !== 'gestor_vendedor') {
     return <div className="flex items-center justify-center py-20 text-gray-500">Verificando permissoes...</div>
   }
 
@@ -351,45 +351,47 @@ export default function DistribuirPage() {
       </div>
 
       {/* CNPJ Monitoring section - gestor only, assign directly to Paulo Gabriel */}
-      <div className="border border-amber-200 bg-amber-50 rounded-xl p-4">
-        <h2 className="text-sm font-semibold text-amber-800 mb-3">Adicionar CNPJ Monitorado (Paulo Gabriel)</h2>
-        <div className="flex flex-wrap gap-3 items-start">
-          <input
-            type="text"
-            placeholder="CNPJ (somente números ou formatado)"
-            value={monitorCnpj}
-            onChange={e => { setMonitorCnpj(e.target.value); setMonitorResult(null); setPendingForce(false) }}
-            className="flex-1 min-w-[200px] bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-amber-400 transition-colors"
-          />
-          <button
-            onClick={() => handleMonitorCnpj(false)}
-            disabled={monitorLoading || monitorCnpj.replace(/\D/g, '').length !== 14}
-            className="px-4 py-2 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {monitorLoading ? 'Atribuindo...' : 'Atribuir a Paulo'}
-          </button>
-        </div>
-        {monitorResult && (
-          <div className={`mt-3 text-sm rounded-lg px-3 py-2 ${
-            monitorResult.type === 'success'
-              ? 'bg-green-50 text-green-700 border border-green-200'
-              : monitorResult.type === 'conflict'
-                ? 'bg-orange-50 text-orange-700 border border-orange-200'
-                : 'bg-red-50 text-red-700 border border-red-200'
-          }`}>
-            {monitorResult.message}
-            {monitorResult.type === 'conflict' && pendingForce && (
-              <button
-                onClick={() => handleMonitorCnpj(true)}
-                disabled={monitorLoading}
-                className="ml-3 text-xs font-medium underline hover:no-underline"
-              >
-                Forçar Reatribuição
-              </button>
-            )}
+      {userRole === 'gestor' && (
+        <div className="border border-amber-200 bg-amber-50 rounded-xl p-4">
+          <h2 className="text-sm font-semibold text-amber-800 mb-3">Adicionar CNPJ Monitorado (Paulo Gabriel)</h2>
+          <div className="flex flex-wrap gap-3 items-start">
+            <input
+              type="text"
+              placeholder="CNPJ (somente números ou formatado)"
+              value={monitorCnpj}
+              onChange={e => { setMonitorCnpj(e.target.value); setMonitorResult(null); setPendingForce(false) }}
+              className="flex-1 min-w-[200px] bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-amber-400 transition-colors"
+            />
+            <button
+              onClick={() => handleMonitorCnpj(false)}
+              disabled={monitorLoading || monitorCnpj.replace(/\D/g, '').length !== 14}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {monitorLoading ? 'Atribuindo...' : 'Atribuir a Paulo'}
+            </button>
           </div>
-        )}
-      </div>
+          {monitorResult && (
+            <div className={`mt-3 text-sm rounded-lg px-3 py-2 ${
+              monitorResult.type === 'success'
+                ? 'bg-green-50 text-green-700 border border-green-200'
+                : monitorResult.type === 'conflict'
+                  ? 'bg-orange-50 text-orange-700 border border-orange-200'
+                  : 'bg-red-50 text-red-700 border border-red-200'
+            }`}>
+              {monitorResult.message}
+              {monitorResult.type === 'conflict' && pendingForce && (
+                <button
+                  onClick={() => handleMonitorCnpj(true)}
+                  disabled={monitorLoading}
+                  className="ml-3 text-xs font-medium underline hover:no-underline"
+                >
+                  Forçar Reatribuição
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-xl bg-gray-50 border border-gray-200 p-1 w-fit">
