@@ -118,9 +118,18 @@ export default function LeadsPage() {
     let result = Object.entries(leadsByCnpj).map(([cnpj, cnpjLeads]) => {
       const first = cnpjLeads[0] // highest value (ORDER BY valor_emenda DESC)
       const totalValor = cnpjLeads.reduce((sum, l) => sum + (Number(l.valor_emenda) || 0), 0)
+      const totalComissao = cnpjLeads.reduce((sum, l) => {
+        if (l.status_contato === 'Fechado') {
+          return sum + (Number(l.comissao_valor) || 0) + (Number(l.comissao_bonus) || 0)
+        }
+        return sum
+      }, 0)
+      const allFechado = cnpjLeads.every(l => l.status_contato === 'Fechado')
       return {
         ...first,
         totalValor,
+        totalComissao,
+        allFechado,
         emenda_count: cnpjLeads.length,
         subLeads: cnpjLeads, // all emendas for cascade (including first)
       }
@@ -369,7 +378,7 @@ export default function LeadsPage() {
                   const hasContact = lead.telefone || lead.email
                   const isExpanded = expandedCnpjs.has(lead.cnpj)
                   const hasMultipleEmendas = lead.emenda_count > 1
-                  const isFechado = lead.status_contato === 'Fechado'
+                  const isFechado = (lead as any).allFechado ?? lead.status_contato === 'Fechado'
                   return (
                   <React.Fragment key={lead.cnpj}>
                   <tr
@@ -409,10 +418,10 @@ export default function LeadsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {isFechado && lead.comissao_valor ? (
+                      {isFechado && (lead as any).totalComissao ? (
                         <div>
                           <span className="text-green-600 font-semibold text-sm">
-                            {formatCompactCurrency(lead.comissao_valor)}
+                            {formatCompactCurrency((lead as any).totalComissao)}
                           </span>
                           {lead.comissao_locked && (
                             <span className="inline-block ml-1 text-green-500 align-middle" title="Comissao confirmada">
@@ -546,9 +555,15 @@ export default function LeadsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-2 whitespace-nowrap">
-                        <span className="text-sigma-neon/70 font-medium text-xs">
-                          {formatCompactCurrency(Number(sub.valor_emenda) || 0)}
-                        </span>
+                        {sub.status_contato === 'Fechado' && (Number(sub.comissao_valor) || 0) > 0 ? (
+                          <span className="text-green-600 font-medium text-xs">
+                            {formatCompactCurrency((Number(sub.comissao_valor) || 0) + (Number(sub.comissao_bonus) || 0))}
+                          </span>
+                        ) : (
+                          <span className="text-sigma-neon/70 font-medium text-xs">
+                            {formatCompactCurrency(Number(sub.valor_emenda) || 0)}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-2">
                         <div className="text-gray-400 text-xs">{sub.orgao_concedente || '-'}</div>
