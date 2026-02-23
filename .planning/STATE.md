@@ -163,13 +163,14 @@
 | 64 | CLIENTES-2.xlsx → Paulo: 189 removidos de existing_clients, 16 reatribuídos de outros vendedores, 21 já eram do Paulo, 152 não no DB | 2026-02-23 | - | [47-upload-clientes-projetus-existing-clients](./quick/47-upload-clientes-projetus-existing-clients/) |
 | 65 | Hotfix roles: gestor_vendedor → coordenador (Paulo), Tito=gestor com visão de vendedor e comissão 0 por ser sócio | 2026-02-23 | 985228c | [48-hotfix-de-roles-paulo-coordernador-e-man](./quick/48-hotfix-de-roles-paulo-coordernador-e-man/) |
 | 66 | Fix percentuais na aba Comissionamento: calcular sobre NÃO CONTATADO não TOTAL GERAL | 2026-02-23 | 35ba069 | [49-fix-percentuais-na-aba-comissionamento-c](./quick/49-fix-percentuais-na-aba-comissionamento-c/) |
+| 67 | Preserve scroll position in leads list on slide-over open/close: scrollPositionRef + handleOpenLead + requestAnimationFrame restore | 2026-02-23 | d195107 | [50-visualiza-o-voltar-para-o-mesmo-ponto-an](./quick/50-visualiza-o-voltar-para-o-mesmo-ponto-an/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-23
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 66 (quick-49): Fix percentuais na aba Comissionamento: calcular sobre NÃO CONTATADO não TOTAL GERAL
+**Activity:** Quick task 67 (quick-50): Preserve scroll position in leads list on slide-over open/close
 
 **Completed:**
 - quick-41 (#58): CNPJ Monitorado personal watchlist at /monitorar, cnpj_monitorado + push_subscriptions DB tables, web push infrastructure via VAPID, cron sync STEP 7b triggers push notifications for watched CNPJs. Commits: 1bf7d2d, e32226e, 7134a0f
