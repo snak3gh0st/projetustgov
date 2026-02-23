@@ -160,7 +160,7 @@
 | 61 | Adicionar status AINDA NÃO no dropdown de status da página de detalhes do lead | 2026-02-23 | e5dbdb8 | [44-adicionar-status-ainda-n-o-no-dropdown-d](./quick/44-adicionar-status-ainda-n-o-no-dropdown-d/) |
 | 62 | gestor_vendedor (Paulo Gabriel) can access /distribuir, sees all leads, distributes/reassigns — amber CNPJ box gestor-only | 2026-02-23 | 7645188 | [45-visualizacao-do-paulo-grabriel-precisa-t](./quick/45-visualizacao-do-paulo-grabriel-precisa-t/) |
 | 63 | Assign CNPJs from CLIENTES.xlsx to Paulo: 12 reassigned (from Gabriel/Elisson/Vitoria/Wellington), 8 already his, 56 not in DB | 2026-02-23 | - | [46-adicionar-cnpjs-do-clientes-xlsx-para-o-](./quick/46-adicionar-cnpjs-do-clientes-xlsx-para-o-/) |
-| 64 | Upload 189 clientes Projetus do CLIENTES-2.xlsx para existing_clients (tabela estava vazia, agora tem 189 registros) | 2026-02-23 | - | [47-upload-clientes-projetus-existing-clients](./quick/47-upload-clientes-projetus-existing-clients/) |
+| 64 | CLIENTES-2.xlsx → Paulo: 189 removidos de existing_clients, 16 reatribuídos de outros vendedores, 21 já eram do Paulo, 152 não no DB | 2026-02-23 | - | [47-upload-clientes-projetus-existing-clients](./quick/47-upload-clientes-projetus-existing-clients/) |
 
 ## Session Continuity
 
