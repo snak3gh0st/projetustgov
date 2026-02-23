@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { formatCNPJ, formatCompactCurrency, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
@@ -56,6 +56,7 @@ export default function LeadsPage() {
   const [clientFilter, setClientFilter] = useState('')
   const [sortCol, setSortCol] = useState('')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const scrollPositionRef = useRef<number>(0)
 
   // Fetch session
   useEffect(() => {
@@ -178,6 +179,11 @@ export default function LeadsPage() {
       else next.add(cnpj)
       return next
     })
+  }
+
+  function handleOpenLead(lead: VendedorProjeto) {
+    scrollPositionRef.current = window.scrollY
+    setSelectedLead(lead)
   }
 
   async function updateLead(id: number, field: string, value: string) {
@@ -350,7 +356,7 @@ export default function LeadsPage() {
                   return (
                   <React.Fragment key={lead.cnpj}>
                   <tr
-                    onClick={() => setSelectedLead(lead)}
+                    onClick={() => handleOpenLead(lead)}
                     className={`border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer ${
                       lead.is_max_priority ? 'bg-red-50 border-l-2 border-l-red-500' :
                       !hasContact ? 'bg-red-50/50 border-l-2 border-l-red-300' : ''
@@ -510,7 +516,7 @@ export default function LeadsPage() {
                   {isExpanded && lead.subLeads.map(sub => (
                     <tr
                       key={sub.id}
-                      onClick={() => setSelectedLead(sub)}
+                      onClick={() => handleOpenLead(sub)}
                       className="border-b border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer"
                     >
                       <td className="px-4 py-2 pl-10">
@@ -561,7 +567,12 @@ export default function LeadsPage() {
       <LeadSlideOver
         lead={selectedLead}
         allEmendas={selectedLead ? leads.filter(l => l.cnpj === selectedLead.cnpj) : undefined}
-        onClose={() => setSelectedLead(null)}
+        onClose={() => {
+          setSelectedLead(null)
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: scrollPositionRef.current, behavior: 'instant' })
+          })
+        }}
         canModify={sessionUser?.role !== 'visualizador'}
       />
 
