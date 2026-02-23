@@ -97,3 +97,16 @@ metrics:
 - Sidebar.tsx: FOUND
 - vendedores/route.ts: FOUND
 - commit fa80a6d: FOUND
+
+## DB Migration (Production)
+
+Executed manually via script (2026-02-23):
+
+1. `ALTER TABLE users DROP CONSTRAINT users_role_check`
+2. `UPDATE users SET role = 'coordenador' WHERE role = 'gestor_vendedor'` → 1 row (paulo@projetus.org)
+3. `ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('gestor', 'vendedor', 'visualizador', 'coordenador'))`
+
+Final state:
+- paulo@projetus.org → coordenador
+- tito@projetus.org → gestor (comissão 0 via API)
+- Constraint `gestor_vendedor` removido do banco de produção
