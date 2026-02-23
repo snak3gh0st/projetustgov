@@ -161,13 +161,14 @@
 | 62 | gestor_vendedor (Paulo Gabriel) can access /distribuir, sees all leads, distributes/reassigns — amber CNPJ box gestor-only | 2026-02-23 | 7645188 | [45-visualizacao-do-paulo-grabriel-precisa-t](./quick/45-visualizacao-do-paulo-grabriel-precisa-t/) |
 | 63 | Assign CNPJs from CLIENTES.xlsx to Paulo: 12 reassigned (from Gabriel/Elisson/Vitoria/Wellington), 8 already his, 56 not in DB | 2026-02-23 | - | [46-adicionar-cnpjs-do-clientes-xlsx-para-o-](./quick/46-adicionar-cnpjs-do-clientes-xlsx-para-o-/) |
 | 64 | CLIENTES-2.xlsx → Paulo: 189 removidos de existing_clients, 16 reatribuídos de outros vendedores, 21 já eram do Paulo, 152 não no DB | 2026-02-23 | - | [47-upload-clientes-projetus-existing-clients](./quick/47-upload-clientes-projetus-existing-clients/) |
+| 65 | Hotfix roles: gestor_vendedor → coordenador (Paulo), Tito=gestor com visão de vendedor e comissão 0 por ser sócio | 2026-02-23 | 985228c | [48-hotfix-de-roles-paulo-coordernador-e-man](./quick/48-hotfix-de-roles-paulo-coordernador-e-man/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-23
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 64 (quick-47): Upload 189 existing Projetus clients to existing_clients table from CLIENTES-2.xlsx
+**Activity:** Quick task 65 (quick-48): Hotfix roles: gestor_vendedor → coordenador (Paulo), Tito=gestor com visão de vendedor e comissão 0
 
 **Completed:**
 - quick-41 (#58): CNPJ Monitorado personal watchlist at /monitorar, cnpj_monitorado + push_subscriptions DB tables, web push infrastructure via VAPID, cron sync STEP 7b triggers push notifications for watched CNPJs. Commits: 1bf7d2d, e32226e, 7134a0f
