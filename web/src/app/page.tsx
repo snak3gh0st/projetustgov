@@ -89,7 +89,7 @@ interface SyncLog {
 // --- Status config ---
 const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; label: string }> = {
   'Não Contatado': { color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200', bar: 'bg-orange-500', label: 'Não Contatado' },
-  'Ainda Não': { color: 'text-rose-600', bg: 'bg-rose-50 border-rose-200', bar: 'bg-rose-500', label: 'Ainda Não' },
+  'Ainda Não': { color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-200', bar: 'bg-yellow-500', label: 'Ainda Não' },
   'Retorno': { color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', bar: 'bg-amber-500', label: 'Retorno' },
   'Proposta': { color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', bar: 'bg-blue-500', label: 'Proposta' },
   'Aguardando Closer': { color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200', bar: 'bg-purple-500', label: 'Aguardando Closer' },

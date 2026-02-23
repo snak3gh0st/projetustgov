@@ -11,7 +11,7 @@ import SaleModal from '@/components/SaleModal'
 const STATUS_OPTIONS = ['Não Contatado', 'Ainda Não', 'Retorno', 'Proposta', 'Aguardando Closer', 'Fechado', 'Telefone Invalido']
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-orange-50 text-orange-600',
-  'Ainda Não': 'bg-rose-50 text-rose-600',
+  'Ainda Não': 'bg-yellow-50 text-yellow-600',
   'Retorno': 'bg-amber-50 text-amber-600',
   'Proposta': 'bg-blue-50 text-[#0072F7]',
   'Aguardando Closer': 'bg-purple-50 text-purple-600',
