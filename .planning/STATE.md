@@ -159,13 +159,14 @@
 | 60 | último contato desatualizado (nunca). Verificar isso antes | 2026-02-20 | cf47b5c | [43-ltimo-contato-desatualizado-nunca-verifi](./quick/43-ltimo-contato-desatualizado-nunca-verifi/) |
 | 61 | Adicionar status AINDA NÃO no dropdown de status da página de detalhes do lead | 2026-02-23 | e5dbdb8 | [44-adicionar-status-ainda-n-o-no-dropdown-d](./quick/44-adicionar-status-ainda-n-o-no-dropdown-d/) |
 | 62 | gestor_vendedor (Paulo Gabriel) can access /distribuir, sees all leads, distributes/reassigns — amber CNPJ box gestor-only | 2026-02-23 | 7645188 | [45-visualizacao-do-paulo-grabriel-precisa-t](./quick/45-visualizacao-do-paulo-grabriel-precisa-t/) |
+| 63 | Assign CNPJs from CLIENTES.xlsx to Paulo: 12 reassigned (from Gabriel/Elisson/Vitoria/Wellington), 8 already his, 56 not in DB | 2026-02-23 | - | [46-adicionar-cnpjs-do-clientes-xlsx-para-o-](./quick/46-adicionar-cnpjs-do-clientes-xlsx-para-o-/) |
 
 ## Session Continuity
 
 ### Last Session Summary
 **Date:** 2026-02-23
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 62 (quick-45): gestor_vendedor (Paulo Gabriel) distribution access — /distribuir in nav, all leads visible, amber box gestor-only
+**Activity:** Quick task 63 (quick-46): Assigned CNPJs from CLIENTES.xlsx to Paulo — 12 reassigned from other sellers, 56 not found in DB
 
 **Completed:**
 - quick-41 (#58): CNPJ Monitorado personal watchlist at /monitorar, cnpj_monitorado + push_subscriptions DB tables, web push infrastructure via VAPID, cron sync STEP 7b triggers push notifications for watched CNPJs. Commits: 1bf7d2d, e32226e, 7134a0f
