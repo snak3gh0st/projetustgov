@@ -81,18 +81,20 @@ export async function GET() {
         ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
       `, vendedorParams),
 
-      // 5. KPI: Ticket Medio (avg valor_venda for Fechado leads with a sale value)
+      // 5. KPI: Ticket Medio (avg per-CNPJ first, then avg across CNPJs to avoid multi-emenda inflation)
       query(`
         SELECT
-          COALESCE(AVG(vp.valor_venda::numeric) FILTER (
-            WHERE vp.status_contato = 'Fechado' AND vp.valor_venda > 0
-          ), 0) as ticket_medio,
-          COUNT(DISTINCT vp.cnpj) FILTER (
-            WHERE vp.status_contato = 'Fechado' AND vp.valor_venda > 0
-          )::int as ticket_count
-        FROM vendedor_projetos vp
-        WHERE vp.vendedor_id IS NOT NULL
-        ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
+          COALESCE(AVG(cnpj_avg), 0) as ticket_medio,
+          COUNT(*)::int as ticket_count
+        FROM (
+          SELECT vp.cnpj, AVG(vp.valor_venda::numeric) as cnpj_avg
+          FROM vendedor_projetos vp
+          WHERE vp.vendedor_id IS NOT NULL
+            AND vp.status_contato = 'Fechado'
+            AND vp.valor_venda > 0
+            ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
+          GROUP BY vp.cnpj
+        ) t
       `, vendedorParams),
 
       // 6. KPI: Leads sem contato (Não Contatado + Ainda Não)
@@ -102,7 +104,7 @@ export async function GET() {
             WHERE COALESCE(vp.status_contato, 'Não Contatado') IN ('Não Contatado', 'Nao Contatado')
               AND vp.vendedor_id IS NOT NULL
           )::int as nao_contatado_count,
-          COUNT(DISTINCT CASE WHEN vp.status_contato = 'Ainda Não' THEN vp.cnpj END)::int as ainda_nao_count
+          COUNT(DISTINCT CASE WHEN vp.status_contato = 'Ainda Não' AND vp.vendedor_id IS NOT NULL THEN vp.cnpj END)::int as ainda_nao_count
         FROM vendedor_projetos vp
         ${vendedorFilter}
       `, vendedorParams),
@@ -148,7 +150,7 @@ export async function GET() {
           END
       `, vendedorParams),
 
-      // 9. Chart: Commission by Vendedor (Fechado leads only)
+      // 9. Chart: Commission by Vendedor (Fechado leads only, gestor excluded)
       query(`
         SELECT
           u.nome as vendedor_nome,
@@ -157,7 +159,8 @@ export async function GET() {
         FROM vendedor_projetos vp
         JOIN users u ON u.id = vp.vendedor_id
         WHERE vp.vendedor_id IS NOT NULL
-        ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
+          AND u.role != 'gestor'
+          ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
         GROUP BY u.nome
         HAVING COUNT(*) FILTER (WHERE vp.status_contato = 'Fechado') > 0
         ORDER BY total_comissao DESC
