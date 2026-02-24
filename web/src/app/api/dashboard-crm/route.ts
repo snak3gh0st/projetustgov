@@ -90,15 +90,16 @@ export async function GET() {
         LIMIT 10
       `, vendedorParams),
 
-      // 5. Commission breakdown — só Fechados ganham comissão
+      // 5. Commission breakdown — só Fechados ganham comissão (gestor rows zeroed out)
       query(`
         SELECT
           'Fechado' as status_contato,
           COUNT(*)::int as count,
-          SUM(vp.comissao_valor)::numeric as total_comissao,
+          SUM(CASE WHEN u.role != 'gestor' THEN vp.comissao_valor ELSE 0 END)::numeric as total_comissao,
           COALESCE(SUM(vp.valor_venda), 0)::numeric as total_venda,
           SUM(CASE WHEN vp.comissao_locked = true THEN 1 ELSE 0 END)::int as locked_count
         FROM vendedor_projetos vp
+        JOIN users u ON u.id = vp.vendedor_id
         WHERE vp.vendedor_id IS NOT NULL
           AND vp.comissao_valor IS NOT NULL
           AND vp.comissao_valor > 0
