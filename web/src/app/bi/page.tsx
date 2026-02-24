@@ -17,6 +17,11 @@ interface BIKpis {
   closed_value: number
   commission_earned: number
   commission_bonus: number
+  ticket_medio: number
+  nao_contatado_count: number
+  ainda_nao_count: number
+  telefones_validos: number
+  telefones_invalidos: number
 }
 
 interface PipelineFunnelItem {
@@ -51,12 +56,14 @@ interface BIData {
   activity_trend: ActivityTrendItem[]
 }
 
-// --- Status color map ---
+// --- Status color map (all 6 pipeline statuses) ---
 const FUNNEL_COLORS: Record<string, string> = {
   'Nao Contatado': '#ef4444',
   'Não Contatado': '#ef4444',
+  'Ainda Não': '#f43f5e',         // rose-500 (distinct from red)
   'Retorno': '#f59e0b',
   'Proposta': '#3b82f6',
+  'Aguardando Closer': '#8b5cf6', // violet-500
   'Fechado': '#22c55e',
 }
 
@@ -101,7 +108,7 @@ export default function BIDashboard() {
           <div className="h-4 w-64 bg-gray-100 rounded animate-pulse mt-2" />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => (
+          {[1, 2, 3, 4, 5, 6, 7].map(i => (
             <div key={i} className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 h-28 animate-pulse" />
           ))}
         </div>
@@ -151,6 +158,26 @@ export default function BIDashboard() {
     kpis.avg_days_to_close <= 30 ? 'text-amber-600' :
     'text-red-600'
 
+  // Ticket medio: gray if 0
+  const ticketColor = kpis.ticket_medio === 0 ? 'text-gray-400' : 'text-[#0072F7]'
+
+  // Nao Contatados: red if > 20, amber if > 10, green otherwise
+  const naoContatadoColor =
+    kpis.nao_contatado_count > 20 ? 'text-red-600' :
+    kpis.nao_contatado_count > 10 ? 'text-amber-600' :
+    'text-green-600'
+
+  // Telefones validos percentage
+  const totalTelefones = kpis.telefones_validos + kpis.telefones_invalidos
+  const telefonesValidosPct = totalTelefones > 0
+    ? Number(((kpis.telefones_validos / totalTelefones) * 100).toFixed(0))
+    : null
+  const telefonesColor =
+    telefonesValidosPct == null ? 'text-gray-400' :
+    telefonesValidosPct > 70 ? 'text-green-600' :
+    telefonesValidosPct > 40 ? 'text-amber-600' :
+    'text-red-600'
+
   // Top 10 for UF chart
   const top10uf = data.leads_by_uf.slice(0, 10)
 
@@ -166,8 +193,9 @@ export default function BIDashboard() {
         </p>
       </div>
 
-      {/* 2. KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* 2. KPI Cards — 7 cards: 2col mobile, 4col tablet, 7col desktop */}
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
+
         {/* Card 1: Taxa de Conversao */}
         <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
           <p className="text-xs text-gray-500 uppercase tracking-wider">Taxa de Conversao</p>
@@ -179,7 +207,16 @@ export default function BIDashboard() {
           </p>
         </div>
 
-        {/* Card 2: Dias p/ Fechar */}
+        {/* Card 2: Ticket Medio */}
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Ticket Medio</p>
+          <p className={`text-3xl font-heading font-bold mt-2 ${ticketColor}`}>
+            {kpis.ticket_medio > 0 ? formatCompactCurrency(kpis.ticket_medio) : 'R$ 0'}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">media por venda fechada</p>
+        </div>
+
+        {/* Card 3: Dias p/ Fechar */}
         <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
           <p className="text-xs text-gray-500 uppercase tracking-wider">Dias p/ Fechar (media)</p>
           <p className={`text-3xl font-heading font-bold mt-2 ${daysColor}`}>
@@ -190,7 +227,33 @@ export default function BIDashboard() {
           </p>
         </div>
 
-        {/* Card 3: Valor Pipeline */}
+        {/* Card 4: Nao Contatados (gestor) / Faturamento Fechado (vendedor) */}
+        {isVendedor ? (
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Faturamento Fechado</p>
+            <p className="text-3xl font-heading font-bold text-green-600 mt-2">
+              {formatCompactCurrency(kpis.closed_value)}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              {formatCurrency(kpis.closed_value)}
+            </p>
+          </div>
+        ) : (
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Nao Contatados</p>
+            <p className={`text-3xl font-heading font-bold mt-2 ${naoContatadoColor}`}>
+              {kpis.nao_contatado_count}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              sem abordar
+              {kpis.ainda_nao_count > 0 && (
+                <span className="text-rose-400 ml-1">(+ {kpis.ainda_nao_count} Ainda Nao)</span>
+              )}
+            </p>
+          </div>
+        )}
+
+        {/* Card 5: Valor Pipeline */}
         <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
           <p className="text-xs text-gray-500 uppercase tracking-wider">Valor Pipeline</p>
           <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
@@ -201,7 +264,7 @@ export default function BIDashboard() {
           </p>
         </div>
 
-        {/* Card 4: Comissao Confirmada */}
+        {/* Card 6: Comissao Confirmada */}
         <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
           <p className="text-xs text-gray-500 uppercase tracking-wider">Comissao Confirmada</p>
           <p className="text-3xl font-heading font-bold text-green-600 mt-2">
@@ -218,6 +281,21 @@ export default function BIDashboard() {
             </p>
           )}
         </div>
+
+        {/* Card 7: Telefones Validos */}
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Telefones Validos</p>
+          <p className={`text-3xl font-heading font-bold mt-2 ${telefonesColor}`}>
+            {telefonesValidosPct != null ? `${telefonesValidosPct}%` : '-'}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            {totalTelefones > 0
+              ? `${kpis.telefones_validos} validos / ${kpis.telefones_invalidos} invalidos`
+              : 'sem dados'
+            }
+          </p>
+        </div>
+
       </div>
 
       {/* 3. Charts Grid */}
@@ -229,12 +307,12 @@ export default function BIDashboard() {
           {data.pipeline_funnel.length === 0 ? (
             <div className="flex items-center justify-center h-48 text-gray-400 text-sm">Sem dados</div>
           ) : (
-            <div style={{ height: 200 }}>
+            <div style={{ height: 220 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={data.pipeline_funnel}
                   layout="vertical"
-                  margin={{ left: 80, right: 20, top: 5, bottom: 5 }}
+                  margin={{ left: 110, right: 20, top: 5, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
                   <XAxis
@@ -246,7 +324,7 @@ export default function BIDashboard() {
                     type="category"
                     dataKey="status"
                     tick={{ fontSize: 11, fill: '#374151' }}
-                    width={80}
+                    width={110}
                   />
                   <Tooltip
                     contentStyle={TOOLTIP_STYLE}
