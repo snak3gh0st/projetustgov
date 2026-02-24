@@ -58,6 +58,23 @@ export default function LeadsPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const scrollPositionRef = useRef<number>(0)
 
+  // Restore scroll position when returning from lead detail page (browser Back).
+  // Runs after leads finish loading so the page has enough content to scroll to.
+  useEffect(() => {
+    if (loading) return
+    const saved = sessionStorage.getItem('leads_scroll_position')
+    if (saved) {
+      const pos = parseInt(saved, 10)
+      sessionStorage.removeItem('leads_scroll_position')
+      // Double rAF ensures we restore after React's full commit + paint cycle
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: pos, behavior: 'instant' })
+        })
+      })
+    }
+  }, [loading])
+
   // Fetch session
   useEffect(() => {
     fetch('/api/auth/session').then(r => r.json()).then(s => {
@@ -191,7 +208,9 @@ export default function LeadsPage() {
   }
 
   function handleOpenLead(lead: VendedorProjeto) {
-    scrollPositionRef.current = window.scrollY
+    const pos = window.scrollY
+    scrollPositionRef.current = pos
+    sessionStorage.setItem('leads_scroll_position', String(pos))
     setSelectedLead(lead)
   }
 
@@ -581,9 +600,14 @@ export default function LeadsPage() {
         lead={selectedLead}
         allEmendas={selectedLead ? leads.filter(l => l.cnpj === selectedLead.cnpj) : undefined}
         onClose={() => {
+          const pos = scrollPositionRef.current
+          sessionStorage.removeItem('leads_scroll_position')
           setSelectedLead(null)
+          // Double rAF: first frame React commits the DOM, second frame we restore scroll
           requestAnimationFrame(() => {
-            window.scrollTo({ top: scrollPositionRef.current, behavior: 'instant' })
+            requestAnimationFrame(() => {
+              window.scrollTo({ top: pos, behavior: 'instant' })
+            })
           })
         }}
         canModify={sessionUser?.role !== 'visualizador'}
