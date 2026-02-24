@@ -168,6 +168,7 @@
 | 69 | Fix multi-emenda commission: soma comissoes das emendas + fechar uma emenda nao fecha o lead inteiro | 2026-02-23 | 5079867 | [52-fix-multi-emenda-commission-soma-comisso](./quick/52-fix-multi-emenda-commission-soma-comisso/) |
 | 70 | Paulo não recebe 1% das vendas que o Tito faz ou que ele faz, ele só recebe 1% dos vendedores | 2026-02-24 | 333b937 | [53-paulo-n-o-recebe-1-das-vendas-que-o-tito](./quick/53-paulo-n-o-recebe-1-das-vendas-que-o-tito/) |
 | 71 | Audit BI numbers, improve BI with more KPIs, audit comissoes and pipeline numbers | 2026-02-24 | 04c273d | [54-audit-bi-numbers-improve-bi-with-more-kp](./quick/54-audit-bi-numbers-improve-bi-with-more-kp/) |
+| 72 | Fix 5 audit bugs: BI chart gestor filter, ainda_nao guard, dashboard commission gestor, ticket_medio consistency, Paulo summary total | 2026-02-24 | 5331ef9 | [55-fix-5-audit-bugs-bi-chart-gestor-filter-](./quick/55-fix-5-audit-bugs-bi-chart-gestor-filter-/) |
 
 ## Session Continuity
 
