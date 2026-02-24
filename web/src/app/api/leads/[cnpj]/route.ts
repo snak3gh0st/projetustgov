@@ -221,46 +221,68 @@ export async function PATCH(
       `, [projectId])
     } else if (body.tipo_vendedor !== undefined && !body.status_contato) {
       // If tipo_vendedor changed and lead is already Fechado, recalculate commission
-      await query(`
-        WITH lead_info AS (
-          SELECT id, tipo_vendedor, valor_venda, status_contato
-          FROM vendedor_projetos WHERE id = $1
-        ),
-        config_check AS (
-          SELECT percentual_default, taxa_fixa
-          FROM commission_config
-          WHERE tipo_vendedor = (SELECT tipo_vendedor FROM lead_info)
-            AND vendedor_id IS NULL AND active = true
-          ORDER BY created_at DESC LIMIT 1
-        )
-        UPDATE vendedor_projetos
-        SET comissao_percentual = COALESCE(
-              (SELECT percentual_default FROM config_check),
-              CASE
-                WHEN tipo_vendedor = 'SDR' THEN 1.00
-                WHEN tipo_vendedor = 'Exclusivo' THEN 3.00
-                ELSE 4.00
-              END
-            ),
-            comissao_valor = (
-              COALESCE(valor_venda, 0) * (
-                COALESCE(
-                  (SELECT percentual_default FROM config_check),
-                  CASE
-                    WHEN tipo_vendedor = 'SDR' THEN 1.00
-                    WHEN tipo_vendedor = 'Exclusivo' THEN 3.00
-                    ELSE 4.00
-                  END
-                ) / 100
-              )
-            ),
-            comissao_bonus = CASE
-              WHEN tipo_vendedor = 'Exclusivo' THEN 0
-              ELSE COALESCE((SELECT taxa_fixa FROM config_check), 50.00)
-            END,
-            updated_at = NOW()
-        WHERE id = $1 AND status_contato = 'Fechado'
-      `, [projectId])
+      // First check if lead has closer_id — must query DB since closer_id is server-side only
+      const closerCheck = await query(
+        `SELECT closer_id, status_contato FROM vendedor_projetos WHERE id = $1`,
+        [projectId]
+      )
+      const closerRow = closerCheck[0]
+
+      if (closerRow?.closer_id != null && closerRow?.status_contato === 'Fechado') {
+        // SPLIT COMMISSION re-apply: SDR 1% + R$50, Closer 3%
+        await query(`
+          UPDATE vendedor_projetos
+          SET comissao_percentual = 1.00,
+              comissao_valor = COALESCE(valor_venda, 0) * 0.01,
+              comissao_bonus = 50.00,
+              closer_comissao_percentual = 3.00,
+              closer_comissao_valor = COALESCE(valor_venda, 0) * 0.03,
+              updated_at = NOW()
+          WHERE id = $1
+        `, [projectId])
+      } else {
+        // Standard commission recalc (no closer involved)
+        await query(`
+          WITH lead_info AS (
+            SELECT id, tipo_vendedor, valor_venda, status_contato
+            FROM vendedor_projetos WHERE id = $1
+          ),
+          config_check AS (
+            SELECT percentual_default, taxa_fixa
+            FROM commission_config
+            WHERE tipo_vendedor = (SELECT tipo_vendedor FROM lead_info)
+              AND vendedor_id IS NULL AND active = true
+            ORDER BY created_at DESC LIMIT 1
+          )
+          UPDATE vendedor_projetos
+          SET comissao_percentual = COALESCE(
+                (SELECT percentual_default FROM config_check),
+                CASE
+                  WHEN tipo_vendedor = 'SDR' THEN 1.00
+                  WHEN tipo_vendedor = 'Exclusivo' THEN 3.00
+                  ELSE 4.00
+                END
+              ),
+              comissao_valor = (
+                COALESCE(valor_venda, 0) * (
+                  COALESCE(
+                    (SELECT percentual_default FROM config_check),
+                    CASE
+                      WHEN tipo_vendedor = 'SDR' THEN 1.00
+                      WHEN tipo_vendedor = 'Exclusivo' THEN 3.00
+                      ELSE 4.00
+                    END
+                  ) / 100
+                )
+              ),
+              comissao_bonus = CASE
+                WHEN tipo_vendedor = 'Exclusivo' THEN 0
+                ELSE COALESCE((SELECT taxa_fixa FROM config_check), 50.00)
+              END,
+              updated_at = NOW()
+          WHERE id = $1 AND status_contato = 'Fechado'
+        `, [projectId])
+      }
     }
 
     // Return updated commission data so frontend can refresh
