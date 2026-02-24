@@ -167,6 +167,7 @@
 | 68 | Hot fix Tito: gestor hybrid view (Meu Pipeline + own leads default + Ver Todos toggle) with R$0 commission enforced | 2026-02-23 | 09d27b0 | [51-hot-fix-ambiente-tito-para-vendedor-sem-](./quick/51-hot-fix-ambiente-tito-para-vendedor-sem-/) |
 | 69 | Fix multi-emenda commission: soma comissoes das emendas + fechar uma emenda nao fecha o lead inteiro | 2026-02-23 | 5079867 | [52-fix-multi-emenda-commission-soma-comisso](./quick/52-fix-multi-emenda-commission-soma-comisso/) |
 | 70 | Paulo não recebe 1% das vendas que o Tito faz ou que ele faz, ele só recebe 1% dos vendedores | 2026-02-24 | 333b937 | [53-paulo-n-o-recebe-1-das-vendas-que-o-tito](./quick/53-paulo-n-o-recebe-1-das-vendas-que-o-tito/) |
+| 71 | Audit BI numbers, improve BI with more KPIs, audit comissoes and pipeline numbers | 2026-02-24 | 04c273d | [54-audit-bi-numbers-improve-bi-with-more-kp](./quick/54-audit-bi-numbers-improve-bi-with-more-kp/) |
 
 ## Session Continuity
 
