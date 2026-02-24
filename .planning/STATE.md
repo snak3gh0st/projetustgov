@@ -176,7 +176,7 @@
 ### Last Session Summary
 **Date:** 2026-02-24
 **Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 68 (quick-51): Hot fix Tito gestor hybrid view with R$0 commission
+**Activity:** Quick task 73 (quick-56): Fix closer/SDR commission split on tipo_vendedor change
 
 **Completed:**
 - quick-41 (#58): CNPJ Monitorado personal watchlist at /monitorar, cnpj_monitorado + push_subscriptions DB tables, web push infrastructure via VAPID, cron sync STEP 7b triggers push notifications for watched CNPJs. Commits: 1bf7d2d, e32226e, 7134a0f
