@@ -217,3 +217,16 @@ CREATE TABLE IF NOT EXISTS data_lineage (
 );
 CREATE INDEX IF NOT EXISTS ix_data_lineage_entity ON data_lineage(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS ix_data_lineage_source ON data_lineage(source_file);
+
+-- 13. Cron Sync Log
+-- Auto-created by repo-sync.ts on every sync run (CREATE TABLE IF NOT EXISTS).
+-- Records one row per sync execution for observability.
+-- Query via GET /api/debug-sync (gestor only) to check last run.
+CREATE TABLE IF NOT EXISTS cron_sync_log (
+  id SERIAL PRIMARY KEY,
+  ran_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  inserted INT NOT NULL DEFAULT 0,
+  updated INT NOT NULL DEFAULT 0,
+  errors INT NOT NULL DEFAULT 0,
+  duration_ms INT NOT NULL DEFAULT 0
+);

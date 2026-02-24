@@ -45,7 +45,7 @@ export async function GET() {
         last_repo_sync: recentUpdates[0]?.last_updated ?? null,
       },
       last_sync_log: lastSyncLog,
-      cron_schedule: '06:00 UTC daily (03:00 BRT)',
+      cron_schedule: '12:30 UTC daily (09:30 BRT)',
       note: 'POST to this endpoint to manually trigger a sync (gestor only)',
     })
   } catch (error) {
