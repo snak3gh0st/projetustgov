@@ -108,6 +108,7 @@ export async function GET(request: NextRequest) {
         SELECT
           vp.vendedor_id,
           u.nome as vendedor_nome,
+          u.role as vendedor_role,
           COUNT(DISTINCT vp.cnpj)::int as lead_count,
           SUM(vp.comissao_valor)::numeric as total_comissao,
           SUM(COALESCE(vp.comissao_bonus, 0))::numeric as total_bonus,
@@ -115,7 +116,7 @@ export async function GET(request: NextRequest) {
         FROM vendedor_projetos vp
         JOIN users u ON u.id = vp.vendedor_id
         WHERE ${whereClause}
-        GROUP BY vp.vendedor_id, u.nome
+        GROUP BY vp.vendedor_id, u.nome, u.role
         ORDER BY total_comissao DESC
       `, params) : Promise.resolve([]),
 
@@ -130,14 +131,17 @@ export async function GET(request: NextRequest) {
     ])
 
     const summary = summaryRows[0] || {}
-    const perVendedor = perVendedorRows.map(v => ({
-      vendedor_id: v.vendedor_id,
-      vendedor_nome: v.vendedor_nome,
-      lead_count: Number(v.lead_count),
-      total_comissao: Number(v.total_comissao) || 0,
-      total_bonus: Number(v.total_bonus) || 0,
-      fechados_count: Number(v.fechados_count) || 0,
-    }))
+    const perVendedor = perVendedorRows.map(v => {
+      const isGestor = v.vendedor_role === 'gestor'
+      return {
+        vendedor_id: v.vendedor_id,
+        vendedor_nome: v.vendedor_nome,
+        lead_count: Number(v.lead_count),
+        total_comissao: isGestor ? 0 : (Number(v.total_comissao) || 0),
+        total_bonus: isGestor ? 0 : (Number(v.total_bonus) || 0),
+        fechados_count: Number(v.fechados_count) || 0,
+      }
+    })
 
     // Paulo's 3-type commission breakdown (visible to Paulo and gestors)
     let pauloBreakdown = null
