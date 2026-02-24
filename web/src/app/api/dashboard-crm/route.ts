@@ -52,7 +52,7 @@ export async function GET() {
           COUNT(DISTINCT CASE WHEN vp.status_contato = 'Aguardando Closer' THEN vp.cnpj END)::int as aguardando_closer,
           COUNT(DISTINCT CASE WHEN vp.status_contato = 'Fechado' THEN vp.cnpj END)::int as fechado,
           COALESCE(SUM(vp.valor_emenda::numeric), 0) as valor_total_emenda,
-          COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' THEN vp.comissao_valor::numeric ELSE 0 END), 0) as comissao_total,
+          COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' AND u.role != 'gestor' THEN vp.comissao_valor::numeric ELSE 0 END), 0) as comissao_total,
           MAX(vp.updated_at) as last_activity
         FROM vendedor_projetos vp
         JOIN users u ON u.id = vp.vendedor_id

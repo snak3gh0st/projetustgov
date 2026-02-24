@@ -339,7 +339,7 @@ export default function CRMDashboard() {
           </p>
           <p className="text-xs text-gray-400 mt-1">{formatCurrency(g.total_valor_emenda)}</p>
         </div>
-        {isVendedor && role !== 'gestor' && vendedores.length > 0 && (
+        {isVendedor && vendedores.length > 0 && (
           <>
             <div
               role="button"
@@ -359,10 +359,10 @@ export default function CRMDashboard() {
             >
               <p className="text-xs text-gray-500 uppercase tracking-wider">Taxa Fechamento</p>
               <p className="text-3xl font-heading font-bold text-green-600 mt-2">
-                {formatCompactCurrency((vendedores[0]?.fechado || 0) * 50)}
+                {formatCompactCurrency(role === 'gestor' ? 0 : (vendedores[0]?.fechado || 0) * 50)}
               </p>
               <p className="text-xs text-gray-400 mt-1">
-                {vendedores[0]?.fechado || 0} x R$50
+                {role === 'gestor' ? '—' : `${vendedores[0]?.fechado || 0} x R$50`}
               </p>
             </div>
           </>
@@ -417,7 +417,7 @@ export default function CRMDashboard() {
                   )}
 
                   {/* Vendedor bonus on Fechado */}
-                  {isVendedor && role !== 'gestor' && status === 'Fechado' && count > 0 && (
+                  {isVendedor && status === 'Fechado' && count > 0 && role !== 'gestor' && (
                     <p className="text-xs text-green-600 font-medium mt-1">
                       {count} × R$50 = {formatCurrency(count * 50)}
                     </p>
