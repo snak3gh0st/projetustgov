@@ -260,16 +260,19 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Recompute total_bonus from mapped leads so it reflects the corrected per-lead values
+    // Recompute summary totals from mapped leads so they match the corrected per-lead values
+    // (e.g. gestor-role leads have comissao zeroed in mappedLeads but would still appear in raw SQL sums)
     const total_bonus_corrected = mappedLeads.reduce((sum, l) => sum + (l.comissao_bonus || 0), 0)
+    const total_comissao_corrected = mappedLeads.reduce((sum, l) => sum + (l.comissao_valor || 0), 0)
+    const total_closer_comissao_corrected = mappedLeads.reduce((sum, l) => sum + (l.closer_comissao_valor || 0), 0)
 
     return NextResponse.json({
       role: session.role,
       summary: {
         total_leads: Number(summary.total_leads) || 0,
-        total_comissao: Number(summary.total_comissao) || 0,
+        total_comissao: total_comissao_corrected,
         total_bonus: total_bonus_corrected,
-        total_closer_comissao: Number(summary.total_closer_comissao) || 0,
+        total_closer_comissao: total_closer_comissao_corrected,
         total_valor_venda: Number(summary.total_valor_venda) || 0,
         total_valor_emenda: Number(summary.total_valor_emenda) || 0,
       },

@@ -137,11 +137,15 @@ export default function LeadsPage() {
         return sum
       }, 0)
       const allFechado = cnpjLeads.every(l => l.status_contato === 'Fechado')
+      // True if every Fechado emenda has comissao locked (not just the first emenda)
+      const fechadoLeads = cnpjLeads.filter(l => l.status_contato === 'Fechado')
+      const allFechadoLocked = fechadoLeads.length > 0 && fechadoLeads.every(l => l.comissao_locked)
       return {
         ...first,
         totalValor,
         totalComissao,
         allFechado,
+        allFechadoLocked,
         emenda_count: cnpjLeads.length,
         subLeads: cnpjLeads, // all emendas for cascade (including first)
       }
@@ -379,6 +383,7 @@ export default function LeadsPage() {
                   const isExpanded = expandedCnpjs.has(lead.cnpj)
                   const hasMultipleEmendas = lead.emenda_count > 1
                   const totalComissao = (lead as any).totalComissao || 0
+                  const allFechadoLocked = (lead as any).allFechadoLocked || false
                   return (
                   <React.Fragment key={lead.cnpj}>
                   <tr
@@ -423,13 +428,13 @@ export default function LeadsPage() {
                           <span className="text-green-600 font-semibold text-sm">
                             {formatCompactCurrency(totalComissao)}
                           </span>
-                          {lead.comissao_locked && (
+                          {allFechadoLocked && (
                             <span className="inline-block ml-1 text-green-500 align-middle" title="Comissao confirmada">
                               <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a4 4 0 0 0-4 4v2H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-1V5a4 4 0 0 0-4-4zm-2 4a2 2 0 1 1 4 0v2H6V5z"/></svg>
                             </span>
                           )}
                           <span className="block text-[10px] text-gray-400">
-                            comissao{lead.comissao_locked ? <span className="ml-1 text-green-500">Confirmada</span> : null}
+                            comissao{allFechadoLocked ? <span className="ml-1 text-green-500">Confirmada</span> : null}
                           </span>
                         </div>
                       ) : (
