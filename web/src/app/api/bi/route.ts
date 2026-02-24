@@ -23,6 +23,9 @@ export async function GET() {
       kpiDaysRows,
       kpiPipelineRows,
       kpiCommissionRows,
+      kpiTicketRows,
+      kpiNaoContatadoRows,
+      kpiTelefonesRows,
       pipelineFunnelRows,
       commissionByVendedorRows,
       leadsByUfRows,
@@ -39,6 +42,9 @@ export async function GET() {
       `, vendedorParams),
 
       // 2. KPI: Avg Days to Close
+      // NOTE: fechado_em column does not exist in vendedor_projetos schema.
+      // Using updated_at as a proxy for close date, filtered to Fechado rows only.
+      // This measures days from lead import to last update — not exact close date.
       query(`
         SELECT
           COALESCE(
@@ -60,24 +66,68 @@ export async function GET() {
         ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
       `, vendedorParams),
 
-      // 4. KPI: Commission Earned (Fechado only)
+      // 4. KPI: Commission Earned (Fechado only, excluding gestor-role users)
       query(`
         SELECT
-          COALESCE(SUM(vp.comissao_valor::numeric) FILTER (WHERE vp.status_contato = 'Fechado'), 0) as commission_earned,
-          COALESCE(SUM(COALESCE(vp.comissao_bonus, 0)::numeric) FILTER (WHERE vp.status_contato = 'Fechado'), 0) as commission_bonus
+          COALESCE(SUM(vp.comissao_valor::numeric) FILTER (
+            WHERE vp.status_contato = 'Fechado' AND u.role != 'gestor'
+          ), 0) as commission_earned,
+          COALESCE(SUM(COALESCE(vp.comissao_bonus, 0)::numeric) FILTER (
+            WHERE vp.status_contato = 'Fechado' AND u.role != 'gestor'
+          ), 0) as commission_bonus
+        FROM vendedor_projetos vp
+        JOIN users u ON u.id = vp.vendedor_id
+        WHERE vp.vendedor_id IS NOT NULL
+        ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
+      `, vendedorParams),
+
+      // 5. KPI: Ticket Medio (avg valor_venda for Fechado leads with a sale value)
+      query(`
+        SELECT
+          COALESCE(AVG(vp.valor_venda::numeric) FILTER (
+            WHERE vp.status_contato = 'Fechado' AND vp.valor_venda > 0
+          ), 0) as ticket_medio,
+          COUNT(DISTINCT vp.cnpj) FILTER (
+            WHERE vp.status_contato = 'Fechado' AND vp.valor_venda > 0
+          )::int as ticket_count
         FROM vendedor_projetos vp
         WHERE vp.vendedor_id IS NOT NULL
         ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
       `, vendedorParams),
 
-      // 5. Chart: Pipeline Funnel — status counts for assigned leads
-      // Wrapped in subquery so ORDER BY can reference the computed 'status' column
-      // (PostgreSQL disallows referencing raw vp.status_contato in ORDER BY after GROUP BY)
+      // 6. KPI: Leads sem contato (Não Contatado + Ainda Não)
+      query(`
+        SELECT
+          COUNT(DISTINCT vp.cnpj) FILTER (
+            WHERE COALESCE(vp.status_contato, 'Não Contatado') IN ('Não Contatado', 'Nao Contatado')
+              AND vp.vendedor_id IS NOT NULL
+          )::int as nao_contatado_count,
+          COUNT(DISTINCT CASE WHEN vp.status_contato = 'Ainda Não' THEN vp.cnpj END)::int as ainda_nao_count
+        FROM vendedor_projetos vp
+        ${vendedorFilter}
+      `, vendedorParams),
+
+      // 7. KPI: Taxa de telefones validos
+      query(`
+        SELECT
+          COUNT(DISTINCT lc.lead_cnpj) FILTER (WHERE lc.telefone_status = 'valido')::int as telefones_validos,
+          COUNT(DISTINCT lc.lead_cnpj) FILTER (WHERE lc.telefone_status = 'invalido')::int as telefones_invalidos,
+          COUNT(DISTINCT lc.lead_cnpj)::int as total_com_contato
+        FROM lead_contacts lc
+        ${isVendedor ? 'WHERE EXISTS (SELECT 1 FROM vendedor_projetos vp WHERE vp.cnpj = lc.lead_cnpj AND vp.vendedor_id = $1)' : ''}
+      `, vendedorParams),
+
+      // 8. Chart: Pipeline Funnel — all 6 statuses in correct funnel order
       query(`
         SELECT * FROM (
           SELECT
             CASE
-              WHEN COALESCE(vp.status_contato, 'Nao Contatado') IN ('Nao Contatado', 'Não Contatado', 'Novo', 'Contactado') THEN 'Nao Contatado'
+              WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado', 'Novo', 'Contactado') THEN 'Não Contatado'
+              WHEN vp.status_contato = 'Ainda Não' THEN 'Ainda Não'
+              WHEN vp.status_contato = 'Retorno' THEN 'Retorno'
+              WHEN vp.status_contato = 'Proposta' THEN 'Proposta'
+              WHEN vp.status_contato = 'Aguardando Closer' THEN 'Aguardando Closer'
+              WHEN vp.status_contato = 'Fechado' THEN 'Fechado'
               ELSE vp.status_contato
             END as status,
             COUNT(DISTINCT vp.cnpj)::int as count
@@ -88,14 +138,17 @@ export async function GET() {
         ) funnel
         ORDER BY
           CASE status
-            WHEN 'Nao Contatado' THEN 1
-            WHEN 'Retorno' THEN 2
-            WHEN 'Proposta' THEN 3
-            WHEN 'Fechado' THEN 4
-            ELSE 5
+            WHEN 'Não Contatado' THEN 1
+            WHEN 'Ainda Não' THEN 2
+            WHEN 'Retorno' THEN 3
+            WHEN 'Proposta' THEN 4
+            WHEN 'Aguardando Closer' THEN 5
+            WHEN 'Fechado' THEN 6
+            ELSE 7
           END
       `, vendedorParams),
-      // 6. Chart: Commission by Vendedor (Fechado leads only)
+
+      // 9. Chart: Commission by Vendedor (Fechado leads only)
       query(`
         SELECT
           u.nome as vendedor_nome,
@@ -110,7 +163,7 @@ export async function GET() {
         ORDER BY total_comissao DESC
       `, vendedorParams),
 
-      // 7. Chart: Leads by UF (top 15)
+      // 10. Chart: Leads by UF (top 15)
       query(`
         SELECT
           vp.uf,
@@ -124,7 +177,7 @@ export async function GET() {
         LIMIT 15
       `, vendedorParams),
 
-      // 8. Chart: Activity Trend (last 6 months from contact_notes)
+      // 11. Chart: Activity Trend (last 6 months from contact_notes)
       // Use EXISTS subquery instead of JOIN to avoid multiplying rows when a CNPJ
       // has multiple entries in vendedor_projetos (one per emenda/programa)
       isVendedor
@@ -165,6 +218,9 @@ export async function GET() {
 
     const pipelineRow = kpiPipelineRows[0] || {}
     const commissionRow = kpiCommissionRows[0] || {}
+    const ticketRow = kpiTicketRows[0] || {}
+    const naoContatadoRow = kpiNaoContatadoRows[0] || {}
+    const telefonesRow = kpiTelefonesRows[0] || {}
 
     return NextResponse.json({
       role: session.role,
@@ -177,6 +233,11 @@ export async function GET() {
         closed_value: Number(pipelineRow.closed_value) || 0,
         commission_earned: Number(commissionRow.commission_earned) || 0,
         commission_bonus: Number(commissionRow.commission_bonus) || 0,
+        ticket_medio: Number(ticketRow.ticket_medio) || 0,
+        nao_contatado_count: Number(naoContatadoRow.nao_contatado_count) || 0,
+        ainda_nao_count: Number(naoContatadoRow.ainda_nao_count) || 0,
+        telefones_validos: Number(telefonesRow.telefones_validos) || 0,
+        telefones_invalidos: Number(telefonesRow.telefones_invalidos) || 0,
       },
       pipeline_funnel: pipelineFunnelRows.map(r => ({
         status: r.status as string,
