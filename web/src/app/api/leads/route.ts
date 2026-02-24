@@ -24,15 +24,9 @@ export async function GET(request: NextRequest) {
     // Check for exclude_existing parameter (for gestor assignment view)
     const excludeExisting = searchParams.get('exclude_existing')
 
-    // Vendedor -> their assigned projects + leads where they are closer AND status is 'Aguardando Closer'
-    // coordenador (Paulo) -> same as vendedor by default, but with all=true sees all leads (for /distribuir)
-    // This prevents Paulo from seeing leads that still have closer_id set but have moved past 'Aguardando Closer'
+    // vendedor -> only their assigned leads (or as closer for Aguardando Closer)
+    // gestor / coordenador -> see all leads (no personal filter)
     if (session.role === 'vendedor') {
-      conditions.push(`(vp.vendedor_id = $${paramIndex} OR (vp.closer_id = $${paramIndex} AND vp.status_contato = 'Aguardando Closer'))`)
-      params.push(session.userId)
-      paramIndex++
-    } else if ((session.role === 'coordenador' || session.role === 'gestor') && searchParams.get('all') !== 'true') {
-      // normal view (e.g. /leads page): only own leads (vendedor_id = self OR closer for Aguardando Closer)
       conditions.push(`(vp.vendedor_id = $${paramIndex} OR (vp.closer_id = $${paramIndex} AND vp.status_contato = 'Aguardando Closer'))`)
       params.push(session.userId)
       paramIndex++
@@ -42,7 +36,6 @@ export async function GET(request: NextRequest) {
       conditions.push(`vp.vendedor_id = $${paramIndex++}`)
       params.push(vendedorId)
     }
-    // when coordenador/gestor + all=true and no vendedorId filter: no condition added, sees all leads
 
     // Optional filter for gestor to exclude existing clients
     if (excludeExisting === 'true' && session.role !== 'vendedor' && session.role !== 'coordenador') {

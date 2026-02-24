@@ -772,14 +772,14 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       )
       AND cnpj NOT IN (SELECT UNNEST($1::text[]))
       ORDER BY cnpj
-      LIMIT 20
+      LIMIT 50
     `, [Array.from(newCnpjsNeedingContacts)])
     for (const row of missingDataRes.rows) {
       newCnpjsNeedingContacts.add(row.cnpj)
     }
     console.log(`[repo-sync] STEP 8: ${missingDataRes.rows.length} CNPJs with missing data added to enrichment queue`)
 
-    const cnpjsToEnrich = Array.from(newCnpjsNeedingContacts).slice(0, 20)
+    const cnpjsToEnrich = Array.from(newCnpjsNeedingContacts)
 
     // Map to store BrasilAPI contact data per CNPJ for use in STEP 9
     interface BrasilApiContactData {
