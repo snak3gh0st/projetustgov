@@ -192,17 +192,21 @@ export async function GET(request: NextRequest) {
             AND vp.closer_comissao_valor > 0
         `, [...pauloParams, pauloUserId]),
 
-        // Coordenador: 1% of ALL vendedores' Fechado sales
+        // Coordenador: 1% of regular vendedores' Fechado sales
+        // Excludes Tito (gestor role) and Paulo's own leads (coordenador role)
         query(`
           SELECT
             COALESCE(SUM(vp.valor_venda) * 0.01, 0)::numeric as total,
             COUNT(DISTINCT vp.cnpj)::int as count,
             COALESCE(SUM(vp.valor_venda), 0)::numeric as valor_venda
           FROM vendedor_projetos vp
+          JOIN users u ON u.id = vp.vendedor_id
           WHERE ${pauloWhere}
             AND vp.vendedor_id IS NOT NULL
             AND vp.valor_venda > 0
-        `, pauloParams),
+            AND u.role = 'vendedor'
+            AND vp.vendedor_id != $${pIdx}
+        `, [...pauloParams, pauloUserId]),
       ])
 
       const exclusivoTotal = Number(exclusivoRows[0]?.total) || 0
