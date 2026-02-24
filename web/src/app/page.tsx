@@ -339,7 +339,7 @@ export default function CRMDashboard() {
           </p>
           <p className="text-xs text-gray-400 mt-1">{formatCurrency(g.total_valor_emenda)}</p>
         </div>
-        {isVendedor && vendedores.length > 0 && (
+        {isVendedor && role !== 'gestor' && vendedores.length > 0 && (
           <>
             <div
               role="button"
@@ -417,7 +417,7 @@ export default function CRMDashboard() {
                   )}
 
                   {/* Vendedor bonus on Fechado */}
-                  {isVendedor && status === 'Fechado' && count > 0 && (
+                  {isVendedor && role !== 'gestor' && status === 'Fechado' && count > 0 && (
                     <p className="text-xs text-green-600 font-medium mt-1">
                       {count} × R$50 = {formatCurrency(count * 50)}
                     </p>
