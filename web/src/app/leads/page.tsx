@@ -378,7 +378,7 @@ export default function LeadsPage() {
                   const hasContact = lead.telefone || lead.email
                   const isExpanded = expandedCnpjs.has(lead.cnpj)
                   const hasMultipleEmendas = lead.emenda_count > 1
-                  const isFechado = (lead as any).allFechado ?? lead.status_contato === 'Fechado'
+                  const totalComissao = (lead as any).totalComissao || 0
                   return (
                   <React.Fragment key={lead.cnpj}>
                   <tr
@@ -418,10 +418,10 @@ export default function LeadsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {isFechado && (lead as any).totalComissao ? (
+                      {totalComissao > 0 ? (
                         <div>
                           <span className="text-green-600 font-semibold text-sm">
-                            {formatCompactCurrency((lead as any).totalComissao)}
+                            {formatCompactCurrency(totalComissao)}
                           </span>
                           {lead.comissao_locked && (
                             <span className="inline-block ml-1 text-green-500 align-middle" title="Comissao confirmada">
