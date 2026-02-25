@@ -341,11 +341,12 @@ export default function CRMDashboard() {
         </div>
         {isVendedor && vendedores.length > 0 && (() => {
           // Gestor sees aggregate totals; vendedor/coordenador sees own numbers
+          // For gestor: exclude vendedores with comissao_total=0 from fechado count (gestor role doesn't earn bonus)
           const comissaoTotal = role === 'gestor'
             ? vendedores.reduce((sum: number, v: { comissao_total?: number }) => sum + (v.comissao_total || 0), 0)
             : (vendedores[0]?.comissao_total || 0)
           const fechadoTotal = role === 'gestor'
-            ? vendedores.reduce((sum: number, v: { fechado?: number }) => sum + (v.fechado || 0), 0)
+            ? vendedores.reduce((sum: number, v: { fechado?: number; comissao_total?: number }) => sum + ((v.comissao_total || 0) > 0 ? (v.fechado || 0) : 0), 0)
             : (vendedores[0]?.fechado || 0)
           const bonusTotal = fechadoTotal * 50
           return (
