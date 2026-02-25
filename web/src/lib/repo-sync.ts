@@ -800,7 +800,7 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
 
     // 8b. Enqueue existing CNPJs still missing any contact data (catches gaps from prior syncs)
     await client.query(`
-      INSERT INTO enrichment_queue (cnpj, status)
+      INSERT INTO enrichment_queue (cnpj)
       SELECT DISTINCT cnpj FROM vendedor_projetos
       WHERE (
         nome IS NULL OR nome = '' OR nome = 'Sem nome'

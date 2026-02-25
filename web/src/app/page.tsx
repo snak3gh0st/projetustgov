@@ -339,34 +339,44 @@ export default function CRMDashboard() {
           </p>
           <p className="text-xs text-gray-400 mt-1">{formatCurrency(g.total_valor_emenda)}</p>
         </div>
-        {isVendedor && vendedores.length > 0 && (
-          <>
-            <div
-              role="button"
-              onClick={() => { window.location.href = '/comissoes' }}
-              className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-            >
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Comissão Vendas</p>
-              <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
-                {formatCompactCurrency(vendedores[0]?.comissao_total || 0)}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">{formatCurrency(vendedores[0]?.comissao_total || 0)}</p>
-            </div>
-            <div
-              role="button"
-              onClick={() => { window.location.href = '/leads?status_contato=Fechado' }}
-              className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-            >
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Taxa Fechamento</p>
-              <p className="text-3xl font-heading font-bold text-green-600 mt-2">
-                {formatCompactCurrency(role === 'gestor' ? 0 : (vendedores[0]?.fechado || 0) * 50)}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                {role === 'gestor' ? '—' : `${vendedores[0]?.fechado || 0} x R$50`}
-              </p>
-            </div>
-          </>
-        )}
+        {isVendedor && vendedores.length > 0 && (() => {
+          // Gestor sees aggregate totals; vendedor/coordenador sees own numbers
+          const comissaoTotal = role === 'gestor'
+            ? vendedores.reduce((sum: number, v: { comissao_total?: number }) => sum + (v.comissao_total || 0), 0)
+            : (vendedores[0]?.comissao_total || 0)
+          const fechadoTotal = role === 'gestor'
+            ? vendedores.reduce((sum: number, v: { fechado?: number }) => sum + (v.fechado || 0), 0)
+            : (vendedores[0]?.fechado || 0)
+          const bonusTotal = fechadoTotal * 50
+          return (
+            <>
+              <div
+                role="button"
+                onClick={() => { window.location.href = '/comissoes' }}
+                className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+              >
+                <p className="text-xs text-gray-500 uppercase tracking-wider">Comissão Vendas</p>
+                <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
+                  {formatCompactCurrency(comissaoTotal)}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">{formatCurrency(comissaoTotal)}</p>
+              </div>
+              <div
+                role="button"
+                onClick={() => { window.location.href = '/leads?status_contato=Fechado' }}
+                className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+              >
+                <p className="text-xs text-gray-500 uppercase tracking-wider">Taxa Fechamento</p>
+                <p className="text-3xl font-heading font-bold text-green-600 mt-2">
+                  {formatCompactCurrency(bonusTotal)}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {`${fechadoTotal} x R$50`}
+                </p>
+              </div>
+            </>
+          )
+        })()}
       </div>
 
       {/* 2b. Sync panel — gestor only */}
