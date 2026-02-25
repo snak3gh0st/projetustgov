@@ -37,6 +37,17 @@ export async function GET() {
       lastSyncLog = null
     }
 
+    // Fetch enrichment queue stats — handle case where table doesn't exist yet
+    let enrichmentQueue = null
+    try {
+      const queueRows = await query(
+        `SELECT status, COUNT(*)::int as count FROM enrichment_queue GROUP BY status ORDER BY status`
+      )
+      enrichmentQueue = Object.fromEntries(queueRows.map((r) => [(r as { status: string }).status, (r as { count: number }).count]))
+    } catch {
+      enrichmentQueue = null
+    }
+
     return NextResponse.json({
       db_state: {
         total_rows: totalRows[0]?.total ?? 0,
@@ -45,7 +56,8 @@ export async function GET() {
         last_repo_sync: recentUpdates[0]?.last_updated ?? null,
       },
       last_sync_log: lastSyncLog,
-      cron_schedule: '12:30 UTC daily (09:30 BRT)',
+      enrichment_queue: enrichmentQueue,
+      cron_schedule: '12:30 UTC + 18:00 UTC daily (09:30 + 15:00 BRT)',
       note: 'POST to this endpoint to manually trigger a sync (gestor only)',
     })
   } catch (error) {

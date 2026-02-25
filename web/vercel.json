@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/sync-leads",
       "schedule": "30 12 * * *"
+    },
+    {
+      "path": "/api/cron/sync-leads",
+      "schedule": "0 18 * * *"
     }
   ]
 }

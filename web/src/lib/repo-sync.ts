@@ -515,6 +515,20 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
         duration_ms INT NOT NULL DEFAULT 0
       )
     `)
+
+    // Ensure enrichment_queue table exists — tracks BrasilAPI enrichment per CNPJ
+    // status: pending (needs enrichment), done (enriched), no_data (API has no contact),
+    //         error (API failed, will retry), rate_limited (403, retry next sync)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS enrichment_queue (
+        cnpj VARCHAR(20) PRIMARY KEY,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        attempts INT NOT NULL DEFAULT 0,
+        last_attempt TIMESTAMPTZ,
+        last_error TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `)
     // Get active vendedores
     const vendedoresRes = await client.query(
       "SELECT id, email FROM users WHERE role = 'vendedor' AND active = true ORDER BY nome"
@@ -756,30 +770,16 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     }
 
     // ========================================================================
-    // STEP 8: BrasilAPI enrichment for new leads missing contact data + sem-nome
+    // STEP 8: BrasilAPI enrichment via enrichment_queue (persistent, never drops CNPJs)
+    // ========================================================================
+    // Strategy:
+    //   1. Enqueue ALL CNPJs missing data (new inserts + existing gaps) as 'pending'
+    //   2. Process queue: 'pending' first, then 'rate_limited'/'error' (retry)
+    //   3. Mark results: 'done', 'no_data' (API has nothing), 'rate_limited' (403), 'error'
+    //   4. 'no_data' retries weekly (data may appear later in Receita Federal)
+    //   5. Processes until timeout — remaining stay in queue for next sync
     // ========================================================================
     const elapsed = Date.now() - startTime
-
-    // Also enrich existing CNPJs missing any contact field (sem-nome, sem-email, sem-telefone, sem-endereco)
-    // BrasilAPI acts as a general post-import refiner after repo data is loaded
-    const missingDataRes = await client.query<{ cnpj: string }>(`
-      SELECT DISTINCT cnpj FROM vendedor_projetos
-      WHERE (
-        nome IS NULL OR nome = '' OR nome = 'Sem nome'
-        OR email IS NULL OR email = ''
-        OR telefone IS NULL OR telefone = ''
-        OR endereco IS NULL OR endereco = ''
-      )
-      AND cnpj NOT IN (SELECT UNNEST($1::text[]))
-      ORDER BY cnpj
-      LIMIT 50
-    `, [Array.from(newCnpjsNeedingContacts)])
-    for (const row of missingDataRes.rows) {
-      newCnpjsNeedingContacts.add(row.cnpj)
-    }
-    console.log(`[repo-sync] STEP 8: ${missingDataRes.rows.length} CNPJs with missing data added to enrichment queue`)
-
-    const cnpjsToEnrich = Array.from(newCnpjsNeedingContacts)
 
     // Map to store BrasilAPI contact data per CNPJ for use in STEP 9
     interface BrasilApiContactData {
@@ -789,13 +789,64 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     }
     const brasilApiContacts = new Map<string, BrasilApiContactData>()
 
-    if (cnpjsToEnrich.length > 0 && elapsed < 200000) {
-      console.log(`[repo-sync] STEP 8: BrasilAPI enrichment for ${cnpjsToEnrich.length} CNPJs...`)
+    // 8a. Enqueue newly-inserted CNPJs
+    const newCnpjArr = Array.from(newCnpjsNeedingContacts)
+    for (const cnpj of newCnpjArr) {
+      await client.query(
+        `INSERT INTO enrichment_queue (cnpj, status) VALUES ($1, 'pending') ON CONFLICT (cnpj) DO NOTHING`,
+        [cnpj]
+      )
+    }
 
-      for (const cnpj of cnpjsToEnrich) {
+    // 8b. Enqueue existing CNPJs still missing any contact data (catches gaps from prior syncs)
+    await client.query(`
+      INSERT INTO enrichment_queue (cnpj, status)
+      SELECT DISTINCT cnpj FROM vendedor_projetos
+      WHERE (
+        nome IS NULL OR nome = '' OR nome = 'Sem nome'
+        OR email IS NULL OR email = ''
+        OR telefone IS NULL OR telefone = ''
+        OR endereco IS NULL OR endereco = ''
+      )
+      ON CONFLICT (cnpj) DO NOTHING
+    `)
+
+    // 8c. Reset 'no_data' entries older than 7 days (retry weekly — data may appear in Receita)
+    await client.query(`
+      UPDATE enrichment_queue SET status = 'pending', attempts = 0
+      WHERE status = 'no_data' AND last_attempt < NOW() - INTERVAL '7 days'
+    `)
+
+    // 8d. Reset 'rate_limited' and 'error' entries (always retry next sync)
+    await client.query(`
+      UPDATE enrichment_queue SET status = 'pending'
+      WHERE status IN ('rate_limited', 'error')
+    `)
+
+    // 8e. Fetch queue: pending first, ordered by fewest attempts
+    const queueRes = await client.query<{ cnpj: string; attempts: number }>(`
+      SELECT cnpj, attempts FROM enrichment_queue
+      WHERE status = 'pending'
+      ORDER BY attempts ASC, cnpj ASC
+    `)
+    const cnpjsToEnrich = queueRes.rows
+    console.log(`[repo-sync] STEP 8: Enrichment queue has ${cnpjsToEnrich.length} pending CNPJs`)
+
+    let rateLimitHits = 0
+
+    if (cnpjsToEnrich.length > 0 && elapsed < 200000) {
+      console.log(`[repo-sync] STEP 8: BrasilAPI enrichment starting...`)
+
+      for (const { cnpj } of cnpjsToEnrich) {
         // Check timeout before each API call
         if (Date.now() - startTime > 250000) {
-          console.log('[repo-sync] Approaching timeout, stopping enrichment')
+          console.log(`[repo-sync] STEP 8: Timeout approaching, ${stats.enriched_api} enriched this run, rest stays in queue`)
+          break
+        }
+
+        // If we got 3+ consecutive rate limits, stop and let next sync handle the rest
+        if (rateLimitHits >= 3) {
+          console.log(`[repo-sync] STEP 8: Rate limited ${rateLimitHits}x, stopping. Rest stays in queue for next sync.`)
           break
         }
 
@@ -804,7 +855,29 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
             signal: AbortSignal.timeout(10000),
             headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ProjetusCRM/1.0)' },
           })
-          if (!apiRes.ok) { await delay(300); continue }
+
+          if (apiRes.status === 403 || apiRes.status === 429) {
+            // Rate limited — mark and count
+            rateLimitHits++
+            await client.query(
+              `UPDATE enrichment_queue SET status = 'rate_limited', attempts = attempts + 1, last_attempt = NOW(), last_error = $2 WHERE cnpj = $1`,
+              [cnpj, `HTTP ${apiRes.status}`]
+            )
+            await delay(2000) // back off on rate limit
+            continue
+          }
+
+          // Reset consecutive rate limit counter on any non-rate-limit response
+          rateLimitHits = 0
+
+          if (!apiRes.ok) {
+            await client.query(
+              `UPDATE enrichment_queue SET status = 'error', attempts = attempts + 1, last_attempt = NOW(), last_error = $2 WHERE cnpj = $1`,
+              [cnpj, `HTTP ${apiRes.status}`]
+            )
+            await delay(300)
+            continue
+          }
 
           const data = await apiRes.json()
           const phoneRaw = data.ddd_telefone_1 || ''
@@ -835,8 +908,21 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
             brasilApiContacts.set(cnpj, { phone1: phone, phone2, email })
           }
 
-          if (!phone && !email && !nome && !endereco) { await delay(300); continue }
+          // Check if API returned any useful contact data
+          const hasContact = !!(phone || email)
+          const hasAnyData = !!(phone || email || nome || endereco)
 
+          if (!hasAnyData) {
+            // API responded but has zero useful data
+            await client.query(
+              `UPDATE enrichment_queue SET status = 'no_data', attempts = attempts + 1, last_attempt = NOW() WHERE cnpj = $1`,
+              [cnpj]
+            )
+            await delay(300)
+            continue
+          }
+
+          // Update vendedor_projetos with enrichment data (COALESCE — only fill empty fields)
           const updates: string[] = []
           const params: unknown[] = []
           let idx = 1
@@ -854,15 +940,24 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
             `UPDATE vendedor_projetos SET ${updates.join(', ')} WHERE cnpj = $${idx}`,
             params
           )
+
+          // Mark as done (or no_data if API had address/name but no phone/email)
+          await client.query(
+            `UPDATE enrichment_queue SET status = $2, attempts = attempts + 1, last_attempt = NOW() WHERE cnpj = $1`,
+            [cnpj, hasContact ? 'done' : 'no_data']
+          )
           stats.enriched_api++
-        } catch {
-          // BrasilAPI timeout or error -- skip
+        } catch (err) {
+          await client.query(
+            `UPDATE enrichment_queue SET status = 'error', attempts = attempts + 1, last_attempt = NOW(), last_error = $2 WHERE cnpj = $1`,
+            [cnpj, String(err)]
+          ).catch(() => {})
         }
         await delay(300)
       }
-      console.log(`[repo-sync] BrasilAPI enriched: ${stats.enriched_api}`)
+      console.log(`[repo-sync] STEP 8: BrasilAPI enriched: ${stats.enriched_api} | rate_limited: ${rateLimitHits}`)
     } else {
-      console.log('[repo-sync] STEP 8: Skipped BrasilAPI enrichment (no new leads missing contacts or timeout approaching)')
+      console.log('[repo-sync] STEP 8: Skipped (no pending CNPJs or timeout approaching)')
     }
 
     // ========================================================================
