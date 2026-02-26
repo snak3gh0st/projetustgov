@@ -617,8 +617,9 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       INSERT INTO vendedor_projetos (
         cnpj, codigo_programa, nome_programa, link_externo, orgao_concedente,
         uf, municipio, qualificacao, nr_emenda, parlamentar,
-        nome, valor_emenda, vendedor_id, observacoes, importado_de, tipo_vendedor
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'auto-repo-sync',$15)
+        nome, valor_emenda, vendedor_id, observacoes, importado_de, tipo_vendedor,
+        telefone, email
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'auto-repo-sync',$15,$16,$17)
       ON CONFLICT (cnpj, codigo_programa, COALESCE(nr_emenda, '')) DO UPDATE SET
         nome_programa = EXCLUDED.nome_programa,
         link_externo = EXCLUDED.link_externo,
@@ -698,6 +699,8 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
         vendedorId,
         obs,
         tipoVendedor,
+        lead.telefone || null,
+        lead.email || null,
       ]
 
       try {
@@ -707,9 +710,9 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
         const wasInserted = result.rows[0]?.was_inserted === true
         if (wasInserted) {
           stats.inserted++
-          if (!lead.telefone && !lead.email) {
-            newCnpjsNeedingContacts.add(lead.cnpj)
-          }
+          // Always enqueue new CNPJs for enrichment — even if proponentes had data,
+          // BrasilAPI may provide additional phone2/endereco
+          newCnpjsNeedingContacts.add(lead.cnpj)
         } else {
           stats.updated++
         }
@@ -798,7 +801,8 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       )
     }
 
-    // 8b. Enqueue existing CNPJs still missing any contact data (catches gaps from prior syncs)
+    // 8b. Enqueue existing CNPJs still missing any contact data OR missing lead_contacts
+    // (catches gaps from prior syncs where lead_contacts were never populated)
     await client.query(`
       INSERT INTO enrichment_queue (cnpj)
       SELECT DISTINCT cnpj FROM vendedor_projetos
@@ -808,6 +812,14 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
         OR telefone IS NULL OR telefone = ''
         OR endereco IS NULL OR endereco = ''
       )
+      ON CONFLICT (cnpj) DO NOTHING
+    `)
+    // 8b2. Also enqueue CNPJs that have no lead_contacts at all (safety net)
+    await client.query(`
+      INSERT INTO enrichment_queue (cnpj)
+      SELECT DISTINCT vp.cnpj FROM vendedor_projetos vp
+      LEFT JOIN lead_contacts lc ON vp.cnpj = lc.lead_cnpj
+      WHERE lc.lead_cnpj IS NULL
       ON CONFLICT (cnpj) DO NOTHING
     `)
 
@@ -961,14 +973,20 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     }
 
     // ========================================================================
-    // STEP 9: Populate lead_contacts from enrichment data (ALL CNPJs in batch)
+    // STEP 9: Populate lead_contacts from enrichment data (ALL CNPJs without contacts)
     // ========================================================================
     const elapsedBeforeStep9 = Date.now() - startTime
     if (elapsedBeforeStep9 < 200000) {
       console.log('[repo-sync] STEP 9: Populating lead_contacts from enrichment data...')
 
-      // Get all unique CNPJs from the current sync batch
-      const allSyncCnpjs = Array.from(new Set(leads.map(l => l.cnpj)))
+      // Get ALL CNPJs without lead_contacts (not just current batch — catches gaps from prior syncs)
+      const missingContactsRes = await client.query(`
+        SELECT DISTINCT vp.cnpj FROM vendedor_projetos vp
+        LEFT JOIN lead_contacts lc ON vp.cnpj = lc.lead_cnpj
+        WHERE lc.lead_cnpj IS NULL
+      `)
+      const allSyncCnpjs = missingContactsRes.rows.map((r: { cnpj: string }) => r.cnpj)
+      console.log(`[repo-sync] STEP 9: ${allSyncCnpjs.length} CNPJs need lead_contacts`)
 
       // Helper: normalize phone by stripping non-digits
       const normalizePhone = (phone: string | null | undefined): string =>
