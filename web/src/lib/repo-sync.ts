@@ -1080,6 +1080,24 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
               }
             }
           }
+
+          // Source 3: Fallback to vendedor_projetos.telefone/email
+          // (covers cases where proponentes Map doesn't have CNPJ and BrasilAPI
+          //  already enriched vp in a prior sync but lead_contacts was never created)
+          if (existingPhones.size === 0 && existingEmails.size === 0) {
+            const vpFallback = await client.query(
+              `SELECT DISTINCT telefone, email FROM vendedor_projetos
+               WHERE cnpj = $1 AND (telefone IS NOT NULL AND telefone != '' OR email IS NOT NULL AND email != '')
+               LIMIT 1`,
+              [cnpj]
+            )
+            if (vpFallback.rows.length > 0) {
+              const vpPhone = formatPhone(vpFallback.rows[0].telefone)
+              const vpEmail = vpFallback.rows[0].email && vpFallback.rows[0].email.includes('@')
+                ? vpFallback.rows[0].email.trim().toLowerCase() : null
+              await insertContact(vpPhone, vpEmail)
+            }
+          }
         } catch (err) {
           console.error(`[repo-sync] STEP 9: Error processing contacts for CNPJ ${cnpj}: ${err}`)
         }
