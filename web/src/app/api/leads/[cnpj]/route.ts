@@ -217,7 +217,7 @@ export async function PATCH(
         SET comissao_locked = false, comissao_valor = NULL, comissao_percentual = NULL, comissao_bonus = NULL,
             closer_comissao_percentual = NULL, closer_comissao_valor = NULL,
             closer_id = NULL
-        WHERE id = $1 AND (comissao_locked = true OR closer_id IS NOT NULL)
+        WHERE id = $1 AND (comissao_locked = true OR closer_id IS NOT NULL OR comissao_valor IS NOT NULL)
       `, [projectId])
     } else if (body.tipo_vendedor !== undefined && !body.status_contato) {
       // If tipo_vendedor changed and lead is already Fechado, recalculate commission
