@@ -979,14 +979,38 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     if (elapsedBeforeStep9 < 200000) {
       console.log('[repo-sync] STEP 9: Populating lead_contacts from enrichment data...')
 
-      // Get ALL CNPJs without lead_contacts (not just current batch — catches gaps from prior syncs)
+      // STEP 9a: Bulk SQL safety-net — insert lead_contacts directly from vendedor_projetos
+      // for any CNPJ that has phone/email data there but no lead_contacts entry yet.
+      // This is a pure-SQL approach that does NOT depend on in-memory maps (proponentes,
+      // brasilApiContacts) and therefore catches CNPJs enriched in prior sync runs where
+      // STEP 9 was skipped due to timeout. Runs fast (single INSERT...SELECT), no API calls.
+      const bulkInsertRes = await client.query(`
+        INSERT INTO lead_contacts (lead_cnpj, telefone, email, principal, telefone_status)
+        SELECT DISTINCT ON (cnpj)
+          cnpj,
+          NULLIF(telefone, ''),
+          NULLIF(email, ''),
+          true,
+          'desconhecido'
+        FROM vendedor_projetos
+        WHERE (telefone IS NOT NULL AND telefone != '' OR email IS NOT NULL AND email != '')
+          AND NOT EXISTS (SELECT 1 FROM lead_contacts WHERE lead_cnpj = vendedor_projetos.cnpj)
+        ORDER BY cnpj, updated_at DESC
+        RETURNING lead_cnpj
+      `)
+      if (bulkInsertRes.rows.length > 0) {
+        console.log(`[repo-sync] STEP 9a: Bulk-inserted ${bulkInsertRes.rows.length} lead_contacts from vendedor_projetos`)
+        stats.contacts_created += bulkInsertRes.rows.length
+      }
+
+      // Get ALL CNPJs still without lead_contacts (after bulk insert, typically only those with no VP data)
       const missingContactsRes = await client.query(`
         SELECT DISTINCT vp.cnpj FROM vendedor_projetos vp
         LEFT JOIN lead_contacts lc ON vp.cnpj = lc.lead_cnpj
         WHERE lc.lead_cnpj IS NULL
       `)
       const allSyncCnpjs = missingContactsRes.rows.map((r: { cnpj: string }) => r.cnpj)
-      console.log(`[repo-sync] STEP 9: ${allSyncCnpjs.length} CNPJs need lead_contacts`)
+      console.log(`[repo-sync] STEP 9: ${allSyncCnpjs.length} CNPJs still need lead_contacts (from in-memory maps)`)
 
       // Helper: normalize phone by stripping non-digits
       const normalizePhone = (phone: string | null | undefined): string =>
