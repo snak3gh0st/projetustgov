@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getApiSession()
     if (!session) {
@@ -15,18 +15,27 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Get all leads with status Não Contatado or Retorno, with ALL contacts per CNPJ
-    const result = await query(`
+    const { searchParams } = new URL(request.url)
+    const filter = searchParams.get('filter') // 'pendentes' or null (all)
+
+    const whereClause = filter === 'pendentes'
+      ? `WHERE vp.status_contato IN ('Não Contatado', 'Retorno')`
+      : 'WHERE 1=1'
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows = await query(`
       SELECT
         u.nome AS vendedor_nome,
         vp.cnpj,
         COALESCE(p.nome, vp.nome, 'Sem nome') AS nome,
         vp.status_contato,
         vp.valor_emenda,
+        vp.orgao_concedente,
         COALESCE(p.uf, vp.uf) AS uf,
         COALESCE(p.municipio, vp.municipio) AS municipio,
         vp.parlamentar,
         vp.observacoes,
+        vp.link_externo,
         (
           SELECT json_agg(json_build_object(
             'nome_pessoa', lc.nome_pessoa,
@@ -41,15 +50,11 @@ export async function GET() {
       FROM vendedor_projetos vp
       LEFT JOIN users u ON vp.vendedor_id = u.id
       LEFT JOIN proponentes p ON vp.cnpj = p.cnpj
-      WHERE vp.status_contato IN ('Não Contatado', 'Retorno')
+      ${whereClause}
       ORDER BY u.nome ASC NULLS LAST, COALESCE(p.nome, vp.nome, '') ASC, vp.cnpj
-    `, [])
+    `, []) as any[]
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = result as any[]
-
-    // Build CSV with all contacts expanded
-    const headers = ['Vendedor', 'CNPJ', 'Nome', 'Status', 'Contato Nome', 'Contato Cargo', 'Telefone', 'Email', 'Principal', 'Valor Emenda', 'UF', 'Municipio', 'Parlamentar', 'Observacoes']
+    const headers = ['Vendedor', 'CNPJ', 'Nome', 'Status', 'Contato Nome', 'Contato Cargo', 'Telefone', 'Email', 'Principal', 'Valor Emenda', 'Ministerio', 'UF', 'Municipio', 'Parlamentar', 'Observacoes', 'Link']
 
     const csvRows: string[][] = []
 
@@ -71,10 +76,12 @@ export async function GET() {
 
       const tail: string[] = [
         row.valor_emenda != null ? String(row.valor_emenda) : '',
+        String(row.orgao_concedente || ''),
         String(row.uf || ''),
         String(row.municipio || ''),
         String(row.parlamentar || ''),
         String(row.observacoes || ''),
+        String(row.link_externo || ''),
       ]
 
       if (contacts && contacts.length > 0) {
@@ -90,7 +97,6 @@ export async function GET() {
           ])
         }
       } else {
-        // No contacts — still include the lead with empty contact columns
         csvRows.push([...base, '', '', '', '', '', ...tail])
       }
     }
@@ -102,15 +108,16 @@ export async function GET() {
     ].join('\n')
 
     const date = new Date().toISOString().slice(0, 10)
+    const filename = filter === 'pendentes' ? `pendentes-${date}.csv` : `leads-${date}.csv`
 
     return new NextResponse('\uFEFF' + csv, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="pendentes-${date}.csv"`,
+        'Content-Disposition': `attachment; filename="${filename}"`,
       },
     })
   } catch (error) {
-    console.error('Export pendentes error:', error)
+    console.error('Export leads error:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

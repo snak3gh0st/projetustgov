@@ -298,25 +298,14 @@ export default function LeadsPage() {
   }
 
   function exportCSV() {
-    const headers = ['CNPJ', 'Nome', 'Valor Emenda', 'Ministerio', 'UF', 'Municipio', 'Parlamentar', 'Telefone', 'Email', 'Status', 'Vendedor', 'Observacoes', 'Link']
-    const rows = leads.map(l => [
-      l.cnpj, l.nome, l.valor_emenda || '', l.orgao_concedente || '', l.uf || '', l.municipio || '',
-      l.parlamentar || '', l.telefone || '', l.email || '',
-      l.status_contato, l.vendedor_nome || '', l.observacoes || '', l.link_externo || '',
-    ])
-    const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = 'leads.csv'; a.click()
-    URL.revokeObjectURL(url)
+    a.href = '/api/leads/export-pendentes'
+    a.click()
   }
 
   function exportPendentesCSV() {
-    // Server-side export with all contacts per lead
     const a = document.createElement('a')
-    a.href = '/api/leads/export-pendentes'
-    a.download = `pendentes-${new Date().toISOString().slice(0, 10)}.csv`
+    a.href = '/api/leads/export-pendentes?filter=pendentes'
     a.click()
   }
 
