@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
         vp.status_contato,
         vp.valor_emenda,
         vp.orgao_concedente,
-        COALESCE(p.uf, vp.uf) AS uf,
+        COALESCE(p.estado, vp.uf) AS uf,
         COALESCE(p.municipio, vp.municipio) AS municipio,
         vp.parlamentar,
         vp.observacoes,
