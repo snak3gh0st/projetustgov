@@ -170,12 +170,12 @@
 | 71 | Audit BI numbers, improve BI with more KPIs, audit comissoes and pipeline numbers | 2026-02-24 | 04c273d | [54-audit-bi-numbers-improve-bi-with-more-kp](./quick/54-audit-bi-numbers-improve-bi-with-more-kp/) |
 | 72 | Fix 5 audit bugs: BI chart gestor filter, ainda_nao guard, dashboard commission gestor, ticket_medio consistency, Paulo summary total | 2026-02-24 | 5331ef9 | [55-fix-5-audit-bugs-bi-chart-gestor-filter-](./quick/55-fix-5-audit-bugs-bi-chart-gestor-filter-/) |
 | 73 | Fix closer/SDR commission split on tipo_vendedor change + data verification script | 2026-02-24 | 23af25e | [56-fix-closer-sdr-commission-split-closer-3](./quick/56-fix-closer-sdr-commission-split-closer-3/) |
-| 74 | Export Não Contatados + Retorno CSV per vendedor (gestor/coordenador only, UTF-8 BOM, sorted by vendedor) | 2026-02-28 | 794991c | [57-export-n-o-contatados-retorno-de-cada-ve](./quick/57-export-n-o-contatados-retorno-de-cada-ve/) |
+| 74 | Export Não Contatados + Retorno CSV per vendedor (gestor/coordenador only, UTF-8 BOM, sorted by vendedor) | 2026-03-01 | 44f27a9 | [57-export-n-o-contatados-retorno-de-cada-ve](./quick/57-export-n-o-contatados-retorno-de-cada-ve/) |
 
 ## Session Continuity
 
 ### Last Session Summary
-**Date:** 2026-02-28
+**Date:** 2026-03-01
 **Milestone:** v3.0 CRM de Vendas
 **Activity:** Quick task 74 (quick-57): Export Não Contatados + Retorno CSV per vendedor
 
