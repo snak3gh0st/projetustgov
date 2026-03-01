@@ -313,44 +313,11 @@ export default function LeadsPage() {
   }
 
   function exportPendentesCSV() {
-    // Filter to Não Contatado + Retorno only, sorted by vendedor name then lead name
-    const pendentes = leads
-      .filter(l => l.status_contato === 'Não Contatado' || l.status_contato === 'Retorno')
-      .sort((a, b) => {
-        const vA = a.vendedor_nome || 'Sem Vendedor'
-        const vB = b.vendedor_nome || 'Sem Vendedor'
-        if (vA !== vB) return vA.localeCompare(vB, 'pt-BR')
-        return (a.nome || '').localeCompare(b.nome || '', 'pt-BR')
-      })
-
-    const headers = ['Vendedor', 'CNPJ', 'Nome', 'Status', 'Telefone', 'Email', 'Valor Emenda', 'UF', 'Municipio', 'Parlamentar', 'Observacoes']
-    const rows = pendentes.map(l => [
-      l.vendedor_nome || '',
-      l.cnpj,
-      l.nome || '',
-      l.status_contato || '',
-      l.telefone || '',
-      l.email || '',
-      l.valor_emenda != null ? String(l.valor_emenda) : '',
-      l.uf || '',
-      l.municipio || '',
-      l.parlamentar || '',
-      l.observacoes || '',
-    ])
-
-    const csv = [
-      headers.join(','),
-      ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
-    ].join('\n')
-
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
+    // Server-side export with all contacts per lead
     const a = document.createElement('a')
-    const date = new Date().toISOString().slice(0, 10)
-    a.href = url
-    a.download = `pendentes-${date}.csv`
+    a.href = '/api/leads/export-pendentes'
+    a.download = `pendentes-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
-    URL.revokeObjectURL(url)
   }
 
   return (
@@ -391,6 +358,20 @@ export default function LeadsPage() {
             </select>
           </>
         )}
+      </div>
+
+      <div className="flex gap-2 justify-end">
+        {(sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador') && (
+          <button
+            onClick={exportPendentesCSV}
+            className="px-3 py-1.5 rounded-lg border border-orange-200 text-orange-600 hover:bg-orange-50 transition-colors text-xs"
+          >
+            Exportar Pendentes CSV
+          </button>
+        )}
+        <button onClick={exportCSV} className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-xs">
+          Exportar CSV
+        </button>
       </div>
 
       {loading ? (
@@ -633,21 +614,8 @@ export default function LeadsPage() {
             </table>
           </div>
 
-          <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
+          <div className="mt-4 text-sm text-gray-500">
             <span>{displayLeads.length} CNPJs ({leads.length} emendas)</span>
-            <div className="flex gap-2">
-              {(sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador') && (
-                <button
-                  onClick={exportPendentesCSV}
-                  className="px-3 py-1.5 rounded-lg border border-orange-200 text-orange-600 hover:bg-orange-50 transition-colors text-xs"
-                >
-                  Exportar Pendentes CSV
-                </button>
-              )}
-              <button onClick={exportCSV} className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-xs">
-                Exportar CSV
-              </button>
-            </div>
           </div>
         </div>
       )}
