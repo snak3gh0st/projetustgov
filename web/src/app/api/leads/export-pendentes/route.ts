@@ -41,8 +41,7 @@ export async function GET(request: NextRequest) {
             'nome_pessoa', lc.nome_pessoa,
             'cargo', lc.cargo,
             'telefone', lc.telefone,
-            'email', lc.email,
-            'principal', lc.principal
+            'email', lc.email
           ) ORDER BY lc.principal DESC, lc.created_at ASC)
           FROM lead_contacts lc
           WHERE lc.lead_cnpj = vp.cnpj
@@ -54,18 +53,29 @@ export async function GET(request: NextRequest) {
       ORDER BY u.nome ASC NULLS LAST, COALESCE(p.nome, vp.nome, '') ASC, vp.cnpj
     `, []) as any[]
 
-    const headers = ['Vendedor', 'CNPJ', 'Nome', 'Status', 'Contato Nome', 'Contato Cargo', 'Telefone', 'Email', 'Principal', 'Valor Emenda', 'Ministerio', 'UF', 'Municipio', 'Parlamentar', 'Observacoes', 'Link']
+    type Contact = { nome_pessoa: string | null; cargo: string | null; telefone: string | null; email: string | null }
+
+    // Find max number of contacts across all leads
+    let maxContacts = 0
+    for (const row of rows) {
+      const c = row.contacts as Contact[] | null
+      if (c && c.length > maxContacts) maxContacts = c.length
+    }
+    if (maxContacts === 0) maxContacts = 1
+
+    // Build dynamic headers: Contato 1 Nome, Contato 1 Cargo, Contato 1 Tel, Contato 1 Email, Contato 2 ...
+    const baseHeaders = ['Vendedor', 'CNPJ', 'Nome', 'Status']
+    const contactHeaders: string[] = []
+    for (let i = 1; i <= maxContacts; i++) {
+      contactHeaders.push(`Contato ${i} Nome`, `Contato ${i} Cargo`, `Contato ${i} Tel`, `Contato ${i} Email`)
+    }
+    const tailHeaders = ['Valor Emenda', 'Ministerio', 'UF', 'Municipio', 'Parlamentar', 'Observacoes', 'Link']
+    const headers = [...baseHeaders, ...contactHeaders, ...tailHeaders]
 
     const csvRows: string[][] = []
 
     for (const row of rows) {
-      const contacts = row.contacts as Array<{
-        nome_pessoa: string | null
-        cargo: string | null
-        telefone: string | null
-        email: string | null
-        principal: boolean
-      }> | null
+      const contacts = (row.contacts as Contact[] | null) || []
 
       const base: string[] = [
         String(row.vendedor_nome || 'Sem Vendedor'),
@@ -73,6 +83,18 @@ export async function GET(request: NextRequest) {
         String(row.nome || ''),
         String(row.status_contato || ''),
       ]
+
+      // Fill contact columns — pad with empty if fewer contacts than max
+      const contactCols: string[] = []
+      for (let i = 0; i < maxContacts; i++) {
+        const c = contacts[i]
+        contactCols.push(
+          c?.nome_pessoa || '',
+          c?.cargo || '',
+          c?.telefone || '',
+          c?.email || '',
+        )
+      }
 
       const tail: string[] = [
         row.valor_emenda != null ? String(row.valor_emenda) : '',
@@ -84,21 +106,7 @@ export async function GET(request: NextRequest) {
         String(row.link_externo || ''),
       ]
 
-      if (contacts && contacts.length > 0) {
-        for (const c of contacts) {
-          csvRows.push([
-            ...base,
-            c.nome_pessoa || '',
-            c.cargo || '',
-            c.telefone || '',
-            c.email || '',
-            c.principal ? 'Sim' : '',
-            ...tail,
-          ])
-        }
-      } else {
-        csvRows.push([...base, '', '', '', '', '', ...tail])
-      }
+      csvRows.push([...base, ...contactCols, ...tail])
     }
 
     const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
