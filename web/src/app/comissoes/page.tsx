@@ -70,6 +70,12 @@ interface ComissaoData {
     end_date: string | null
     fechado_only: boolean
   }
+  selected_vendedor_stats: {
+    total_leads: number
+    fechados: number
+    fechados_com_comissao: number
+    total_fechados_comissao: number
+  } | null
 }
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string }> = {
@@ -241,6 +247,9 @@ export default function ComissoesPage() {
 
   const hasVendedoresList = data.vendedores_list && data.vendedores_list.length > 0
   const showPerVendedor = data.per_vendedor && data.per_vendedor.length > 0
+  const selectedVendedorNome = vendedorFilter
+    ? (data.vendedores_list.find(v => v.id === vendedorFilter)?.nome || 'Vendedor selecionado')
+    : null
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -678,7 +687,14 @@ export default function ComissoesPage() {
         ) : (
           <div className="px-6 py-12 text-center text-gray-500">
             <p className="text-base">Nenhum lead com comissao encontrado no periodo selecionado</p>
-            <p className="text-sm mt-2">Ajuste os filtros acima para ver outros resultados</p>
+            {vendedorFilter && data.selected_vendedor_stats ? (
+              <p className="text-sm mt-2">
+                {selectedVendedorNome}: {data.selected_vendedor_stats.total_leads} leads no periodo, {data.selected_vendedor_stats.fechados} fechados,
+                {' '}{data.selected_vendedor_stats.fechados_com_comissao} com comissao (&gt; 0).
+              </p>
+            ) : (
+              <p className="text-sm mt-2">Ajuste os filtros acima para ver outros resultados</p>
+            )}
           </div>
         )}
       </div>

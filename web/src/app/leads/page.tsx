@@ -261,11 +261,16 @@ export default function LeadsPage() {
     }
   }
 
-  async function submitFechado(leadId: number, leadCnpj: string, saleData: { valor_venda: number; tipo_vendedor: string }) {
+  async function submitFechado(
+    leadId: number,
+    leadCnpj: string,
+    saleData: { valor_venda: number; tipo_vendedor: string; status_contato?: string }
+  ) {
     try {
+      const targetStatus = saleData.status_contato || 'Fechado'
       const body = {
         id: leadId,
-        status_contato: 'Fechado',
+        status_contato: targetStatus,
         valor_venda: saleData.valor_venda,
         tipo_vendedor: saleData.tipo_vendedor,
       }
@@ -283,7 +288,7 @@ export default function LeadsPage() {
       setLeads(prev => prev.map(l =>
         l.id === leadId ? {
           ...l,
-          status_contato: 'Fechado',
+          status_contato: targetStatus,
           valor_venda: saleData.valor_venda,
           tipo_vendedor: saleData.tipo_vendedor as 'SDR' | 'Closer',
           ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
@@ -641,6 +646,8 @@ export default function LeadsPage() {
         open={!!saleModal}
         leadNome={saleModal?.leadNome || ''}
         currentTipoVendedor={saleModal?.tipoVendedor}
+        userRole={sessionUser?.role || null}
+        isExclusivo={saleModal?.tipoVendedor === 'Exclusivo'}
         onCancel={() => setSaleModal(null)}
         onConfirm={(data) => {
           if (saleModal) {

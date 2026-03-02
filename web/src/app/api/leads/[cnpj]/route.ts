@@ -147,6 +147,7 @@ export async function PATCH(
               closer_comissao_percentual = 3.00,
               closer_comissao_valor = COALESCE(valor_venda, 0) * 0.03,
               comissao_locked = true,
+              fechamento_at = COALESCE(fechamento_at, NOW()),
               updated_at = NOW()
           WHERE id = $1
         `, [projectId])
@@ -204,6 +205,7 @@ export async function PATCH(
                 )
               END,
               comissao_locked = true,
+              fechamento_at = COALESCE(fechamento_at, NOW()),
               updated_at = NOW()
           WHERE id = $1
         `, [projectId])
@@ -216,8 +218,9 @@ export async function PATCH(
         UPDATE vendedor_projetos
         SET comissao_locked = false, comissao_valor = NULL, comissao_percentual = NULL, comissao_bonus = NULL,
             closer_comissao_percentual = NULL, closer_comissao_valor = NULL,
-            closer_id = NULL
-        WHERE id = $1 AND (comissao_locked = true OR closer_id IS NOT NULL OR comissao_valor IS NOT NULL)
+            closer_id = NULL,
+            fechamento_at = NULL
+        WHERE id = $1 AND (comissao_locked = true OR closer_id IS NOT NULL OR comissao_valor IS NOT NULL OR fechamento_at IS NOT NULL)
       `, [projectId])
     } else if (body.tipo_vendedor !== undefined && !body.status_contato) {
       // If tipo_vendedor changed and lead is already Fechado, recalculate commission

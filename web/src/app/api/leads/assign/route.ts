@@ -55,23 +55,42 @@ export async function POST(request: NextRequest) {
       }
 
       // Assign all projects for this CNPJ to the vendedor
+      // By default, protect closed/locked deals to preserve historical commission ownership.
+      // Use force=true only when intentional historical reassignment is desired.
+      const protectClosedDeals = !force
+
       // First, count how many rows will be affected
       const countResult = await query<{ count: string }>(
-        `SELECT COUNT(*) as count FROM vendedor_projetos WHERE cnpj = $1`,
+        `SELECT COUNT(*) as count FROM vendedor_projetos
+         WHERE cnpj = $1
+           ${protectClosedDeals ? "AND COALESCE(status_contato, '') != 'Fechado' AND COALESCE(comissao_locked, false) = false" : ''}`,
         [cnpj]
       )
       const rowCount = parseInt(countResult[0]?.count || '0', 10)
 
+      const skippedClosedResult = protectClosedDeals
+        ? await query<{ count: string }>(
+          `SELECT COUNT(*) as count FROM vendedor_projetos
+           WHERE cnpj = $1
+             AND (COALESCE(status_contato, '') = 'Fechado' OR COALESCE(comissao_locked, false) = true)`,
+          [cnpj]
+        )
+        : [{ count: '0' }]
+      const skippedClosed = parseInt(skippedClosedResult[0]?.count || '0', 10)
+
       await query(
         `UPDATE vendedor_projetos
          SET vendedor_id = $1, updated_at = NOW()
-         WHERE cnpj = $2`,
+         WHERE cnpj = $2
+           ${protectClosedDeals ? "AND COALESCE(status_contato, '') != 'Fechado' AND COALESCE(comissao_locked, false) = false" : ''}`,
         [vendedor_id, cnpj]
       )
 
       return NextResponse.json({
         success: true,
         rows_updated: rowCount,
+        skipped_closed: skippedClosed,
+        protected_closed_deals: protectClosedDeals,
         cnpj,
         vendedor_id
       })
@@ -108,10 +127,12 @@ export async function POST(request: NextRequest) {
       }
 
       // Assign all leads with matching CNPJs
-      // When reassigning, update ALL leads for those CNPJs (including already assigned)
+      // By default, protect closed/locked deals from reassignment.
+      const protectClosedDeals = !force
+      // When reassigning, update ALL open leads for those CNPJs (including already assigned)
       const whereClause = reassign
-        ? `WHERE cnpj = ANY($1)`
-        : `WHERE cnpj = ANY($1) AND (vendedor_id IS NULL OR id = ANY($2))`
+        ? `WHERE cnpj = ANY($1) ${protectClosedDeals ? "AND COALESCE(status_contato, '') != 'Fechado' AND COALESCE(comissao_locked, false) = false" : ''}`
+        : `WHERE cnpj = ANY($1) AND (vendedor_id IS NULL OR id = ANY($2)) ${protectClosedDeals ? "AND COALESCE(status_contato, '') != 'Fechado' AND COALESCE(comissao_locked, false) = false" : ''}`
       const countParams = reassign ? [cnpjs] : [cnpjs, lead_ids]
 
       const countResult = await query<{ count: string }>(
@@ -120,17 +141,30 @@ export async function POST(request: NextRequest) {
       )
       const totalAssigned = parseInt(countResult[0]?.count || '0', 10)
 
+      const skippedClosedResult = protectClosedDeals
+        ? await query<{ count: string }>(
+          `SELECT COUNT(*) as count
+           FROM vendedor_projetos
+           WHERE cnpj = ANY($1)
+             AND (COALESCE(status_contato, '') = 'Fechado' OR COALESCE(comissao_locked, false) = true)`,
+          [cnpjs]
+        )
+        : [{ count: '0' }]
+      const skippedClosed = parseInt(skippedClosedResult[0]?.count || '0', 10)
+
       if (reassign) {
         await query(
           `UPDATE vendedor_projetos SET vendedor_id = $1, updated_at = NOW()
-           WHERE cnpj = ANY($2)`,
-          [vendedor_id, cnpjs]
+           WHERE cnpj = ANY($2)
+             ${protectClosedDeals ? "AND COALESCE(status_contato, '') != 'Fechado' AND COALESCE(comissao_locked, false) = false" : ''}`,
+           [vendedor_id, cnpjs]
         )
       } else {
         await query(
           `UPDATE vendedor_projetos SET vendedor_id = $1, updated_at = NOW()
-           WHERE cnpj = ANY($2) AND (vendedor_id IS NULL OR id = ANY($3))`,
-          [vendedor_id, cnpjs, lead_ids]
+            WHERE cnpj = ANY($2) AND (vendedor_id IS NULL OR id = ANY($3))
+              ${protectClosedDeals ? "AND COALESCE(status_contato, '') != 'Fechado' AND COALESCE(comissao_locked, false) = false" : ''}`,
+           [vendedor_id, cnpjs, lead_ids]
         )
       }
 
@@ -141,6 +175,8 @@ export async function POST(request: NextRequest) {
         assigned_count: totalAssigned,
         selected_count: lead_ids.length,
         extra_by_cnpj: extraAssigned,
+        skipped_closed: skippedClosed,
+        protected_closed_deals: protectClosedDeals,
         warnings,
       })
     } else {

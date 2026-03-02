@@ -309,6 +309,9 @@ async function runSetup() {
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='closer_comissao_valor') THEN
           ALTER TABLE vendedor_projetos ADD COLUMN closer_comissao_valor NUMERIC(15,2);
         END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='fechamento_at') THEN
+          ALTER TABLE vendedor_projetos ADD COLUMN fechamento_at TIMESTAMP WITH TIME ZONE;
+        END IF;
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='uf') THEN
           ALTER TABLE vendedor_projetos ADD COLUMN uf VARCHAR(5);
         END IF;

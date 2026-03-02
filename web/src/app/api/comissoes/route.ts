@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     const fechadoOnly = searchParams.get('fechado_only')
 
     // Build dynamic WHERE clause — comissão só para Fechados
+    const dateField = 'COALESCE(vp.fechamento_at, vp.updated_at)'
     const filters: string[] = ['vp.vendedor_id IS NOT NULL', 'vp.comissao_valor IS NOT NULL', 'vp.comissao_valor > 0', "vp.status_contato = 'Fechado'"]
     const params: unknown[] = []
     let paramIndex = 1
@@ -40,12 +41,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (startDate) {
-      filters.push(`vp.updated_at >= $${paramIndex++}::timestamp`)
+      filters.push(`${dateField} >= $${paramIndex++}::timestamp`)
       params.push(`${startDate} 00:00:00`)
     }
 
     if (endDate) {
-      filters.push(`vp.updated_at <= $${paramIndex++}::timestamp`)
+      filters.push(`${dateField} <= $${paramIndex++}::timestamp`)
       params.push(`${endDate} 23:59:59`)
     }
 
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
     // Run all queries in parallel
     const showPerVendedor = (session.role !== 'vendedor') && !vendedorId
 
-    const [leadsRows, summaryRows, perVendedorRows, vendedoresRows] = await Promise.all([
+    const [leadsRows, summaryRows, perVendedorRows, vendedoresRows, selectedVendedorStatsRows] = await Promise.all([
       // Main query: Individual leads with commission details
       query(`
         SELECT
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
           uc.nome as closer_nome,
           vp.closer_comissao_percentual,
           COALESCE(vp.closer_comissao_valor, 0) as closer_comissao_valor,
-          vp.updated_at,
+          ${dateField} as updated_at,
           CASE WHEN co.id IS NOT NULL THEN true ELSE false END as has_override,
           co.motivo as override_motivo
         FROM vendedor_projetos vp
@@ -87,7 +88,7 @@ export async function GET(request: NextRequest) {
         LEFT JOIN users uc ON uc.id = vp.closer_id
         LEFT JOIN commission_overrides co ON co.lead_id = vp.id AND co.active = true
         WHERE ${whereClause}
-        ORDER BY vp.updated_at DESC
+        ORDER BY ${dateField} DESC
       `, params),
 
       // Summary query
@@ -128,6 +129,27 @@ export async function GET(request: NextRequest) {
         WHERE u.role IN ('vendedor', 'coordenador') AND u.active = true
         ORDER BY u.nome
       `),
+
+      // Diagnostics for selected vendedor (helps explain empty commission state)
+      vendedorId ? query(`
+        SELECT
+          COUNT(*)::int as total_leads,
+          SUM(CASE WHEN vp.status_contato = 'Fechado' THEN 1 ELSE 0 END)::int as fechados,
+          SUM(CASE WHEN vp.status_contato = 'Fechado' AND COALESCE(vp.comissao_valor, 0) > 0 THEN 1 ELSE 0 END)::int as fechados_com_comissao,
+          COALESCE(SUM(CASE
+            WHEN vp.status_contato = 'Fechado'
+            THEN COALESCE(vp.comissao_valor, 0) + COALESCE(vp.comissao_bonus, 0)
+            ELSE 0
+          END), 0)::numeric as total_fechados_comissao
+        FROM vendedor_projetos vp
+        WHERE vp.vendedor_id = $1
+          ${startDate ? `AND ${dateField} >= $2::timestamp` : ''}
+          ${endDate ? `AND ${dateField} <= $${startDate ? 3 : 2}::timestamp` : ''}
+      `, [
+        vendedorId,
+        ...(startDate ? [`${startDate} 00:00:00`] : []),
+        ...(endDate ? [`${endDate} 23:59:59`] : []),
+      ]) : Promise.resolve([]),
     ])
 
     const summary = summaryRows[0] || {}
@@ -162,8 +184,8 @@ export async function GET(request: NextRequest) {
       const pauloFilters: string[] = ["vp.status_contato = 'Fechado'"]
       const pauloParams: unknown[] = []
       let pIdx = 1
-      if (startDate) { pauloFilters.push(`vp.updated_at >= $${pIdx++}::timestamp`); pauloParams.push(`${startDate} 00:00:00`) }
-      if (endDate) { pauloFilters.push(`vp.updated_at <= $${pIdx++}::timestamp`); pauloParams.push(`${endDate} 23:59:59`) }
+      if (startDate) { pauloFilters.push(`${dateField} >= $${pIdx++}::timestamp`); pauloParams.push(`${startDate} 00:00:00`) }
+      if (endDate) { pauloFilters.push(`${dateField} <= $${pIdx++}::timestamp`); pauloParams.push(`${endDate} 23:59:59`) }
       const pauloWhere = pauloFilters.join(' AND ')
 
       const [exclusivoRows, closerRows, coordenadorRows] = await Promise.all([
@@ -297,6 +319,12 @@ export async function GET(request: NextRequest) {
         end_date: endDate,
         fechado_only: fechadoOnly === 'true',
       },
+      selected_vendedor_stats: vendedorId ? {
+        total_leads: Number(selectedVendedorStatsRows[0]?.total_leads) || 0,
+        fechados: Number(selectedVendedorStatsRows[0]?.fechados) || 0,
+        fechados_com_comissao: Number(selectedVendedorStatsRows[0]?.fechados_com_comissao) || 0,
+        total_fechados_comissao: Number(selectedVendedorStatsRows[0]?.total_fechados_comissao) || 0,
+      } : null,
     })
   } catch (error) {
     console.error('Comissoes query error:', error)

@@ -47,11 +47,38 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
     return () => document.removeEventListener('keydown', handler)
   }, [open, onCancel])
 
+  function parseCurrencyInput(raw: string): number {
+    const trimmed = raw.trim()
+    if (!trimmed) return NaN
+    const digitsOnly = trimmed.replace(/\D/g, '')
+    if (!digitsOnly) return NaN
+
+    const hasComma = trimmed.includes(',')
+    const hasDot = trimmed.includes('.')
+
+    if (hasComma && hasDot) {
+      // pt-BR thousand separators + decimal comma (e.g. 95.500,25)
+      return Number(trimmed.replace(/\./g, '').replace(',', '.'))
+    }
+    if (hasComma) {
+      // decimal comma (e.g. 95500,50)
+      return Number(trimmed.replace(',', '.'))
+    }
+    if (hasDot) {
+      const parts = trimmed.split('.')
+      const maybeThousands = parts.length > 1 && parts.every((p, i) => (i === 0 ? p.length >= 1 : p.length === 3))
+      if (maybeThousands) {
+        // thousand separators only (e.g. 95.500)
+        return Number(trimmed.replace(/\./g, ''))
+      }
+    }
+    return Number(trimmed)
+  }
+
   function handleSubmit() {
     setError('')
-    const cleaned = valorStr.replace(/[^\d.,]/g, '').replace(',', '.')
-    const valor = parseFloat(cleaned)
-    if (!cleaned || isNaN(valor) || valor <= 0) {
+    const valor = parseCurrencyInput(valorStr)
+    if (isNaN(valor) || valor <= 0) {
       setError('Informe um valor de venda valido (maior que zero)')
       return
     }
@@ -66,8 +93,7 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
   if (!open) return null
 
   // Compute preview commission
-  const cleaned = valorStr.replace(/[^\d.,]/g, '').replace(',', '.')
-  const previewValor = parseFloat(cleaned) || 0
+  const previewValor = parseCurrencyInput(valorStr) || 0
   const pct = tipoVendedor === 'Closer' ? 4 : tipoVendedor === 'Exclusivo' ? 3 : 1
   const previewComissao = previewValor * (pct / 100)
   // For SDR → Closer flow: show split preview
