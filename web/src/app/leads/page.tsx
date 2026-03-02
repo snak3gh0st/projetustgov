@@ -99,7 +99,7 @@ export default function LeadsPage() {
     if (search) params.set('search', search)
     if (statusFilter) params.set('status_contato', statusFilter)
     if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
-    params.set('limit', '500')
+    params.set('limit', '10000')
 
     try {
       const res = await fetch(`/api/leads?${params}`)
