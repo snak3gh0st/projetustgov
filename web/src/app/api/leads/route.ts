@@ -43,9 +43,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      conditions.push(`(vp.nome ILIKE $${paramIndex} OR vp.cnpj LIKE $${paramIndex})`)
-      params.push(`%${search}%`)
-      paramIndex++
+      const searchClean = search.replace(/[.\-\/]/g, '')
+      conditions.push(`(vp.nome ILIKE $${paramIndex} OR vp.cnpj LIKE $${paramIndex} OR vp.cnpj LIKE $${paramIndex + 1})`)
+      params.push(`%${search}%`, `%${searchClean}%`)
+      paramIndex += 2
     }
 
     if (statusContato && statusContato !== 'all') {
