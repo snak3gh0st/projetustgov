@@ -124,7 +124,7 @@ export async function GET() {
         SELECT * FROM (
           SELECT
             CASE
-              WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado', 'Novo', 'Contactado') THEN 'Não Contatado'
+              WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 'Não Contatado'
               WHEN vp.status_contato = 'Ainda Não' THEN 'Ainda Não'
               WHEN vp.status_contato = 'Retorno' THEN 'Retorno'
               WHEN vp.status_contato = 'Proposta' THEN 'Proposta'

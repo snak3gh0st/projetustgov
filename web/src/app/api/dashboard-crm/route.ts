@@ -31,7 +31,7 @@ export async function GET() {
           COUNT(DISTINCT CASE WHEN vendedor_id IS NOT NULL THEN cnpj END)::int as total_assigned,
           COUNT(DISTINCT CASE WHEN vendedor_id IS NULL THEN cnpj END)::int as total_unassigned,
           COALESCE(SUM(valor_emenda::numeric), 0) as total_valor_emenda,
-          COUNT(DISTINCT CASE WHEN COALESCE(status_contato, 'Não Contatado') IN ('Não Contatado', 'Novo', 'Contactado') THEN cnpj END)::int as status_nao_contatado,
+          COUNT(DISTINCT CASE WHEN COALESCE(status_contato, 'Não Contatado') = 'Não Contatado' THEN cnpj END)::int as status_nao_contatado,
           COUNT(DISTINCT CASE WHEN status_contato = 'Ainda Não' THEN cnpj END)::int as status_ainda_nao,
           COUNT(DISTINCT CASE WHEN status_contato = 'Retorno' THEN cnpj END)::int as status_retorno,
           COUNT(DISTINCT CASE WHEN status_contato = 'Proposta' THEN cnpj END)::int as status_proposta,
@@ -46,7 +46,7 @@ export async function GET() {
           vp.vendedor_id,
           u.nome as vendedor_nome,
           COUNT(DISTINCT vp.cnpj)::int as total_leads,
-          COUNT(DISTINCT CASE WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Não Contatado', 'Novo', 'Contactado') THEN vp.cnpj END)::int as nao_contatado,
+          COUNT(DISTINCT CASE WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Não Contatado' THEN vp.cnpj END)::int as nao_contatado,
           COUNT(DISTINCT CASE WHEN vp.status_contato = 'Retorno' THEN vp.cnpj END)::int as retorno,
           COUNT(DISTINCT CASE WHEN vp.status_contato = 'Proposta' THEN vp.cnpj END)::int as proposta,
           COUNT(DISTINCT CASE WHEN vp.status_contato = 'Aguardando Closer' THEN vp.cnpj END)::int as aguardando_closer,
@@ -115,13 +115,19 @@ export async function GET() {
               SELECT 1 FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj
               AND cn.created_at >= NOW() - INTERVAL '7 days'
             )
+            AND NOT EXISTS (
+              SELECT 1 FROM vendedor_projetos vp2
+              WHERE vp2.cnpj = vp.cnpj
+              AND vp2.status_contato NOT IN ('Não Contatado')
+              AND vp2.updated_at >= NOW() - INTERVAL '7 days'
+            )
             AND vp.status_contato NOT IN ('Fechado')
           )::int as stale_count,
           COUNT(DISTINCT vp.cnpj) FILTER (
             WHERE NOT EXISTS (
               SELECT 1 FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj
             )
-            AND vp.status_contato NOT IN ('Fechado')
+            AND COALESCE(vp.status_contato, 'Não Contatado') = 'Não Contatado'
           )::int as never_contacted_count,
           COUNT(DISTINCT vp.cnpj) FILTER (
             WHERE EXISTS (
