@@ -725,6 +725,51 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     console.log(`[repo-sync] Upserted: ${stats.inserted} new, ${stats.updated} updated, ${stats.errors} errors`)
 
     // ========================================================================
+    // STEP 7c: Inherit status_contato for new emendas of already-contacted CNPJs
+    // ========================================================================
+    // When a new emenda row is inserted for a CNPJ where the vendedor already
+    // set a status_contato on another emenda, the new row gets NULL (Não Contatado).
+    // This inflates the "não contactados" count and hurts the vendedor's metrics.
+    // Fix: propagate the most-advanced status from sibling rows to any NULL rows.
+    //
+    // Status priority order (most advanced first):
+    //   Fechado > Aguardando Closer > Proposta > Retorno > Ainda Não > (null/Não Contatado)
+    //
+    // Only propagates within the same vendedor assignment (same vendedor_id).
+    // Also copies closer_id so the closer assignment is consistent across emendas.
+    {
+      const inheritResult = await client.query(`
+        UPDATE vendedor_projetos AS target
+        SET
+          status_contato = source.status_contato,
+          closer_id = source.closer_id
+        FROM (
+          SELECT DISTINCT ON (cnpj)
+            cnpj,
+            status_contato,
+            closer_id
+          FROM vendedor_projetos
+          WHERE status_contato IS NOT NULL
+            AND status_contato != 'Não Contatado'
+          ORDER BY cnpj,
+            CASE status_contato
+              WHEN 'Fechado'            THEN 1
+              WHEN 'Aguardando Closer'  THEN 2
+              WHEN 'Proposta'           THEN 3
+              WHEN 'Retorno'            THEN 4
+              WHEN 'Ainda Não'          THEN 5
+              ELSE                           6
+            END ASC
+        ) AS source
+        WHERE target.cnpj = source.cnpj
+          AND (target.status_contato IS NULL OR target.status_contato = 'Não Contatado')
+      `)
+      if (inheritResult.rowCount && inheritResult.rowCount > 0) {
+        console.log(`[repo-sync] STEP 7c: Inherited status_contato for ${inheritResult.rowCount} new emenda rows`)
+      }
+    }
+
+    // ========================================================================
     // STEP 7b: Push notifications for monitored CNPJs that were inserted/updated
     // ========================================================================
     // Collect all CNPJs that were touched in this sync run
