@@ -744,14 +744,15 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
           status_contato = source.status_contato,
           closer_id = source.closer_id
         FROM (
-          SELECT DISTINCT ON (cnpj)
+          SELECT DISTINCT ON (cnpj, vendedor_id)
             cnpj,
+            vendedor_id,
             status_contato,
             closer_id
           FROM vendedor_projetos
           WHERE status_contato IS NOT NULL
             AND status_contato != 'Não Contatado'
-          ORDER BY cnpj,
+          ORDER BY cnpj, vendedor_id,
             CASE status_contato
               WHEN 'Fechado'            THEN 1
               WHEN 'Aguardando Closer'  THEN 2
@@ -762,6 +763,7 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
             END ASC
         ) AS source
         WHERE target.cnpj = source.cnpj
+          AND target.vendedor_id = source.vendedor_id
           AND (target.status_contato IS NULL OR target.status_contato = 'Não Contatado')
       `)
       if (inheritResult.rowCount && inheritResult.rowCount > 0) {
