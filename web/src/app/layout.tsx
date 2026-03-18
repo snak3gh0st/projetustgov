@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import Sidebar from '@/components/Sidebar'
+import NewsBanner from '@/components/NewsBanner'
 import { auth } from '@/lib/auth'
 
 export const metadata: Metadata = {
@@ -28,6 +29,7 @@ export default async function RootLayout({
           />
         )}
         <main className={session ? "ml-56 min-h-screen p-6" : "min-h-screen p-6"}>
+          {session?.user && <NewsBanner />}
           {children}
         </main>
       </body>
