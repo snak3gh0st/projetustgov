@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { formatCNPJ, formatCompactCurrency, formatDate } from '@/lib/format'
 import KPIRow from '@/components/KPIRow'
+import ExecucaoSlideOver from '@/components/ExecucaoSlideOver'
 
 interface ExecucaoAggRow {
   cnpj: string
@@ -36,8 +37,6 @@ export default function ExecucaoClient() {
   const [uf, setUf] = useState('')
   const [alertOnly, setAlertOnly] = useState(false)
   const [selectedCnpj, setSelectedCnpj] = useState<string | null>(null)
-
-  void selectedCnpj // will be consumed in Plan 17-02 (ExecucaoSlideOver)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -213,6 +212,15 @@ export default function ExecucaoClient() {
           {rows.length} CNPJs ({rows.reduce((s, r) => s + r.total_projetos, 0)} fomentos)
         </div>
       )}
+
+      {/* Slide-over for CNPJ detail */}
+      <ExecucaoSlideOver
+        cnpj={selectedCnpj}
+        nomeProponente={rows.find(r => r.cnpj === selectedCnpj)?.nome_proponente ?? null}
+        temAlerta={rows.find(r => r.cnpj === selectedCnpj)?.tem_alerta ?? false}
+        contactPresent={rows.find(r => r.cnpj === selectedCnpj)?.contact_present ?? false}
+        onClose={() => setSelectedCnpj(null)}
+      />
     </div>
   )
 }
