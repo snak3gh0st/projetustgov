@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/sync-leads",
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/sync-execucao",
+      "schedule": "0 13 * * *"
     }
   ]
 }
