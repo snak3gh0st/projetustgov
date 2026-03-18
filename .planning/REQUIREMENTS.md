@@ -14,17 +14,17 @@ Requirements for the Projetos em Execucao milestone. Each maps to roadmap phases
 - [x] **DATA-03**: Dados sao armazenados em tabela DB dedicada `projetos_execucao` (isolada do CRM)
 - [x] **DATA-04**: Cruzamento convenio ↔ proposta via id_proposta com CNPJ do proponente
 - [x] **DATA-05**: UPSERT incremental sem duplicar registros existentes (conflict key: cnpj + nr_convenio)
-- [ ] **DATA-06**: Sync diario via cron endpoint dedicado, separado do sync de leads
+- [x] **DATA-06**: Sync diario via cron endpoint dedicado, separado do sync de leads
 - [x] **DATA-07**: Auditoria de dados previa: validar NULL proposta_id, CNPJ padding, join coverage
 
 ### Metricas Financeiras
 
-- [ ] **FIN-01**: Gestor pode ver valor de desembolso por projeto
-- [ ] **FIN-02**: Gestor pode ver saldo em conta por projeto
-- [ ] **FIN-03**: Gestor pode ver percentual de execucao (desembolso vs valor global)
+- [x] **FIN-01**: Gestor pode ver valor de desembolso por projeto
+- [x] **FIN-02**: Gestor pode ver saldo em conta por projeto
+- [x] **FIN-03**: Gestor pode ver percentual de execucao (desembolso vs valor global)
 - [ ] **FIN-04**: Projetos com desembolso negativo sao destacados visualmente como alerta
-- [ ] **FIN-05**: Gestor pode ver dias em execucao (desde inicio ate hoje)
-- [ ] **FIN-06**: Gestor pode ver data fim de vigencia e tempo restante
+- [x] **FIN-05**: Gestor pode ver dias em execucao (desde inicio ate hoje)
+- [x] **FIN-06**: Gestor pode ver data fim de vigencia e tempo restante
 
 ### Agregacao & Visualizacao
 
@@ -100,14 +100,14 @@ Deferred to future milestone.
 | DATA-03 | Phase 14 | Complete |
 | DATA-04 | Phase 15 | Complete |
 | DATA-05 | Phase 15 | Complete |
-| DATA-06 | Phase 15 | Pending |
+| DATA-06 | Phase 15 | Complete |
 | DATA-07 | Phase 14 | Complete |
-| FIN-01 | Phase 16 | Pending |
-| FIN-02 | Phase 16 | Pending |
-| FIN-03 | Phase 16 | Pending |
+| FIN-01 | Phase 16 | Complete |
+| FIN-02 | Phase 16 | Complete |
+| FIN-03 | Phase 16 | Complete |
 | FIN-04 | Phase 16 | Pending |
-| FIN-05 | Phase 16 | Pending |
-| FIN-06 | Phase 16 | Pending |
+| FIN-05 | Phase 16 | Complete |
+| FIN-06 | Phase 16 | Complete |
 | AGR-01 | Phase 17 | Pending |
 | AGR-02 | Phase 17 | Pending |
 | AGR-03 | Phase 17 | Pending |

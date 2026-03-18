@@ -474,7 +474,7 @@ Plans:
 | **Milestone v4.0** | | | |
 | 14. Data Audit & Foundation | 2/2 | Complete    | 2026-03-18 |
 | 15. ETL Sync & Validation | 2/2 | Complete    | 2026-03-18 |
-| 16. API & Business Logic | 0/2 | Not started | - |
+| 16. API & Business Logic | 1/2 | In Progress|  |
 | 17. UI & Navigation | 0/3 | Not started | - |
 
 ---

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — Projetos em Execucao
-status: completed
-stopped_at: Completed 15-02-PLAN.md — ETL validated, cron endpoint wired, Phase 15 complete
-last_updated: "2026-03-18T17:01:06.141Z"
-last_activity: "2026-03-18 — Plan 15-02 complete: 8793 OSC projetos_execucao rows validated from live CSVs, cron endpoint /api/cron/sync-execucao created, date column mappings fixed, cron_sync_log migration applied"
+status: in_progress
+stopped_at: Completed 16-01-PLAN.md — GET /api/execucao and GET /api/execucao/[cnpj] created, Phase 16 Plan 01 complete
+last_updated: "2026-03-18T17:37:00.000Z"
+last_activity: "2026-03-18 — Plan 16-01 complete: GET /api/execucao (GROUP BY CNPJ, role guard, filters) and GET /api/execucao/[cnpj] (detail endpoint) created — both TypeScript clean"
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
 ---
 
 # Project State: PROJETUS — v4.0 Projetos em Execucao
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Inteligencia pos-venda para gestores identificarem clientes qualificados com projetos em execucao no TransferenciaGov.
-**Current focus:** Phase 15 — ETL Sync & Validation
+**Current focus:** Phase 16 — API & Business Logic
 
 ## Current Position
 
-Phase: 15 of 17 in milestone v4.0 (ETL Sync & Validation) — COMPLETE
-Plan: 2 of 2 in current phase
-Status: Phase 15 complete — all plans executed
-Last activity: 2026-03-18 — Plan 15-02 complete: 8793 OSC projetos_execucao rows validated from live CSVs, cron endpoint /api/cron/sync-execucao created, date column mappings fixed, cron_sync_log migration applied
+Phase: 16 of 17 in milestone v4.0 (API & Business Logic) — IN PROGRESS
+Plan: 1 of 2 in current phase (Plan 01 complete)
+Status: Phase 16 Plan 01 complete — API endpoints created, awaiting Plan 02 (alert business rule)
+Last activity: 2026-03-18 — Plan 16-01 complete: GET /api/execucao (GROUP BY CNPJ, role guard, filters) and GET /api/execucao/[cnpj] (detail endpoint) created — both TypeScript clean
 
-Progress (v4.0): [████░░░░░░] 40%
+Progress (v4.0): [█████░░░░░] 50%
 
 **Milestone v1.0:** Complete (Phases 1, 2, 4, 5)
 **Milestone v2.0:** Superseded by Next.js migration (Phases 6-8)
@@ -64,6 +64,9 @@ Progress (v4.0): [████░░░░░░] 40%
 | siconv_convenio date columns are DIA_* not DT_* | Actual CSV headers verified 2026-03-18: DIA_ASSIN_CONV, DIA_INIC_VIGENC_CONV, DIA_FIM_VIGENC_CONV — fallbacks kept for forward compat |
 | join_miss_count=35291 is expected, not a bug | 44084 em_execucao convenios — only 8793 belong to OSC proponents; non-OSC misses are intentional by design |
 | Memory peak ~1300MB during proposta STEP A | 1.1M rows -> 87836-entry OSC Map. Vercel may need --max-old-space-size=1536 or two-pass approach for production cron |
+| EXISTS subquery for contact_present (not JOIN) | JOIN on lead_contacts causes GROUP BY complications; EXISTS subquery returns boolean at zero extra cost per Pitfall 3 |
+| objeto excluded from GET /api/execucao grouped response | Large TEXT field would inflate 2000+ row payload; slide-over fetches it separately via /api/execucao/[cnpj] |
+| Alert placeholder logic uses ETL boolean columns | Plan 16-02 replaces after client provides 3+ convênio examples; code comment documents the gate |
 
 ### Blockers / Concerns
 
@@ -75,7 +78,8 @@ Progress (v4.0): [████░░░░░░] 40%
 
 - **New table:** projetos_execucao (Supabase PostgreSQL) — isolated from CRM
 - **New lib:** web/src/lib/execucao-sync.ts
-- **New API route:** web/src/app/api/execucao/route.ts
+- **New API route:** web/src/app/api/execucao/route.ts (GET — CNPJ grouped, CREATED Plan 16-01)
+- **New API route:** web/src/app/api/execucao/[cnpj]/route.ts (GET — detail rows, CREATED Plan 16-01)
 - **New cron route:** web/src/app/api/cron/sync-execucao/route.ts
 - **New page:** web/src/app/execucao/page.tsx
 - **New component:** web/src/components/ExecucaoSlideOver.tsx
@@ -85,5 +89,5 @@ Progress (v4.0): [████░░░░░░] 40%
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 15-02-PLAN.md — ETL validated, cron endpoint wired, Phase 15 complete
+Stopped at: Completed 16-01-PLAN.md — GET /api/execucao and GET /api/execucao/[cnpj] created, Phase 16 Plan 01 complete
 Resume file: None
