@@ -55,7 +55,6 @@ export default function Sidebar({ user }: SidebarProps) {
     ? [
         ...BASE_NAV_ITEMS,
         { href: '/execucao', label: 'Projetos em Execucao', icon: 'execucao' },
-        { href: '/upload', label: 'Importar Planilha', icon: 'upload' },
         { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
         { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
         { href: '/cadastro-vendedor', label: 'Usuarios', icon: 'vendedores' },
