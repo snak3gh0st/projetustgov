@@ -421,8 +421,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 16-01-PLAN.md — GET /api/execucao with role guard, GROUP BY CNPJ query, weighted pct_execucao, SQL-computed dias, contact EXISTS, filter params + CNPJ detail endpoint for slide-over
-- [ ] 16-02-PLAN.md — Alert business rule client confirmation checkpoint, named constants update, alert_only filter alignment
+- [x] 16-01-PLAN.md — GET /api/execucao with role guard, GROUP BY CNPJ query, weighted pct_execucao, SQL-computed dias, contact EXISTS, filter params + CNPJ detail endpoint for slide-over
+- [x] 16-02-PLAN.md — Alert business rule client confirmation checkpoint, named constants update, alert_only filter alignment
 
 ### Phase 17: UI & Navigation
 **Goal**: Build the /execucao page and sidebar entry that surfaces the data layer to gestores. Build UI last — after the data layer is validated — to avoid UX iteration on a broken foundation. All component patterns are direct copies of existing pages.
@@ -438,12 +438,11 @@ Plans:
   4. A vendedor navigating to /execucao is redirected to a "sem permissao" page (not the login page); the /execucao nav entry does not appear in the sidebar for vendedor role
   5. The page shows a data freshness timestamp from cron_sync_log so the gestor knows when the data was last updated
 
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 17-01: /execucao/page.tsx — server component role guard, client component with useEffect/fetch, CNPJ-grouped list, KPI cards, alert highlighting
-- [ ] 17-02: ExecucaoSlideOver.tsx — full financial detail, % execucao progress bar, contact badge, dias em execucao
-- [ ] 17-03: Sidebar.tsx update — /execucao nav entry visible only to gestor and coordenador roles
+- [ ] 17-01-PLAN.md — API extension ({ rows, last_synced }), /sem-permissao page, /execucao page with server role guard, ExecucaoClient with KPIs, table, filters, alert highlighting
+- [ ] 17-02-PLAN.md — ExecucaoSlideOver with per-convenio detail, progress bar, contact badge, urgency coloring + Sidebar nav entry for gestor/coordenador
 
 ## Progress
 
@@ -475,7 +474,7 @@ Plans:
 | 14. Data Audit & Foundation | 2/2 | Complete    | 2026-03-18 |
 | 15. ETL Sync & Validation | 2/2 | Complete    | 2026-03-18 |
 | 16. API & Business Logic | 2/2 | Complete   | 2026-03-18 |
-| 17. UI & Navigation | 0/3 | Not started | - |
+| 17. UI & Navigation | 0/2 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-04*
