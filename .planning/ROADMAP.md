@@ -398,11 +398,11 @@ Plans:
   4. Sync stats logged to cron_sync_log include join_miss_count (convenios that had no matching proposta row) so data loss is visible, not silent
   5. A dedicated cron endpoint /api/cron/sync-execucao exists with maxDuration=300 and its own vercel.json entry, separate from the lead sync cron
 
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 15-01: execucao-sync.ts — streaming proposta filter (OSC), streaming convenio filter (em execucao), in-memory join, UPSERT
-- [ ] 15-02: One-off test script, row count validation against source, cron endpoint wired and tested
+- [ ] 15-01-PLAN.md — Export helpers, create execucao-sync.ts with streaming proposta+convenio ETL, in-memory join, UPSERT
+- [ ] 15-02-PLAN.md — One-off test script with row count validation, cron endpoint /api/cron/sync-execucao, vercel.json entry
 
 ### Phase 16: API & Business Logic
 **Goal**: Build the role-guarded API route that serves projetos_execucao data aggregated by CNPJ with all financial columns, contact data joins, and confirmed alert logic. The alert business rule must be confirmed with the client at the start of this phase before any query is written.
