@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — Projetos em Execucao
-status: in_progress
-stopped_at: Completed 16-02-PLAN.md — alert business rule confirmed (valor_desembolsado = 0), ALERT_ZERO_EXECUTION constant, Phase 16 complete
-last_updated: "2026-03-18T18:00:00.000Z"
-last_activity: "2026-03-18 — Plan 16-02 complete: alert condition valor_desembolsado = 0 confirmed with client, BOOL_OR updated, alert_only filter updated in /api/execucao"
+status: planning
+stopped_at: "Completed 17-ui-navigation-01-PLAN.md"
+last_updated: "2026-03-18T20:53:30Z"
+last_activity: 2026-03-18 — Phase 17 Plan 01 executed (/execucao page, sem-permissao page, extended API)
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 6
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State: PROJETUS — v4.0 Projetos em Execucao
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 ## Current Position
 
-Phase: 17 of 17 in milestone v4.0 (UI & Navigation) — NOT STARTED
-Plan: 0 of TBD in Phase 17
-Status: Phase 16 verified and complete — ready for Phase 17 planning
-Last activity: 2026-03-18 — Phase 16 verified (5/5 must-haves passed), advancing to Phase 17
+Phase: 17 of 17 in milestone v4.0 (UI & Navigation) — IN PROGRESS
+Plan: 1 of TBD in Phase 17
+Status: Plan 17-01 complete — /execucao page, /sem-permissao, extended API with last_synced
+Last activity: 2026-03-18 — Plan 17-01 executed (2 tasks, 4 files, 3 min)
 
-Progress (v4.0): [████████░░] 75%
+Progress (v4.0): [█████████░] 80%
 
 **Milestone v1.0:** Complete (Phases 1, 2, 4, 5)
 **Milestone v2.0:** Superseded by Next.js migration (Phases 6-8)
@@ -68,6 +68,8 @@ Progress (v4.0): [████████░░] 75%
 | objeto excluded from GET /api/execucao grouped response | Large TEXT field would inflate 2000+ row payload; slide-over fetches it separately via /api/execucao/[cnpj] |
 | Alert placeholder logic uses ETL boolean columns | Plan 16-02 replaces after client provides 3+ convênio examples; code comment documents the gate |
 | Alert condition: valor_desembolsado = 0 (confirmed 2026-03-18) | Client confirmed: projects with zero disbursement (money approved but never moved) should surface as alerts — replaces ETL placeholder that never fired |
+| Two-file Next.js split for /execucao (Plan 17-01) | page.tsx as 6-line server component for role guard, ExecucaoClient.tsx as 218-line client component — avoids use-client/server-component conflict |
+| selectedCnpj stub in ExecucaoClient (Plan 17-01) | State declared but not consumed; void pragma suppresses TS warning; Plan 17-02 wires ExecucaoSlideOver to this state |
 
 ### Blockers / Concerns
 
@@ -89,6 +91,6 @@ Progress (v4.0): [████████░░] 75%
 
 ## Session Continuity
 
-Last session: 2026-03-18
-Stopped at: Completed 16-02-PLAN.md — alert business rule confirmed (valor_desembolsado = 0), Phase 16 API & Business Logic complete
-Resume file: None
+Last session: 2026-03-18T20:53:30Z
+Stopped at: Completed 17-ui-navigation-01-PLAN.md
+Resume file: .planning/phases/17-ui-navigation/17-01-SUMMARY.md
