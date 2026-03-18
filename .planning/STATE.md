@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — Projetos em Execucao
-status: completed
-stopped_at: Completed 14-02-PLAN.md — projetos_execucao table creation + schema.sql updated
-last_updated: "2026-03-18T15:53:37.030Z"
-last_activity: "2026-03-18 — Plan 14-02 complete: projetos_execucao table created in Supabase with NUMERIC(18,2) financial columns, UNIQUE(nr_convenio) constraint, and 3 indexes"
+status: in_progress
+stopped_at: Completed 15-01-PLAN.md — execucao-sync.ts ETL core function
+last_updated: "2026-03-18T16:09:00Z"
+last_activity: "2026-03-18 — Plan 15-01 complete: syncProjetosExecucao() ETL function created with two-step in-memory join, OSC filter, UPSERT ON CONFLICT (nr_convenio), and cron_sync_log logging"
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 3
+  completed_plans: 3
 ---
 
 # Project State: PROJETUS — v4.0 Projetos em Execucao
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Inteligencia pos-venda para gestores identificarem clientes qualificados com projetos em execucao no TransferenciaGov.
-**Current focus:** Phase 14 — Data Audit & Foundation
+**Current focus:** Phase 15 — ETL Sync & Validation
 
 ## Current Position
 
-Phase: 14 of 17 in milestone v4.0 (Data Audit & Foundation)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-03-18 — Plan 14-02 complete: projetos_execucao table created in Supabase with NUMERIC(18,2) financial columns, UNIQUE(nr_convenio) constraint, and 3 indexes
+Phase: 15 of 17 in milestone v4.0 (ETL Sync & Validation)
+Plan: 1 of 2 in current phase
+Status: Plan 01 complete — executing phase
+Last activity: 2026-03-18 — Plan 15-01 complete: syncProjetosExecucao() ETL function created with two-step in-memory join, OSC filter, UPSERT ON CONFLICT (nr_convenio), and cron_sync_log logging
 
-Progress (v4.0): [██░░░░░░░░] 20%
+Progress (v4.0): [███░░░░░░░] 30%
 
 **Milestone v1.0:** Complete (Phases 1, 2, 4, 5)
 **Milestone v2.0:** Superseded by Next.js migration (Phases 6-8)
@@ -39,9 +39,9 @@ Progress (v4.0): [██░░░░░░░░] 20%
 ## Performance Metrics
 
 **v4.0 Velocity:**
-- Total plans completed: 2
-- Average duration: 6 min
-- Total execution time: 12 min
+- Total plans completed: 3
+- Average duration: 9 min
+- Total execution time: 27 min
 
 *Updated after each plan completion*
 
@@ -59,6 +59,8 @@ Progress (v4.0): [██░░░░░░░░] 20%
 | Alert business rule confirmed with client before Phase 16 | "Desembolso negativo" is a business signal, not mathematical — implement only after client inspects known-problematic convenios |
 | Role guard on both page (verifySession) and API (getApiSession) | Middleware only checks session existence, not role; vendedor can call API directly |
 | All financial computations in SQL, not JavaScript | Prevents floating-point precision errors and keeps calc logic close to data |
+| OSC filter multi-column fallback in execucao-sync.ts | Government CSV headers can change; fallback order NATUREZA_JURIDICA -> TIPO_INSTRUMENTO prevents silent empty Map failures |
+| parseBRDate as internal helper in execucao-sync.ts | Only needed by execucao-sync.ts currently; can be exported to repo-sync.ts if Phase 16/17 need date parsing |
 
 ### Blockers / Concerns
 
@@ -80,5 +82,5 @@ Progress (v4.0): [██░░░░░░░░] 20%
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 14-02-PLAN.md — projetos_execucao table creation + schema.sql updated
+Stopped at: Completed 15-01-PLAN.md — execucao-sync.ts ETL core function
 Resume file: None

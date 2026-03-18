@@ -9,11 +9,11 @@ Requirements for the Projetos em Execucao milestone. Each maps to roadmap phases
 
 ### Dados & ETL
 
-- [ ] **DATA-01**: Sistema importa dados de convenio do repo (filtro: situacao "em execucao")
-- [ ] **DATA-02**: Sistema importa dados de proposta do repo (filtro: tipo "OSC")
+- [x] **DATA-01**: Sistema importa dados de convenio do repo (filtro: situacao "em execucao")
+- [x] **DATA-02**: Sistema importa dados de proposta do repo (filtro: tipo "OSC")
 - [x] **DATA-03**: Dados sao armazenados em tabela DB dedicada `projetos_execucao` (isolada do CRM)
-- [ ] **DATA-04**: Cruzamento convenio ↔ proposta via id_proposta com CNPJ do proponente
-- [ ] **DATA-05**: UPSERT incremental sem duplicar registros existentes (conflict key: cnpj + nr_convenio)
+- [x] **DATA-04**: Cruzamento convenio ↔ proposta via id_proposta com CNPJ do proponente
+- [x] **DATA-05**: UPSERT incremental sem duplicar registros existentes (conflict key: cnpj + nr_convenio)
 - [ ] **DATA-06**: Sync diario via cron endpoint dedicado, separado do sync de leads
 - [x] **DATA-07**: Auditoria de dados previa: validar NULL proposta_id, CNPJ padding, join coverage
 
@@ -95,11 +95,11 @@ Deferred to future milestone.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DATA-01 | Phase 15 | Pending |
-| DATA-02 | Phase 15 | Pending |
+| DATA-01 | Phase 15 | Complete |
+| DATA-02 | Phase 15 | Complete |
 | DATA-03 | Phase 14 | Complete |
-| DATA-04 | Phase 15 | Pending |
-| DATA-05 | Phase 15 | Pending |
+| DATA-04 | Phase 15 | Complete |
+| DATA-05 | Phase 15 | Complete |
 | DATA-06 | Phase 15 | Pending |
 | DATA-07 | Phase 14 | Complete |
 | FIN-01 | Phase 16 | Pending |
