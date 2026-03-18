@@ -8,13 +8,13 @@
 
 ## Summary
 
-Phase 17 is a pure UI assembly phase. The API contract (Phase 16) is complete and stable. All component patterns are direct copies of existing code in this codebase — no new libraries, no new design system decisions, no external dependencies. The UI-SPEC has been approved and is the authoritative design contract. Research confirms every element described in the UI-SPEC already exists in code that can be directly referenced.
+Phase 17 is a pure UI assembly phase. The API contract (Phase 16) is complete and stable — all 5/5 observable truths verified and committed. All component patterns are direct copies of existing code in this codebase — no new libraries, no new design system decisions, no external dependencies. The UI-SPEC has been approved and is the authoritative design contract. Research confirms every element described in the UI-SPEC already exists in code that can be directly referenced.
 
 The three plans map cleanly to three discrete file edits: create `execucao/page.tsx`, create `ExecucaoSlideOver.tsx`, and modify `Sidebar.tsx`. All three use patterns already present in `leads/page.tsx`, `LeadSlideOver.tsx`, and `Sidebar.tsx` respectively. No architectural decisions remain — they were settled in Phases 14-16 and the UI-SPEC.
 
-One gap that requires a new file: the `/sem-permissao` page does not exist in the codebase. The `distribuir/page.tsx` redirects to `/` on unauthorized, but the STATE.md decision log specifies vendedores must be redirected to `/sem-permissao` (not login, not root). This page must be created in Plan 17-01.
+One gap that requires a new file: the `/sem-permissao` page does not exist in the codebase. The `distribuir/page.tsx` redirects to `/` on unauthorized, but the STATE.md decision log specifies vendedores must be redirected to `/sem-permissao` (not login, not root). This page must be created in Plan 17-01. Additionally, the GET /api/execucao currently returns a bare array — it must be extended to return `{ rows, last_synced }` to satisfy the freshness timestamp requirement (Success Criterion 5).
 
-**Primary recommendation:** Implement Plans 17-01, 17-02, 17-03 in order. 17-01 depends on `/sem-permissao` page existing. 17-02 depends on the client component in 17-01 having `selectedCnpj` state to pass as prop. 17-03 is fully independent and can be done in any order.
+**Primary recommendation:** Implement Plans 17-01, 17-02, 17-03 in order. 17-01 creates `sem-permissao`, the page, the client component, and extends the API for `last_synced`. 17-02 depends on the client component in 17-01 having `selectedCnpj` state to pass as prop. 17-03 is fully independent and can be done in any order.
 
 ---
 
@@ -54,11 +54,12 @@ One gap that requires a new file: the `/sem-permissao` page does not exist in th
 | `verifySession` | `web/src/lib/dal.ts` | Server-side role check in page.tsx |
 | `getApiSession` | `web/src/lib/dal.ts` | API route auth (already guarding /api/execucao) |
 
-### Reused Components (no changes)
+### Reused Components (no changes except Sidebar)
 | Component | File | Used As |
 |-----------|------|---------|
 | `KPICard` | `web/src/components/KPICard.tsx` | 4x KPI cards at top of /execucao |
 | `KPIRow` | `web/src/components/KPIRow.tsx` | Container for 4 KPI cards |
+| `Sidebar` | `web/src/components/Sidebar.tsx` | Modified: add execucao nav entry |
 
 **Installation:** None required — all dependencies are already present.
 
@@ -66,25 +67,24 @@ One gap that requires a new file: the `/sem-permissao` page does not exist in th
 
 ## Architecture Patterns
 
-### Recommended File Structure (new files only)
+### Recommended File Structure (new and modified files)
 ```
 web/src/app/
 └── execucao/
-    └── page.tsx              # Server component role guard + ExecucaoClient inline or imported
+    └── page.tsx              # Plan 17-01: server component role guard + ExecucaoClient
 web/src/app/sem-permissao/
-    └── page.tsx              # Static "sem permissao" page (redirect target for vendedor)
+    └── page.tsx              # Plan 17-01: static "sem permissao" page (redirect target)
 web/src/components/
-    └── ExecucaoSlideOver.tsx # Right slide-over for per-CNPJ detail
-```
+    └── ExecucaoSlideOver.tsx # Plan 17-02: right slide-over for per-CNPJ detail
 
-**Modified files:**
-```
-web/src/components/Sidebar.tsx    # Add execucao nav entry + NavIcon case
+# Modified:
+web/src/app/api/execucao/route.ts         # Plan 17-01: extend response to { rows, last_synced }
+web/src/components/Sidebar.tsx            # Plan 17-03: add execucao nav entry + NavIcon case
 ```
 
 ### Pattern 1: Server Component Role Guard (for page.tsx)
 
-The STATE.md decision log (2026-03-18) confirms: "Role guard on both page (verifySession) and API (getApiSession)". The page.tsx must be a server component that calls `verifySession`, checks role, and redirects vendedor to `/sem-permissao`. The client component is then a separate `'use client'` component (either inlined or in its own file).
+The STATE.md decision log (2026-03-18) confirms: "Role guard on both page (verifySession) and API (getApiSession)". The page.tsx must be a server component that calls `verifySession`, checks role, and redirects vendedor to `/sem-permissao`. The client component is then a separate `'use client'` component.
 
 ```typescript
 // Source: web/src/lib/dal.ts + STATE.md decision
@@ -98,11 +98,11 @@ export default async function ExecucaoPage() {
   if (session.role === 'vendedor') {
     redirect('/sem-permissao')
   }
-  return <ExecucaoClient user={session} />
+  return <ExecucaoClient role={session.role} />
 }
 ```
 
-**Critical:** `verifySession` is cached (uses React `cache()`). The `redirect()` for vendedor role must fire BEFORE rendering any client component. The `/sem-permissao` redirect is to a new static page — NOT to `/login` and NOT to `/`.
+**Critical:** `verifySession` is React-cached (uses `cache()`). The `redirect()` for vendedor role must fire BEFORE rendering any client component. The `/sem-permissao` redirect is to a new static page — NOT to `/login` and NOT to `/`. Pass only `role` (not the full session) to the client component — this read-only page does not need `userId` or `email`.
 
 ### Pattern 2: Client Component with Debounced Fetch (for ExecucaoClient)
 
@@ -119,7 +119,9 @@ const fetchData = useCallback(async () => {
   try {
     const res = await fetch(`/api/execucao?${params}`)
     const data = await res.json()
-    setRows(Array.isArray(data) ? data : [])
+    // NOTE: API returns { rows, last_synced } after Plan 17-01 extension
+    setRows(Array.isArray(data) ? data : (data.rows ?? []))
+    setLastSynced(data.last_synced ?? null)
   } catch {
     setError(true)
   } finally {
@@ -133,35 +135,48 @@ useEffect(() => {
 }, [fetchData])
 ```
 
+**Debounce applies to search text input only.** UF dropdown and alert toggle trigger re-fetch immediately (no debounce). This matches the `leads/page.tsx` pattern.
+
 ### Pattern 3: Slide-Over Component (for ExecucaoSlideOver)
 
-Direct copy from `web/src/components/LeadSlideOver.tsx` structure. Key structural elements (all verified from source):
+Direct copy from `web/src/components/LeadSlideOver.tsx` structure. Key structural elements verified from source:
 
 - Wrapper: `fixed inset-0 z-50`
 - Backdrop: `absolute inset-0 bg-black/30 backdrop-blur-sm` with `onClick={onClose}`
 - Panel: `absolute right-0 top-0 h-full w-[420px] max-w-[90vw] bg-white border-l border-gray-200 shadow-2xl flex flex-col animate-slide-in-right`
 - Top accent: `absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0072F7] to-blue-400 pointer-events-none`
-- `animate-slide-in-right` is defined in `tailwind.config.ts` — no additional CSS needed
+- `animate-slide-in-right` is defined in `web/tailwind.config.ts` (lines 30-36) — no additional CSS needed
+- `null` guard: if `!cnpj` return `null` — consistent with LeadSlideOver `if (!lead) return null`
 
-The ExecucaoSlideOver fetches `/api/execucao/{cnpj}` lazily on open (useEffect triggered by `cnpj` prop). NOT pre-fetched.
+The ExecucaoSlideOver fetches `/api/execucao/{cnpj}` lazily on open (useEffect triggered by `cnpj` prop change). NOT pre-fetched on page load.
 
 ```typescript
-// Source: web/src/components/LeadSlideOver.tsx (Escape key handler pattern)
+// Source: web/src/components/LeadSlideOver.tsx — Escape key + lazy fetch pattern
 useEffect(() => {
   if (!cnpj) return
+  setDetailRows([])  // Clear stale data immediately (Pitfall 6)
+  setDetailLoading(true)
+
   const handler = (e: KeyboardEvent) => {
     if (e.key === 'Escape') onClose()
   }
   document.addEventListener('keydown', handler)
+
+  fetch(`/api/execucao/${encodeURIComponent(cnpj)}`)
+    .then(r => r.json())
+    .then(data => setDetailRows(Array.isArray(data) ? data : []))
+    .catch(() => setDetailError(true))
+    .finally(() => setDetailLoading(false))
+
   return () => document.removeEventListener('keydown', handler)
 }, [cnpj, onClose])
 ```
 
 ### Pattern 4: Sidebar Nav Extension
 
-The Sidebar has two clear extension points:
-1. Add nav item to gestor array and coordenador array (lines 53-65 in Sidebar.tsx)
-2. Add `case 'execucao'` to `NavIcon` switch (lines 15-38 in Sidebar.tsx)
+The Sidebar has two extension points:
+1. Add nav item `{ href: '/execucao', label: 'Projetos em Execucao', icon: 'execucao' }` to gestor array and coordenador array (lines 53-65 in Sidebar.tsx).
+2. Add `case 'execucao'` to `NavIcon` switch (lines 15-38 in Sidebar.tsx) — use ChartBarIcon SVG path from Heroicons strokeWidth=1.5.
 
 The `BASE_NAV_ITEMS` array is shared by all roles and must NOT be modified. The execucao entry is added only to gestor and coordenador role-specific arrays.
 
@@ -185,22 +200,27 @@ const navItems = user.role === 'gestor'
 
 ### Pattern 5: Freshness Timestamp from cron_sync_log
 
-The `cron_sync_log` table has a `source` column. execucao-sync.ts inserts with `source = 'sync-execucao'`. The execucao page needs to query the most recent row WHERE `source = 'sync-execucao'` to show the correct freshness, not the most recent log overall (which might be a leads sync).
+The `cron_sync_log` table has a `source` column. `execucao-sync.ts` inserts with `source = 'sync-execucao'` (verified at line 403-406 of execucao-sync.ts). The execucao page needs the most recent row WHERE `source = 'sync-execucao'` — NOT the most recent row overall (which could be a leads sync).
 
-The GET /api/execucao response should include a `last_synced` field, OR the client component fetches a dedicated endpoint. The simplest approach: add `last_synced` to the GET /api/execucao response as a sibling to the rows array. This avoids a second fetch.
+**Implementation:** Extend GET /api/execucao to return `{ rows, last_synced }` instead of a bare array. Three lines added to the route:
 
-**Alternate approach:** Change GET /api/execucao to return `{ rows: ExecucaoAggRow[], last_synced: string | null }` instead of a bare array. This is a minor API change but keeps it clean.
+```typescript
+// In web/src/app/api/execucao/route.ts — add after main rows query
+const syncLogRows = await query(
+  `SELECT ran_at FROM cron_sync_log WHERE source = 'sync-execucao' ORDER BY ran_at DESC LIMIT 1`
+)
+const last_synced: string | null = (syncLogRows[0] as { ran_at: string } | undefined)?.ran_at ?? null
+return NextResponse.json({ rows, last_synced })
+```
 
-**Simpler approach:** Fetch `/api/debug-sync` (already exists) which queries `cron_sync_log` and returns `last_sync_log`. However, debug-sync does NOT filter by source — it returns the most recent row regardless of source. This means if leads sync ran after execucao sync, the timestamp would show the leads sync time.
-
-**Recommended:** Extend GET /api/execucao to return `{ rows, last_synced }` — query `SELECT ran_at FROM cron_sync_log WHERE source = 'sync-execucao' ORDER BY ran_at DESC LIMIT 1` inline in the route. This is 3 lines of SQL added to the existing route.
+The client renders: `"Dados atualizados em {formatDate(last_synced)}"` as `text-xs text-gray-400` below the page title.
 
 ### Pattern 6: KPI Cards Computed Client-Side
 
-KPI values are derived from the fetched `rows` array — no second API call. The UI-SPEC section "KPI Cards (UI-03)" documents exactly what to compute:
+KPI values are derived from the fetched `rows` array — no second API call needed. Computed with `useMemo`:
 
 ```typescript
-// Computed from rows array after fetch completes
+// Source: UI-SPEC "KPI Cards (UI-03)"
 const kpis = useMemo(() => ({
   totalClientes: rows.length,
   totalFomentos: rows.reduce((s, r) => s + r.total_projetos, 0),
@@ -209,11 +229,13 @@ const kpis = useMemo(() => ({
 }), [rows])
 ```
 
+The `total_desembolsado` field from the API is a NUMERIC string (pg default) — always wrap with `Number()` before arithmetic (Pitfall 1).
+
 ### Pattern 7: Alert Row Highlighting
 
 ```typescript
 // Source: UI-SPEC "Interaction Contract" + "Table Columns"
-// Alert rows get a left border override class
+// Alert rows get a left border override — must come AFTER base row class
 <tr
   onClick={() => setSelectedCnpj(row.cnpj)}
   className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
@@ -227,7 +249,7 @@ const kpis = useMemo(() => ({
 ```typescript
 // Source: UI-SPEC "ExecucaoSlideOver" section
 // pct_execucao from /api/execucao/[cnpj] is NUMERIC string — parse with Number()
-// Cap at 100 for display
+// Cap at 100 — pct may exceed 100 in data anomalies (confirmed possible)
 const pct = Math.min(100, Number(convenio.pct_execucao) || 0)
 <div className="bg-gray-100 rounded-full h-2">
   <div
@@ -242,11 +264,12 @@ const pct = Math.min(100, Number(convenio.pct_execucao) || 0)
 ```
 
 ### Anti-Patterns to Avoid
-- **Pre-fetching slide-over data:** Do NOT fetch `/api/execucao/{cnpj}` for all rows on page load. Fetch lazily on slide-over open only.
-- **Passing user prop through to client component as full session object:** Pass only `role` — the client component does not need `userId` or `email` for this read-only page.
-- **Using middleware for role guard:** Middleware checks session existence only, not role (confirmed in STATE.md). Must guard in page.tsx with `verifySession`.
-- **Computing KPI sums from API:** KPI cards are computed client-side from the `rows` array. Do not add a second API call.
-- **Querying cron_sync_log without source filter:** The table stores both leads and execucao sync events. Always filter `WHERE source = 'sync-execucao'` to get the correct freshness time.
+- **Pre-fetching slide-over data on page load:** Do NOT fetch `/api/execucao/{cnpj}` for all rows at once. Fetch lazily on slide-over open only.
+- **Passing full session object to client component:** Pass only `role` — client does not need `userId` or `email`.
+- **Using middleware for role guard:** Middleware checks session existence only, not role (confirmed in STATE.md). Guard in page.tsx with `verifySession`.
+- **Computing KPI sums from a second API call:** KPI cards are computed client-side from the `rows` array.
+- **Querying cron_sync_log without source filter:** Always filter `WHERE source = 'sync-execucao'` — the table stores both leads and execucao events.
+- **Applying debounce to alert toggle or UF filter:** Debounce applies to search text only. Toggle and dropdown are immediate.
 
 ---
 
@@ -254,7 +277,7 @@ const pct = Math.min(100, Number(convenio.pct_execucao) || 0)
 
 | Problem | Don't Build | Use Instead | Why |
 |---------|-------------|-------------|-----|
-| Slide-over animation | Custom CSS animation | `animate-slide-in-right` (tailwind.config.ts) | Already defined, consistent with LeadSlideOver |
+| Slide-over animation | Custom CSS keyframe | `animate-slide-in-right` (tailwind.config.ts lines 30-36) | Already defined, consistent with LeadSlideOver |
 | CNPJ formatting | Custom formatter | `formatCNPJ()` from `@/lib/format` | Handles 14-digit zero-padding edge cases |
 | Currency display | Custom number format | `formatCompactCurrency()` from `@/lib/format` | Handles R$/K/M/B thresholds correctly |
 | Date formatting | Custom date parser | `formatDate()` from `@/lib/format` | Handles null and invalid date strings |
@@ -270,49 +293,50 @@ const pct = Math.min(100, Number(convenio.pct_execucao) || 0)
 ### Pitfall 1: NUMERIC Returns as String from pg
 **What goes wrong:** `total_desembolsado`, `total_repasse`, `total_saldo`, `pct_execucao_ponderado` are NUMERIC columns — pg driver returns them as strings, not numbers.
 **Why it happens:** pg's default type casting treats NUMERIC/DECIMAL as string to preserve precision.
-**How to avoid:** Always wrap with `Number()` before arithmetic or display: `Number(row.total_desembolsado)`. The `formatCompactCurrency` function already accepts `string | number` so it handles this.
+**How to avoid:** Always wrap with `Number()` before arithmetic or display: `Number(row.total_desembolsado)`. The `formatCompactCurrency` function accepts `string | number` so it handles this, but `reduce()` sums require explicit `Number()`.
 **Warning signs:** KPI sums showing "0" or NaN despite data being present.
 
 ### Pitfall 2: Missing sem-permissao Page
-**What goes wrong:** Page.tsx calls `redirect('/sem-permissao')` for vendedor, but that page does not exist — Next.js returns 404 instead of a clear access-denied message.
+**What goes wrong:** `page.tsx` calls `redirect('/sem-permissao')` for vendedor, but that page does not exist — Next.js returns a 404 instead of a clear access-denied message.
 **Why it happens:** The page has never been created. `distribuir/page.tsx` redirects to `/` (root) instead.
-**How to avoid:** Plan 17-01 must create `web/src/app/sem-permissao/page.tsx` before testing the role guard.
+**How to avoid:** Plan 17-01 must create `web/src/app/sem-permissao/page.tsx` as a minimal static page before the role guard is wired.
 **Warning signs:** Vendedor navigating to /execucao sees a 404 page.
 
-### Pitfall 3: layout.tsx Hardcodes Role Type Without Coordenador
+### Pitfall 3: layout.tsx Type Cast Missing coordenador
 **What goes wrong:** `layout.tsx` line 25 casts session role as `'gestor' | 'vendedor' | 'visualizador'` — coordenador is missing from the union type.
 **Why it happens:** layout.tsx was written before coordenador role was added.
-**How to avoid:** When reading Sidebar props in layout.tsx, the type cast is for the Sidebar prop. The SidebarProps interface already includes `coordenador`. The cast on line 25 is technically wrong (TypeScript may warn) but functional — Sidebar.tsx handles all 4 roles. Do NOT change layout.tsx as part of this phase unless TypeScript errors occur; it's out of scope.
-**Warning signs:** TypeScript error on `session.user.role as 'gestor' | 'vendedor' | 'visualizador'` if coordenador session user loads layout.
+**How to avoid:** The SidebarProps interface in Sidebar.tsx already includes `coordenador`. The cast is technically incorrect but does not cause a runtime failure. Do NOT change layout.tsx in this phase — it is out of scope and may cause unrelated TypeScript ripples.
+**Warning signs:** TypeScript compile error on coordenador session if strict type checking is enabled.
 
 ### Pitfall 4: pct_execucao Can Exceed 100
 **What goes wrong:** Progress bar renders wider than its container or overflows layout.
-**Why it happens:** `valor_desembolsado / valor_repasse * 100` can exceed 100 if disbursement exceeds repasse (data anomaly, confirmed possible by STATE.md context).
+**Why it happens:** `valor_desembolsado / valor_repasse * 100` can exceed 100 if disbursement exceeds repasse (confirmed possible from STATE.md context).
 **How to avoid:** `Math.min(100, Number(convenio.pct_execucao) || 0)` — cap at 100 before setting `width` style.
-**Warning signs:** Progress bar visually overflows its container.
+**Warning signs:** Progress bar visually overflows its container on real government data.
 
 ### Pitfall 5: dias_ate_vencimento Can Be Negative
-**What goes wrong:** "Urgency coloring" logic that only handles positive values renders nothing or wrong color for expired projects.
-**Why it happens:** `data_fim_vigencia - NOW()` is negative for already-expired projects (fim vigencia in the past).
-**How to avoid:** Handle `< 0` explicitly: `dias < 0 ? 'text-red-600 font-bold' : dias < 30 ? 'text-red-500' : dias < 90 ? 'text-amber-600' : 'text-gray-600'`.
-**Warning signs:** Expired projects showing no urgency color.
+**What goes wrong:** Urgency coloring logic that handles only positive values renders nothing or wrong color for expired projects.
+**Why it happens:** `data_fim_vigencia - NOW()` is negative when `data_fim_vigencia` is in the past.
+**How to avoid:** Handle `< 0` explicitly: `dias < 0 ? 'text-red-600 font-bold' : dias < 30 ? 'text-red-500 font-medium' : dias <= 90 ? 'text-amber-600' : 'text-gray-600'`.
+**Warning signs:** Expired projects showing no urgency color in the slide-over.
 
 ### Pitfall 6: Slide-Over Stale Data on Re-Open
-**What goes wrong:** Re-opening the slide-over for a different CNPJ shows previous CNPJ's data briefly.
-**Why it happens:** `useEffect` fires asynchronously after render — if detail rows state is not cleared first, old data appears during loading.
-**How to avoid:** Clear `detailRows` state when `cnpj` prop changes BEFORE the fetch completes: set to `[]` at the start of the fetch effect, or use a key prop to force unmount/remount.
-**Warning signs:** Slide-over briefly shows wrong CNPJ's convenio list when switching rows.
+**What goes wrong:** Re-opening the slide-over for a different CNPJ shows the previous CNPJ's data briefly before new data loads.
+**Why it happens:** `useEffect` fires asynchronously — if `detailRows` state is not cleared first, stale rows are visible during the fetch.
+**How to avoid:** Set `detailRows` to `[]` synchronously at the start of the fetch effect (before the async fetch), OR use a key prop on the slide-over to force unmount/remount.
+**Warning signs:** Slide-over briefly shows wrong CNPJ's convenio list when switching rows rapidly.
 
-### Pitfall 7: Search Debounce on Alert Toggle
-**What goes wrong:** Applying 300ms debounce to the alert toggle checkbox makes the UI feel sluggish.
-**Why it happens:** The debounce wrapper wraps all filter state changes including `alertOnly`.
-**How to avoid:** Debounce only the `search` text input (300ms). UF dropdown and alert toggle should trigger re-fetch immediately (no debounce) — matches the pattern in `leads/page.tsx` where search is debounced but status filter is immediate.
+### Pitfall 7: API Shape Change Breaks Client
+**What goes wrong:** Changing GET /api/execucao from returning `ExecucaoAggRow[]` to `{ rows: ExecucaoAggRow[], last_synced: string | null }` silently breaks if the client still destructures as a bare array.
+**Why it happens:** Both the server and client must be updated in the same plan to change the response shape.
+**How to avoid:** Plan 17-01 must update both the route and the client component fetch handler together. The client must read `data.rows` not `data` directly.
+**Warning signs:** Table renders 0 rows after the API shape change; no error, just empty state.
 
 ---
 
 ## Code Examples
 
-### API Response Type (from /api/execucao GET)
+### API Response Type (from /api/execucao GET — after Plan 17-01 extension)
 ```typescript
 // Source: web/src/app/api/execucao/route.ts — ExecucaoAggRow interface
 interface ExecucaoAggRow {
@@ -321,7 +345,7 @@ interface ExecucaoAggRow {
   uf: string | null
   municipio: string | null
   total_projetos: number
-  total_repasse: string        // NUMERIC as string
+  total_repasse: string        // NUMERIC as string — always wrap with Number()
   total_desembolsado: string   // NUMERIC as string
   total_saldo: string          // NUMERIC as string
   pct_execucao_ponderado: string | null
@@ -332,6 +356,9 @@ interface ExecucaoAggRow {
   dias_em_execucao_max: number | null
   contact_present: boolean
 }
+
+// Extended response shape (after Plan 17-01):
+// { rows: ExecucaoAggRow[], last_synced: string | null }
 ```
 
 ### API Response Type (from /api/execucao/[cnpj] GET)
@@ -343,7 +370,7 @@ interface ExecucaoDetailRow {
   situacao: string | null
   modalidade: string | null
   objeto: string | null
-  valor_global: string | null
+  valor_global: string | null       // NUMERIC as string
   valor_repasse: string | null
   valor_desembolsado: string | null
   saldo_conta: string | null
@@ -364,24 +391,89 @@ interface ExecucaoDetailRow {
 // Source: UI-SPEC "ExecucaoSlideOver" + Pitfall 5 above
 function diasColor(dias: number | null): string {
   if (dias == null) return 'text-gray-400'
-  if (dias < 0) return 'text-red-600 font-bold'   // expired
+  if (dias < 0) return 'text-red-600 font-bold'    // expired — past fim de vigencia
   if (dias < 30) return 'text-red-500 font-medium'
   if (dias <= 90) return 'text-amber-600'
   return 'text-gray-600'
 }
 ```
 
-### Freshness Timestamp Fetch Pattern
+### sem-permissao Page (static, minimal)
 ```typescript
-// Recommended: extend /api/execucao to return { rows, last_synced }
-// In route.ts — add after main query:
-const syncRows = await query(
-  `SELECT ran_at FROM cron_sync_log WHERE source = 'sync-execucao' ORDER BY ran_at DESC LIMIT 1`
-)
-const last_synced = syncRows[0]?.ran_at ?? null
-return NextResponse.json({ rows, last_synced })
-// In client: display as "Dados atualizados em {formatDate(last_synced)}"
+// Source: Pattern from distribuir/page.tsx role handling + STATE.md "redirect to /sem-permissao"
+// This page has no client logic — purely static
+export default function SemPermissaoPage() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+      <h1 className="font-heading text-2xl font-bold text-gray-900">Acesso Restrito</h1>
+      <p className="text-sm text-gray-500">Acesso restrito a gestores e coordenadores.</p>
+    </div>
+  )
+}
 ```
+
+---
+
+## Validation Architecture
+
+> Required for downstream Nyquist validation system.
+
+### Test Framework
+
+No automated test framework is configured in this project (no `jest.config.*`, `vitest.config.*`, `pytest.ini`, or `__tests__/` directories detected). All validation for this phase is manual functional verification, consistent with Phase 16's verification approach (manual observable truths).
+
+| Property | Value |
+|----------|-------|
+| Framework | none — manual functional verification |
+| Config file | none |
+| Quick run command | Manual browser check described below |
+| Full suite command | Manual checklist in VERIFICATION.md |
+| Estimated runtime | ~5-10 minutes manual walkthrough |
+
+### Phase Requirements to Test Map
+
+| Req ID | Behavior | Test Type | Verification Method | Notes |
+|--------|----------|-----------|---------------------|-------|
+| AGR-01 | /execucao table shows one row per CNPJ with `total_projetos` as big number | Manual | Navigate to /execucao as gestor, confirm each row has a CNPJ and fomentos count | Requires live DB with projetos_execucao data |
+| AGR-02 | Clicking CNPJ row opens slide-over showing per-convenio detail rows | Manual | Click any CNPJ row, confirm slide-over appears with individual convenio rows (nr_convenio, desembolso, saldo, progress bar) | Verifies /api/execucao/[cnpj] fetch |
+| AGR-03 | Contact badge appears for CNPJs in lead_contacts | Manual | Find a CNPJ known to be in lead_contacts; confirm contact badge visible in both table and slide-over footer | Requires cross-referencing DB |
+| AGR-04 | Slide-over shows full financial detail | Manual | Open slide-over; confirm desembolso, saldo, % execucao progress bar, data fim vigencia, dias em execucao all present | All fields from ExecucaoDetailRow |
+| UI-01 | /execucao nav entry visible in sidebar for gestor/coordenador | Manual | Login as gestor; confirm "Projetos em Execucao" appears in sidebar. Login as coordenador; same. | Sidebar.tsx modification |
+| UI-02 | Vendedor cannot access /execucao — redirected to /sem-permissao | Manual | Login as vendedor; navigate to /execucao; confirm redirect to /sem-permissao with "Acesso restrito" message. Also confirm nav entry absent from sidebar. | Two checks: redirect + nav absence |
+| UI-03 | 4 KPI cards at top showing correct computed values | Manual | Note the count/sum of rows; confirm KPI card values match: totalClientes = row count, totalFomentos = sum of total_projetos, etc. | Can verify with small dataset |
+| UI-04 | Table has 10 columns in correct order: CNPJ, Nome, UF, Fomentos, Desembolsado, Saldo em Conta, % Execucao, Vigencia, Alerta, Contato | Manual | Inspect rendered table headers left-to-right | Column order from UI-SPEC |
+
+### Success Criteria Verification Map
+
+| Success Criterion | Verification Steps |
+|-------------------|--------------------|
+| 1. Gestor sees CNPJ list with fomentos count + KPI cards | Login as gestor → navigate /execucao → confirm table rows show CNPJ + big number + 4 KPI cards load at top |
+| 2. Click CNPJ row opens slide-over with full financial detail | Click any row → confirm slide-over opens from right → confirm all required fields present (desembolso, saldo, % bar, data fim, dias execucao, contact badge) |
+| 3. Alert-highlighted rows visible for tem_alerta=true CNPJs | Confirm rows with `valor_desembolsado=0` have amber left border `border-l-4 border-amber-400` and amber "Alerta" badge |
+| 4. Vendedor redirected to /sem-permissao; nav entry absent | Login as vendedor → navigate /execucao → confirm /sem-permissao redirect → confirm sidebar has no "Projetos em Execucao" entry |
+| 5. Freshness timestamp shows last execucao sync time | Confirm "Dados atualizados em {date}" text visible below page title; date matches most recent `cron_sync_log` row WHERE `source='sync-execucao'` |
+
+### API Contract Checks (verifiable via curl/browser devtools)
+
+```bash
+# Check 1: GET /api/execucao returns { rows, last_synced } (not bare array) after Plan 17-01
+# Expected: { "rows": [...], "last_synced": "2026-03-18T..." }
+curl -s http://localhost:3000/api/execucao | python3 -c "import sys,json; d=json.load(sys.stdin); print(type(d), list(d.keys()))"
+
+# Check 2: Vendedor session returns 401 from API
+# Expected: { "error": "Unauthorized" }
+# Manual: call /api/execucao while authenticated as vendedor via browser devtools fetch
+
+# Check 3: Slide-over detail fetch returns array of convenios
+# Expected: array of ExecucaoDetailRow objects
+curl -s http://localhost:3000/api/execucao/12345678000195 | python3 -c "import sys,json; d=json.load(sys.stdin); print(type(d), len(d), 'rows')"
+```
+
+### Wave 0 Gaps (must be created before implementation)
+
+No automated test framework exists or needs to be created for this phase. All validation is manual functional verification following the Phase 16 pattern. The VERIFICATION.md created by gsd-verifier will formalize the observable truths checklist.
+
+The only "gap" that must be filled before other plans can verify correctly: `web/src/app/sem-permissao/page.tsx` — this must exist before Plan 17-01's role guard is testable end-to-end. It is created within Plan 17-01 itself.
 
 ---
 
@@ -389,43 +481,51 @@ return NextResponse.json({ rows, last_synced })
 
 | Old Approach | Current Approach | Notes |
 |--------------|-----------------|-------|
-| Client-side redirect for role guard | Server component + verifySession + redirect() | Phase 17 must use server component pattern — not client-side session check like distribuir/page.tsx |
-| Manual debounce with setTimeout | useCallback + useEffect + clearTimeout | Pattern from leads/page.tsx lines 115-118 |
+| Client-side role redirect (fetch session in useEffect, redirect in effect) | Server component + `verifySession()` + `redirect()` | Plan 17-01 uses server component — NOT the client-side pattern from distribuir/page.tsx |
+| Manual debounce implementation | `useCallback` + `useEffect` + `clearTimeout` | Pattern from leads/page.tsx lines 115-118 — copy exactly |
+| Bare array response from API | `{ rows, last_synced }` response shape | This is a small breaking change to /api/execucao — must be coordinated in Plan 17-01 |
+
+**Deprecated / outdated in this project:**
+- Client-side session fetch + role redirect: `distribuir/page.tsx` does `fetch('/api/auth/session')` in a `useEffect` — this pattern is not used for /execucao. Use the server component pattern instead.
 
 ---
 
 ## Open Questions
 
-1. **API shape for freshness timestamp**
-   - What we know: `/api/execucao` currently returns a bare array. `cron_sync_log` has `source='sync-execucao'` rows.
-   - What's unclear: Should the API response be changed to `{ rows, last_synced }` or should a separate fetch be made?
-   - Recommendation: Change `/api/execucao` to return `{ rows, last_synced }`. Minimally invasive — the route already has access to the DB pool. The planner should explicitly include this API change in Plan 17-01 task actions.
-
-2. **UF options for the dropdown filter**
+1. **UF options for the dropdown filter**
    - What we know: The `uf` column in `projetos_execucao` contains Brazilian state codes (AC, AL, AM...). The API accepts `?uf=XX`.
    - What's unclear: Should the UF dropdown be populated from a static list of 27 Brazilian states, or from a `SELECT DISTINCT uf` query?
-   - Recommendation: Static list of the 27 Brazilian state codes. Avoids an extra API call and UF values are fixed. This is consistent with how other pages handle UF filters.
+   - Recommendation: Static list of the 27 Brazilian state codes. Avoids an extra API call and UF values are fixed. Consistent with how other pages handle UF filters.
+
+2. **cron_sync_log source column backfill**
+   - What we know: The `cron_sync_log` CREATE TABLE in `repo-sync.ts` (line 509) does NOT include a `source` column. Only `execucao-sync.ts` inserts with `source`.
+   - What's unclear: Does the `source` column exist in the production DB? If the column was added after initial table creation, it may not exist on older DBs.
+   - Recommendation: The Plan 17-01 SQL for freshness should use a TRY/CATCH around the source-filtered query, falling back to `SELECT ran_at FROM cron_sync_log ORDER BY ran_at DESC LIMIT 1` if the column doesn't exist. The execucao-sync INSERT at line 403 would have failed if the column didn't exist, so if execucao sync has run, the column exists.
 
 ---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- `web/src/components/LeadSlideOver.tsx` — slide-over structural pattern, Escape key handler, panel CSS
-- `web/src/components/Sidebar.tsx` — NavIcon switch pattern, role-based navItems array, nav link CSS
-- `web/src/components/KPICard.tsx` + `KPIRow.tsx` — KPI card props interface, grid layout
+- `web/src/components/LeadSlideOver.tsx` — slide-over structural pattern, Escape key handler, panel CSS, lazy fetch pattern
+- `web/src/components/Sidebar.tsx` — NavIcon switch pattern, role-based navItems array, nav link CSS, BASE_NAV_ITEMS structure
+- `web/src/components/KPICard.tsx` — KPI card props interface (`title`, `value`, `subtitle`, `icon`, `delta`, `deltaType`)
+- `web/src/components/KPIRow.tsx` — KPI row container
 - `web/src/app/leads/page.tsx` — debounced fetch pattern, table structure, loading state, slide-over state management
-- `web/src/app/api/execucao/route.ts` — ExecucaoAggRow type, filter params, alert business rule
+- `web/src/app/bi/page.tsx` — client-only page pattern with useEffect fetch (no server component guard needed)
+- `web/src/app/api/execucao/route.ts` — ExecucaoAggRow type, filter params, alert business rule (ALERT_ZERO_EXECUTION = valor_desembolsado=0)
 - `web/src/app/api/execucao/[cnpj]/route.ts` — ExecucaoDetailRow type, detail query
-- `web/src/lib/dal.ts` — verifySession, getApiSession signatures and behavior
-- `web/src/lib/format.ts` — formatCNPJ, formatCompactCurrency, formatDate signatures
-- `web/tailwind.config.ts` — animate-slide-in-right defined, sigma color tokens
-- `.planning/phases/17-ui-navigation/17-UI-SPEC.md` — approved design contract (copywriting, spacing, color, components)
-- `.planning/STATE.md` — key decisions: role guard on page+API, object excluded from grouped response, alert condition valor_desembolsado=0
+- `web/src/lib/dal.ts` — verifySession (React-cached, redirects to /login), getApiSession signatures
+- `web/src/lib/format.ts` — formatCNPJ, formatCompactCurrency, formatDate, formatCurrency signatures
+- `web/tailwind.config.ts` — animate-slide-in-right defined (lines 30-36), sigma color tokens
+- `web/src/lib/execucao-sync.ts` lines 400-407 — `source='sync-execucao'` confirmed in cron_sync_log INSERT
+- `.planning/phases/17-ui-navigation/17-UI-SPEC.md` — approved design contract (copywriting, spacing, color, components, table columns)
+- `.planning/STATE.md` — key decisions: role guard on page+API, objeto excluded from grouped response, alert condition valor_desembolsado=0
 
 ### Secondary (MEDIUM confidence)
 - `web/src/app/distribuir/page.tsx` — client-side role redirect pattern (NOT recommended for /execucao — use server component instead)
-- `web/src/lib/execucao-sync.ts` — `source='sync-execucao'` confirmed in cron_sync_log INSERT
+- `web/src/app/api/debug-sync/route.ts` — cron_sync_log query pattern (does not filter by source — confirmed limitation)
+- `web/src/lib/repo-sync.ts` lines 507-516 — original cron_sync_log CREATE TABLE (no `source` column in schema definition)
 
 ---
 
@@ -434,8 +534,8 @@ return NextResponse.json({ rows, last_synced })
 **Confidence breakdown:**
 - Standard stack: HIGH — all libraries and utilities verified directly from source code
 - Architecture: HIGH — all patterns copied from existing verified source files in this codebase
-- Pitfalls: HIGH — identified from direct code inspection (NUMERIC-as-string, missing sem-permissao page, layout.tsx type cast)
-- API shape: MEDIUM — `last_synced` addition is a recommendation, not confirmed in existing code
+- Pitfalls: HIGH — identified from direct code inspection (NUMERIC-as-string, missing sem-permissao page, stale slide-over data, pct overflow)
+- API shape change: MEDIUM — `{ rows, last_synced }` extension is a recommendation, plan must explicitly include both server and client update
 
 **Research date:** 2026-03-18
 **Valid until:** Indefinite — this is an internal codebase, not an external dependency
