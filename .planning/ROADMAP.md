@@ -472,7 +472,7 @@ Plans:
 | 12. Pipeline Kanban | 0/TBD | Not started | - |
 | 13. Comissoes | 2/2 | Complete | 2026-02-14 |
 | **Milestone v4.0** | | | |
-| 14. Data Audit & Foundation | 2/2 | Complete   | 2026-03-18 |
+| 14. Data Audit & Foundation | 2/2 | Complete    | 2026-03-18 |
 | 15. ETL Sync & Validation | 0/2 | Not started | - |
 | 16. API & Business Logic | 0/2 | Not started | - |
 | 17. UI & Navigation | 0/3 | Not started | - |

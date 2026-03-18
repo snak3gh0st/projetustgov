@@ -1,3 +1,18 @@
+---
+gsd_state_version: 1.0
+milestone: v4.0
+milestone_name: — Projetos em Execucao
+status: completed
+stopped_at: Completed 14-02-PLAN.md — projetos_execucao table creation + schema.sql updated
+last_updated: "2026-03-18T15:53:37.030Z"
+last_activity: "2026-03-18 — Plan 14-02 complete: projetos_execucao table created in Supabase with NUMERIC(18,2) financial columns, UNIQUE(nr_convenio) constraint, and 3 indexes"
+progress:
+  total_phases: 4
+  completed_phases: 1
+  total_plans: 2
+  completed_plans: 2
+---
+
 # Project State: PROJETUS — v4.0 Projetos em Execucao
 
 ## Project Reference
