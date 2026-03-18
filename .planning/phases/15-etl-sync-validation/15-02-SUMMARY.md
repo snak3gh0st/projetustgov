@@ -134,6 +134,20 @@ None — database migration applied automatically during task execution.
 - Phase 16 can build the execucao page/API against the live projetos_execucao table
 - **Open concern:** Memory peak ~1300MB on local (Node heap). Vercel Pro has 1GB limit — production cron may need `--max-old-space-size=1536` or a two-pass streaming approach before Phase 16 goes live.
 
+## Self-Check: PASSED
+
+Files confirmed:
+- FOUND: web/scripts/test-execucao-sync.ts
+- FOUND: web/src/app/api/cron/sync-execucao/route.ts
+- FOUND: web/src/lib/execucao-sync.ts
+- FOUND: web/vercel.json
+- FOUND: .planning/phases/15-etl-sync-validation/15-02-SUMMARY.md
+
+Commits confirmed:
+- FOUND: 1623c28
+- FOUND: bda28a6
+- FOUND: 5e62017
+
 ---
 *Phase: 15-etl-sync-validation*
 *Completed: 2026-03-18*
