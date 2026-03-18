@@ -4,8 +4,8 @@ milestone: v4.0
 milestone_name: — Projetos em Execucao
 status: completed
 stopped_at: Completed 17-ui-navigation-02-PLAN.md
-last_updated: "2026-03-18T21:48:43Z"
-last_activity: 2026-03-18 — Completed quick task 260318-ook: Delete import sheets tab from dashboard
+last_updated: "2026-03-18T23:47:00Z"
+last_activity: 2026-03-18 — Completed quick task 260318-re1: Add in-app news notification with v4.0 updates
 progress:
   total_phases: 4
   completed_phases: 4
@@ -78,6 +78,7 @@ Progress (v4.0): [██████████] 100%
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260318-ook | Delete import sheets tab from dashboard | 2026-03-18 | 1fe0798 | [260318-ook-delete-import-sheets-tab-from-dashboard](./quick/260318-ook-delete-import-sheets-tab-from-dashboard/) |
+| 260318-re1 | Add in-app news notification with v4.0 updates | 2026-03-18 | f451ebb | [260318-re1-add-in-app-news-notification-with-update](./quick/260318-re1-add-in-app-news-notification-with-update/) |
 
 ### Blockers / Concerns
 
@@ -99,6 +100,6 @@ Progress (v4.0): [██████████] 100%
 
 ## Session Continuity
 
-Last session: 2026-03-18T21:48:01Z
-Stopped at: Completed quick task 260318-ook (remove Importar Planilha from gestor sidebar)
-Resume file: .planning/quick/260318-ook-delete-import-sheets-tab-from-dashboard/260318-ook-SUMMARY.md
+Last session: 2026-03-18T23:47:00Z
+Stopped at: Completed quick task 260318-re1 (add in-app news banner for v4.0 updates)
+Resume file: .planning/quick/260318-re1-add-in-app-news-notification-with-update/260318-re1-SUMMARY.md
