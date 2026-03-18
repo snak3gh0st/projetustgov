@@ -11,11 +11,11 @@ Requirements for the Projetos em Execucao milestone. Each maps to roadmap phases
 
 - [ ] **DATA-01**: Sistema importa dados de convenio do repo (filtro: situacao "em execucao")
 - [ ] **DATA-02**: Sistema importa dados de proposta do repo (filtro: tipo "OSC")
-- [ ] **DATA-03**: Dados sao armazenados em tabela DB dedicada `projetos_execucao` (isolada do CRM)
+- [x] **DATA-03**: Dados sao armazenados em tabela DB dedicada `projetos_execucao` (isolada do CRM)
 - [ ] **DATA-04**: Cruzamento convenio ↔ proposta via id_proposta com CNPJ do proponente
 - [ ] **DATA-05**: UPSERT incremental sem duplicar registros existentes (conflict key: cnpj + nr_convenio)
 - [ ] **DATA-06**: Sync diario via cron endpoint dedicado, separado do sync de leads
-- [ ] **DATA-07**: Auditoria de dados previa: validar NULL proposta_id, CNPJ padding, join coverage
+- [x] **DATA-07**: Auditoria de dados previa: validar NULL proposta_id, CNPJ padding, join coverage
 
 ### Metricas Financeiras
 
@@ -97,11 +97,11 @@ Deferred to future milestone.
 |-------------|-------|--------|
 | DATA-01 | Phase 15 | Pending |
 | DATA-02 | Phase 15 | Pending |
-| DATA-03 | Phase 14 | Pending |
+| DATA-03 | Phase 14 | Complete |
 | DATA-04 | Phase 15 | Pending |
 | DATA-05 | Phase 15 | Pending |
 | DATA-06 | Phase 15 | Pending |
-| DATA-07 | Phase 14 | Pending |
+| DATA-07 | Phase 14 | Complete |
 | FIN-01 | Phase 16 | Pending |
 | FIN-02 | Phase 16 | Pending |
 | FIN-03 | Phase 16 | Pending |

@@ -45,7 +45,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Milestone v4.0 — Projetos em Execucao
 
-- [ ] **Phase 14: Data Audit & Foundation** - Validate data integrity before building, create projetos_execucao table
+- [x] **Phase 14: Data Audit & Foundation** - Validate data integrity before building, create projetos_execucao table (completed 2026-03-18)
 - [ ] **Phase 15: ETL Sync & Validation** - Streaming sync of convenio + proposta CSVs into projetos_execucao
 - [ ] **Phase 16: API & Business Logic** - Role-guarded API route with CNPJ-grouped financial aggregation
 - [ ] **Phase 17: UI & Navigation** - /execucao page with KPI cards, grouped table, slide-over, sidebar entry
@@ -381,7 +381,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 14-01-PLAN.md — Data audit diagnostics: NULL proposta_id count, CNPJ padding check, LPAD migration if needed, gap strategy documentation
+- [x] 14-01-PLAN.md — Data audit diagnostics: NULL proposta_id count, CNPJ padding check, LPAD migration if needed, gap strategy documentation
 - [ ] 14-02-PLAN.md — Create projetos_execucao table with NUMERIC(18,2) columns, UNIQUE(nr_convenio), indexes, UPSERT policy documentation
 
 ### Phase 15: ETL Sync & Validation
@@ -472,7 +472,7 @@ Plans:
 | 12. Pipeline Kanban | 0/TBD | Not started | - |
 | 13. Comissoes | 2/2 | Complete | 2026-02-14 |
 | **Milestone v4.0** | | | |
-| 14. Data Audit & Foundation | 0/2 | Not started | - |
+| 14. Data Audit & Foundation | 2/2 | Complete   | 2026-03-18 |
 | 15. ETL Sync & Validation | 0/2 | Not started | - |
 | 16. API & Business Logic | 0/2 | Not started | - |
 | 17. UI & Navigation | 0/3 | Not started | - |

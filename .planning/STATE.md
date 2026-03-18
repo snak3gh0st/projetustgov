@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 14 of 17 in milestone v4.0 (Data Audit & Foundation)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-03-18 — Roadmap created for v4.0, phases 14-17 defined
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-03-18 — Plan 14-02 complete: projetos_execucao table created in Supabase with NUMERIC(18,2) financial columns, UNIQUE(nr_convenio) constraint, and 3 indexes
 
-Progress (v4.0): [░░░░░░░░░░] 0%
+Progress (v4.0): [██░░░░░░░░] 20%
 
 **Milestone v1.0:** Complete (Phases 1, 2, 4, 5)
 **Milestone v2.0:** Superseded by Next.js migration (Phases 6-8)
@@ -24,9 +24,9 @@ Progress (v4.0): [░░░░░░░░░░] 0%
 ## Performance Metrics
 
 **v4.0 Velocity:**
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: -
+- Total plans completed: 2
+- Average duration: 6 min
+- Total execution time: 12 min
 
 *Updated after each plan completion*
 
@@ -48,7 +48,7 @@ Progress (v4.0): [░░░░░░░░░░] 0%
 ### Blockers / Concerns
 
 - **Alert business rule (Phase 16 blocker):** Client must identify 3+ convenios that should show the alert and 3+ that are healthy before Phase 16 plan 2 can be executed. Do not implement as a guess.
-- **NULL proposta_id scope (Phase 14 action):** Diagnostic query not yet run. Result determines whether ETL uses INNER JOIN or LEFT JOIN. Must be resolved in Phase 14 before Phase 15 is planned.
+- **NULL proposta_id scope (RESOLVED 2026-03-18):** Diagnostic ran — 0 of 44,035 em-execucao convenios have NULL proposta_id. All CNPJs in proponentes (27,215) already 14 digits. Phase 15 ETL uses LEFT JOIN with join_miss_count regardless (architecture decision is permanent, count is transient).
 - **OSC Map memory size (Phase 15 watch):** Estimated small fraction of 187MB but not measured. Instrument Phase 15 test script; if Map exceeds Vercel 1GB limit, implement two-pass fallback.
 
 ### Technical Context (v4.0 Stack)
@@ -65,5 +65,5 @@ Progress (v4.0): [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Roadmap created — ready to plan Phase 14
+Stopped at: Completed 14-02-PLAN.md — projetos_execucao table creation + schema.sql updated
 Resume file: None
