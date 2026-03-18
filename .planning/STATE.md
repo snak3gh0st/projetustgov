@@ -1,196 +1,69 @@
-# Project State: PROJETUS Projetos em Execução
+# Project State: PROJETUS — v4.0 Projetos em Execucao
 
 ## Project Reference
 
-**Core Value:** Inteligência pós-venda para gestores identificarem clientes qualificados com projetos em execução no TransferênciaGov.
+See: .planning/PROJECT.md (updated 2026-03-18)
 
-**Current Milestone:** v4.0 Projetos em Execução
-
-**Milestone Goal:** Nova aba de inteligência pós-venda com dados financeiros cruzados de convênio e proposta, agregados por CNPJ.
-
-**Current Focus:** Defining requirements
+**Core value:** Inteligencia pos-venda para gestores identificarem clientes qualificados com projetos em execucao no TransferenciaGov.
+**Current focus:** Phase 14 — Data Audit & Foundation
 
 ## Current Position
 
-**Phase:** Not started (defining requirements)
-**Plan:** —
-**Status:** Defining requirements
-**Progress:** [░░░░░░░░░░] 0%
+Phase: 14 of 17 in milestone v4.0 (Data Audit & Foundation)
+Plan: 0 of 2 in current phase
+Status: Ready to plan
+Last activity: 2026-03-18 — Roadmap created for v4.0, phases 14-17 defined
 
-**Milestone v1.0 Status:** Complete (Phases 1, 2, 4, 5 delivered)
-**Milestone v2.0 Status:** Superseded by Next.js migration (Phases 6-8 delivered in Streamlit, Phase 9 N/A)
-**Milestone v3.0 Status:** Complete (Phases 10-13 + 74 quick tasks)
-**Last activity:** 2026-03-18 — Milestone v4.0 started
+Progress (v4.0): [░░░░░░░░░░] 0%
+
+**Milestone v1.0:** Complete (Phases 1, 2, 4, 5)
+**Milestone v2.0:** Superseded by Next.js migration (Phases 6-8)
+**Milestone v3.0:** Complete (Phases 10-13 + 74 quick tasks)
+**Milestone v4.0:** In progress (Phases 14-17)
+
+## Performance Metrics
+
+**v4.0 Velocity:**
+- Total plans completed: 0
+- Average duration: -
+- Total execution time: -
+
+*Updated after each plan completion*
 
 ## Accumulated Context
 
-### Key Decisions (v3.0)
+### Key Decisions (v4.0)
 
-| Decision | Phase | Rationale | Date |
-|----------|-------|-----------|------|
-| Next.js replaces Streamlit | v3.0 | Client needs interactive CRM, Streamlit too limited | 2026-02-11 |
-| Login por vendedor (not shared) | v3.0 | Each seller sees only their assigned leads | 2026-02-11 |
-| Manual lead assignment by gestor | v3.0 | Gestor controls distribution, avoids duplicates | 2026-02-11 |
-| Simple 4-column kanban | v3.0 | Novo → Contactado → Em negociação → Fechado | 2026-02-11 |
-| Commission calculation with % | v3.0 | Percentual over contract value, report per seller | 2026-02-11 |
-| Railway PostgreSQL (not Supabase) | v3.0 | Existing data, faster to ship | 2026-02-11 |
-| Vercel deploy with iad1 region | v3.0 | Same region as Railway for low latency | 2026-02-11 |
-| Single /api/dashboard endpoint | v3.0 | Avoids parallel connection issues on Vercel serverless | 2026-02-11 |
-| JWT sessions for credentials auth | 10-01 | Auth.js v5 requires JWT for credentials provider | 2026-02-11 |
-| Bcrypt with 10 rounds | 10-01 | Industry standard for password hashing (~100ms per hash) | 2026-02-11 |
-| React 18 form patterns (useFormState) | 10-02 | Project uses React 18.3.0, not React 19 useActionState | 2026-02-11 |
-| Edge Runtime warnings acceptable | 10-02 | Middleware only validates JWT, DB queries run server-side | 2026-02-11 |
-| NUMERIC(15,2) for financial columns | quick-3 | Proper arithmetic in SQL, no string parsing needed | 2026-02-11 |
-| Status contato: Novo/Contactado/Proposta/Retorno | quick-3 | Cleaner CRM pipeline stages replacing old PROPOSTA/AINDA NAO/RETORNO | 2026-02-11 |
-| Existing clients table with CNPJ exclusion | 11-01 | Created existing_clients table to prevent vendedor distribution to 140+ existing clients | 2026-02-12 |
-| Contact notes table activation | 11-01 | Activated contact_notes for timeline feature (Plans 03-04) | 2026-02-12 |
-| 5-status system with 'Não Contatado' | 11-01 | Default status for new leads, enables gestor to monitor uncontacted leads | 2026-02-12 |
-| Vendedores always exclude existing clients | 11-01 | API-level filtering ensures vendedores never see existing clients | 2026-02-12 |
-| CNPJ-based assignment with duplicate detection | 11-02 | Single CNPJ can have multiple emendas, must assign atomically with conflict check | 2026-02-12 |
-| HTTP 409 for duplicate assignment | 11-02 | Standard conflict status allows UI force override without separate endpoint | 2026-02-12 |
-| Visualizador read-only role for leadership | 11-04 | Leadership needs visibility without modification risk | 2026-02-12 |
-| Contact notes sorted DESC by created_at | 11-04 | Most recent interactions are most relevant for sales context | 2026-02-12 |
-| Inline edit pattern for contact fields | 11-05 | Cleaner UX than always-visible inputs, maintains read-only appearance | 2026-02-12 |
-| Optimistic updates in slide-over | 11-05 | Faster perceived performance, acceptable for MVP without parent refresh | 2026-02-12 |
-| Database-driven commission config | 13-01 | Enables gestor to adjust rates without code deployment, supports future per-vendedor rates | 2026-02-14 |
-| Separate commission_overrides table | 13-01 | Preserves audit trail, tracks approval + motivo for each override | 2026-02-14 |
-| Commission locking on Fechado status | 13-01 | Prevents retroactive rate changes affecting closed deals, allows re-opening leads | 2026-02-14 |
-| PostgreSQL NUMERIC for commission math | 13-01 | Avoids floating-point precision errors, keeps calculation logic close to data | 2026-02-14 |
-| Date filter defaults to current month | 13-02 | Most relevant view for active commission tracking, prevents data overload | 2026-02-14 |
-| Vendedor commission breakdown in dashboard | 13-02 | Vendedores need self-service visibility into earnings by status | 2026-02-14 |
-| Separate confirmed vs pipeline commission cards | 13-02 | Clear distinction between guaranteed vs potential commissions for financial planning | 2026-02-14 |
-| PATCH returns updated commission data | quick-14 | Frontend needs recalculated values after tipo_vendedor change; prevents stale local state | 2026-02-16 |
-| Personal CNPJ watchlist + web push via VAPID in /monitorar page | quick-41 | Any user can build a personal watchlist and receive browser push alerts on emenda updates | 2026-02-20 |
-| Spreadsheet-only DB for MVP | quick-15 | No propostas/convenios from REPO in DB; only gestor-uploaded spreadsheet enriched by REPO contacts + BrasilAPI | 2026-02-16 |
-| Auto-import from 3 repo bases | quick-16 | siconv_programa + siconv_emenda + siconv_proponentes replace manual spreadsheet; spreadsheet only used for vendedor distribution | 2026-02-16 |
+| Decision | Rationale |
+|----------|-----------|
+| Data audit before ETL (Phase 14 first) | NULL proposta_id and CNPJ padding are one-way doors — baking the bug into the architecture is worse than discovering it in a diagnostic query |
+| NUMERIC(18,2) for all financial columns in projetos_execucao | Old ETL tables use FLOAT incorrectly; new table must be correct from the start |
+| Dedicated cron endpoint /api/cron/sync-execucao | Lead sync consumes ~250s of 300s budget; appending execution sync causes 504 failures |
+| ON CONFLICT (nr_convenio) as UPSERT key | Never ON CONFLICT (cnpj) alone — mirrors the STEP 7c production bug (commit 9e20d04) |
+| LEFT JOIN with join_miss_count for proposta join | INNER JOIN silently drops projects with NULL proposta_id; LEFT JOIN + logged miss count makes data loss visible |
+| Alert business rule confirmed with client before Phase 16 | "Desembolso negativo" is a business signal, not mathematical — implement only after client inspects known-problematic convenios |
+| Role guard on both page (verifySession) and API (getApiSession) | Middleware only checks session existence, not role; vendedor can call API directly |
+| All financial computations in SQL, not JavaScript | Prevents floating-point precision errors and keeps calc logic close to data |
 
-### Technical Context (Next.js Stack)
+### Blockers / Concerns
 
-- **Framework:** Next.js 14 App Router, deployed on Vercel
-- **Database:** PostgreSQL on Railway (shortline.proxy.rlwy.net:30852)
-- **Frontend:** React 18, Tailwind CSS (Sigma brand theme), Recharts
-- **Auth:** Auth.js v5 (next-auth@beta) with credentials provider and JWT sessions
-- **Working directory:** `web/` (deploy from here, NOT root)
-- **Existing pages:** CRM Dashboard (/), Leads (/leads), Lead Profile (/lead/[cnpj]), Monitoramento (/monitoramento)
-- **Existing API routes:** /api/dashboard, /api/dashboard-crm, /api/leads, /api/leads/[cnpj]/*, /api/chart/*, /api/filters/*, /api/monitoramento
+- **Alert business rule (Phase 16 blocker):** Client must identify 3+ convenios that should show the alert and 3+ that are healthy before Phase 16 plan 2 can be executed. Do not implement as a guess.
+- **NULL proposta_id scope (Phase 14 action):** Diagnostic query not yet run. Result determines whether ETL uses INNER JOIN or LEFT JOIN. Must be resolved in Phase 14 before Phase 15 is planned.
+- **OSC Map memory size (Phase 15 watch):** Estimated small fraction of 187MB but not measured. Instrument Phase 15 test script; if Map exceeds Vercel 1GB limit, implement two-pass fallback.
 
-### Active TODOs
+### Technical Context (v4.0 Stack)
 
-- [x] Plan Phase 10: Auth & CRM Foundation
-- [x] Execute Phase 10 Plan 01: Install dependencies, create CRM tables, configure Auth.js
-- [x] Execute Phase 10 Plan 02: Login UI and middleware
-- [x] Execute Phase 10 Plan 03: Vendedor management UI (already done via quick tasks)
-- [x] Plan Phase 11: Lead Management & Contact Tracking
-- [x] Execute Phase 11 Plan 01: Schema & backend for lead management
-- [x] Execute Phase 11 Plan 02: Lead assignment with duplicate detection
-- [x] Execute Phase 11 Plan 03: Priority indicators & parlamentar repositioning
-- [x] Execute Phase 11 Plan 04: Contact notes timeline & visualizador role
-- [x] Execute Phase 11 Plan 05: Contact edit UI gap closure
-- [ ] Plan Phase 12: Pipeline Kanban
-- [x] Plan Phase 13: Comissões
-- [x] Execute Phase 13 Plan 01: Commission configuration backend
-- [x] Execute Phase 13 Plan 02: Commission reporting UI with filters and dashboard breakdown
-
-### Known Blockers
-
-**None currently.**
-
-### Quick Tasks Completed
-
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 2 | Leads clicáveis com card de info rápida e UI premium | 2026-02-11 | 1edb2b1 | [2-leads-clic-veis-com-card-de-info-r-pida-](./quick/2-leads-clic-veis-com-card-de-info-r-pida-/) |
-| 3 | Schema expansion + Siconv base bruta import + Upload UI | 2026-02-11 | 33fd78c | [3-schema-upload-base-bruta-import](./quick/3-schema-upload-base-bruta-import/) |
-| 4 | Distribuicao de leads + CRM vendedor (telefone/email inline) | 2026-02-11 | 489c1a4 | [4-distribuicao-leads-crm-vendedor](./quick/4-distribuicao-leads-crm-vendedor/) |
-| 5 | Monitoramento financeiro de convênios em execução | 2026-02-11 | a040061 | [5-monitoramento-financeiro](./quick/5-monitoramento-financeiro/) |
-| 6 | Dashboard CRM gestor (pipeline, vendedor cards, activity feed) | 2026-02-11 | 7cbcc44 | [6-dashboard-crm-gestor](./quick/6-dashboard-crm-gestor/) |
-| 7 | Commission system, default status Não Contatado, parlamentar column reorder | 2026-02-12 | 3ae5f1c | [4-commission-system-default-status-n-o-con](./quick/4-commission-system-default-status-n-o-con/) |
-| 8 | Upload existing clients (CLIENTES.xlsx) with validation and clear instructions | 2026-02-12 | 29539cc | [8-create-endpoint-and-ui-to-upload-existin](./quick/8-create-endpoint-and-ui-to-upload-existin/) |
-| 9 | Fix critical CRM bugs and UX improvements | 2026-02-13 | 32e9187 | [5-fix-critical-crm-bugs-and-ux-improvement](./quick/5-fix-critical-crm-bugs-and-ux-improvement/) |
-| 10 | Fix import-spreadsheet for PROGRAMAS 2026 format + dedup fix + 314 leads imported | 2026-02-16 | 0064fc5 | [6-verificar-populacao-db-e-importar-base-p](./quick/6-verificar-populacao-db-e-importar-base-p/) |
-| 11 | Fix critical client bugs - lead assignment | 2026-02-16 | 7af8385 | [7-fix-critical-client-bugs-lead-assignment](./quick/7-fix-critical-client-bugs-lead-assignment/) |
-| 12 | Add valor_venda column + fix commission formula (valor_venda not valor_emenda) | 2026-02-16 | 997e9b3 | - |
-| 13 | Fix all 11 client-reported bugs (commission, UI, auth, BrasilAPI enrichment) | 2026-02-16 | 01407bf | - |
-| 14 | Fix commission not updating on tipo_vendedor change (stale local state) | 2026-02-16 | 2f0213e | - |
-| 15 | DB reset + reimport from PROGRAMAS 2026 xlsx (369 leads, 97% contacts, 100% links) | 2026-02-16 | ff86d99 | - |
-| 16 | Auto-import from 3 repo bases: 240 leads, 100% valor_emenda, 98% contacts, R$144M | 2026-02-16 | 2720dca | - |
-| 17 | Fix text formatting: UTF-8 encoding, phone trunk prefix, accent cleanup in orgao/programa | 2026-02-16 | d5604fb | - |
-| 18 | Fix commission formula: remove 0.10 factor (10x too small) + add R$50 per fechamento | 2026-02-16 | 25fff79 | - |
-| 19 | Cascade emenda UX, no value summing, truncation fixes, client filter, green commission | 2026-02-16 | 7152f5d | - |
-| 20 | Show distributed leads with tabs + redistribution + unassign in /distribuir page | 2026-02-16 | 9a443e0 | - |
-| 21 | Cascade differentiates emendas by parlamentar (show on main row + sub-rows) | 2026-02-16 | dcbec6a | - |
-| 22 | BrasilAPI enrichment pulls address (endereco, uf, municipio) + display in UI | 2026-02-16 | - | - |
-| 23 | Rebrand to Projete: brand colors (magenta/purple/blue), gradient logo, powered by SigmaIntel | 2026-02-16 | b16955c | - |
-| 24 | Add sortable column headers (asc/desc) to all 4 data tables (leads, monitoramento, comissoes, distribuir) | 2026-02-16 | 6674897 | - |
-| 25 | Add gestor_vendedor role: vendedor that sells + read-only admin (Paulo Gabriel) | 2026-02-16 | - | - |
-| 26 | Daily auto-update leads from repo bases via Vercel cron (UPSERT, preserves CRM state) | 2026-02-17 | a4b7773 | [8-daily-auto-update-leads-from-repo-bases-](./quick/8-daily-auto-update-leads-from-repo-bases-/) |
-| 27 | Multi-contact per lead with telefone_status tracking + inline CRUD + Telefone Invalido status | 2026-02-17 | 91fb57d | [9-lead-contacts-table-multi-contact-ui-tel](./quick/9-lead-contacts-table-multi-contact-ui-tel/) |
-| 28 | Pipeline enhancements: funnel cards, contact health alerts, stale leads, phone validity, principal emphasis, commission lock | 2026-02-17 | a0fa48f | [10-pipeline-enhancements-days-since-last-co](./quick/10-pipeline-enhancements-days-since-last-co/) |
-| 29 | BI Analytics dashboard at /bi: 4 KPI cards + 4 Recharts charts (funnel, commission, UF, activity) with role-based filtering | 2026-02-17 | 45f3772 | [11-bi-dashboard-with-basic-kpis-from-existi](./quick/11-bi-dashboard-with-basic-kpis-from-existi/) |
-| 30 | Multi-contact per lead from BrasilAPI (telefone_2) + proponentes in repo-sync STEP 9 + /api/enrich-contacts backfill endpoint | 2026-02-17 | 2fcf30d | [12-sobre-os-contatos-se-tiver-2-ou-mais-ent](./quick/12-sobre-os-contatos-se-tiver-2-ou-mais-ent/) |
-| 31 | Fix cascade grouping: separate rows per parlamentar/emenda (386→421 leads) + gestor auth for cron sync | 2026-02-17 | 82cf535 | [13-fix-cascade-grouping-to-separate-rows-pe](./quick/13-fix-cascade-grouping-to-separate-rows-pe/) |
-| 32 | Transform vendedores to usuarios: role management UI + existing client routing to Paulo Gabriel | 2026-02-17 | b5f17ac | [14-transform-vendedores-page-to-usuarios-wi](./quick/14-transform-vendedores-page-to-usuarios-wi/) |
-| 33 | Fix total leads count: COUNT(DISTINCT cnpj) in all APIs + distribuir page unique CNPJ display | 2026-02-17 | 2caddee | [15-fix-total-leads-count-total-leads-count-](./quick/15-fix-total-leads-count-total-leads-count-/) |
-| 34 | Bulk reassign 73 target CNPJs to paulo@projetus.org (3 found in DB, 70 not found) | 2026-02-17 | c6f182d | [16-redistribuir-cnpjs-espec-ficos-para-paul](./quick/16-redistribuir-cnpjs-espec-ficos-para-paul/) |
-| 35 | Add missing status filters (Aguardando Closer, Telefone Invalido) + NOVO badge for leads within 48h | 2026-02-17 | 5eda288 | [17-add-missing-status-filters-new-leads-tag](./quick/17-add-missing-status-filters-new-leads-tag/) |
-| 36 | Fix 6 CRM issues: AINDA NÃO color, commission % base, cascade dedup, CNPJ monitor for Paulo, clickable pipeline, edit notes | 2026-02-18 | 6f17a7d | [18-fix-multiple-crm-issues-ainda-n-o-filter](./quick/18-fix-multiple-crm-issues-ainda-n-o-filter/) |
-| 37 | Add AINDA NÃO yellow color scheme to all status surfaces + filter dropdown option for legacy leads | 2026-02-18 | 8a81eb5 | [19-filtro-ainda-n-o-com-esquema-de-cor-dife](./quick/19-filtro-ainda-n-o-com-esquema-de-cor-dife/) |
-| 38 | Fix pipeline card pct denominator (g.total_leads) + STATUS_CONFIG fallback key accent | 2026-02-18 | 717c6a7 | [20-percentuais-apresentado-a-aba-comissiona](./quick/20-percentuais-apresentado-a-aba-comissiona/) |
-| 39 | Remove summed valor from multi-emenda main row: show highest individual emenda instead of sum | 2026-02-18 | 9fe9024 | [21-remove-summed-valor-from-multi-emenda-ma](./quick/21-remove-summed-valor-from-multi-emenda-ma/) |
-| 40 | Quadrantes clicareis: clickable top stat cards in Meu Pipeline + leads URL-param filter pre-population | 2026-02-19 | c3701c2 | [22-quadrantes-clic-veis-no-ambiente-meu-pip](./quick/22-quadrantes-clic-veis-no-ambiente-meu-pip/) |
-| 41 | Faturamento Total card in /comissoes: added to gestor view (6th card), renamed in vendedor/gestor_vendedor views | 2026-02-19 | 43d4a16 | [23-valor-total-vendido-faturamento-na-aba-d](./quick/23-valor-total-vendido-faturamento-na-aba-d/) |
-| 42 | Fix Aguardando Closer flow: gestor_vendedor can set status on any lead + Paulo user lookup without active filter | 2026-02-19 | b68eb7d | [24-quando-o-vendedor-coloca-aguardando-clos](./quick/24-quando-o-vendedor-coloca-aguardando-clos/) |
-| 43 | Fix application error on Usuarios tab: remove useSession (no SessionProvider), move self-detection server-side via is_self in API | 2026-02-19 | e319f51 | [25-fix-application-error-on-usuarios-tab](./quick/25-fix-application-error-on-usuarios-tab/) |
-| 44 | Fix Aguardando Closer from lead detail page: remove SaleModal intercept, closer_id set directly via PATCH + debug endpoint enhanced | 2026-02-19 | e5e488c | [26-quando-o-vendedor-coloca-aguardando-clos](./quick/26-quando-o-vendedor-coloca-aguardando-clos/) |
-| 45 | AINDA NÃO rose color scheme (distinct from Não Contatado orange) + pipeline % sub-label guard (hide when >100%) | 2026-02-19 | b9ddb8e | [27-filtro-ainda-nao-com-esquema-de-cor-dife](./quick/27-filtro-ainda-nao-com-esquema-de-cor-dife/) |
-| 46 | Fix sync bugs: isExisting false-positive, UPSERT RETURNING xmax for accurate counts, natJur filter logging + /api/debug-sync endpoint | 2026-02-20 | d4f0675 | [28-veja-report-do-cliente-veja-se-estamos-a](./quick/28-veja-report-do-cliente-veja-se-estamos-a/) |
-| 47 | Verificar status dos ajustes CRM de 18/02 — todos os 8 itens confirmados implementados | 2026-02-20 | - | [29-verificar-status-dos-ajustes-crm-de-18-0](./quick/29-verificar-status-dos-ajustes-crm-de-18-0/) |
-| 48 | Add sync visibility panel to gestor dashboard: cron_sync_log table + SyncPanel with Sincronizar Agora | 2026-02-20 | 1d7abc6 | [30-add-sync-visibility-panel-to-gestor-dash](./quick/30-add-sync-visibility-panel-to-gestor-dash/) |
-| 49 | Fix Paulo roleta exclusion (gestor_vendedor removed from round-robin) + redistribute 442 leads + cascade shows totalValor (soma emendas) | 2026-02-20 | c90a7f8 | [31-fix-paulo-roleta-exclusion-cascade-sum-v](./quick/31-fix-paulo-roleta-exclusion-cascade-sum-v/) |
-| 50 | Fix missing contacts: API now pulls telefone/email from lead_contacts (97% coverage) instead of vendedor_projetos (22%) | 2026-02-20 | 289d76c | [32-fix-missing-contacts-leads-fetched-from-](./quick/32-fix-missing-contacts-leads-fetched-from-/) |
-| 51 | Fix cascade sum: use client-side totalValor (sub-rows only) not DB-wide total_valor_emendas (ignores filters) | 2026-02-20 | 283df9e | [33-fix-cascade-valor-sum-total-valor-emenda](./quick/33-fix-cascade-valor-sum-total-valor-emenda/) |
-| 52 | Backfill sem-nome leads (316→42) via BrasilAPI + sync STEP 8 now enriches sem-nome CNPJs each run | 2026-02-20 | 50577ec | [34-audit-sem-nome-leads-fix-brasilapi-enric](./quick/34-audit-sem-nome-leads-fix-brasilapi-enric/) |
-| 53 | Cron rescheduled to 09:30 BRT (12:30 UTC) + BrasilAPI refiner expanded to all CNPJs missing nome/email/telefone/endereco | 2026-02-20 | 212b37a | [35-documentar-sessao-cron-09-30-brt-brasila](./quick/35-documentar-sessao-cron-09-30-brt-brasila/) |
-| 54 | SDR column + purple CLOSER badge for gestor_vendedor in leads list (Paulo sees who sent each mirrored lead) | 2026-02-20 | 6cf50c8 | [37-paulo-o-closer-precisa-espelhar-o-lead-p](./quick/37-paulo-o-closer-precisa-espelhar-o-lead-p/) |
-| 55 | Scope closer_id visibility to Aguardando Closer only: GET filter + PATCH unconditional clear + 5 stale rows cleaned | 2026-02-20 | 0962a42 | [38-paulo-precisa-ver-somente-aguardando-clo](./quick/38-paulo-precisa-ver-somente-aguardando-clo/) |
-| 56 | Fix comissoes: closer (Paulo) no longer receives SDR's R$50 bonus in split commission display | 2026-02-20 | 6ca928f | [39-quando-sdr-passa-para-o-closer-closer-re](./quick/39-quando-sdr-passa-para-o-closer-closer-re/) |
-| 57 | Fix STATUS_CONFIG accent key in comissoes page: 'Nao Contatado' → 'Não Contatado' so badge styling resolves correctly | 2026-02-20 | e58ff6b | [40-percentuais-apresentado-a-aba-comissiona](./quick/40-percentuais-apresentado-a-aba-comissiona/) |
-| 58 | CNPJ Monitorado: personal watchlist + web push notifications on emenda sync via service worker + VAPID | 2026-02-20 | 7134a0f | [41-ambiente-para-adi-o-do-cnpj-monitorado-e](./quick/41-ambiente-para-adi-o-do-cnpj-monitorado-e/) |
-| 59 | AINDA NÃO no pipeline administrativo: API count + 6th pipeline card (rose) | 2026-02-20 | 8a1a538 | [42-ainda-n-o-no-pipeline-administrativo](./quick/42-ainda-n-o-no-pipeline-administrativo/) |
-| 60 | último contato desatualizado (nunca). Verificar isso antes | 2026-02-20 | cf47b5c | [43-ltimo-contato-desatualizado-nunca-verifi](./quick/43-ltimo-contato-desatualizado-nunca-verifi/) |
-| 61 | Adicionar status AINDA NÃO no dropdown de status da página de detalhes do lead | 2026-02-23 | e5dbdb8 | [44-adicionar-status-ainda-n-o-no-dropdown-d](./quick/44-adicionar-status-ainda-n-o-no-dropdown-d/) |
-| 62 | gestor_vendedor (Paulo Gabriel) can access /distribuir, sees all leads, distributes/reassigns — amber CNPJ box gestor-only | 2026-02-23 | 7645188 | [45-visualizacao-do-paulo-grabriel-precisa-t](./quick/45-visualizacao-do-paulo-grabriel-precisa-t/) |
-| 63 | Assign CNPJs from CLIENTES.xlsx to Paulo: 12 reassigned (from Gabriel/Elisson/Vitoria/Wellington), 8 already his, 56 not in DB | 2026-02-23 | - | [46-adicionar-cnpjs-do-clientes-xlsx-para-o-](./quick/46-adicionar-cnpjs-do-clientes-xlsx-para-o-/) |
-| 64 | CLIENTES-2.xlsx → Paulo: 189 removidos de existing_clients, 16 reatribuídos de outros vendedores, 21 já eram do Paulo, 152 não no DB | 2026-02-23 | - | [47-upload-clientes-projetus-existing-clients](./quick/47-upload-clientes-projetus-existing-clients/) |
-| 65 | Hotfix roles: gestor_vendedor → coordenador (Paulo), Tito=gestor com visão de vendedor e comissão 0 por ser sócio | 2026-02-23 | 985228c | [48-hotfix-de-roles-paulo-coordernador-e-man](./quick/48-hotfix-de-roles-paulo-coordernador-e-man/) |
-| 66 | Fix percentuais na aba Comissionamento: calcular sobre NÃO CONTATADO não TOTAL GERAL | 2026-02-23 | 35ba069 | [49-fix-percentuais-na-aba-comissionamento-c](./quick/49-fix-percentuais-na-aba-comissionamento-c/) |
-| 67 | Preserve scroll position in leads list on slide-over open/close: scrollPositionRef + handleOpenLead + requestAnimationFrame restore | 2026-02-23 | d195107 | [50-visualiza-o-voltar-para-o-mesmo-ponto-an](./quick/50-visualiza-o-voltar-para-o-mesmo-ponto-an/) |
-| 68 | Hot fix Tito: gestor hybrid view (Meu Pipeline + own leads default + Ver Todos toggle) with R$0 commission enforced | 2026-02-23 | 09d27b0 | [51-hot-fix-ambiente-tito-para-vendedor-sem-](./quick/51-hot-fix-ambiente-tito-para-vendedor-sem-/) |
-| 69 | Fix multi-emenda commission: soma comissoes das emendas + fechar uma emenda nao fecha o lead inteiro | 2026-02-23 | 5079867 | [52-fix-multi-emenda-commission-soma-comisso](./quick/52-fix-multi-emenda-commission-soma-comisso/) |
-| 70 | Paulo não recebe 1% das vendas que o Tito faz ou que ele faz, ele só recebe 1% dos vendedores | 2026-02-24 | 333b937 | [53-paulo-n-o-recebe-1-das-vendas-que-o-tito](./quick/53-paulo-n-o-recebe-1-das-vendas-que-o-tito/) |
-| 71 | Audit BI numbers, improve BI with more KPIs, audit comissoes and pipeline numbers | 2026-02-24 | 04c273d | [54-audit-bi-numbers-improve-bi-with-more-kp](./quick/54-audit-bi-numbers-improve-bi-with-more-kp/) |
-| 72 | Fix 5 audit bugs: BI chart gestor filter, ainda_nao guard, dashboard commission gestor, ticket_medio consistency, Paulo summary total | 2026-02-24 | 5331ef9 | [55-fix-5-audit-bugs-bi-chart-gestor-filter-](./quick/55-fix-5-audit-bugs-bi-chart-gestor-filter-/) |
-| 73 | Fix closer/SDR commission split on tipo_vendedor change + data verification script | 2026-02-24 | 23af25e | [56-fix-closer-sdr-commission-split-closer-3](./quick/56-fix-closer-sdr-commission-split-closer-3/) |
-| 74 | Export Não Contatados + Retorno CSV per vendedor (gestor/coordenador only, UTF-8 BOM, sorted by vendedor) | 2026-03-01 | 44f27a9 | [57-export-n-o-contatados-retorno-de-cada-ve](./quick/57-export-n-o-contatados-retorno-de-cada-ve/) |
+- **New table:** projetos_execucao (Supabase PostgreSQL) — isolated from CRM
+- **New lib:** web/src/lib/execucao-sync.ts
+- **New API route:** web/src/app/api/execucao/route.ts
+- **New cron route:** web/src/app/api/cron/sync-execucao/route.ts
+- **New page:** web/src/app/execucao/page.tsx
+- **New component:** web/src/components/ExecucaoSlideOver.tsx
+- **Data sources:** siconv_convenio.csv.zip (15MB), siconv_proposta.csv.zip (187MB) from repositorio.dados.gov.br/seges/detru/
+- **Join key:** id_proposta (convenio) -> ID_PROPOSTA (proposta) to derive proponent CNPJ
 
 ## Session Continuity
 
-### Last Session Summary
-**Date:** 2026-03-01
-**Milestone:** v3.0 CRM de Vendas
-**Activity:** Quick task 74 (quick-57): Export Não Contatados + Retorno CSV per vendedor
-
-**Completed:**
-- quick-41 (#58): CNPJ Monitorado personal watchlist at /monitorar, cnpj_monitorado + push_subscriptions DB tables, web push infrastructure via VAPID, cron sync STEP 7b triggers push notifications for watched CNPJs. Commits: 1bf7d2d, e32226e, 7134a0f
-
-**Key decisions:**
-- Internal server-to-server calls to /api/push-notify use x-internal-key header (INTERNAL_API_KEY env var)
-- Visualizador role excluded from /monitorar nav item
-- Monitored CNPJ check fires on all CNPJs in sync batch to catch updates
-
-**Next Actions:**
-- Run /api/setup-crm in production to create cnpj_monitorado + push_subscriptions tables
-- Add VAPID keys and INTERNAL_API_KEY to Vercel dashboard env vars for push to work in production
-
----
-*State initialized: 2026-02-11 for milestone v3.0*
+Last session: 2026-03-18
+Stopped at: Roadmap created — ready to plan Phase 14
+Resume file: None

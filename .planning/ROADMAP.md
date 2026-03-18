@@ -2,7 +2,7 @@
 
 ## Overview
 
-PROJETUS delivers 100% reliable automated extraction of Transfer Gov data through focused milestone delivery. **Milestone v1.0** (Phases 1-5) established the complete ETL pipeline, operational monitoring, client qualification, and data dashboard. **Milestone v2.0** (Phases 6-9) transformed the Streamlit dashboard into a premium Sigma-branded sales tool. **Milestone v3.0** (Phases 10-13) builds a full CRM de Vendas on Next.js — auth per vendedor, lead assignment, pipeline kanban, contact tracking, and commission control.
+PROJETUS delivers 100% reliable automated extraction of Transfer Gov data through focused milestone delivery. **Milestone v1.0** (Phases 1-5) established the complete ETL pipeline, operational monitoring, client qualification, and data dashboard. **Milestone v2.0** (Phases 6-9) transformed the Streamlit dashboard into a premium Sigma-branded sales tool. **Milestone v3.0** (Phases 10-13) built a full CRM de Vendas on Next.js — auth per vendedor, lead assignment, pipeline kanban, contact tracking, and commission control. **Milestone v4.0** (Phases 14-17) adds a read-only post-sale intelligence tab for gestores showing active OSC grant projects with financial execution metrics, aggregated by CNPJ and linked to existing CRM contacts.
 
 ## Phases
 
@@ -12,7 +12,8 @@ PROJETUS delivers 100% reliable automated extraction of Transfer Gov data throug
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-### Milestone v1.0 — Complete
+<details>
+<summary>Milestone v1.0 — Complete (Phases 1-5)</summary>
 
 - [x] **Phase 1: Foundation** - Complete ETL pipeline with zero data loss guarantee
 - [x] **Phase 2: Operational Maturity** - Advanced monitoring, reconciliation, configuration management
@@ -20,14 +21,39 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Data Dashboard** - Streamlit dashboard for visualizing extracted Transfer Gov data
 - [ ] **Phase 3: Production Excellence** - Optional enhancements triggered by operational need
 
-### Milestone v2.0 — Dashboard Premium Redesign
+</details>
+
+<details>
+<summary>Milestone v2.0 — Dashboard Premium Redesign (Phases 6-9) — Superseded</summary>
 
 - [x] **Phase 6: Visual Foundation & Component System** - Sigma-branded dark theme, glassmorphic cards, CSS injection, typography
 - [x] **Phase 7: Data Visualization & Charts** - Interactive Plotly charts with Sigma branding for trends, geographic, value distribution
 - [x] **Phase 8: Lead Profile & Enhanced Navigation** - Dedicated lead deep-dive page, global search, visual ranking, streamlined navigation
 - [ ] **Phase 9: Polish & Production Readiness** - Mobile responsive, loading states, animations, consistent styling across all pages
 
+</details>
+
+<details>
+<summary>Milestone v3.0 — CRM de Vendas (Phases 10-13) — Complete</summary>
+
+- [x] **Phase 10: Auth & CRM Foundation** - Role-based auth (gestor/vendedor), CRM tables, protected routes
+- [x] **Phase 11: Lead Management & Contact Tracking** - Lead assignment, contact notes timeline, status tracking
+- [ ] **Phase 12: Pipeline Kanban** - Visual kanban board with drag-and-drop status columns
+- [x] **Phase 13: Comissoes** - Commission tracking and calculation per vendedor
+
+</details>
+
+### Milestone v4.0 — Projetos em Execucao
+
+- [ ] **Phase 14: Data Audit & Foundation** - Validate data integrity before building, create projetos_execucao table
+- [ ] **Phase 15: ETL Sync & Validation** - Streaming sync of convenio + proposta CSVs into projetos_execucao
+- [ ] **Phase 16: API & Business Logic** - Role-guarded API route with CNPJ-grouped financial aggregation
+- [ ] **Phase 17: UI & Navigation** - /execucao page with KPI cards, grouped table, slide-over, sidebar entry
+
 ## Phase Details
+
+<details>
+<summary>Milestone v1.0 — Complete</summary>
 
 ### Phase 1: Foundation
 **Goal**: Deliver working end-to-end pipeline that extracts 4 files from Transfer Gov daily at 9am, processes with validation, loads to PostgreSQL with relationships, and alerts on failures. Zero data loss guarantee through comprehensive validation and atomic transactions.
@@ -151,6 +177,11 @@ Plans:
 - [x] 05-03-PLAN.md — Extraction history page and Railway deployment configuration
 - [x] 05-04-PLAN.md — Human verification of complete dashboard
 
+</details>
+
+<details>
+<summary>Milestone v2.0 — Dashboard Premium Redesign — Superseded</summary>
+
 ### Phase 6: Visual Foundation & Component System
 **Goal**: Establish Sigma-branded dark theme foundation with CSS injection infrastructure and reusable glassmorphic components. Creates premium visual identity and component system used by all subsequent phases.
 
@@ -187,7 +218,7 @@ Plans:
   4. Trend chart visualizes propostas/emendas over time with monthly/yearly view toggle
   5. KPI sparklines render mini trend lines inside metric cards showing recent evolution
   6. All charts use consistent Sigma branding (colors, fonts, backgrounds match dark theme)
-  7. Charts integrated into Home and Qualificação pages with glassmorphic card wrappers
+  7. Charts integrated into Home and Qualificacao pages with glassmorphic card wrappers
 
 **Status**: Complete (2026-02-10)
 
@@ -203,13 +234,13 @@ Plans:
 **Requirements**: LEAD-01, LEAD-02, LEAD-03, LEAD-04, LEAD-05, LEAD-06, NAV-01, NAV-02, NAV-03, NAV-04
 
 **Success Criteria** (what must be TRUE):
-  1. Dedicated lead profile page shows single proponent with all data organized in tabs (emendas, propostas, convênios, histórico)
+  1. Dedicated lead profile page shows single proponent with all data organized in tabs (emendas, propostas, convenios, historico)
   2. Global search bar visible on every page accepts CNPJ or nome and navigates to lead profile
-  3. Lead profile prominently displays contact info (email, telefone, endereço)
-  4. Lead profile shows value assessment summary (tier, total emendas value, propostas count, convênios)
-  5. Lead profile displays related ministérios and programas associations
+  3. Lead profile prominently displays contact info (email, telefone, endereco)
+  4. Lead profile shows value assessment summary (tier, total emendas value, propostas count, convenios)
+  5. Lead profile displays related ministerios and programas associations
   6. Quick actions available from profile (export lead data, copy CNPJ, navigate to related entities)
-  7. Qualificação page enhanced with visual ranking cards instead of raw table and clear value tier indicators
+  7. Qualificacao page enhanced with visual ranking cards instead of raw table and clear value tier indicators
   8. Sidebar navigation styled with Sigma branding (logo, styled nav items)
   9. Breadcrumb or context indicator shows which lead/entity is currently selected
   10. All entity pages (Propostas, Programas, Apoiadores, Emendas) updated with consistent premium styling
@@ -235,7 +266,10 @@ Plans:
 Plans:
 - [ ] 09-01-PLAN.md — N/A (superseded by Next.js)
 
-### Milestone v3.0 — CRM de Vendas
+</details>
+
+<details>
+<summary>Milestone v3.0 — CRM de Vendas — Complete</summary>
 
 ### Phase 10: Auth & CRM Foundation
 **Goal**: Establish authentication system with role-based access (gestor vs vendedor), create CRM database tables, and protect all existing API routes. Gestor sees all leads, vendedor sees only assigned leads.
@@ -275,13 +309,13 @@ Plans:
   4. Lead shows direct link to programa de trabalho on TransferênciaGov
   5. Vendedor can register contact note (date, type, observation)
   6. Contact history visible as timeline on lead profile
-  7. Contact status tracking: "Não contactado", "Aguardando retorno", "Em conversa", "Fechado"
+  7. Contact status tracking: "Nao contactado", "Aguardando retorno", "Em conversa", "Fechado"
   8. Vendedor can edit contact data (phone, email) on lead profile
 
 **Status**: Complete (2026-02-12)
 
 Plans:
-- [x] 11-01-PLAN.md — Schema updates: existing_clients table, contact_notes activation, 5th status "Não Contatado"
+- [x] 11-01-PLAN.md — Schema updates: existing_clients table, contact_notes activation, 5th status "Nao Contatado"
 - [x] 11-02-PLAN.md — Lead assignment UI and API with duplicate detection
 - [x] 11-03-PLAN.md — Priority indicators, parlamentar repositioning, existing client flags
 - [x] 11-04-PLAN.md — Contact notes timeline component and visualizador role
@@ -295,7 +329,7 @@ Plans:
 **Requirements**: PIPE-01, PIPE-02, PIPE-03, PIPE-04
 
 **Success Criteria** (what must be TRUE):
-  1. Visual kanban board with 4 columns: Novo → Contactado → Em negociação → Fechado
+  1. Visual kanban board with 4 columns: Novo -> Contactado -> Em negociacao -> Fechado
   2. Vendedor can drag leads between columns to update status
   3. Each kanban card shows: nome, CNPJ, valor emenda, tier, vendedor assigned
   4. Pipeline filterable by vendedor, UF, and valor tier
@@ -307,7 +341,7 @@ Plans:
 Plans:
 - [ ] TBD (plan with `/gsd:plan-phase 12`)
 
-### Phase 13: Comissões
+### Phase 13: Comissoes
 **Goal**: Implement commission tracking and calculation per vendedor. When lead is marked "Fechado", commission is calculated based on configurable percentage. Gestor sees global report, vendedor sees their own dashboard.
 
 **Depends on**: Phase 12 (requires pipeline with "Fechado" status)
@@ -327,12 +361,97 @@ Plans:
 - [x] 13-01-PLAN.md — Commission configuration backend (DB tables, config API, lock on Fechado)
 - [x] 13-02-PLAN.md — Commission report with filters and enhanced vendedor dashboard
 
+</details>
+
+### Milestone v4.0 — Projetos em Execucao
+
+### Phase 14: Data Audit & Foundation
+**Goal**: Validate data integrity before writing a single line of ETL or API code, and create the dedicated projetos_execucao table. This phase eliminates the highest-risk unknowns — NULL proposta_id join gaps and CNPJ zero-padding mismatches — so they cannot be baked silently into the architecture.
+
+**Depends on**: Existing DB (convenios, propostas, proponentes tables populated by prior ETL)
+
+**Requirements**: DATA-07, DATA-03
+
+**Success Criteria** (what must be TRUE):
+  1. A one-time diagnostic query determines the count of convenios with situacao "em execucao" that have NULL proposta_id, and the gap-handling strategy (LEFT JOIN with miss logging) is confirmed in writing before any ETL is built
+  2. A one-time diagnostic query determines whether any CNPJ values in proponentes are shorter than 14 characters; if any exist, a one-time LPAD migration is applied so all join conditions operate on normalized CNPJs
+  3. The projetos_execucao table exists in Supabase with NUMERIC(18,2) for all financial columns, UNIQUE constraint on nr_convenio, and indexes on cnpj and situacao
+  4. The UPSERT conflict key (nr_convenio) and the list of fields the sync must never overwrite are documented before Phase 15 begins
+
+**Plans**: TBD
+
+Plans:
+- [ ] 14-01: DB migration — create projetos_execucao table with NUMERIC(18,2) columns, UNIQUE(nr_convenio), indexes
+- [ ] 14-02: Data audit — run NULL proposta_id diagnostic, CNPJ padding diagnostic, apply fixes, document gap strategy
+
+### Phase 15: ETL Sync & Validation
+**Goal**: Build and validate the streaming sync that populates projetos_execucao from the two government CSV sources. Validate against real data before any API or UI code is written — an empty table hides correctness problems in GROUP BY logic.
+
+**Depends on**: Phase 14 (table must exist; audit results determine join strategy)
+
+**Requirements**: DATA-01, DATA-02, DATA-04, DATA-05, DATA-06
+
+**Success Criteria** (what must be TRUE):
+  1. A one-off test script (not the cron) populates projetos_execucao with real rows from siconv_convenio.csv.zip and siconv_proposta.csv.zip; row count matches the expected "em execucao + OSC" universe verified by a direct SQL count on the source tables
+  2. The sync streams the 187MB proposta CSV with an OSC-only filter, building an in-memory id_proposta Map, without hitting Vercel memory limits (if Map exceeds limits, the two-pass fallback is implemented instead)
+  3. UPSERT uses ON CONFLICT (nr_convenio) DO UPDATE; running the sync twice produces identical row counts with no duplicates
+  4. Sync stats logged to cron_sync_log include join_miss_count (convenios that had no matching proposta row) so data loss is visible, not silent
+  5. A dedicated cron endpoint /api/cron/sync-execucao exists with maxDuration=300 and its own vercel.json entry, separate from the lead sync cron
+
+**Plans**: TBD
+
+Plans:
+- [ ] 15-01: execucao-sync.ts — streaming proposta filter (OSC), streaming convenio filter (em execucao), in-memory join, UPSERT
+- [ ] 15-02: One-off test script, row count validation against source, cron endpoint wired and tested
+
+### Phase 16: API & Business Logic
+**Goal**: Build the role-guarded API route that serves projetos_execucao data aggregated by CNPJ with all financial columns, contact data joins, and confirmed alert logic. The alert business rule must be confirmed with the client at the start of this phase before any query is written.
+
+**Depends on**: Phase 15 (real rows in projetos_execucao required to validate GROUP BY logic and contact joins)
+
+**Requirements**: FIN-01, FIN-02, FIN-03, FIN-04, FIN-05, FIN-06
+
+**Success Criteria** (what must be TRUE):
+  1. A gestor or coordenador calling GET /api/execucao receives a JSON response with CNPJs grouped and all financial columns (desembolso, saldo_em_conta, pct_execucao, dias_em_execucao, data_fim_vigencia) cast to NUMERIC — no floating-point precision artifacts
+  2. A vendedor calling GET /api/execucao directly (bypassing the UI) receives HTTP 401; the role guard is enforced independently on the API route via getApiSession(), not only by UI redirection
+  3. The alert condition for "desembolso negativo" is confirmed with the client by inspecting known-problematic convenios in the DB; the alert field in the API response uses a named constant derived from the confirmed business rule, not a guess
+  4. The API response includes a contact_present boolean per CNPJ derived from LEFT JOIN on lead_contacts (and vendedor_projetos as fallback), enabling the UI to show a contact indicator badge without a second fetch
+  5. Dias em execucao and tempo restante are computed in SQL (not JavaScript) so the frontend receives ready-to-display integers
+
+**Plans**: TBD
+
+Plans:
+- [ ] 16-01: /api/execucao/route.ts — role guard, GROUP BY CNPJ query, NUMERIC casts, contact LEFT JOIN, filter params (search, uf, alert_only)
+- [ ] 16-02: Alert business rule confirmed with client, named constants added, cron endpoint verified within 300s budget
+
+### Phase 17: UI & Navigation
+**Goal**: Build the /execucao page and sidebar entry that surfaces the data layer to gestores. Build UI last — after the data layer is validated — to avoid UX iteration on a broken foundation. All component patterns are direct copies of existing pages.
+
+**Depends on**: Phase 16 (API contract must be stable before UI is built against it)
+
+**Requirements**: AGR-01, AGR-02, AGR-03, AGR-04, UI-01, UI-02, UI-03, UI-04
+
+**Success Criteria** (what must be TRUE):
+  1. A gestor navigating to /execucao sees a list of CNPJs with their count of active fomentos as the primary big number, plus KPI cards at the top showing total clientes qualificados, total fomentos, and valor total em execucao
+  2. Clicking a CNPJ row opens a slide-over with full financial detail: desembolso, saldo em conta, % execucao progress bar, data fim vigencia, dias em execucao, and a contact indicator if the CNPJ exists in lead_contacts
+  3. Projects with the client-confirmed alert condition are visually highlighted (distinct border or badge) so a gestor can immediately identify problematic projects without reading every row
+  4. A vendedor navigating to /execucao is redirected to a "sem permissao" page (not the login page); the /execucao nav entry does not appear in the sidebar for vendedor role
+  5. The page shows a data freshness timestamp from cron_sync_log so the gestor knows when the data was last updated
+
+**Plans**: TBD
+
+Plans:
+- [ ] 17-01: /execucao/page.tsx — server component role guard, client component with useEffect/fetch, CNPJ-grouped list, KPI cards, alert highlighting
+- [ ] 17-02: ExecucaoSlideOver.tsx — full financial detail, % execucao progress bar, contact badge, dias em execucao
+- [ ] 17-03: Sidebar.tsx update — /execucao nav entry visible only to gestor and coordenador roles
+
 ## Progress
 
 **Execution Order:**
-- **Milestone v1.0**: Phases 1 → 2 → 4 → 5 (complete), Phase 3 (optional, triggered by need)
-- **Milestone v2.0**: Phases 6 → 7 → 8 (complete), Phase 9 (superseded by Next.js)
-- **Milestone v3.0**: Phases 10 → 11 → 12 → 13
+- **Milestone v1.0**: Phases 1 -> 2 -> 4 -> 5 (complete), Phase 3 (optional, triggered by need)
+- **Milestone v2.0**: Phases 6 -> 7 -> 8 (complete), Phase 9 (superseded by Next.js)
+- **Milestone v3.0**: Phases 10 -> 11 -> 12 -> 13
+- **Milestone v4.0**: Phases 14 -> 15 -> 16 -> 17
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -351,7 +470,12 @@ Plans:
 | 10. Auth & CRM Foundation | 3/3 | Complete | 2026-02-12 |
 | 11. Lead Management & Contact Tracking | 5/5 | Complete | 2026-02-12 |
 | 12. Pipeline Kanban | 0/TBD | Not started | - |
-| 13. Comissões | 2/2 | Complete | 2026-02-14 |
+| 13. Comissoes | 2/2 | Complete | 2026-02-14 |
+| **Milestone v4.0** | | | |
+| 14. Data Audit & Foundation | 0/2 | Not started | - |
+| 15. ETL Sync & Validation | 0/2 | Not started | - |
+| 16. API & Business Logic | 0/2 | Not started | - |
+| 17. UI & Navigation | 0/3 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-04*
@@ -365,3 +489,7 @@ Plans:
 *Milestone v3.0 added: 2026-02-11*
 *Milestone v3.0 depth: quick (4 phases)*
 *Milestone v3.0 coverage: 21/21 v3.0 requirements mapped*
+
+*Milestone v4.0 added: 2026-03-18*
+*Milestone v4.0 depth: standard (4 phases)*
+*Milestone v4.0 coverage: 21/21 v4.0 requirements mapped*
