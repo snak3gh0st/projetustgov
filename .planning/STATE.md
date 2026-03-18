@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — Projetos em Execucao
-status: in_progress
-stopped_at: Completed 15-02-PLAN.md — ETL validated, cron endpoint wired
-last_updated: "2026-03-18T17:00:00Z"
-last_activity: "2026-03-18 — Plan 15-02 complete: 8793 OSC projetos_execucao rows validated from live CSVs, cron endpoint /api/cron/sync-execucao created at 13:00 UTC, date column names fixed (DIA_INIC_VIGENC_CONV), cron_sync_log migration applied"
+status: completed
+stopped_at: Completed 15-02-PLAN.md — ETL validated, cron endpoint wired, Phase 15 complete
+last_updated: "2026-03-18T17:01:06.141Z"
+last_activity: "2026-03-18 — Plan 15-02 complete: 8793 OSC projetos_execucao rows validated from live CSVs, cron endpoint /api/cron/sync-execucao created, date column mappings fixed, cron_sync_log migration applied"
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
   completed_plans: 4
 ---
