@@ -46,7 +46,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Milestone v4.0 — Projetos em Execucao
 
 - [x] **Phase 14: Data Audit & Foundation** - Validate data integrity before building, create projetos_execucao table (completed 2026-03-18)
-- [ ] **Phase 15: ETL Sync & Validation** - Streaming sync of convenio + proposta CSVs into projetos_execucao
+- [x] **Phase 15: ETL Sync & Validation** - Streaming sync of convenio + proposta CSVs into projetos_execucao (completed 2026-03-18)
 - [ ] **Phase 16: API & Business Logic** - Role-guarded API route with CNPJ-grouped financial aggregation
 - [ ] **Phase 17: UI & Navigation** - /execucao page with KPI cards, grouped table, slide-over, sidebar entry
 
@@ -401,8 +401,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 15-01-PLAN.md — Export helpers, create execucao-sync.ts with streaming proposta+convenio ETL, in-memory join, UPSERT
-- [ ] 15-02-PLAN.md — One-off test script with row count validation, cron endpoint /api/cron/sync-execucao, vercel.json entry
+- [x] 15-01-PLAN.md — Export helpers, create execucao-sync.ts with streaming proposta+convenio ETL, in-memory join, UPSERT
+- [x] 15-02-PLAN.md — One-off test script with row count validation, cron endpoint /api/cron/sync-execucao, vercel.json entry
 
 ### Phase 16: API & Business Logic
 **Goal**: Build the role-guarded API route that serves projetos_execucao data aggregated by CNPJ with all financial columns, contact data joins, and confirmed alert logic. The alert business rule must be confirmed with the client at the start of this phase before any query is written.
@@ -473,7 +473,7 @@ Plans:
 | 13. Comissoes | 2/2 | Complete | 2026-02-14 |
 | **Milestone v4.0** | | | |
 | 14. Data Audit & Foundation | 2/2 | Complete    | 2026-03-18 |
-| 15. ETL Sync & Validation | 1/2 | In Progress|  |
+| 15. ETL Sync & Validation | 2/2 | Complete | 2026-03-18 |
 | 16. API & Business Logic | 0/2 | Not started | - |
 | 17. UI & Navigation | 0/3 | Not started | - |
 
