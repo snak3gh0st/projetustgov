@@ -1,861 +1,408 @@
-# Architecture Patterns: Streamlit Premium UI Integration
+# Architecture Research
 
-**Domain:** Streamlit Dashboard Premium UI/UX Enhancement
-**Researched:** 2026-02-09
-**Confidence:** HIGH
+**Domain:** Post-sale intelligence tab (Projetos em Execução) integrated into existing Next.js CRM
+**Researched:** 2026-03-18
+**Confidence:** HIGH — based on direct code inspection of all relevant existing files
 
-## Executive Summary
-
-Premium UI features (dark theme, glassmorphic cards, Plotly charts, global search, lead profiles) integrate with Streamlit's multi-page architecture through three complementary layers: **CSS injection** (theme and styling), **component enhancement** (custom HTML/CSS components), and **state management** (cross-page search and navigation). The architecture maintains Streamlit's reactive paradigm while pushing its boundaries through targeted HTML/CSS injection and custom components.
-
-**Key Architectural Decision:** Use external CSS files (not inline) for maintainability, inject once at app entry point, and leverage st.components.v2 for complex interactive elements only when native Streamlit is insufficient.
-
-## Recommended Architecture
+## Standard Architecture
 
 ### System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                   streamlit_app.py (Entry)                   │
-│  - st.set_page_config()                                      │
-│  - Load & inject theme CSS (dark + glassmorphic)             │
-│  - Initialize session state (search, navigation)             │
-│  - st.navigation() with 6 pages + lead profile               │
-├─────────────────────────────────────────────────────────────┤
-│                    Presentation Layer                        │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌──────────────┐   │
-│  │ Pages   │  │ Pages   │  │ Pages   │  │ Lead Profile │   │
-│  │ (home)  │  │(propostas│  │(programas│  │   (NEW)      │   │
-│  └────┬────┘  └────┬────┘  └────┬────┘  └──────┬───────┘   │
-│       │            │            │                │           │
-├───────┴────────────┴────────────┴────────────────┴───────────┤
-│                   Component Layer (NEW)                      │
-│  ┌──────────────┐  ┌─────────────┐  ┌──────────────────┐    │
-│  │ UI Components│  │   Charts    │  │  Search Widget   │    │
-│  │ (cards.py)   │  │(plotly.py)  │  │  (search.py)     │    │
-│  └──────┬───────┘  └──────┬──────┘  └────────┬─────────┘    │
-├─────────┴──────────────────┴──────────────────┴──────────────┤
-│                  Theme/Style Layer (NEW)                     │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │ assets/css/                                            │  │
-│  │  - theme_dark.css (dark mode base)                     │  │
-│  │  - glassmorphic_cards.css (card components)            │  │
-│  │  - plotly_theme.css (chart overrides)                  │  │
-│  └────────────────────────────────────────────────────────┘  │
-├─────────────────────────────────────────────────────────────┤
-│               Existing Query/Data Layer                      │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                   │
-│  │ queries/ │  │components│  │ config.py│                   │
-│  │ (cached) │  │ (export) │  │(db conn) │                   │
-│  └──────────┘  └──────────┘  └──────────┘                   │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                        BROWSER (React 18)                            │
+├──────────────────────────────────────────────────────────────────────┤
+│  ┌──────────────────┐  ┌──────────────────┐  ┌───────────────────┐   │
+│  │  /leads page     │  │  /execucao page  │  │  Sidebar.tsx      │   │
+│  │  (existing)      │  │  (NEW)           │  │  (MODIFY nav)     │   │
+│  └────────┬─────────┘  └────────┬─────────┘  └───────────────────┘   │
+├───────────┼────────────────────┼──────────────────────────────────────┤
+│                  Next.js 14 App Router (Server + Client)              │
+├───────────┼────────────────────┼──────────────────────────────────────┤
+│  ┌────────▼─────────┐  ┌───────▼──────────┐  ┌──────────────────┐    │
+│  │  /api/leads      │  │  /api/execucao   │  │  /api/cron/      │    │
+│  │  (existing)      │  │  (NEW)           │  │  sync-leads      │    │
+│  │                  │  │                  │  │  (EXTEND)        │    │
+│  └────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘    │
+├───────────┼────────────────────┼──────────────────────┼───────────────┤
+│                        lib/ (shared)                                  │
+│  ┌────────┴───────────────────┴──────────────────────┴───────────┐   │
+│  │  db.ts  │  dal.ts  │  repo-sync.ts  │  execucao-sync.ts (NEW) │   │
+│  └──────────────────────────────────────────────────────────────┘    │
+├───────────────────────────────────────────────────────────────────────┤
+│                     Supabase PostgreSQL                               │
+│  ┌─────────────────────────────────┐  ┌────────────────────────────┐  │
+│  │  vendedor_projetos (existing)   │  │  projetos_execucao (NEW)   │  │
+│  │  lead_contacts (existing)       │  │  isolated, no CRM state    │  │
+│  │  users, commission_config, etc. │  │                            │  │
+│  └─────────────────────────────────┘  └────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Component Responsibilities
 
-| Component | Responsibility | Integration Pattern |
-|-----------|----------------|---------------------|
-| **streamlit_app.py** | CSS injection, theme loading, session state init, navigation | Load CSS at top, inject via st.markdown with unsafe_allow_html |
-| **assets/css/theme_dark.css** | Dark theme base colors, typography, backgrounds | External CSS file, loaded once at app start |
-| **assets/css/glassmorphic_cards.css** | Card component styles (backdrop-filter, borders, shadows) | Targets Streamlit containers via CSS selectors |
-| **components/ui/cards.py** | Glassmorphic card wrapper component | Returns st.container with custom CSS class |
-| **components/ui/search.py** | Global search widget with autocomplete | Uses st.session_state for cross-page persistence |
-| **components/charts/plotly.py** | Plotly chart configuration and theming | Wraps st.plotly_chart with consistent theme |
-| **pages/lead_profile.py** | Detailed lead view with charts and history | New page, uses all UI components |
+| Component | Responsibility | Status |
+|-----------|----------------|--------|
+| `Sidebar.tsx` | Navigation with role-based item visibility | MODIFY — add /execucao for gestor only |
+| `/execucao/page.tsx` | Read-only intelligence view, CNPJ-grouped list | NEW |
+| `ExecucaoSlideOver.tsx` | Detail panel with financial metrics per CNPJ | NEW |
+| `/api/execucao/route.ts` | Serve projetos_execucao, join lead_contacts | NEW |
+| `execucao-sync.ts` | ETL: download convenio + proposta CSVs, join, upsert | NEW |
+| `/api/cron/sync-leads/route.ts` | Cron trigger — call execucao sync after leads sync | MODIFY |
+| `projetos_execucao` (DB table) | Stores execution-phase projects, isolated from CRM | NEW |
+| `repo-sync.ts` | Existing CRM lead sync | UNCHANGED |
+| `dal.ts` | Auth helpers — `isAdmin()` / `getApiSession()` already present | UNCHANGED |
+| `db.ts` | pg.Pool singleton, max 5 connections | UNCHANGED |
 
 ## Recommended Project Structure
 
+New files only — existing structure unchanged:
+
 ```
-src/dashboard/
-├── streamlit_app.py                # Entry point (CSS injection here)
-├── config.py                       # Database config (existing)
-├── assets/                         # NEW: Static assets
-│   └── css/
-│       ├── theme_dark.css          # Dark theme base
-│       ├── glassmorphic_cards.css  # Card components
-│       └── plotly_theme.css        # Chart styling
+web/src/
+├── app/
+│   ├── execucao/
+│   │   └── page.tsx                  # NEW: gestor-only page (server + client)
+│   └── api/
+│       └── execucao/
+│           └── route.ts              # NEW: GET /api/execucao
 ├── components/
-│   ├── __init__.py
-│   ├── metrics.py                  # Existing metric cards
-│   ├── filters.py                  # Existing filters
-│   ├── export.py                   # Existing CSV export
-│   ├── ui/                         # NEW: Premium UI components
-│   │   ├── __init__.py
-│   │   ├── cards.py                # Glassmorphic card wrappers
-│   │   ├── search.py               # Global search widget
-│   │   └── theme.py                # CSS loader utility
-│   └── charts/                     # NEW: Chart components
-│       ├── __init__.py
-│       └── plotly.py               # Plotly theme wrapper
-├── pages/
-│   ├── __init__.py
-│   ├── home.py                     # Enhanced with charts
-│   ├── propostas.py                # Enhanced with cards
-│   ├── programas.py                # Enhanced with cards
-│   ├── apoiadores.py               # Enhanced with cards
-│   ├── emendas.py                  # Enhanced with cards
-│   ├── qualificacao_new.py         # Enhanced with charts
-│   └── lead_profile.py             # NEW: Detailed lead view
-└── queries/
-    ├── __init__.py
-    ├── metrics.py                  # Existing
-    ├── history.py                  # Existing
-    ├── entities.py                 # Existing
-    ├── qualificacao.py             # Existing
-    └── proponentes.py              # Existing
+│   └── ExecucaoSlideOver.tsx         # NEW: financial detail slide-over
+└── lib/
+    └── execucao-sync.ts              # NEW: ETL for convenio + proposta CSVs
+```
+
+Database migration (run once in Supabase before any deploy):
+
+```sql
+CREATE TABLE projetos_execucao (
+  id                   SERIAL PRIMARY KEY,
+  cnpj                 VARCHAR(20) NOT NULL,
+  nome                 TEXT,
+  nr_convenio          VARCHAR(50),
+  id_proposta          BIGINT,
+  situacao             VARCHAR(100),
+  tipo_instrumento     VARCHAR(100),
+  orgao_concedente     TEXT,
+  uf                   VARCHAR(2),
+  municipio            VARCHAR(100),
+  -- financial columns
+  valor_global         NUMERIC(18,2),
+  valor_repasse        NUMERIC(18,2),
+  valor_desembolsado   NUMERIC(18,2),
+  saldo_em_conta       NUMERIC(18,2),
+  percentual_execucao  NUMERIC(5,2),
+  -- vigência
+  dt_inicio_vigencia   DATE,
+  dt_fim_vigencia      DATE,
+  -- audit
+  synced_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX projetos_execucao_cnpj_convenio_idx
+  ON projetos_execucao (cnpj, COALESCE(nr_convenio, ''));
+
+CREATE INDEX projetos_execucao_cnpj_idx ON projetos_execucao (cnpj);
 ```
 
 ### Structure Rationale
 
-- **assets/css/**: External CSS files for maintainability (not inline). Loaded once at app start. Easier to edit, version control, and reuse.
-- **components/ui/**: Premium UI components isolated from existing components. Clean separation enables incremental migration.
-- **components/charts/**: Chart-specific logic separated from UI. Centralizes Plotly theming and configuration.
-- **pages/lead_profile.py**: New page for detailed lead view. Leverages all new components without disrupting existing pages.
+- **`execucao-sync.ts` as a separate file:** Keeps ETL for execucao completely isolated from `repo-sync.ts`. The existing sync already occupies close to the 300s Vercel Pro limit. A separate file allows independent testing and independent failure — a convenio sync crash cannot corrupt the CRM lead sync.
+- **`projetos_execucao` as a new dedicated table:** The milestone spec mandates isolation from `vendedor_projetos`. These are post-sale operational records, not prospective leads. Mixing them would corrupt CRM lead counts, status dashboards, and commission calculations. The CNPJ is the join key when contact data is needed.
+- **`/execucao/page.tsx` as a new route:** Matches the established pattern — each major feature is a top-level page (`/leads`, `/comissoes`, `/monitoramento`, `/bi`). Role guard at the server component level redirects non-gestors before any data is fetched.
+- **`/api/execucao` as a new route directory:** Follows `app/api/[name]/route.ts` convention used throughout the codebase.
 
 ## Architectural Patterns
 
-### Pattern 1: CSS Injection via External Files
+### Pattern 1: Cron-Driven ETL With Sequential Isolation
 
-**What:** Load CSS files from assets/css/ and inject into Streamlit app via st.markdown with unsafe_allow_html=True.
+**What:** The new function `syncExecucaoFromRepo()` mirrors the structure of the existing `syncLeadsFromRepo()` — download ZIP, stream CSV, build in-memory map, upsert into dedicated table. It is called from the existing cron handler immediately after `syncLeadsFromRepo()` completes.
 
-**When to use:** For theme-wide styling (dark mode, glassmorphic cards, chart theming). Do this once at app entry point (streamlit_app.py).
+**When to use:** Any new government CSV source that must enter the system on the same daily schedule.
 
-**Trade-offs:**
-- **Pros:** Maintainable, version-controllable, reusable across pages, no performance hit (loaded once)
-- **Cons:** Requires unsafe_allow_html=True (security consideration, but standard practice), CSS selectors may break with Streamlit updates
+**Trade-offs:** Adding more work to an already long-running cron is a risk. The proposta CSV is 187MB — the largest file the system has ever processed. Early filtering inside the `onRow` callback is mandatory to avoid memory exhaustion. If total cron duration exceeds 300s, the execucao sync moves to a dedicated second cron path in `vercel.json`.
 
 **Example:**
-```python
-# streamlit_app.py (after st.set_page_config)
-from pathlib import Path
+```typescript
+// /api/cron/sync-leads/route.ts — MODIFIED (addition only)
+import { syncLeadsFromRepo } from '@/lib/repo-sync'
+import { syncExecucaoFromRepo } from '@/lib/execucao-sync'   // NEW
 
-def load_css(file_path: str) -> None:
-    """Load CSS file and inject into Streamlit app."""
-    with open(file_path) as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-
-# Load theme CSS files
-css_dir = Path(__file__).parent / "assets" / "css"
-load_css(css_dir / "theme_dark.css")
-load_css(css_dir / "glassmorphic_cards.css")
-load_css(css_dir / "plotly_theme.css")
-```
-
-### Pattern 2: Glassmorphic Card Component
-
-**What:** Reusable card component using st.container with custom CSS classes for glassmorphic effect.
-
-**When to use:** For metric cards, KPI displays, section wrappers. Wraps existing Streamlit content with premium styling.
-
-**Trade-offs:**
-- **Pros:** Consistent styling, minimal code change in pages, works with existing Streamlit widgets
-- **Cons:** Limited to CSS capabilities (no complex interactions), requires CSS targeting knowledge
-
-**Example:**
-```python
-# components/ui/cards.py
-import streamlit as st
-from typing import Optional
-
-def glassmorphic_card(
-    content_func,
-    key: Optional[str] = None,
-    height: Optional[str] = None
-):
-    """Render content inside a glassmorphic card container.
-
-    Args:
-        content_func: Callable that renders content inside the card
-        key: Unique key for the container
-        height: CSS height value (e.g., "200px", "auto")
-    """
-    # Use st.container with custom HTML wrapper for CSS targeting
-    container_html = f'<div class="glassmorphic-card" data-key="{key or ""}">'
-    st.markdown(container_html, unsafe_allow_html=True)
-
-    with st.container():
-        content_func()
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Usage in pages:
-# from components.ui.cards import glassmorphic_card
-#
-# def render_metrics():
-#     st.metric("Total Leads", "1,234")
-#     st.metric("Total Emendas", "567")
-#
-# glassmorphic_card(render_metrics, key="metrics_card")
-```
-
-**Corresponding CSS (assets/css/glassmorphic_cards.css):**
-```css
-.glassmorphic-card {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-}
-
-/* Target Streamlit metric widgets inside cards */
-.glassmorphic-card [data-testid="stMetric"] {
-    background: transparent;
+export async function GET(request: Request) {
+  // ... auth check unchanged ...
+  const leadStats = await syncLeadsFromRepo()        // existing, unchanged
+  const execStats = await syncExecucaoFromRepo()     // NEW, sequential
+  return NextResponse.json({ success: true, leads: leadStats, execucao: execStats })
 }
 ```
 
-### Pattern 3: Plotly Chart Theming
+### Pattern 2: Cross-Reference Via id_proposta (In-Memory Join)
 
-**What:** Centralized Plotly chart configuration with dark theme and consistent styling.
+**What:** The convenio CSV contains `id_proposta` and the financial columns (desembolso, saldo, situacao). The proposta CSV contains `id_proposta`, `cnpj_proponente`, and `tipo_instrumento`. The join key is `id_proposta`. The ETL streams proposta first, building a Map keyed by `id_proposta`. Then it streams convenio and enriches each row from the Map before upserting.
 
-**When to use:** For all Plotly charts. Ensures consistent appearance and behavior.
+**When to use:** Whenever two government CSVs must be joined to produce one database record. The convenio file alone does not contain the proponent CNPJ — it is required from proposta.
 
-**Trade-offs:**
-- **Pros:** Consistent theming, reduces boilerplate, automatic responsiveness, integrates with Streamlit theme
-- **Cons:** Less flexibility for one-off customizations (can override via params)
+**Trade-offs:** The proposta CSV at 187MB is large. Loading every proposta row into a Map is an OOM risk on Vercel's 1GB serverless limit. Filter to OSC only inside the `onRow` callback before adding to the Map. Typical OSC subset is a small fraction of all propostas.
 
 **Example:**
-```python
-# components/charts/plotly.py
-import plotly.graph_objects as go
-import streamlit as st
-from typing import Optional
+```typescript
+// execucao-sync.ts — key ETL structure
+const propostaMap = new Map<string, { cnpj: string; tipo: string }>()
 
-def render_themed_chart(
-    fig: go.Figure,
-    height: int = 400,
-    key: Optional[str] = None,
-    config: Optional[dict] = None
-):
-    """Render Plotly chart with consistent theming.
+// STEP A: stream proposta, keep only OSC
+await downloadAndStreamCSV(ZIP_FILES.proposta, (row) => {
+  const tipo = row.TIPO_INSTRUMENTO || ''
+  if (!tipo.toLowerCase().includes('osc')) return   // discard early
+  const cnpj = cleanCNPJ(row.CNPJ_PROPONENTE)
+  if (!cnpj) return
+  propostaMap.set(row.ID_PROPOSTA, { cnpj, tipo })
+})
 
-    Args:
-        fig: Plotly figure object
-        height: Chart height in pixels
-        key: Unique key for chart widget
-        config: Additional Plotly config options
-    """
-    # Default config (disable scroll zoom, keep modebar)
-    default_config = {
-        'scrollZoom': False,
-        'displayModeBar': True,
-        'displaylogo': False
-    }
-
-    if config:
-        default_config.update(config)
-
-    # Apply dark theme layout defaults
-    fig.update_layout(
-        template="plotly_dark",  # Use Plotly's dark template
-        paper_bgcolor='rgba(0,0,0,0)',  # Transparent background
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#FAFAFA', size=12),
-        margin=dict(l=40, r=40, t=40, b=40),
-        hovermode='x unified'
-    )
-
-    # Render with Streamlit
-    st.plotly_chart(
-        fig,
-        height=height,
-        width="stretch",  # Responsive width
-        config=default_config,
-        key=key
-    )
-
-# Usage in pages:
-# from components.charts.plotly import render_themed_chart
-# import plotly.express as px
-#
-# fig = px.line(df, x='date', y='value', title='Trend Analysis')
-# render_themed_chart(fig, height=350, key="trend_chart")
+// STEP B: stream convenio, join, filter "em execução", upsert
+await downloadAndStreamCSV(ZIP_FILES.convenio, (row) => {
+  const situacao = (row.SITUACAO_CONVENIO || '').toLowerCase()
+  if (!situacao.includes('execu')) return            // discard early
+  const proposta = propostaMap.get(row.ID_PROPOSTA)
+  if (!proposta) return                              // no OSC proposta match
+  // build upsert record and write to projetos_execucao
+})
 ```
 
-### Pattern 4: Global Search with Session State
+### Pattern 3: Gestor-Only Route Guard (Existing Pattern)
 
-**What:** Global search widget in sidebar that persists across pages and filters data.
+**What:** The `/execucao` page checks session role server-side and redirects non-gestors. The API route also checks role and returns 401 for non-gestors. Both use existing helpers from `dal.ts`.
 
-**When to use:** For cross-page search functionality. User searches once, results available on any page.
-
-**Trade-offs:**
-- **Pros:** Excellent UX, no page refreshes needed, leverages Streamlit's reactive model
-- **Cons:** Requires careful session state management, can cause unnecessary reruns if not optimized
+**When to use:** Any feature restricted to gestor role. The codebase has no `middleware.ts` for role-based routing — all guards live in route/page files. This is consistent with how `/upload`, `/distribuir`, `/monitoramento`, and the sync cron are already protected.
 
 **Example:**
-```python
-# components/ui/search.py
-import streamlit as st
-from typing import Optional, Callable
+```typescript
+// /execucao/page.tsx (server component)
+import { verifySession } from '@/lib/dal'
+import { redirect } from 'next/navigation'
 
-def render_global_search(
-    placeholder: str = "Buscar leads, propostas...",
-    on_search: Optional[Callable] = None
-) -> str:
-    """Render global search widget in sidebar.
+export default async function ExecucaoPage() {
+  const session = await verifySession()
+  if (session.role !== 'gestor') redirect('/')
+  return <ExecucaoClientPage />
+}
 
-    Args:
-        placeholder: Search input placeholder text
-        on_search: Optional callback when search changes
-
-    Returns:
-        Current search term
-    """
-    # Initialize session state
-    if "global_search" not in st.session_state:
-        st.session_state.global_search = ""
-
-    # Render search input
-    search_term = st.sidebar.text_input(
-        "🔍 Busca Global",
-        value=st.session_state.global_search,
-        placeholder=placeholder,
-        key="global_search_input",
-        help="Busca em todas as páginas"
-    )
-
-    # Update session state
-    if search_term != st.session_state.global_search:
-        st.session_state.global_search = search_term
-        if on_search:
-            on_search(search_term)
-
-    return search_term
-
-# Usage in streamlit_app.py (before navigation):
-# from components.ui.search import render_global_search
-# search_term = render_global_search()
-
-# Usage in pages (access search term):
-# search_term = st.session_state.get("global_search", "")
-# if search_term:
-#     df = df[df['nome'].str.contains(search_term, case=False, na=False)]
+// /api/execucao/route.ts
+const session = await getApiSession()
+if (!session || session.role !== 'gestor') {
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+}
 ```
 
-### Pattern 5: Lead Profile Page with URL State
+### Pattern 4: CNPJ as Integration Key for Contact Data
 
-**What:** Dedicated page for detailed lead view, accessible via navigation and direct URL.
+**What:** Contact data (telefone, email from `lead_contacts`) is retrieved by joining on `cnpj`. The `/api/execucao` query LEFT JOINs `projetos_execucao` with `lead_contacts` on `pe.cnpj = lc.lead_cnpj`, using the same ordering already established in `/api/leads` (`principal DESC, created_at ASC`). If `lead_contacts` has no entry, it falls back to `vendedor_projetos.telefone/email`.
 
-**When to use:** For drill-down from qualification page or direct access via URL parameters.
-
-**Trade-offs:**
-- **Pros:** Clean separation of concerns, deep-linkable, better UX than modals
-- **Cons:** Requires URL parameter handling, back button navigation considerations
+**When to use:** Any new table that needs to surface contact info for an organization. CNPJ is the stable cross-table key in this system.
 
 **Example:**
-```python
-# pages/lead_profile.py
-import streamlit as st
-from components.ui.cards import glassmorphic_card
-from components.charts.plotly import render_themed_chart
-from queries.qualificacao import get_proponente_details
-import plotly.express as px
-
-def render_lead_profile():
-    """Render detailed lead profile page."""
-    st.title("Perfil do Lead")
-
-    # Get selected CNPJ from session state or URL params
-    query_params = st.query_params
-    selected_cnpj = query_params.get("cnpj", st.session_state.get("selected_lead_cnpj"))
-
-    if not selected_cnpj:
-        st.warning("Selecione um lead na página de Qualificação.")
-        return
-
-    # Fetch lead details
-    lead = get_proponente_details(selected_cnpj)
-
-    if not lead:
-        st.error("Lead não encontrado.")
-        return
-
-    # Header with back button
-    col1, col2 = st.columns([1, 6])
-    with col1:
-        if st.button("← Voltar"):
-            st.session_state.selected_lead_cnpj = None
-            st.switch_page("pages/qualificacao_new.py")
-
-    with col2:
-        st.header(lead['nome'])
-
-    # KPI metrics in glassmorphic cards
-    def render_kpis():
-        cols = st.columns(4)
-        with cols[0]:
-            st.metric("Propostas", lead['total_propostas'])
-        with cols[1]:
-            st.metric("Emendas", lead['total_emendas'])
-        with cols[2]:
-            st.metric("Valor Emendas", f"R$ {lead['valor_total_emendas']/1_000_000:.1f}M")
-        with cols[3]:
-            st.metric("Convênios", lead.get('total_convenios', 0))
-
-    glassmorphic_card(render_kpis, key="lead_kpis")
-
-    # Charts section
-    st.subheader("Análise Temporal")
-
-    # Example: Proposals timeline chart
-    timeline_data = get_proponente_propostas_timeline(selected_cnpj)
-    fig = px.bar(
-        timeline_data,
-        x='data_publicacao',
-        y='valor_global',
-        title='Histórico de Propostas por Mês'
-    )
-    render_themed_chart(fig, height=300, key="timeline_chart")
-
-# In qualificacao_new.py, navigate to profile:
-# if st.button("Ver Perfil Completo"):
-#     st.session_state.selected_lead_cnpj = selected_cnpj
-#     st.switch_page("pages/lead_profile.py")
+```sql
+SELECT
+  pe.*,
+  COALESCE(
+    (SELECT lc.telefone FROM lead_contacts lc
+     WHERE lc.lead_cnpj = pe.cnpj
+     ORDER BY lc.principal DESC, lc.created_at ASC LIMIT 1),
+    vp.telefone
+  ) AS telefone_contato,
+  COALESCE(
+    (SELECT lc.email FROM lead_contacts lc
+     WHERE lc.lead_cnpj = pe.cnpj
+     ORDER BY lc.principal DESC, lc.created_at ASC LIMIT 1),
+    vp.email
+  ) AS email_contato,
+  COUNT(*) OVER (PARTITION BY pe.cnpj) AS fomento_count
+FROM projetos_execucao pe
+LEFT JOIN (
+  SELECT DISTINCT ON (cnpj) cnpj, telefone, email
+  FROM vendedor_projetos ORDER BY cnpj, updated_at DESC
+) vp ON vp.cnpj = pe.cnpj
+ORDER BY pe.cnpj, pe.valor_global DESC NULLS LAST
 ```
+
+### Pattern 5: CNPJ Grouping on the Frontend (Existing Pattern)
+
+**What:** The leads page (`/leads/page.tsx`) already implements CNPJ-level grouping in a `useMemo`: it reduces the flat array of rows into groups keyed by CNPJ, then derives aggregate values (total valor, emenda count). The execucao page uses the same pattern: group by CNPJ, show fomento count as the "big number", expand to show individual convênios.
+
+**When to use:** Any list view where one organization can have multiple rows in the DB (multiple convênios for the same CNPJ).
 
 ## Data Flow
 
-### CSS Loading and Application
+### Sync Flow (Daily Cron at 12:30 UTC / 18:00 UTC)
 
 ```
-App Start (streamlit_app.py)
-    ↓
-st.set_page_config(layout="wide")
-    ↓
-Load CSS files from assets/css/
-    ↓
-Inject via st.markdown(<style>...</style>, unsafe_allow_html=True)
-    ↓
-CSS rules apply to entire app (all pages)
-    ↓
-Pages render → Streamlit generates HTML with class names
-    ↓
-CSS selectors target Streamlit elements (e.g., .stMetric, .stDataFrame)
-    ↓
-Glassmorphic effects applied via backdrop-filter, borders, shadows
+Vercel Cron triggers GET /api/cron/sync-leads
+    |
+    +---> syncLeadsFromRepo()  [unchanged]
+    |         download siconv_programa.csv.zip   (small)
+    |         download siconv_emenda.csv.zip     (medium)
+    |         download siconv_proponentes.csv.zip (medium)
+    |         upsert vendedor_projetos (CRM leads)
+    |         BrasilAPI enrichment queue
+    |         ~200-250s total
+    |
+    +---> syncExecucaoFromRepo()  [NEW]
+              download siconv_proposta.csv.zip  (187MB, filter OSC in-stream)
+              download siconv_convenio.csv.zip  (15MB, filter "em execução" in-stream)
+              in-memory join: convenio -> proposta via id_proposta
+              upsert projetos_execucao ON CONFLICT (cnpj, nr_convenio)
+              ~30-60s target
 ```
 
-### Global Search Data Flow
+### Query Flow (Gestor Visits /execucao)
 
 ```
-User enters search term (sidebar)
-    ↓
-st.session_state.global_search = search_term
-    ↓
-Streamlit reruns current page
-    ↓
-Page queries data with @st.cache_data (10-30 min TTL)
-    ↓
-Page filters cached data using search term
-    ↓
-Display filtered results
-    ↓
-User navigates to different page
-    ↓
-Session state persists (search term available)
-    ↓
-New page uses same search term for filtering
+Gestor navigates to /execucao
+    |
+    v
+/execucao/page.tsx (server component)
+    verifySession() -> role check -> redirect if not gestor
+    renders <ExecucaoClientPage /> (client component)
+    |
+    v
+useEffect -> GET /api/execucao?search=...&uf=...&alert_only=...
+    |
+    v
+/api/execucao/route.ts
+    getApiSession() -> role guard (401 if not gestor)
+    SELECT from projetos_execucao
+      LEFT JOIN lead_contacts ON cnpj (for contact info)
+      LEFT JOIN vendedor_projetos ON cnpj (fallback contact)
+      WHERE (search, uf, alert_only filters)
+    returns flat JSON array
+    |
+    v
+Client page
+    groups rows by CNPJ (same useMemo pattern as /leads)
+    big number: fomento_count per CNPJ
+    alert highlight: valor_desembolsado < 0 (red border-l-2)
+    click row -> ExecucaoSlideOver opens with full financial detail
 ```
 
-### Lead Profile Navigation Flow
+### Key Data Flows
 
-```
-Qualification Page: User clicks "Ver Perfil" button
-    ↓
-Set st.session_state.selected_lead_cnpj = cnpj
-    ↓
-st.switch_page("pages/lead_profile.py")
-    ↓
-Lead Profile Page: Read session state for CNPJ
-    ↓
-Query lead details (cached)
-    ↓
-Render glassmorphic cards with metrics
-    ↓
-Render Plotly charts with themed wrapper
-    ↓
-User clicks "← Voltar"
-    ↓
-Clear session state, switch back to qualification page
-```
-
-### Chart Rendering Flow
-
-```
-Page imports render_themed_chart from components/charts/plotly
-    ↓
-Create Plotly figure (e.g., px.line(df, x='date', y='value'))
-    ↓
-Pass to render_themed_chart(fig, height=400, key="chart1")
-    ↓
-Function applies dark theme layout (plotly_dark template)
-    ↓
-Set transparent backgrounds (rgba(0,0,0,0))
-    ↓
-Configure responsiveness (width="stretch")
-    ↓
-Disable scroll zoom, keep modebar
-    ↓
-Call st.plotly_chart with config
-    ↓
-Streamlit renders chart with Plotly.js
-    ↓
-CSS overrides from plotly_theme.css apply
-```
-
-## Integration Points with Existing Architecture
-
-### 1. CSS Injection into streamlit_app.py
-
-**Current:**
-```python
-# streamlit_app.py (lines 19-23)
-st.set_page_config(
-    page_title="PROJETUS Dashboard",
-    page_icon="📊",
-    layout="wide",
-)
-```
-
-**Enhanced:**
-```python
-st.set_page_config(
-    page_title="PROJETUS Dashboard",
-    page_icon="📊",
-    layout="wide",
-)
-
-# Load premium theme CSS
-from components.ui.theme import load_theme_css
-load_theme_css()  # Loads all CSS files from assets/css/
-```
-
-### 2. Enhance Existing Metric Cards (components/metrics.py)
-
-**Current:** Plain st.metric calls
-**Enhanced:** Wrap in glassmorphic_card component
-
-```python
-# Before (components/metrics.py)
-def render_metric_cards(counts: dict, freshness: dict) -> None:
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric(label="Programas", value=f"{counts.get('programas', 0):,}")
-    # ... more metrics
-
-# After (with glassmorphic wrapper)
-from components.ui.cards import glassmorphic_card
-
-def render_metric_cards(counts: dict, freshness: dict) -> None:
-    def metrics_content():
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric(label="Programas", value=f"{counts.get('programas', 0):,}")
-        # ... more metrics
-
-    glassmorphic_card(metrics_content, key="home_metrics")
-```
-
-### 3. Add Global Search to Sidebar (streamlit_app.py)
-
-**Current:** No global search
-**Enhanced:** Add before navigation
-
-```python
-# After CSS loading, before st.navigation
-from components.ui.search import render_global_search
-search_term = render_global_search()
-
-# Navigation continues as normal
-pages = [
-    st.Page(home_page, title="Home", icon="🏠"),
-    # ... existing pages
-    st.Page(lead_profile_page, title="Perfil Lead", icon="👤"),  # NEW
-]
-pg = st.navigation(pages)
-pg.run()
-```
-
-### 4. Enhance Charts in Existing Pages
-
-**Current:** Direct Plotly/native chart usage
-**Enhanced:** Use themed wrapper
-
-```python
-# Example: qualificacao_new.py adding a chart
-from components.charts.plotly import render_themed_chart
-import plotly.express as px
-
-# After lead selection
-if selected_lead_idx is not None:
-    # ... existing lead details
-
-    # NEW: Add trend chart
-    st.subheader("Tendência de Propostas")
-    proposals_df = get_proponente_propostas_timeline(selected_cnpj)
-    fig = px.line(
-        proposals_df,
-        x='mes',
-        y='valor_total',
-        title='Valor de Propostas por Mês'
-    )
-    render_themed_chart(fig, height=300, key="proposals_trend")
-```
-
-### 5. Page-Level Search Integration
-
-**Current:** Local search via st.text_input
-**Enhanced:** Combine global + local search
-
-```python
-# pages/qualificacao_new.py
-# Access global search from session state
-global_search = st.session_state.get("global_search", "")
-
-# Local search in sidebar (more specific)
-local_search = st.sidebar.text_input(
-    "Buscar nesta página",
-    placeholder="Nome ou CNPJ...",
-    key="qualif_local_search",
-)
-
-# Combine searches (OR logic)
-search_term = local_search or global_search
-
-# Apply to dataframe filter
-if search_term:
-    filters["search"] = search_term
-```
+1. **Alert detection:** `valor_desembolsado < 0` is computed in the DB (raw column value). The API returns it as-is. The frontend reads it and applies `border-l-2 border-l-red-500` (same visual pattern as `is_max_priority` on the leads page). Positive desembolso with low saldo triggers an "amber" check-saldo indicator.
+2. **Contact surfacing:** `lead_contacts` principal contact is joined at the API layer via correlated subquery. If none exists, `vendedor_projetos` phone/email is the fallback (COALESCE). The frontend renders the same contact display as the leads table.
+3. **Fomento count:** `COUNT(*) OVER (PARTITION BY pe.cnpj)` in the SQL query computes the count per CNPJ without a separate aggregation query. Returned on every row; the frontend reads it from the first row of each group.
+4. **Vigência days:** `EXTRACT(DAY FROM NOW() - dt_inicio_vigencia)::INT` computed in SQL. No client-side date math needed.
 
 ## Scaling Considerations
 
 | Scale | Architecture Adjustments |
 |-------|--------------------------|
-| 1-10 concurrent users (current) | Current architecture sufficient. CSS loaded once per session. st.cache_data (10-30 min TTL) handles query caching. No special optimizations needed. |
-| 10-50 concurrent users | Monitor cache hit rates. Consider reducing TTL if data staleness becomes issue. Glassmorphic effects perform well (CSS only). Plotly charts may need sampling for large datasets (>10k points). |
-| 50-100+ concurrent users | Increase cache TTL to reduce DB load. Implement server-side pagination for large tables (currently loading 5000 records). Consider CDN for CSS assets if network becomes bottleneck. Plotly WebGL traces for large datasets. |
+| Current (gestor-only, dozens to hundreds of execution-phase orgs) | Single SQL query with window function is fine. No caching needed. Full table fits in one response. |
+| 1k+ projetos_execucao rows | Add `LIMIT` and search filtering to `/api/execucao`. The "em execução + OSC" filter on the source data naturally bounds the result set. |
+| Cron timeout risk (>300s total) | If both syncs together exceed 300s, add a second cron path for execucao at `30 14 * * *` in `vercel.json`. The two syncs are fully independent (separate tables, separate functions). |
 
 ### Scaling Priorities
 
-1. **First bottleneck: Database query load**
-   - **Symptom:** Slow page loads, high DB CPU
-   - **Fix:** Increase st.cache_data TTL to 30-60 min, optimize SQL queries with indexes, implement query result pagination
-
-2. **Second bottleneck: Large dataframe rendering**
-   - **Symptom:** Browser slowdown, high memory usage
-   - **Fix:** Implement server-side pagination (100-500 rows per page), use st.data_editor with on_select for interactivity, sample large datasets for charts
-
-3. **Third bottleneck: CSS rendering performance**
-   - **Symptom:** Slow initial page load, laggy animations
-   - **Fix:** Minimize CSS file size, reduce backdrop-filter complexity, disable glassmorphic effects on low-end devices
+1. **First bottleneck — proposta CSV memory:** 187MB compressed, estimated 1-2GB uncompressed. Filter OSC rows in the `onRow` callback before building the Map. If the OSC subset is still too large, switch to a two-pass approach: first pass extracts only OSC `id_proposta` values into a Set, second pass streams the full CSV again and only builds the Map for those IDs.
+2. **Second bottleneck — cron duration:** The sync must complete within Vercel's 300s function timeout. Instrument `syncExecucaoFromRepo()` with step-level timing logs from the start. If it approaches 60s, the cron has headroom; if it exceeds 60s consistently, move it to its own cron.
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Inline CSS in Every Page
+### Anti-Pattern 1: Merging Execution Projects Into vendedor_projetos
 
-**What people do:** Copy-paste CSS strings into every page file with st.markdown
+**What people do:** Add columns (`situacao_execucao`, `desembolso`) to the existing `vendedor_projetos` table and populate them from the convenio CSV.
 
-**Why it's wrong:**
-- Unmaintainable (changes require editing multiple files)
-- Increases page load time (CSS injected on every page render)
-- Inconsistent styling across pages
-- Version control nightmare (diffs show CSS noise)
+**Why it's wrong:** `vendedor_projetos` has CRM constraints — the UPSERT deliberately never overwrites `status_contato`, `vendedor_id`, `comissao_*`. Mixing execution-phase financial data into this table forces the CRM sync to distinguish lead vs. project records. It also inflates lead counts, corrupts status dashboards, and breaks commission reports.
 
-**Do this instead:** Load CSS once at app entry point (streamlit_app.py) from external files (assets/css/). CSS applies globally, pages stay clean.
+**Do this instead:** Separate table `projetos_execucao`. Join on CNPJ at query time when contact data is needed.
 
-### Anti-Pattern 2: Using st.components.v2 for Simple Styling
+### Anti-Pattern 2: Loading the Entire proposta CSV Into Memory
 
-**What people do:** Create custom components with HTML/CSS/JS for simple card styling
+**What people do:** Buffer all rows of `siconv_proposta.csv.zip` into a Map, then filter to OSC afterward.
 
-**Why it's wrong:**
-- Overkill for pure CSS effects (no JS needed for glassmorphic cards)
-- Adds complexity (component registration, mounting, cleanup)
-- Slower rendering (shadow DOM overhead)
-- Breaks Streamlit's reactive model (requires manual state sync)
+**Why it's wrong:** The proposta file is 187MB compressed — likely 1-2GB in memory. Vercel serverless functions are limited to 1GB RAM on Pro. Loading all rows causes OOM crashes.
 
-**Do this instead:** Use CSS injection for styling, st.container for layout. Only use st.components.v2 when you need custom JavaScript interactions (e.g., D3.js charts, custom animations).
+**Do this instead:** Filter `tipo_instrumento` for OSC inside the `onRow` streaming callback. The `return` inside the callback discards the row without adding it to any Map. The existing streaming ZIP parser in `repo-sync.ts` supports this — `onRow` fires per row, early return costs only the row parsing overhead.
 
-### Anti-Pattern 3: Storing Large DataFrames in Session State
+### Anti-Pattern 3: Role Guard Only on the Frontend
 
-**What people do:** Put entire dataframes in st.session_state for cross-page access
+**What people do:** Check `session.role === 'gestor'` in a `useEffect`, hide the UI if not gestor, but leave the API route open.
 
-**Why it's wrong:**
-- Memory bloat (session state persists until session ends)
-- Serialization overhead (Streamlit pickles session state on every rerun)
-- Stale data (no automatic refresh when DB updates)
-- Breaks caching (st.cache_data more efficient)
+**Why it's wrong:** API routes are reachable by any authenticated user who constructs the URL. Vendedores can call `/api/execucao` directly and see all financial data.
 
-**Do this instead:** Use st.cache_data for queries (cached, auto-refreshed on TTL). Store only IDs/filters in session state (e.g., selected_lead_cnpj, not entire lead dataframe).
+**Do this instead:** Guard both the server component (redirect on page load) and the API route (401 for non-gestors). Use `verifySession()` in the server component and `getApiSession()` in the API route — both are already in `dal.ts`.
 
-### Anti-Pattern 4: Global Search with Unfiltered Queries
+### Anti-Pattern 4: Calling Both Syncs in Parallel
 
-**What people do:** Query all data, then filter in Python based on search term
+**What people do:** `await Promise.all([syncLeadsFromRepo(), syncExecucaoFromRepo()])` to save time.
 
-**Why it's wrong:**
-- Loads unnecessary data from database
-- Slow filtering for large datasets (>10k rows)
-- Wastes memory (entire dataset in memory)
-- Poor UX (slow search response)
+**Why it's wrong:** Both syncs share the same `pg.Pool` with `max: 5` connections (`db.ts` line 7). The existing `syncLeadsFromRepo()` holds a pool client for the entire duration of STEP 5-9 (several minutes). A concurrent second sync competes for the remaining 4 connections, causing connection timeout errors and potential pool exhaustion.
 
-**Do this instead:** Pass search term to SQL query as WHERE clause. Let database handle filtering (indexed, optimized). Return only matching rows.
+**Do this instead:** Sequential calls. `await syncLeadsFromRepo()` then `await syncExecucaoFromRepo()`. The total duration is additive (~30-60s more) — acceptable within the 300s budget.
 
-Example:
-```python
-# BAD
-@st.cache_data
-def get_all_leads():
-    return pd.read_sql("SELECT * FROM leads", conn)
+### Anti-Pattern 5: Using percentual_execucao From the Repo Without Validation
 
-leads = get_all_leads()
-if search_term:
-    leads = leads[leads['nome'].str.contains(search_term)]  # Slow!
+**What people do:** Display the `PERC_EXEC_FINANC` field from the convenio CSV directly as "% de execução."
 
-# GOOD
-@st.cache_data
-def get_leads(search: str = ""):
-    query = "SELECT * FROM leads WHERE nome ILIKE %s"
-    return pd.read_sql(query, conn, params=(f"%{search}%",))
+**Why it's wrong:** Government CSVs sometimes contain `null`, `0`, or stale values for this field. If `valor_global` is available, recomputing the percentage from `valor_desembolsado / valor_global * 100` is more reliable than trusting the pre-computed column.
 
-leads = get_leads(search_term)  # Fast, database-filtered
-```
+**Do this instead:** Store the raw repo value in `percentual_execucao`. In the API query or frontend, prefer `(valor_desembolsado / valor_global * 100)` when both values are non-null and non-zero; fall back to the stored `percentual_execucao` otherwise.
 
-### Anti-Pattern 5: Mixing Plotly Themes Inconsistently
+## Integration Points
 
-**What people do:** Set theme="streamlit" on some charts, theme=None on others, custom colors everywhere
+### External Services
 
-**Why it's wrong:**
-- Inconsistent appearance (some charts dark, some light)
-- Breaks visual hierarchy
-- Confusing to users (looks like multiple dashboards)
-- Hard to maintain (every chart needs custom config)
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| `repositorio.dados.gov.br` | HTTP GET + ZIP streaming — same `downloadAndStreamCSV` helper as existing sync | Two new files: `siconv_convenio.csv.zip` (15MB) and `siconv_proposta.csv.zip` (187MB). Both are at `REPO_BASE = 'https://repositorio.dados.gov.br/seges/detru'` already defined in `repo-sync.ts`. Copy the constant or import it. |
+| Supabase PostgreSQL | `pg.Pool` via `getPool()` from `db.ts` | Shared pool, sequential access only. New table `projetos_execucao` lives in the same Supabase DB. No schema changes to any existing table. |
 
-**Do this instead:** Centralize theme in render_themed_chart wrapper. All charts get consistent dark theme, transparent backgrounds, fonts. Override only when needed via params.
+### Internal Boundaries
 
-## Build Order and Dependencies
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| `execucao-sync.ts` -> `db.ts` | Imports `getPool()`, acquires client, runs queries, releases in `finally` | Identical pattern to `repo-sync.ts` STEP 5+. |
+| `/api/execucao` -> `db.ts` | Imports `query()` helper | Same pattern as `/api/leads/route.ts`. |
+| `/api/execucao` -> `dal.ts` | Imports `getApiSession()` | Role check: `session.role !== 'gestor'` returns 401. |
+| `/api/cron/sync-leads` -> `execucao-sync.ts` | `import { syncExecucaoFromRepo }` | Called sequentially after `syncLeadsFromRepo()` in the same handler file. |
+| `Sidebar.tsx` -> session role | Receives `user.role` prop from `layout.tsx` | Add `/execucao` nav item to the gestor-only block (currently lines 53-59 of `Sidebar.tsx`). The coordenador block does NOT get this item per the milestone spec. |
+| `projetos_execucao` -> `lead_contacts` | SQL LEFT JOIN on `cnpj = lead_cnpj` | Read-only join. The execucao sync never writes to `lead_contacts`. |
+| `projetos_execucao` -> `vendedor_projetos` | SQL LEFT JOIN on `cnpj` as fallback contact | Used only when `lead_contacts` has no entry for a CNPJ. Read-only. |
 
-### Phase 1: Foundation (CSS + Theme Components)
-**Goal:** Establish theme infrastructure without breaking existing functionality
+## Build Order
 
-1. **Create directory structure**
-   - mkdir -p src/dashboard/assets/css
-   - mkdir -p src/dashboard/components/ui
-   - mkdir -p src/dashboard/components/charts
+Build in this exact dependency order:
 
-2. **Create CSS files**
-   - assets/css/theme_dark.css (dark theme base)
-   - assets/css/glassmorphic_cards.css (card component styles)
-   - assets/css/plotly_theme.css (chart overrides)
+**Step 1 — DB migration** (prerequisite for all other steps)
+Run the `CREATE TABLE projetos_execucao` + indexes SQL in Supabase. No app code deploys yet. Table is empty — no impact on existing system.
 
-3. **Create theme loader utility**
-   - components/ui/theme.py (load_theme_css function)
+**Step 2 — `execucao-sync.ts`** (depends on Step 1, no UI dependency)
+Implement `syncExecucaoFromRepo()`. Test by calling it directly from a one-off script (`web/scripts/test-execucao-sync.mjs`) against the live Supabase DB. Validate that the CSV join produces records and that the upsert populates `projetos_execucao`. Do NOT wire into cron yet.
 
-4. **Integrate CSS loading**
-   - Modify streamlit_app.py to load CSS after st.set_page_config
+**Step 3 — `/api/execucao/route.ts`** (depends on Step 1; can be built in parallel with Step 2)
+Implement the GET endpoint with role guard, SQL query, LEFT JOINs, and filter parameters. Test via `curl -H "Cookie: ..." http://localhost:3000/api/execucao`. Returns empty array until Step 2 populates the table — that is acceptable.
 
-**Dependencies:** None (standalone)
-**Risk:** Low (CSS is additive, doesn't break existing functionality)
-**Testing:** Visual inspection, check CSS applies to all pages
+**Step 4 — Extend cron handler** (depends on Step 2)
+Add `syncExecucaoFromRepo()` call to `/api/cron/sync-leads/route.ts`. Trigger manually via `curl` with `CRON_SECRET`. Verify both syncs run sequentially and the total runtime stays within 300s. Check Supabase for populated rows.
 
-### Phase 2: UI Component Wrappers
-**Goal:** Create reusable components for glassmorphic cards and themed charts
+**Step 5 — `/execucao/page.tsx` + `ExecucaoSlideOver.tsx`** (depends on Steps 3 and 4)
+Build the read-only frontend. The page pattern is identical to `/leads/page.tsx`: fetch on mount, group by CNPJ, rows expand, slide-over for detail. Add alert highlighting for `valor_desembolsado < 0`.
 
-1. **Create glassmorphic card component**
-   - components/ui/cards.py (glassmorphic_card function)
-
-2. **Create Plotly chart wrapper**
-   - components/charts/plotly.py (render_themed_chart function)
-
-3. **Test components in isolation**
-   - Create test page with sample cards and charts
-   - Verify glassmorphic effects, chart theming
-
-**Dependencies:** Phase 1 (CSS must be loaded)
-**Risk:** Low (components are wrappers, don't change data flow)
-**Testing:** Visual inspection, test on multiple screen sizes
-
-### Phase 3: Enhance Existing Pages
-**Goal:** Apply premium UI to existing pages incrementally
-
-1. **Enhance home page**
-   - Wrap metric cards in glassmorphic_card
-   - Add trend chart with render_themed_chart
-
-2. **Enhance qualification page**
-   - Wrap KPI metrics in glassmorphic_card
-   - Add lead selection chart
-
-3. **Enhance entity pages (propostas, programas, apoiadores, emendas)**
-   - Wrap content sections in glassmorphic_card
-   - Add relevant charts (distribution, trends)
-
-**Dependencies:** Phase 2 (components must exist)
-**Risk:** Medium (modifying existing pages, potential regressions)
-**Testing:** Full regression testing, verify existing functionality
-
-### Phase 4: Global Search
-**Goal:** Add cross-page search functionality
-
-1. **Create search component**
-   - components/ui/search.py (render_global_search function)
-
-2. **Integrate into streamlit_app.py**
-   - Add search widget before navigation
-
-3. **Update query functions to accept search parameter**
-   - Modify queries/qualificacao.py, queries/entities.py
-
-4. **Update pages to use global search**
-   - Read search term from session state
-   - Pass to query functions
-
-**Dependencies:** Phase 1 (CSS for search styling)
-**Risk:** Medium (requires session state management, query changes)
-**Testing:** Test search across all pages, verify persistence
-
-### Phase 5: Lead Profile Page
-**Goal:** Create dedicated lead detail page with charts and full data
-
-1. **Create lead profile page**
-   - pages/lead_profile.py (render_lead_profile function)
-
-2. **Add to navigation**
-   - Update streamlit_app.py to include lead profile page
-
-3. **Add navigation from qualification page**
-   - Button to switch to lead profile with selected CNPJ
-
-4. **Implement profile charts**
-   - Proposals timeline, emenda distribution, value trends
-
-**Dependencies:** Phase 2 (cards, charts), Phase 3 (qualification page integration)
-**Risk:** Low (new page, doesn't affect existing pages)
-**Testing:** Test navigation, chart rendering, back button
+**Step 6 — `Sidebar.tsx` update** (depends on Step 5, lowest risk)
+Add the `/execucao` nav item to the gestor-only nav block. One-line change. Ship last to avoid a nav item pointing to a page that does not yet exist.
 
 ## Sources
 
-**HIGH Confidence (Official Documentation):**
-- [Streamlit Theming - Official Docs](https://docs.streamlit.io/develop/concepts/configuration/theming)
-- [st.plotly_chart API Reference](https://docs.streamlit.io/develop/api-reference/charts/st.plotly_chart)
-- [st.components.v2.component API Reference](https://docs.streamlit.io/develop/api-reference/custom-components/st.components.v2.component)
-- [Streamlit Session State](https://docs.streamlit.io/develop/concepts/architecture/session-state)
-- [Streamlit Multi-page Apps](https://docs.streamlit.io/develop/concepts/multipage-apps/page-and-navigation)
-
-**MEDIUM Confidence (Verified Community Resources):**
-- [Microsoft Streamlit UI Template - GitHub](https://github.com/microsoft/Streamlit_UI_Template)
-- [How to Customize CSS in Streamlit - Medium](https://medium.com/pythoneers/how-to-customize-css-in-streamlit-a-step-by-step-guide-761375318e05)
-- [Streamlit Search Filtering and Pagination Widget - Streamlit Blog](https://medium.com/streamlit/streamlit-search-filtering-and-pagination-widget-64d390180a96)
-- [Best Practices for Streamlit Development - Medium](https://medium.com/@jashuamrita360/best-practices-for-streamlit-development-structuring-code-and-managing-session-state-0bdcfb91a745)
-- [How to Structure and Organise a Streamlit App - Towards Data Science](https://towardsdatascience.com/how-to-structure-and-organise-a-streamlit-app-e66b65ece369/)
-
-**MEDIUM Confidence (Glassmorphism Design Resources):**
-- [Dark Glassmorphism UI Trend 2026 - Medium](https://medium.com/@developer_89726/dark-glassmorphism-the-aesthetic-that-will-define-ui-in-2026-93aa4153088f)
-- [64 CSS Glassmorphism Examples](https://freefrontend.com/css-glassmorphism/)
-- [Glassmorphic Card Dashboard Grid - UISnips](https://uisnips.com/@prajwal/glassmorphic-card-dashboard-grid-with-hover-effects)
+- Direct code inspection: `/Users/pauloloureiro/Dev/SigmaProjects/projetustgov/web/src/lib/repo-sync.ts` — ETL pattern (STEP 1-9), ZIP streaming, shared `downloadAndStreamCSV`, pool acquisition
+- Direct code inspection: `web/src/app/api/leads/route.ts` — API pattern, role filtering, contact subquery structure
+- Direct code inspection: `web/src/app/leads/page.tsx` — CNPJ grouping useMemo, expand/collapse, slide-over invocation, alert styling
+- Direct code inspection: `web/src/lib/dal.ts` — `getApiSession`, `verifySession`, `isAdmin` helpers
+- Direct code inspection: `web/src/lib/db.ts` — pool config: `max: 5`, shared singleton, retry logic
+- Direct code inspection: `web/src/components/Sidebar.tsx` — gestor nav block at lines 53-59, role branching
+- Direct code inspection: `web/vercel.json` — cron schedule (12:30 UTC + 18:00 UTC), `maxDuration: 300`
+- Direct code inspection: `web/src/lib/types.ts` — VendedorProjeto type fields including `nr_convenio`, `saldo_conta`, `situacao`
+- Repo directory listing: `https://repositorio.dados.gov.br/seges/detru/` confirmed on 2026-03-18 — `siconv_convenio.csv.zip` (15MB), `siconv_proposta.csv.zip` (187MB), both dated 2026-03-18
 
 ---
-*Architecture research for: Streamlit Premium UI Integration*
-*Researched: 2026-02-09*
-*Confidence: HIGH (official docs + verified community patterns + existing codebase analysis)*
+*Architecture research for: Projetos em Execução intelligence tab integration into existing CRM*
+*Researched: 2026-03-18*
+*Confidence: HIGH — all patterns based on direct inspection of the live codebase*

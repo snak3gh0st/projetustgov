@@ -1,282 +1,220 @@
 # Project Research Summary
 
-**Project:** PROJETUS Premium Dashboard UI/UX Redesign
-**Domain:** Streamlit Dashboard Enhancement - Sales Analytics
-**Researched:** 2026-02-09
+**Project:** Projetos em Execução — Post-Sale Intelligence Tab (v4.0)
+**Domain:** CRM extension — government grant execution monitoring for Brazilian OSC clients
+**Researched:** 2026-03-18
 **Confidence:** HIGH
 
 ## Executive Summary
 
-The PROJETUS dashboard redesign transforms an existing functional Streamlit application into a premium, Sigma-branded sales tool using native Streamlit capabilities enhanced with strategic CSS injection and Plotly visualizations. Research confirms that premium sales dashboards in 2026 require dark themes with glassmorphic aesthetics, interactive data visualizations, and mobile-responsive layouts - all achievable within Streamlit's architectural constraints without custom components or heavy dependencies.
+This is a milestone feature addition to an existing, production Next.js 14 + PostgreSQL (Supabase) CRM. The Projetos em Execução tab is a read-only intelligence view for gestores and coordenadores that surfaces post-sale portfolio health by cross-referencing two new government CSV sources (`siconv_convenio.csv.zip` and `siconv_proposta.csv.zip`) from `repositorio.dados.gov.br`. The feature aggregates active grant convênios by proponent CNPJ, computes financial execution metrics, and links them to existing CRM contacts. The stack requires zero new dependencies — every capability (streaming ZIP+CSV parsing, CNPJ normalization, cron ETL, role guards, DB upsert patterns) already exists and is proven in production.
 
-The recommended approach leverages Streamlit's mature theming infrastructure (config.toml for foundation, st.html for CSS injection) combined with Plotly for interactive charts. This avoids fighting Streamlit's re-run architecture while achieving visual premium feel. The critical insight: success means embracing what Streamlit does well (data visualization, filtering, drill-down) while using CSS for visual polish, rather than attempting SPA-like features (real-time collaboration, complex animations) that conflict with the framework's reactive model.
+The recommended approach is a purpose-built `projetos_execucao` table populated by a dedicated sync function (`execucao-sync.ts`) on a separate cron schedule from the existing lead sync. The UI follows established patterns from `/leads` and `/monitoramento`: server-component role guard, `useEffect`/`fetch` data loading, CNPJ-grouped rows with expandable detail, reused `KPICard` components, and the same alert badge pattern already in place. The entire feature is read-only — no workflow, no status mutations, no new role types.
 
-Key risks center on maintaining CSS stability across Streamlit updates and avoiding performance degradation from heavy glassmorphic effects. Mitigation: use external CSS files (not inline), target stable Streamlit CSS classes, test visual regression on updates, and keep backdrop-filter complexity minimal for low-end devices. The existing codebase already handles data quality well (schema validation, graceful degradation), so the enhancement layer is purely additive with low technical risk.
+The primary risks are all data-integrity risks that can be neutralized before any code is written: NULL `proposta_id` values in `convenios` causing silent join drops, CNPJ zero-padding inconsistencies between the old Python ETL tables and the CRM, and FLOAT-based financial columns producing rounding artifacts. All three must be audited and resolved in Phase 1 before the API or UI are built. The financial scale risk (187MB proposta CSV) is handled by the existing streaming parser with an early-return filter — no new tooling required.
+
+---
 
 ## Key Findings
 
 ### Recommended Stack
 
-For premium UI enhancement, the stack additions are minimal and strategic. **Plotly 6.5+** provides interactive charts with native Streamlit integration (st.plotly_chart), customizable color schemes for Sigma branding, and automatic WebGL rendering for performance. **Streamlit 1.54** (already in use) includes all needed capabilities: st.html for non-iframe CSS injection (added 1.38), config.toml theming (enhanced 1.44), and st.plotly_chart integration. **No additional UI frameworks needed** - native Streamlit + CSS accomplishes glassmorphic cards, dark theme, and visual hierarchy without external dependencies.
+The existing stack handles all requirements. Zero new dependencies are needed. Live codebase inspection confirmed that `repo-sync.ts` already implements the exact streaming ZIP+CSV parsing pattern needed for both new source files, `dal.ts` provides all required role guard helpers, and `db.ts` provides the shared pg.Pool. The only new artifacts are one new database table, one new lib file (`execucao-sync.ts`), one new dedicated cron route, one new API route, one new page, and one new slide-over component.
 
 **Core technologies:**
-- **Plotly 6.5+**: Interactive charts with Sigma brand colors - native st.plotly_chart integration, WebGL for performance, theme inheritance from Streamlit config
-- **st.html (built-in)**: Glassmorphic CSS injection - direct DOM injection without iframe, DOMPurify-sanitized, accepts CSS files for clean separation
-- **config.toml (built-in)**: Dark theme foundation - native Streamlit theming, Sigma brand colors (navy #050B1F, neon blue #00D4FF), Google Fonts support
+- Next.js 14 App Router — pages and API routes — no change, existing pattern
+- PostgreSQL via `pg` ^8.13.0 — one new `projetos_execucao` table using `NUMERIC(18,2)` for financial columns (correct; existing tables use FLOAT incorrectly)
+- Tailwind CSS ^3.4.0 — reuse existing alert badge classes and progress bar patterns
+- Auth.js v5 ^5.0.0-beta.30 — role guard via `verifySession()` + `getApiSession()` from `dal.ts`; no new middleware
+- Recharts ^2.12.0 — available for % execução visualization; already installed
 
-**Optional enhancement:**
-- **orjson**: Faster Plotly chart serialization for large datasets (1,000+ points) - auto-detected by Plotly, no code changes needed
+**Critical data sources (verified 2026-03-18):**
+- `siconv_convenio.csv.zip` — 15MB, daily update at `repositorio.dados.gov.br/seges/detru/` — financial state and situacao per convênio
+- `siconv_proposta.csv.zip` — 187MB, daily update — proponent CNPJ, nome, objeto, vigência dates
+- Join key: `id_proposta` (convenio side) → `ID_PROPOSTA` (proposta side) to derive proponent CNPJ per convênio
 
 ### Expected Features
 
-Research identified three feature tiers based on 2026 sales dashboard expectations and Streamlit capabilities.
+**Must have (table stakes — P1):**
+- Filtered list of active OSC projects (situacao contains "execu" AND modalidade contains "osc")
+- CNPJ-level aggregation showing count of active fomentos per organization as the primary "big number"
+- Financial columns per CNPJ: total desembolso, saldo em conta, % execução, data fim vigência, dias restantes
+- Desembolso alert highlight logic — client must confirm exact business rule before implementation
+- Header KPI cards: clientes qualificados (distinct CNPJs), total fomentos, valor total em execução
+- Contact indicator badge (CNPJ present in `lead_contacts` or `vendedor_projetos`)
+- Access restricted to gestor + coordenador roles (server-component redirect + API 401)
+- Sidebar navigation entry visible only to gestor role
 
-**Must have (table stakes):**
-- **Dark cyberpunk theme** - users expect dark mode in 2026 data dashboards; light themes feel dated
-- **Glassmorphic card design** - creates premium Sigma brand aesthetic with backdrop-filter effects on dark backgrounds
-- **Interactive charts** - visual analytics reduce cognitive load; users understand patterns faster than tables (lead distribution, trends)
-- **Mobile responsive layout** - 60%+ dashboard traffic is mobile in 2026; sales reps check leads on phones
-- **Lead profile dedicated page** - deep-dive into single lead with charts, emendas, propostas, convenios; core sales workflow
-- **Visual ranking indicators** - color-coded badges and progress bars for lead quality; faster qualification decisions
+**Should have (differentiators — P2):**
+- % execução visual progress bar (reuse `/monitoramento` pattern)
+- Expand/collapse per-CNPJ to show individual convênios
+- Sort controls (by saldo, % exec, vigência)
+- UF/estado filter
+- Text search by org name or CNPJ
+- Data freshness indicator showing last sync timestamp from `cron_sync_log`
 
-**Should have (competitive):**
-- **Global search** - search across entities from single sidebar input; reduces navigation friction
-- **Comparison view** - side-by-side lead comparison; faster qualification for power users
-- **Subtle animations** - fade-ins for cards create polished feel (CSS only, avoid flicker)
-- **Data freshness visual indicator** - prominent "Updated 2h ago" builds trust
-
-**Defer (v2+):**
-- **Real-time collaboration** - conflicts with Streamlit's stateless architecture; requires custom WebSocket components
-- **Complex animations** - Streamlit re-runs cause flicker/jank; embrace framework's re-run model instead
-- **Drag-and-drop customization** - high maintenance burden; offer predefined layout variants instead
-- **Sub-second autocomplete search** - every keystroke triggers full re-run; use debounced search or Enter-to-search
+**Defer to v2+:**
+- Historical disbursement trend chart (desembolsos table sparsely populated — insufficient data)
+- Vigência expiration push notifications (requires cron wiring beyond scope)
+- Post-sale assignment workflow (entirely separate feature; new data model + roles)
+- Export to CSV
 
 ### Architecture Approach
 
-The architecture adds three non-invasive enhancement layers to existing Streamlit multi-page structure: **CSS injection** (theme + styling loaded once at app start via external files), **component wrappers** (reusable glassmorphic card and themed chart functions), and **state management** (cross-page search via session state). This maintains Streamlit's reactive paradigm while pushing boundaries through targeted HTML/CSS injection.
+The architecture follows the established CRM pattern precisely: a new top-level route (`/execucao`), a new API route (`/api/execucao`), a new dedicated cron route (`/api/cron/sync-execucao`), a new lib ETL file (`execucao-sync.ts`), and a new isolated database table. The ETL streams `siconv_proposta.csv.zip` with an OSC-only filter to build an in-memory Map keyed by `id_proposta`, then streams `siconv_convenio.csv.zip` with an "em execução" filter and joins to the Map, then upserts into `projetos_execucao`. The cron runs on a separate schedule to avoid competing for the pg.Pool's 5 connections. Contact data is surfaced via SQL LEFT JOIN on CNPJ to `lead_contacts` (with `vendedor_projetos` as fallback) — the same pattern used in `/api/leads`.
 
 **Major components:**
-1. **Theme Layer (assets/css/)** - External CSS files for dark theme, glassmorphic cards, Plotly overrides; loaded once at streamlit_app.py entry point via st.html
-2. **Component Wrappers (components/ui/, components/charts/)** - Reusable functions: glassmorphic_card() wraps content, render_themed_chart() applies consistent Plotly styling
-3. **Enhanced Pages** - Existing pages (home, qualificacao, propostas, etc.) wrapped with glassmorphic cards, augmented with Plotly charts; NEW lead_profile.py for drill-down
-4. **Global Search Widget** - Sidebar search with st.session_state persistence; filters applied at query level (SQL WHERE clause) for performance
+1. `projetos_execucao` (DB table) — isolated from CRM tables; UNIQUE constraint on `nr_convenio`; all financial fields in `NUMERIC(18,2)`
+2. `execucao-sync.ts` — ETL: stream-filter proposta (OSC only), stream-filter convenio ("em execução" only), in-memory join, upsert; entirely separate from `repo-sync.ts`
+3. `/api/cron/sync-execucao/route.ts` — dedicated cron with `maxDuration = 300` and its own `vercel.json` entry offset from the lead sync
+4. `/api/execucao/route.ts` — role-guarded GET; GROUP BY CNPJ query with LEFT JOINs for contact data and configurable filter parameters
+5. `/execucao/page.tsx` + `ExecucaoSlideOver.tsx` — client page with CNPJ grouping (`useMemo` same as `/leads`), alert highlighting, slide-over financial detail
 
-**Integration with existing architecture:**
-- CSS loads after st.set_page_config in streamlit_app.py (no changes to page routing)
-- Metric cards wrapped with glassmorphic_card() (existing st.metric calls unchanged)
-- Charts added to pages using render_themed_chart() (new visualizations, not replacements)
-- Search integrated before st.navigation (query functions updated to accept search parameter)
+**Confirmed build order:**
+DB migration → `execucao-sync.ts` (validated with one-off test script) → `/api/execucao/route.ts` → cron endpoint wired and tested → `/execucao/page.tsx` + slide-over → Sidebar update.
 
 ### Critical Pitfalls
 
-Research identified pitfalls from both web scraping/ETL domain (existing codebase handles well) and Streamlit UI domain (new risks for this redesign). Focus on Streamlit-specific pitfalls since data quality is already validated.
+1. **Sync contamination via imprecise UPSERT key** — Use `ON CONFLICT (nr_convenio) DO UPDATE`; never `ON CONFLICT (cnpj)` alone (causes duplicates). Document which fields the sync must never overwrite. Never truncate `projetos_execucao`. This mirrors the STEP 7c production bug (commit `9e20d04`) caused by a missing grouping scope.
 
-1. **CSS Brittleness Across Streamlit Updates** - Streamlit changes CSS class names in updates, breaking custom selectors. **Avoid:** Use minimal, stable CSS selectors (e.g., [data-testid="stMetric"] not .css-abc123), test visual regression on Streamlit updates, maintain fallback styles for core elements, document selector dependencies per Streamlit version.
+2. **Cross-source join silently drops projects (NULL proposta_id)** — Run `SELECT COUNT(*) FROM convenios WHERE proposta_id IS NULL AND situacao ILIKE '%execu%'` before writing any API code. If count > 0, use LEFT JOIN with a logged `join_miss_count` in sync stats. An INNER JOIN silently loses legitimate projects with no error signal.
 
-2. **Performance Degradation from Glassmorphic Effects** - Backdrop-filter on many elements causes browser lag, especially mobile. **Avoid:** Limit glassmorphic cards to 5-10 per page maximum, simplify blur radius (10-12px not 30px+), disable effects on low-end devices via CSS media queries, test on mobile browsers before deployment.
+3. **FLOAT financial columns causing precision errors** — Old ETL tables (`convenios`, `propostas`) use `FLOAT`. Cast all financial fields to `NUMERIC(15,2)` at the query layer: `CAST(c.valor_desembolsado AS NUMERIC(15,2))`. New `projetos_execucao` stores everything as `NUMERIC(18,2)`. Never compute percentages in JavaScript.
 
-3. **Fighting Streamlit's Re-run Architecture** - Attempting SPA-like features (complex animations, real-time updates) creates janky UX due to full page re-renders. **Avoid:** Embrace Streamlit's reactive model, use CSS-only animations (fade-in on static elements), skip features requiring incremental DOM updates, optimize for speed over flash (sub-second re-run > smooth animation).
+4. **CNPJ zero-padding mismatch between old ETL tables and the CRM** — Run `SELECT COUNT(*) FROM proponentes WHERE LENGTH(cnpj) < 14` before building any cross-table join. If > 0, apply `UPDATE ... SET cnpj = LPAD(cnpj, 14, '0')`. All join conditions must normalize via `LPAD(REGEXP_REPLACE(cnpj, '\D', '', 'g'), 14, '0')` on both sides.
 
-4. **Session State Memory Bloat** - Storing large DataFrames in st.session_state for cross-page access causes memory issues. **Avoid:** Use st.cache_data for queries (cached, auto-refreshed on TTL), store only IDs/filters in session state (e.g., selected_lead_cnpj not entire DataFrame), let database handle filtering via WHERE clause not Python filtering.
+5. **Cron timeout cascade from appending execution sync to the existing lead sync** — The existing lead sync consumes up to ~250s of the 300s Vercel Pro budget. Adding execution sync to the same handler causes 504 failures that corrupt both syncs. Mandatory: a dedicated `/api/cron/sync-execucao` endpoint with its own `vercel.json` entry at an offset time.
 
-5. **Inline CSS Maintenance Nightmare** - Copy-pasting CSS strings into every page creates inconsistency and makes updates painful. **Avoid:** Load CSS once at app entry from external files (assets/css/), use reusable component wrappers, never inject CSS per page, version control CSS separately from Python logic.
+6. **Role gate omitted on the new API route** — NextAuth middleware only verifies session existence, not role. Both the server component (`verifySession()` + redirect) and the API route (`getApiSession()` + 401) must independently enforce the gestor/coordenador restriction. A vendedor can call the API directly regardless of UI redirection.
+
+7. **Alert business rule implemented as a guess** — Government `valor_desembolsado` is always positive. "Desembolso negativo" is a business signal, not a mathematical negative number. Confirm the exact condition with the client by inspecting known-problematic convênios in the DB before writing alert logic.
+
+---
 
 ## Implications for Roadmap
 
-Based on research, premium UI redesign should follow incremental enhancement strategy with clear separation of concerns. Architecture patterns and pitfalls indicate building from foundation (CSS + theme) to wrappers (components) to integration (enhanced pages) to new features (lead profile, global search).
+Based on combined research, 4 phases are recommended. The ordering is driven by data-integrity dependencies: audits must complete before any query code is written; the ETL must be validated before the UI consumes it; the UI is the last artifact to build.
 
-### Phase 1: Visual Foundation
-**Rationale:** CSS theming is foundational and non-breaking. Establishes premium look-and-feel before functional enhancements. Pure CSS work has immediate visual impact with minimal risk.
+### Phase 1: Data Audit and Foundation
 
-**Delivers:**
-- Dark cyberpunk theme (Sigma navy #050B1F + neon blue #00D4FF)
-- Glassmorphic card component infrastructure
-- CSS loading mechanism at app entry
-- Visual hierarchy refinement (spacing, typography)
+**Rationale:** Three of the eight critical pitfalls are data-quality issues that must be resolved before a single line of API code is written. Building the join first and discovering NULL `proposta_id` or CNPJ mismatches in production means some execution records will silently be missing — a defect that is hard to scope after the fact. This phase produces zero UI but eliminates the highest-risk unknowns.
 
-**Addresses Features:**
-- Dark cyberpunk theme (table stakes)
-- Glassmorphic card design (table stakes)
-- Visual hierarchy (table stakes)
+**Delivers:** DB migration (`projetos_execucao` table + indexes), CNPJ normalization audit with one-time fix migration if needed, NULL `proposta_id` count documented with gap-handling strategy confirmed in writing, UPSERT key and never-overwrite field list documented before any sync code is written.
 
-**Avoids Pitfalls:**
-- Inline CSS maintenance nightmare (external CSS files)
-- Performance degradation (minimal backdrop-filter complexity)
-- CSS brittleness (stable selectors, documented dependencies)
+**Addresses:** Pitfall 1 (sync contamination), Pitfall 2 (join gaps), Pitfall 5 (CNPJ normalization)
 
-**Research Flag:** Standard patterns, skip research-phase. Glassmorphism CSS well-documented.
+**Avoids:** Silent data loss discovered only when gestores report missing clients in production
 
-### Phase 2: Data Visualization Enhancement
-**Rationale:** Charts reduce cognitive load for sales reps. Plotly has native Streamlit integration with free interactive features. Medium complexity but high value for analytics dashboard.
+**Research flag:** Standard patterns — SQL diagnostic queries and LPAD migrations are straightforward; no additional research needed.
 
-**Delivers:**
-- Interactive lead distribution charts (by state, ministry, value tier)
-- Trend visualizations (proposals over time if historical data available)
-- Plotly dark theme configuration matching Sigma brand
-- Themed chart wrapper component (render_themed_chart)
+### Phase 2: ETL Sync and Data Validation
 
-**Uses Stack:**
-- Plotly 6.5+ for charts
-- st.plotly_chart native integration
-- Themed wrapper centralizes configuration
+**Rationale:** The entire intelligence view rests on ETL data quality. The 187MB proposta CSV is the largest file this system has ever processed. Validating the streaming filter-and-join algorithm against real data before building the UI eliminates the risk of an architecture pivot after the UI is complete.
 
-**Implements Architecture:**
-- components/charts/plotly.py wrapper
-- Integration into home, qualificacao pages
+**Delivers:** `execucao-sync.ts` with streaming OSC filter on proposta, "em execução" filter on convenio, in-memory id_proposta join, upsert with `ON CONFLICT (nr_convenio)`; a one-off test script that populates `projetos_execucao` against the live DB; sync stats including `join_miss_count`; validated row counts matching the expected "em execução + OSC" universe.
 
-**Avoids Pitfalls:**
-- Inconsistent chart theming (centralized wrapper)
-- Performance issues (WebGL for large datasets, sampling if needed)
+**Uses:** `downloadAndStreamCSV`, `cleanCNPJ`, `parseBRNumber`, `fixText` from `repo-sync.ts`; `getPool()` from `db.ts`
 
-**Research Flag:** Standard patterns, skip research-phase. Plotly integration well-documented in Streamlit docs.
+**Avoids:** Pitfall 1 (UPSERT discipline), Pitfall 6 (separate cron endpoint planned and created here), Pitfall 8 (enrichment queue uses `ON CONFLICT DO NOTHING` — no duplicate BrasilAPI calls)
 
-### Phase 3: Enhanced Navigation & Lead Profile
-**Rationale:** Sales workflow is search > browse > drill-down. Optimizing this flow has direct business impact. Lead profile page leverages all previous components (cards, charts) for deep-dive view.
+**Research flag:** Approach fully specified in STACK.md and ARCHITECTURE.md. If OSC-filtered Map exceeds Vercel memory limits, the documented fallback is a two-pass approach (Set of needed IDs → second stream pass). No additional research needed.
 
-**Delivers:**
-- Dedicated lead profile page with URL routing (st.query_params)
-- Enhanced search UI in sidebar (visual prominence)
-- Visual ranking indicators (color-coded badges, progress bars)
-- Breadcrumb navigation showing current location
+### Phase 3: API Route and Business Logic
 
-**Addresses Features:**
-- Lead profile dedicated page (table stakes)
-- Visual ranking indicators (table stakes)
-- Enhanced search UI (competitive)
+**Rationale:** With validated data in `projetos_execucao`, the API can be built against real rows. The alert business rule (Pitfall 7) must be confirmed with the client at the start of this phase before the query is written. CAST-to-NUMERIC for financial precision (Pitfall 3) is established here as a code-review requirement for all queries.
 
-**Implements Architecture:**
-- pages/lead_profile.py (NEW)
-- components/ui/search.py for global search widget
-- Session state for selected lead (CNPJ only, not full data)
+**Delivers:** `/api/execucao/route.ts` with role guard, GROUP BY CNPJ query with all financial columns cast to `NUMERIC(15,2)`, LEFT JOIN `lead_contacts`/`vendedor_projetos` for contact data, filter parameters (search, uf, alert_only), client-confirmed alert logic with named constants and mutually exclusive alert states, cron endpoint wired and verified within 300s budget.
 
-**Avoids Pitfalls:**
-- Session state memory bloat (store CNPJ ID only)
-- Fighting re-run architecture (use st.switch_page for navigation)
+**Implements:** Pattern 3 (gestor-only route guard), Pattern 4 (CNPJ as cross-table integration key), dedicated cron entry in `vercel.json`
 
-**Research Flag:** Standard patterns, skip research-phase. Multi-page navigation documented.
+**Avoids:** Pitfall 3 (financial precision via CAST), Pitfall 4 (role gate on both page and API), Pitfall 7 (alert logic confirmed with client before implementation)
 
-### Phase 4: Global Search & Polish
-**Rationale:** Cross-page search improves UX but requires session state + query modifications. Final polish (mobile responsive, animations) completes premium feel without affecting core functionality.
+**Research flag:** Alert business rule requires client clarification — this is a domain question, not a research question. All other patterns are established.
 
-**Delivers:**
-- Global search across entities (leads, emendas, propostas)
-- Mobile responsive layout (CSS media queries)
-- Subtle card fade-in animations (CSS only)
-- Data freshness visual indicator (prominent timestamp)
-- Export UX improvements (better button styling)
+### Phase 4: UI and Navigation
 
-**Addresses Features:**
-- Global search (competitive)
-- Mobile responsive layout (table stakes)
-- Subtle animations (competitive)
-- Data freshness indicator (competitive)
+**Rationale:** Build the UI last — after the data layer is validated — to avoid UX iterations on a broken foundation. All UI patterns have direct analogs in existing pages. Risk here is low and execution is straightforward.
 
-**Implements Architecture:**
-- components/ui/search.py integrated into streamlit_app.py
-- Query functions updated to accept search parameter (SQL WHERE clause)
-- CSS media queries for tablet/phone breakpoints
+**Delivers:** `/execucao/page.tsx` (server component with role guard + client component with `useEffect`/`fetch`), CNPJ-grouped list with expandable per-convênio rows, alert badge highlighting for problematic projects, header KPI cards (clientes qualificados, total fomentos, valor total em execução), `ExecucaoSlideOver.tsx` with full financial detail per CNPJ, % execução progress bar, data freshness timestamp from `cron_sync_log`, Sidebar.tsx update with gestor-only `/execucao` nav entry.
 
-**Avoids Pitfalls:**
-- Search performance (database-level filtering, not Python)
-- CSS animation flicker (CSS-only, subtle effects)
-- Mobile layout complexity (simplified view, collapsible sections)
+**Reuses:** `KPICard` component, priority badge pattern from `/monitoramento`, CNPJ grouping `useMemo` from `/leads`, progress bar from `/monitoramento`, slide-over pattern from `/leads`, debounced filter pattern from `/monitoramento`
 
-**Research Flag:** **Needs research-phase** for global cross-entity search architecture. Complex search index across multiple tables requires deeper investigation during phase planning.
+**Avoids UX pitfalls:** Show `dias_em_execucao` alongside % execução to avoid misleading "0% = stalled" signal for new projects; mutually exclusive alert/verificar-saldo states with defined priority; freshness indicator visible in tab header; redirect vendedores to a "sem permissão" page (not `/login`)
 
-### Phase 5 (Optional/Future): Comparison View
-**Rationale:** Power user feature, not essential for MVP. Add only if users actively request side-by-side lead comparison.
-
-**Delivers:**
-- Side-by-side lead comparison (2-3 leads)
-- Synchronized scrolling for comparison sections
-- State management for selected leads (session state)
-
-**Addresses Features:**
-- Comparison view (competitive, defer if not requested)
-
-**Research Flag:** Standard patterns, skip research-phase. Uses st.columns with synchronized data.
+**Research flag:** All patterns are direct copies of existing pages. Skip research-phase.
 
 ### Phase Ordering Rationale
 
-- **Foundation first (Phase 1):** CSS theming is non-breaking, establishes brand identity, enables glassmorphic cards used in all subsequent phases. Pure additive layer with no data flow changes.
-
-- **Visualization second (Phase 2):** Charts require themed foundation (dark colors, card backgrounds) to look cohesive. Component wrapper pattern established here applies to all future charts.
-
-- **Navigation third (Phase 3):** Lead profile page consumes components from Phase 1 & 2 (cards, charts). Navigation enhancements build on existing multi-page structure.
-
-- **Search last (Phase 4):** Most complex feature (cross-page state, query modifications). Benefits from stable component foundation. Can ship Phase 1-3 as MVP, add search later if needed.
-
-**Dependency chain:**
-```
-Phase 1 (CSS) → Phase 2 (Charts) → Phase 3 (Lead Profile) → Phase 4 (Search)
-     ↓              ↓                      ↓
-  All phases    Requires dark        Requires cards +
-                theme colors         charts components
-```
+- Data audit before ETL: CNPJ normalization and NULL `proposta_id` are one-way doors — building the join before auditing bakes the bug into the architecture, not just the query.
+- ETL before API: The API needs real rows to validate correctness of GROUP BY logic and contact joins. An empty table hides correctness issues.
+- API before UI: The UI is a consumer of the API contract. Changing the API shape after the UI is built requires two coordinated changes.
+- Separate cron endpoint decided in Phase 2, wired in Phase 3: The existing lead sync's ~250s runtime leaves no safe budget for an appended execution sync.
 
 ### Research Flags
 
-**Phases needing deeper research during planning:**
-- **Phase 4 (Global Search):** Complex search index architecture across multiple entities (leads, emendas, propostas, convenios). Need to research: search index structure, SQL query optimization for cross-entity search, autocomplete performance with large datasets, search relevance ranking.
+Phases with standard patterns (skip `/gsd:research-phase`):
+- **Phase 1 (Data Audit):** PostgreSQL diagnostic queries and LPAD migrations are well-understood. No ambiguity.
+- **Phase 2 (ETL):** Algorithm fully specified. Fallback (two-pass approach for memory) is documented. No research gap.
+- **Phase 4 (UI):** All component patterns are direct copies of `/leads` and `/monitoramento`. No novel patterns.
 
-**Phases with standard patterns (skip research-phase):**
-- **Phase 1 (Visual Foundation):** Glassmorphism CSS well-documented, Streamlit theming official docs, Google Fonts integration standard.
-- **Phase 2 (Visualization):** Plotly integration in Streamlit docs, theming patterns established, chart types documented.
-- **Phase 3 (Navigation):** Multi-page apps and st.query_params in official docs, lead profile pattern standard for dashboards.
-- **Phase 5 (Comparison):** st.columns for layout documented, state management for selection standard pattern.
+Phases needing targeted clarification (not research, but client input):
+- **Phase 3 (Alert Logic):** The desembolso alert business rule requires client confirmation before implementation. This is one meeting/query, not a research task.
+
+---
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | **HIGH** | Minimal dependencies (Plotly only), all built-in Streamlit features verified in official docs, versions confirmed on PyPI, existing Streamlit 1.54 meets all requirements |
-| Features | **HIGH** | Based on 2026 sales dashboard benchmarks (Salesforce, HubSpot patterns), Streamlit capabilities validated, anti-features clearly identified to avoid scope creep |
-| Architecture | **HIGH** | Patterns verified in official Streamlit docs + Microsoft Streamlit UI Template, glassmorphism CSS documented, component wrapper pattern proven in community, existing codebase analyzed for integration points |
-| Pitfalls | **MEDIUM** | Streamlit-specific pitfalls identified from community resources and best practices, but CSS brittleness across versions needs testing, performance of glassmorphic effects needs validation on target devices |
+| Stack | HIGH | Direct codebase inspection of all relevant files on 2026-03-18; zero new dependencies; existing patterns verified as directly applicable |
+| Features | HIGH | Schema.sql analysis confirmed all required columns exist in `convenios` and `propostas`; client spec (PROJECT.md v4.0) provides explicit KPI and aggregation requirements |
+| Architecture | HIGH | All patterns drawn from direct inspection of `repo-sync.ts`, `dal.ts`, `db.ts`, `leads/page.tsx`, `monitoramento/page.tsx`, `vercel.json`; build order confirmed by dependency analysis |
+| Pitfalls | HIGH | Primary evidence from documented production incidents (commits `9e20d04`, `f81fe04`, `63328eb`) and direct schema inspection confirming FLOAT columns, NULL constraints, and missing indexes |
 
-**Overall confidence:** **HIGH**
-
-Research is comprehensive with strong foundation in official documentation and verified community patterns. Medium confidence on pitfalls reflects inherent uncertainty in CSS stability across future Streamlit updates and performance variability across user devices - both require testing during implementation.
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-**CSS Selector Stability:**
-- **Gap:** Streamlit CSS class names may change in updates (e.g., .css-abc123 hashes change)
-- **Mitigation:** Use data-testid attributes where possible (more stable), document Streamlit version dependencies in CSS files, test visual regression on Streamlit updates before deployment, maintain fallback styles
-- **Address:** Phase 1 implementation - establish testing protocol
+- **Desembolso alert business rule:** The client has not confirmed what "desembolso negativo" means as a database condition. Before Phase 3 begins, the client must identify at least 3 convênios that should show the alert and 3 that are healthy. The developer then inspects those records to derive the exact condition. Do not ship alert logic as a guess.
+- **NULL proposta_id scope:** The diagnostic query has not been run yet. The count could be 0 (no problem) or significant (requires a LEFT JOIN fallback path). Run in Phase 1 before any architecture decisions for the ETL are locked.
+- **Proposta CSV OSC subset size in memory:** It is estimated that OSC propostas are a small fraction of the 187MB file, but this has not been measured. Instrument memory usage in the Phase 2 test script. If the OSC Map exceeds Vercel's 1GB serverless limit, switch to the documented two-pass approach.
+- **Total cron duration with both syncs active:** The execution sync is projected at 30-60s additional runtime. Since it runs on a separate endpoint, the 300s budget is not shared, but DB connection pool saturation during overlapping windows has not been measured. Monitor on the first combined run.
 
-**Glassmorphic Performance on Low-End Devices:**
-- **Gap:** backdrop-filter performance varies by browser/device; may lag on older mobile devices
-- **Mitigation:** Test on target devices (sales team mobile browsers), implement CSS media query to disable effects on low-end devices (prefers-reduced-motion), provide fallback solid backgrounds
-- **Address:** Phase 1 testing - benchmark on representative devices
-
-**Global Search Index Design:**
-- **Gap:** Research didn't cover optimal search index structure for cross-entity search (leads + emendas + propostas + convenios)
-- **Mitigation:** Run /gsd:research-phase before Phase 4 planning, focus on PostgreSQL full-text search vs. application-level search, evaluate search relevance ranking strategies
-- **Address:** Phase 4 research-phase - dedicated search architecture investigation
-
-**Chart Data Volume Performance:**
-- **Gap:** Research mentions WebGL and sampling for large datasets but doesn't specify thresholds for PROJETUS data volume
-- **Mitigation:** Measure actual data sizes per chart during Phase 2 implementation, implement Plotly WebGL traces (automatic at 1,000+ points), add optional sampling if datasets exceed 10k points
-- **Address:** Phase 2 implementation - performance testing with production data
+---
 
 ## Sources
 
-### Primary (HIGH confidence)
-- **Streamlit Official Documentation** - Theming configuration, st.html API, st.plotly_chart integration, multi-page apps, session state, Google Fonts integration
-- **Plotly Python 6.5.2 PyPI** - Version verification, feature confirmation, WebGL rendering capabilities
-- **STACK.md, ARCHITECTURE.md, FEATURES.md, PITFALLS.md** - Synthesized from parallel research agents
+### Primary (HIGH confidence — direct codebase inspection, 2026-03-18)
+
+- `web/src/lib/repo-sync.ts` — ETL pattern, streaming ZIP+CSV, `downloadAndStreamCSV`, `_parseZipBuffer`, `parseBRNumber`, `cleanCNPJ`, `fixText`, UPSERT discipline, enrichment queue (`ON CONFLICT DO NOTHING`)
+- `web/src/lib/dal.ts` — `getApiSession()`, `verifySession()`, `isAdmin()`, role guard patterns
+- `web/src/lib/db.ts` — `pg.Pool` singleton, `max: 5`, `statement_timeout: 30000`, `query()` helper
+- `web/schema.sql` — `convenios`, `propostas`, `proponentes` table structure; FLOAT vs NUMERIC mismatch; NULL constraints; existing indexes
+- `web/src/app/api/leads/route.ts` — GROUP BY aggregation, `lead_contacts` correlated subquery pattern
+- `web/src/app/api/leads/[cnpj]/instruments/route.ts` — existing INNER JOIN on `proposta_id` (the silent-drop risk pattern)
+- `web/src/app/api/cron/sync-leads/route.ts` — cron auth, `maxDuration = 300`, manual trigger, sequential structure
+- `web/src/app/leads/page.tsx` — CNPJ grouping `useMemo`, slide-over invocation, alert border styling
+- `web/src/app/monitoramento/page.tsx` — priority badge pattern (`PRIORITY_COLORS`), progress bar, debounced filter
+- `web/src/components/Sidebar.tsx` — gestor nav block (lines 53-59), role-conditional nav items
+- `web/vercel.json` — cron schedule (12:30 UTC + 18:00 UTC), `maxDuration: 300`
+- `web/package.json` — confirmed installed packages and exact versions
+
+### Primary (HIGH confidence — external sources, verified 2026-03-18)
+
+- `https://repositorio.dados.gov.br/seges/detru/` — `siconv_convenio.csv.zip` (15MB, 2026-03-18 08:56) and `siconv_proposta.csv.zip` (187MB, 2026-03-18 08:58) confirmed present and daily-updated
+
+### Primary (HIGH confidence — production incidents)
+
+- `.planning/debug/contacted-status-regression.md` — STEP 7c vendedor_id filter bug (commit `9e20d04`); canonical example of sync contamination via missing grouping scope in UPSERT
+- `.planning/debug/commission-sales-flow.md` — FLOAT precision issues in financial calculations
+- `.planning/debug/duplicate-lead-cnpj.md` — CNPJ deduplication failure from a weak UPSERT conflict key
 
 ### Secondary (MEDIUM confidence)
-- **Microsoft Streamlit UI Template (GitHub)** - Component wrapper patterns, CSS organization, best practices
-- **Streamlit Community Best Practices** - Session state management, code organization, performance optimization
-- **2026 Dashboard Design Resources** - Glassmorphism trends, dark theme UX, sales dashboard feature benchmarks (Salesforce, HubSpot patterns)
-- **Medium: Streamlit Development Best Practices** - Structuring code, managing session state, avoiding common pitfalls
 
-### Tertiary (LOW confidence)
-- **CSS Glassmorphism Examples** - Visual inspiration, implementation patterns (needs validation for performance)
-- **Sales Dashboard UX Patterns** - Feature expectations from competitors (needs validation with PROJETUS users)
+- `.planning/PROJECT.md` v4.0 section — client milestone spec: data flow, KPI requirements, column references, alert logic intent (alert business rule not yet confirmed as exact DB conditions)
+- `web/src/components/KPICard.tsx` — confirmed reusable component for header KPI cards
 
 ---
-*Research completed: 2026-02-09*
+
+*Research completed: 2026-03-18*
 *Ready for roadmap: yes*

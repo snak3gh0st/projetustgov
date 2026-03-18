@@ -1,273 +1,260 @@
-# Feature Research: Premium Streamlit Dashboard UI/UX Redesign
+# Feature Research
 
-**Domain:** Sales-focused data dashboard (lead qualification)
-**Researched:** 2026-02-09
-**Confidence:** MEDIUM
+**Domain:** Post-sales intelligence tab — government project execution monitoring (Projetos em Execução)
+**Researched:** 2026-03-18
+**Confidence:** HIGH (based on direct codebase analysis + domain knowledge of TransferênciaGov data structures)
 
-## Executive Summary
+---
 
-Premium sales dashboards in 2026 are defined by three core pillars: real-time interactivity with visual analytics, AI-powered insights with predictive lead scoring, and mobile-first responsive design with glassmorphic aesthetics. For a Streamlit-based dashboard, success requires understanding what's table stakes (expected by all users), what differentiates (competitive advantage), and critically, what to avoid building given Streamlit's architectural constraints.
+## Context
 
-The PROJETUS dashboard targets sales reps qualifying leads from Transfer Gov data. The primary workflow is research-driven: browse ranked leads, search for specific organizations, then drill into full profiles. The target aesthetic is dark cyberpunk-tech with neon blue on navy and glassmorphic cards (Sigma brand).
+This is a **subsequent milestone** on an existing CRM. The new `/execucao` tab is a read-only intelligence view
+for gestores and coordenadores. It surfaces post-sale project health by cross-referencing convenio and proposta
+tables (already in Supabase) and is explicitly **not** a workflow feature — no handoff buttons, no status updates.
 
-**Key Finding:** Modern sales dashboards must balance visual polish with performance. Streamlit's re-run architecture makes certain "premium" features (real-time collaboration, complex animations, sub-second interactivity) either impossible or performance killers. Success means ruthlessly prioritizing features that Streamlit handles well (data viz, filtering, drill-down) while using CSS to create visual premium feel without fighting the framework.
+The primary consumer is a gestor scanning for organizations whose grants are in financial trouble (negative
+desembolso, poor execution rate) or whose grants are finishing soon (vigência expiring). The key data
+cross-reference is:
+
+```
+convenio (situacao = "em execução") → proposta (modalidade = "OSC") → convenio (financials)
+convenio.proposta_id → proposta.transfer_gov_id → proposta.proponente_cnpj → aggregate per CNPJ
+```
+
+Existing schema columns confirmed in `schema.sql`:
+- `convenios.valor_desembolsado` — total disbursed
+- `convenios.saldo_conta` — account balance
+- `convenios.valor_global` — total approved amount
+- `convenios.data_fim_vigencia` — end of validity
+- `convenios.data_inicio_vigencia` — start of validity
+- `convenios.situacao` — status ("em execução" is the target filter)
+- `propostas.modalidade` — instrument type ("OSC" is the target filter)
+- `propostas.proponente_cnpj` — CNPJ for aggregation back to CRM contacts
+
+---
 
 ## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
-Features users assume exist in any modern sales dashboard. Missing these = product feels incomplete or dated.
+Features the gestor assumes exist. Missing these = the tab is useless.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **Dark theme with professional aesthetics** | Dark mode is standard for 2026 data dashboards; light themes feel dated for sales tools | LOW | Streamlit native theming via config.toml. Fully supported, straightforward implementation. |
-| **Real-time data freshness indicators** | Sales teams need to know if data is current or stale; "as of [timestamp]" is expected | LOW | Already exists in PROJETUS (home page shows extraction history). Just needs visual prominence. |
-| **Mobile-responsive layout** | 60%+ of dashboard traffic is mobile in 2026; sales reps check leads on phones | MEDIUM | Streamlit layout="wide" + st.columns with responsive breakpoints. CSS media queries needed for polish. |
-| **Fast search/filtering** | Users expect sub-second search response for lead lookup by name/CNPJ | LOW | Already implemented. Performance depends on data size; OK for <10K rows. |
-| **Clear visual hierarchy (cards, sections)** | Flat layouts feel amateur; users expect grouped information in visual cards | MEDIUM | CSS-based card styling via st.markdown with unsafe_allow_html. Achievable with custom CSS. |
-| **Drill-down to detail views** | Users expect to click a lead and see full profile with tabs/sections | LOW | Already implemented in qualificacao_new.py. Standard Streamlit pattern with st.tabs. |
-| **Data export (CSV)** | Sales teams need to export lead lists for CRM import or offline analysis | LOW | Already implemented. Standard expectation for any B2B dashboard. |
-| **Loading states / progress indicators** | Users need feedback during data loads; blank screens feel broken | LOW | Streamlit native st.spinner, st.progress. Easy to implement. |
-| **Metric cards with KPIs** | Dashboard must show high-level metrics (total leads, value, etc.) at top | LOW | Already implemented with st.metric. Standard pattern. |
-| **Filtering with immediate visual feedback** | Filter changes must update results without page reload feel | MEDIUM | Streamlit native re-run handles this. Performance degrades with >5K rows. |
+| Filtered list of projects "em execução" | Core purpose of the tab. Gestor cannot use raw data without this filter. | LOW | SQL WHERE convenio.situacao ILIKE '%em execução%' AND proposta.modalidade ILIKE '%osc%' |
+| % execução per project | Standard metric for any grant management view. Tells gestor how much of the grant has been spent. | LOW | (valor_desembolsado / valor_global) * 100. Column already exists in schema. |
+| Saldo em conta per project | Critical: low saldo = client needs action. Missing this is the core gap the feature fills. | LOW | saldo_conta column already in convenios table |
+| Data fim vigência + days remaining | Gestor needs to know urgency. Expiring grants = upsell opportunity. | LOW | data_fim_vigencia - CURRENT_DATE = dias_restantes |
+| CNPJ-level aggregation | Client spec explicitly requires "quantidade de fomentos" per CNPJ as big number. Aggregating multiple convenios under one org is the key innovation. | MEDIUM | GROUP BY proposta.proponente_cnpj; COUNT convenios per CNPJ |
+| Desembolso highlight logic | Client defined: negative desembolso = alert (red), positive desembolso = show saldo (green/amber). This is the primary decision signal. | LOW | Conditional row styling. desembolso negative = valor_desembolsado < 0 |
+| Link to existing CRM contacts | Gestor must know if the org is already a client or has a contact in the CRM. This connects post-sale to pre-sale data. | MEDIUM | JOIN lead_contacts via CNPJ. Show contact name/phone if exists. |
+| Access restricted to gestor + coordenador | Explicitly required. Vendedores must not see this view. | LOW | Same pattern as /monitoramento: role check in page server component + API route |
 
 ### Differentiators (Competitive Advantage)
 
-Features that set PROJETUS apart from generic dashboards. Not required, but highly valued for premium positioning.
+Features that would make this tab significantly more useful than a plain table.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Glassmorphic card design (dark theme)** | Creates premium "Sigma brand" aesthetic; signals quality and modernity | MEDIUM | CSS backdrop-filter + rgba backgrounds. Works in modern browsers. Performance cost is minimal (static elements). |
-| **Visual lead value indicators (color-coded badges)** | Instant recognition of high-value leads without reading numbers; faster decision-making | LOW | Already implemented with emoji badges. Enhance with color-coded visual pills via CSS. |
-| **Interactive charts for lead distribution** | Visual analytics reduce cognitive load; users understand patterns faster than tables | MEDIUM | Plotly/Altair integration. Streamlit native support. Interactive hover, zoom, filter. |
-| **Global search with smart filters** | Search across all entities (leads, emendas, propostas) from single input; reduces navigation friction | HIGH | Requires custom search index across multiple data tables. Complex state management in Streamlit. |
-| **Lead profile page (dedicated view)** | Deep-dive into single lead with all related data (emendas, propostas, convenios, contact); sales workflow optimization | MEDIUM | Separate page with URL parameters for lead ID. Streamlit st.query_params for routing. |
-| **Visual ranking indicators (1-10 visual scale)** | Progress bars or visual scales for lead quality; easier to scan than numbers | LOW | CSS-based progress bars or st.progress. Simple visual enhancement. |
-| **Comparison view (side-by-side leads)** | Compare 2-3 leads at once; faster qualification decisions | MEDIUM | st.columns with synchronized data. State management for selected leads. |
-| **Animated transitions (subtle)** | Smooth fade-ins for cards/metrics create polished feel | MEDIUM-HIGH | CSS animations work but Streamlit re-runs can cause flicker. Must be subtle to avoid janky UX. |
-| **Customizable dashboard layout** | Users can rearrange or hide KPI cards; personalization increases engagement | HIGH | Requires persistent state (database or cookies). Complex in Streamlit's stateless model. |
-| **Data freshness auto-refresh** | Dashboard auto-updates when new data is available (e.g., every 5 min) | MEDIUM | st.rerun() on timer. Works but can be jarring for users. Better with visual "new data available" banner. |
+| "Clientes qualificados" big number KPI | Client explicitly requested this as a top-level KPI. One number showing how many active OSC clients PROJETUS has in execution. | LOW | COUNT DISTINCT cnpj WHERE situacao = em execução AND modalidade = OSC |
+| "OSC" big number KPI | Second explicit KPI requested. Shows total OSC orgs in portfolio. | LOW | COUNT DISTINCT cnpj WHERE modalidade = OSC (regardless of status) |
+| "Quantidade de fomentos" per CNPJ | Shows depth of relationship. A CNPJ with 5 active grants is far more valuable than one with 1. | LOW | COUNT(convenios.id) per CNPJ in the filtered set |
+| Valor total em execução KPI | Sum of valor_global for all active projects. Shows the financial weight of the post-sale portfolio. | LOW | SUM(valor_global) WHERE situacao = em execução |
+| Alert badge for negative desembolso | Visual priority signal so gestor can triage without reading every row. Red badge = action needed. | LOW | Inline badge component, reuse existing PRIORITY_COLORS pattern from /monitoramento |
+| Sort by "risco" (expiring soonest + lowest saldo) | Gestor needs to see the most urgent cases first. Sorting by dias_restantes ASC surfaces imminent deadlines. | LOW | ORDER BY data_fim_vigencia ASC NULLS LAST as default sort |
+| CNPJ expand/collapse for multiple grants | When one CNPJ has 3+ active grants, show them in an expandable sub-row. Reduces noise while preserving detail. | MEDIUM | Accordion row pattern. Already used in /leads with LeadSlideOver. |
+| % execução visual progress bar | Progress bar (0-100%) communicates execution health faster than a raw number. Low % = possible execution delay risk. | LOW | Tailwind width-based bar. Already implemented in /monitoramento for perc_execucao. |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
-Features that seem good but create problems in Streamlit or sales dashboard context. Document why to avoid scope creep.
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Handoff / pós-venda workflow | "Now that we see a client in trouble, we should assign a post-sale rep" | Requires new data model (post_sale_assignments), new role, new notification system. Out of stated scope. Adds 3+ weeks. | Keep as read-only intelligence. Gestor identifies manually and communicates to team via existing channels. |
+| Email/WhatsApp alerts for expiring grants | "Notify us when vigência is 30 days away" | Requires background scheduler, push notification setup. Push subscribe already exists but not wired to cron logic for this. | Export as list or build as v2 after validating which signals matter most. |
+| Historical execution trend chart | "Show how fast this org is spending" | Requires desembolsos table join with time series — that table exists but is sparsely populated (proposta_emendas 0% populated per PROJECT.md). | Show current snapshot only. Add trend in v2 if data is available. |
+| Editable notes on execution projects | "I want to add notes to post-sale projects" | Creates confusion between CRM lead notes and execution notes. Two note systems for same CNPJ = data fragmentation. | Gestor writes notes in existing lead/contact notes in CRM (same CNPJ exists in vendedor_projetos table). |
+| Separate "post-sale status" pipeline | "Track each org through post-sale stages like we do with leads" | Duplicates the CRM pipeline for a different purpose. Would require a new kanban, new statuses, new assignment logic. | Build this as a separate milestone only after validating the read-only tab delivers value. |
+| Real-time data (websockets/polling) | "I want to see changes instantly" | Data source is TransferênciaGov repo, updated once daily via cron. Real-time adds complexity with no benefit. | Daily refresh via existing cron sync is sufficient. |
 
-| Anti-Feature | Why Requested | Why Problematic | Alternative |
-|--------------|---------------|-----------------|-------------|
-| **Real-time collaboration (multi-user editing)** | "Like Google Docs - see what others are doing" | Streamlit's stateless architecture makes this nearly impossible without complex WebSocket custom components. Performance killer. | Use shared filters via URL parameters; export/import saved views. |
-| **Complex animations (loading, transitions)** | "Make it feel like a modern SPA" | Streamlit re-runs entire script on every interaction, causing flicker/jank with animations. CSS animations fight the framework. | Subtle fade-ins on static elements only. Embrace Streamlit's re-run model; optimize for speed over flash. |
-| **Infinite scroll** | "Load more leads as user scrolls" | Streamlit re-renders entire dataframe on scroll; performance degrades rapidly. Not natively supported. | Pagination with "Load More" button or configurable page size (25/50/100 rows). |
-| **Drag-and-drop dashboard customization** | "Let users build their own layout" | Requires custom JavaScript components; breaks on Streamlit re-runs. High maintenance burden. | Predefined layout variants (e.g., "Compact" vs "Detailed" view) via toggle. |
-| **Sub-second search with autocomplete** | "Search as you type with suggestions" | Every keystroke triggers full re-run in Streamlit. Laggy with large datasets. | Debounced search (search on Enter or after 500ms pause). Pre-computed search index. |
-| **Complex interactive charts (brushing/linking)** | "Select data on chart, filter dashboard" | Streamlit's Plotly/Altair integration has limited bidirectional interaction. Custom components needed. | Click to filter on simple categorical data (e.g., click state on chart). Avoid complex multi-chart linking. |
-| **Embedded video/multimedia** | "Add demo videos for leads" | Increases page load time; Streamlit isn't optimized for media. Distracts from data focus. | External links to videos; focus dashboard on data, not content. |
-| **Chat/comments on leads** | "Collaborate on lead notes" | Requires database writes, user auth, real-time sync. Out of scope for Streamlit dashboard. | Export lead data to CRM where collaboration happens. Dashboard is read-only analytics. |
-| **Email/CRM integration** | "Send email to lead from dashboard" | Streamlit dashboards are read-only analytics tools, not CRMs. Adding write operations increases complexity/security risks. | Provide email addresses for copy-paste; integrate at CRM level, not dashboard. |
-| **3D visualizations** | "3D charts look futuristic" | Novelty without value for sales data. Increases cognitive load, hurts performance. | Stick to 2D charts (bar, line, scatter). Use color/size for additional dimensions. |
+---
 
 ## Feature Dependencies
 
 ```
-Dark Theme (config.toml)
-    └──requires──> Glassmorphic Cards (CSS with backdrop-filter)
-                       └──enhances──> Visual Hierarchy (cards + sections)
+[DB: SQL query joining convenios + propostas]
+    └──required by──> [Filtered list em execução]
+                          └──required by──> [Financial columns (desembolso, saldo, % exec)]
+                          └──required by──> [CNPJ aggregation + fomentos count]
+                          └──required by──> [Vigência days remaining]
+                          └──required by──> [Header KPI cards]
 
-Interactive Charts (Plotly/Altair)
-    └──requires──> Chart Theme Config (matching dark theme)
+[CNPJ aggregation]
+    └──required by──> [Link to CRM contacts]
+    └──required by──> [Clientes qualificados KPI]
+    └──required by──> [CNPJ expand/collapse]
 
-Lead Profile Page
-    └──requires──> URL Parameter Routing (st.query_params)
-    └──enhances──> Visual Ranking Indicators (displayed on profile)
-    └──enhances──> Comparison View (link from profile to compare)
+[Desembolso highlight logic]
+    └──enhances──> [Filtered list em execução] (visual triage)
 
-Global Search
-    └──requires──> Search Index (pre-computed)
-    └──requires──> Unified Data Model (across entities)
-    └──conflicts──> Real-time Autocomplete (performance)
+[Access control (gestor/coordenador only)]
+    └──required by──> [All features on this tab]
 
-Mobile Responsive Layout
-    └──requires──> CSS Media Queries
-    └──requires──> Simplified Mobile Navigation
-    └──conflicts──> Complex Multi-column Layouts (too much on mobile)
+[% execução progress bar]
+    └──enhances──> [Filtered list em execução]
+
+[Sort by risco]
+    └──enhances──> [Filtered list em execução]
 ```
 
 ### Dependency Notes
 
-- **Dark Theme enables Glassmorphic Cards:** Glassmorphism (frosted glass effect) only works visually on dark backgrounds. Light theme + glassmorphism looks washed out. Must implement dark theme first.
+- **Filtered list requires the convenio → proposta join:** The cross-reference `convenio.proposta_id → proposta.transfer_gov_id → proposta.proponente_cnpj` is the foundation. If proposta_id is sparsely populated in convenios, few rows will match. This is the highest-risk dependency and must be validated against actual data before committing to the approach.
+- **CNPJ aggregation requires the join:** Cannot count fomentos-per-org without establishing which CNPJ each convenio belongs to. The join produces this.
+- **CRM contact link requires CNPJ aggregation:** Cannot show "this org has a contact" without first knowing which CNPJ each project belongs to.
+- **Access control has no dependencies:** Can be implemented independently as the route-level guard. Reuses existing `isAdmin(role)` and `verifySession` pattern from `dal.ts`.
+- **Highlight logic has no dependency on contacts:** Pure presentation logic on desembolso value. Can be done entirely in the frontend once the data row includes valor_desembolsado.
+- **KPI cards depend on the same query:** The gestor header metrics (clientes qualificados, quantidade de fomentos, valor total) are aggregates of the same filtered query. No separate data source needed.
 
-- **Lead Profile Page enhances Comparison View:** Profile page can have "Compare with..." button. Comparison view links back to individual profiles. Bidirectional navigation.
+---
 
-- **Global Search conflicts with Real-time Autocomplete:** Global search requires querying multiple tables. Doing this on every keystroke (autocomplete) will lag. Must choose: debounced search or autocomplete on single entity.
+## MVP Definition
 
-- **Mobile Responsive conflicts with Complex Layouts:** Multi-column layouts (4+ columns) don't fit on mobile. Must have simplified mobile view with collapsible sections.
+### Launch With (v1 — this milestone)
 
-## MVP Recommendation (Milestone Scope)
+Read-only intelligence view that gives the gestor actionable awareness of post-sale portfolio health.
 
-This milestone adds premium UI/UX to existing functional dashboard. Prioritize features that maximize visual impact with minimal Streamlit fighting.
+- [ ] Route `/execucao` restricted to gestor + coordenador roles — uses existing `verifySession` + role check pattern from dal.ts
+- [ ] SQL query joining convenios + propostas filtered to situacao=em execução AND modalidade=OSC — no new table required if query is performant
+- [ ] CNPJ-level aggregated list: nome, CNPJ, count of active grants (fomentos), total valor_global — the core table
+- [ ] Per-row financial columns: desembolso total, saldo em conta, % execução, data fim vigência, dias restantes
+- [ ] Desembolso highlight: red row/badge if any convenio for this CNPJ has negative desembolso
+- [ ] Header KPI cards: clientes qualificados (distinct CNPJs), quantidade de fomentos total, valor total em execução — reuse KPICard component
+- [ ] Contact indicator: small badge if CNPJ exists in lead_contacts or vendedor_projetos table — no full contact details needed at launch
+- [ ] Sidebar navigation entry for gestor/coordenador — add to existing Sidebar.tsx conditional navItems
 
-### Phase 1: Visual Foundation (Week 1)
-Establish premium look-and-feel with CSS theming.
+### Add After Validation (v1.x)
 
-- [ ] **Dark cyberpunk theme** - config.toml + custom CSS for navy/neon blue Sigma brand
-- [ ] **Glassmorphic card components** - Reusable CSS card wrapper for metrics, tables, filters
-- [ ] **Visual hierarchy refinement** - Spacing, typography, section headers with visual weight
-- [ ] **Loading state polish** - Branded st.spinner with Sigma colors
+- [ ] Expand/collapse per-CNPJ to show individual convenios — trigger: gestor feedback that single-row view loses too much detail
+- [ ] Sort controls (by saldo, by % exec, by vigência) — trigger: gestor says default sort doesn't surface right cases
+- [ ] UF / estado filter — trigger: gestor has regional focus and needs to segment
+- [ ] Text search by org name or CNPJ — trigger: gestor has a specific client they want to find
 
-**Rationale:** Visual impact is high, complexity is low. Pure CSS work. Sets foundation for all subsequent features. Users immediately see "premium" feel.
+### Future Consideration (v2+)
 
-### Phase 2: Data Visualization (Week 1-2)
-Add interactive charts to replace/enhance table-only views.
+- [ ] Historical disbursement trend chart per CNPJ — defer: desembolsos table sparsely populated, needs data quality validation first
+- [ ] Vigência expiration alerts via push notification — defer: requires cron wiring beyond current scope
+- [ ] Post-sale assignment workflow — defer: entirely separate feature set, needs user research on process
+- [ ] Export to CSV of orgs in execution — defer: useful but not critical for intelligence-only view
 
-- [ ] **Lead distribution charts** - Plotly bar charts for leads by state, ministry, value tier
-- [ ] **Trend visualization** - Line chart for proposals over time (if historical data available)
-- [ ] **Chart theming** - Match dark theme with Streamlit chart config
-- [ ] **Interactive tooltips** - Hover for details on chart elements
-
-**Rationale:** Charts reduce cognitive load for sales reps. Streamlit has native Plotly/Altair support. Interactive features come free with libraries. High value, medium-low effort.
-
-### Phase 3: Enhanced Navigation & Search (Week 2)
-Improve user flow for lead discovery.
-
-- [ ] **Lead profile dedicated page** - Deep-dive view with URL routing via st.query_params
-- [ ] **Enhanced search UI** - Visual search bar in sidebar with clear affordances
-- [ ] **Visual ranking indicators** - Color-coded value badges + progress bars for lead scores
-- [ ] **Breadcrumb navigation** - Show current location (e.g., "Qualificacao > Lead Profile > CNPJ 12.345.678/0001-90")
-
-**Rationale:** Sales workflow is search > browse > drill-down. Optimizing this flow has direct business impact. Medium complexity but core to UX.
-
-### Phase 4: Polish & Responsiveness (Week 2-3)
-Final touches for professional feel.
-
-- [ ] **Mobile responsive layout** - CSS media queries for tablet/phone
-- [ ] **Subtle animations** - Fade-in for cards (CSS only, no JavaScript)
-- [ ] **Data freshness prominence** - Visual indicator in header (e.g., "Updated 2h ago" with icon)
-- [ ] **Export UX improvement** - Better export button styling, add "Export filtered results" option
-
-**Rationale:** Polish features that don't affect core functionality but complete the premium feel. Mobile support is table stakes but can be added after desktop UX is solid.
-
-### Defer to Post-MVP
-
-Features that are valuable but out of scope for this milestone:
-
-- [ ] **Global cross-entity search** - Requires search index architecture. Complex. Defer until user feedback confirms need.
-- [ ] **Comparison view (side-by-side leads)** - Nice-to-have for power users. Not core workflow. Add if users request.
-- [ ] **Customizable dashboard layout** - High complexity for Streamlit. Only add if users actively complain about fixed layout.
-- [ ] **Auto-refresh on new data** - Can be jarring. Better to add "Check for updates" manual button first, auto-refresh only if users want it.
+---
 
 ## Feature Prioritization Matrix
 
-| Feature | User Value | Implementation Cost | Priority | Notes |
-|---------|------------|---------------------|----------|-------|
-| Dark cyberpunk theme | HIGH | LOW | **P1** | Foundation for brand identity. Pure CSS. |
-| Glassmorphic cards | HIGH | MEDIUM | **P1** | Signature visual style. CSS backdrop-filter. |
-| Interactive charts (lead distribution) | HIGH | MEDIUM | **P1** | Reduce cognitive load. Native Streamlit support. |
-| Visual ranking indicators | HIGH | LOW | **P1** | Faster lead qualification. Simple CSS enhancement. |
-| Lead profile page | HIGH | MEDIUM | **P1** | Core sales workflow. Medium routing complexity. |
-| Mobile responsive layout | HIGH | MEDIUM | **P1** | Table stakes for 2026. CSS media queries. |
-| Loading state polish | MEDIUM | LOW | **P2** | Professional feel. Low effort, nice-to-have. |
-| Data freshness visual indicator | MEDIUM | LOW | **P2** | Builds trust. Simple timestamp display. |
-| Enhanced search UI | MEDIUM | LOW | **P2** | Visual polish for existing feature. |
-| Subtle card animations | MEDIUM | MEDIUM | **P2** | Premium feel but must avoid flicker. Test carefully. |
-| Comparison view (side-by-side) | MEDIUM | MEDIUM | **P2** | Power user feature. Not essential. |
-| Breadcrumb navigation | MEDIUM | LOW | **P2** | Helpful but not critical. Easy to add. |
-| Global cross-entity search | HIGH | HIGH | **P3** | High value but complex. Defer until needed. |
-| Customizable layout | LOW | HIGH | **P3** | Low ROI for sales dashboard. Avoid unless requested. |
-| Auto-refresh | MEDIUM | MEDIUM | **P3** | Can be disruptive. Manual refresh better. |
-| Chart brushing/linking | LOW | HIGH | **P3** | Complex custom components. Avoid in Streamlit. |
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| Filtered list (em execução + OSC) | HIGH | LOW | P1 |
+| CNPJ aggregation with fomentos count | HIGH | MEDIUM | P1 |
+| Financial columns (desembolso, saldo, % exec) | HIGH | LOW | P1 |
+| Vigência + dias restantes | HIGH | LOW | P1 |
+| Desembolso alert highlight | HIGH | LOW | P1 |
+| Header KPI cards | MEDIUM | LOW | P1 |
+| Access control (gestor/coordenador) | HIGH | LOW | P1 |
+| CRM contact link/badge | MEDIUM | LOW | P1 |
+| Sidebar navigation entry | HIGH | LOW | P1 |
+| % execução progress bar | MEDIUM | LOW | P2 |
+| Expand/collapse per-CNPJ | MEDIUM | MEDIUM | P2 |
+| Sort controls | MEDIUM | LOW | P2 |
+| UF filter | LOW | LOW | P2 |
+| Text search | MEDIUM | LOW | P2 |
+| Historical trend chart | LOW | HIGH | P3 |
+| Push alerts for expiring grants | LOW | HIGH | P3 |
+| Post-sale workflow | LOW | HIGH | P3 |
 
 **Priority key:**
-- **P1:** Must have for milestone completion. Core premium redesign.
-- **P2:** Should have if time permits. Enhances polish.
-- **P3:** Nice to have, future consideration. Defer to later milestones.
+- P1: Must have for launch
+- P2: Should have, add when possible
+- P3: Nice to have, future consideration
 
-## Streamlit-Specific Constraints
+---
 
-Critical limitations to acknowledge when planning features:
+## Implementation Notes for Roadmap
 
-### Architecture Constraints
+### Query Design (Informs Phase Structure)
 
-1. **Full re-run on every interaction** - Every button click, filter change, or search keystroke re-executes the entire Python script. This makes real-time interactions (autocomplete, live collaboration) laggy or impossible.
+The entire tab rests on one query. Phase 1 must validate the join produces usable data.
 
-2. **Stateless by default** - Session state must be explicitly managed. Complex multi-step workflows (wizards, multi-page forms) require careful state management.
+```sql
+-- Core query pattern (validate before building UI)
+SELECT
+  prop.proponente_cnpj,
+  COUNT(c.id)                           AS total_fomentos,
+  SUM(c.valor_global)                   AS valor_total,
+  SUM(c.valor_desembolsado)             AS total_desembolsado,
+  SUM(c.saldo_conta)                    AS total_saldo_conta,
+  CASE WHEN SUM(c.valor_global) > 0
+    THEN (SUM(c.valor_desembolsado) / SUM(c.valor_global)) * 100
+    ELSE 0 END                          AS perc_execucao,
+  MIN(c.data_fim_vigencia)              AS proxima_vigencia_fim,
+  (MIN(c.data_fim_vigencia) - CURRENT_DATE) AS dias_restantes,
+  BOOL_OR(c.valor_desembolsado < 0)     AS has_negative_desembolso
+FROM convenios c
+INNER JOIN propostas prop ON c.proposta_id = prop.transfer_gov_id
+WHERE
+  c.situacao ILIKE '%em execução%'
+  AND prop.modalidade ILIKE '%osc%'
+GROUP BY prop.proponente_cnpj
+ORDER BY dias_restantes ASC NULLS LAST
+```
 
-3. **Limited CSS customization** - No direct CSS file support. Must inject via st.markdown with unsafe_allow_html=True (which may be deprecated). Custom styling is hacky.
+Indexes needed on `convenios.situacao` and `propostas.modalidade` for performance. Verify these are absent in current schema.sql (they are — no index exists on these columns today).
 
-4. **Single-threaded per session** - Each user session runs in one Python process. Heavy computation blocks UI. Must use st.cache_data for performance.
+### Data Quality Risk (Critical to Validate Early)
 
-### Performance Constraints
+The join `convenios.proposta_id = propostas.transfer_gov_id` is the highest-risk dependency. If `proposta_id` is sparsely populated in the convenios table, the filtered set will be much smaller than expected. This should be the first thing validated in Phase 1 of the roadmap, before any UI work begins.
 
-1. **Large dataframes (>5K rows) slow down** - Streamlit re-renders entire dataframe on every interaction. Pagination or virtual scrolling not natively supported.
+### Reuse Opportunities from Existing Code
 
-2. **Chart rendering is blocking** - Complex Plotly charts can take 1-2 seconds to render, blocking other UI updates.
+These existing pieces should be reused directly, not reimplemented:
 
-3. **No incremental updates** - Can't update just one metric; entire page re-renders. Makes dashboards with many metrics feel slow.
+| Existing Component | Location | Reuse For |
+|-------------------|----------|-----------|
+| `KPICard` component | `/components/KPICard.tsx` | Header KPI cards (clientes qualificados, fomentos, valor total) |
+| Priority badge pattern | `/monitoramento/page.tsx` PRIORITY_COLORS | Desembolso alert badge |
+| Progress bar for % exec | `/monitoramento/page.tsx` | % execução visual bar |
+| Role guard pattern | `verifySession` + role check in page.tsx | Restrict to gestor/coordenador |
+| Sidebar conditional | `Sidebar.tsx` navItems array | Add /execucao entry for gestor + coordenador |
+| Debounced filter pattern | `/monitoramento/page.tsx` searchTimeout | Search/filter if added |
 
-### UX Constraints
+---
 
-1. **No true SPA feel** - Page "flickers" on re-run (though Streamlit tries to minimize this). Can't achieve buttery-smooth transitions like React apps.
+## Competitor Feature Analysis
 
-2. **Limited interactivity between components** - Can't easily do "click chart to filter table" without custom components. Plotly/Altair events have limited Streamlit integration.
+This is an internal tool with no direct competitors. Reference points:
 
-3. **Mobile UX is desktop-first** - Streamlit is optimized for desktop. Mobile works but requires extra CSS effort for polish.
+| Feature | TransferênciaGov public portal | Existing /monitoramento tab | Our /execucao approach |
+|---------|-------------------------------|---------------------------|------------------------|
+| Status filter | Yes, per-project only | By priority (value-based), no status filter | Filter by situacao=em execução at query level |
+| Financial metrics | Desembolsado, saldo, global | Uses valor_emenda as proxy (sparse real data) | Uses actual convenios columns: valor_desembolsado, saldo_conta, valor_global |
+| CNPJ aggregation | No — project by project only | No — one row per project | Yes — aggregate by CNPJ, show fomentos count |
+| Alert logic | None | Priority based on R$ value threshold | Alert based on desembolso sign (negative = problem) |
+| Vigência tracking | Date shown in project detail | Not present | Computed dias_restantes column |
+| CRM contact link | None | None | Badge if CNPJ in lead_contacts |
+| Access control | Public | All authenticated users | Gestor + coordenador only |
 
-### Browser Compatibility
-
-1. **Glassmorphic backdrop-filter** - Requires modern browsers (Chrome 76+, Firefox 103+, Safari 15.4+). Fallback needed for older browsers.
-
-2. **CSS Grid/Flexbox** - Streamlit uses modern CSS but must test on target browsers (sales teams often use corporate IT with older browsers).
-
-## Competitor Feature Analysis (Implicit Benchmarks)
-
-Sales dashboard users have implicit expectations from tools they've used:
-
-| Feature Category | Standard Expectation (Salesforce, HubSpot, etc.) | PROJETUS Approach |
-|------------------|--------------------------------------------------|-------------------|
-| **Lead scoring** | Numeric score (0-100) with color coding | Value badges (Verde/Alto/Bom/Regular) + color highlights |
-| **Search** | Instant autocomplete, search history | Debounced search on Enter, no autocomplete (Streamlit limitation) |
-| **Filtering** | Multi-select filters with "Apply" button | Immediate filter application (Streamlit native) |
-| **Data visualization** | Interactive charts with drill-down | Plotly charts with hover, limited drill-down (Streamlit constraint) |
-| **Lead profiles** | Dedicated page with tabs (Activity, Contact, History) | Tabs for Emendas, Propostas, Convenios, Historico (matches pattern) |
-| **Mobile** | Native app with offline mode | Responsive web app, online-only (Streamlit limitation) |
-| **Collaboration** | Comments, tags, assignment | Export-only, no collaboration (out of scope for analytics dashboard) |
-| **Customization** | User-specific views, saved filters | No customization (Streamlit complexity, defer) |
-
-**Key Takeaway:** PROJETUS can match core expectations (search, filtering, charts, profiles) but must set different expectations for advanced features (collaboration, customization, real-time). Position as "analytics dashboard" not "CRM replacement."
+---
 
 ## Sources
 
-### Dashboard Design Best Practices (2026)
-- [Curated Dashboard Design Examples for UI Inspiration (2026) | Muzli Blog](https://muz.li/blog/best-dashboard-design-examples-inspirations-for-2026/)
-- [9 Dashboard Design Principles (2026) | DesignRush](https://www.designrush.com/agency/ui-ux-design/dashboard/trends/dashboard-design-principles)
-- [Dashboard Design: Best Practices & How-Tos 2026](https://improvado.io/blog/dashboard-design-guide)
-- [Understanding data visualization dashboards in 2026](https://www.fanruan.com/en/blog/data-visualization-dashboard-key-metrics)
-- [Dashboard Design UX Patterns Best Practices - Pencil & Paper](https://www.pencilandpaper.io/articles/ux-pattern-analysis-data-dashboards)
-
-### Sales Dashboard Specific
-- [Lead analytics dashboard: 7 metrics every sales team needs in 2026](https://monday.com/blog/crm-and-sales/lead-analytics-dashboard/)
-- [Sales Dashboard: Insights & Real-World Examples 2026](https://improvado.io/blog/sales-dashboard)
-- [UI Trends in 2026 for SaaS Companies - TFC](https://www.thefrontendcompany.com/posts/ui-trends)
-
-### Streamlit Capabilities & Limitations
-- [Theming - Streamlit Docs](https://docs.streamlit.io/develop/concepts/configuration/theming)
-- [Chart elements - Streamlit Docs](https://docs.streamlit.io/develop/api-reference/charts)
-- [A new Streamlit theme for Altair and Plotly charts](https://blog.streamlit.io/a-new-streamlit-theme-for-altair-and-plotly/)
-- [Streamlit Supports 5 Important Data Visualization Libraries](https://alanjones2.github.io/streamlit-chart-varieties/)
-- [How to Build a Minimalistic Streamlit Dashboard That Actually Looks Good — A Step-by-Step Guide | Medium](https://medium.com/data-science-collective/how-to-build-a-minimalistic-streamlit-dashboard-that-actually-looks-good-a-step-by-step-guide-ef5d803ae4a2)
-- [15 Pros & Cons of Streamlit [2026] - DigitalDefynd](https://digitaldefynd.com/IQ/pros-cons-of-streamlit/)
-
-### Glassmorphism & Modern UI Design
-- [Dark Glassmorphism: The Aesthetic That Will Define UI in 2026 | Medium](https://medium.com/@developer_89726/dark-glassmorphism-the-aesthetic-that-will-define-ui-in-2026-93aa4153088f)
-- [Glassmorphism: What It Is and How to Use It in 2026 - The Inverness Design Studio](https://invernessdesignstudio.com/glassmorphism-what-it-is-and-how-to-use-it-in-2026)
-- [How to Create Glassmorphic UI Effects with Pure CSS](https://blog.openreplay.com/create-glassmorphic-ui-css/)
-- [64 CSS Glassmorphism Examples](https://freefrontend.com/css-glassmorphism/)
-
-### Search & Navigation UX
-- [6 Essential Search UX Best Practices for 2026 | DesignRush](https://www.designrush.com/best-designs/websites/trends/search-ux-best-practices)
-- [Master Search UX in 2026: Best Practices, UI Tips & Design Patterns](https://www.designmonks.co/blog/search-ux-best-practices)
-- [st.navigation - Streamlit Docs](https://docs.streamlit.io/develop/api-reference/navigation/st.navigation)
-- [Build a custom navigation menu with st.page_link - Streamlit Docs](https://docs.streamlit.io/develop/tutorials/multipage/st.page_link-nav)
+- Direct schema analysis: `/Users/pauloloureiro/Dev/SigmaProjects/projetustgov/web/schema.sql` — confirmed convenios, propostas table columns
+- Direct code analysis: `web/src/app/api/leads/[cnpj]/instruments/route.ts` — confirmed valor_desembolsado, saldo_conta, data_fim_vigencia in active use
+- Direct code analysis: `web/src/app/monitoramento/page.tsx` and `route.ts` — confirmed perc_execucao and priority badge patterns
+- Direct code analysis: `web/src/lib/dal.ts` — confirmed role guard patterns (isAdmin, verifySession)
+- Direct code analysis: `web/src/components/Sidebar.tsx` — confirmed conditional navItems pattern
+- Client milestone spec: `.planning/PROJECT.md` v4.0 section — data flow, column references, KPI requirements
+- [TransfereGov SICONV](https://siconv.com.br/) — confirms desembolso/saldo terminology in Brazilian federal grant context
+- [Project Portfolio Dashboard patterns](https://birdviewpsa.com/blog/project-portfolio-dashboards/) — standard table stakes for financial execution monitoring dashboards
 
 ---
-*Feature research for: PROJETUS Premium Dashboard UI/UX Redesign*
-*Researched: 2026-02-09*
-*Confidence: MEDIUM (Web search + official Streamlit docs; no hands-on testing of all features)*
+
+*Feature research for: Projetos em Execução intelligence tab (v4.0 milestone)*
+*Researched: 2026-03-18*

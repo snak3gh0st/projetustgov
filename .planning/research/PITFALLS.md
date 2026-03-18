@@ -1,291 +1,195 @@
-# Pitfalls Research: Web Scraping/ETL Systems
+# Pitfalls Research
 
-**Domain:** Web Scraping & ETL (Government websites, Excel/CSV parsing, PostgreSQL)
-**Researched:** 2026-02-04
-**Confidence:** HIGH
+**Domain:** CRM extension — government project execution tracking (Projetos em Execução tab)
+**Researched:** 2026-03-18
+**Confidence:** HIGH (primary source: direct codebase analysis + documented production incidents)
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Silent Data Loss from Schema Changes
+### Pitfall 1: Sync Contamination — New Table Repeats the STEP 7c Mistake
 
 **What goes wrong:**
-Source system changes a column name or structure, but the ETL pipeline continues running without errors. The pipeline silently maps wrong columns, defaults to NULL values, or drops data without raising alarms. Business users discover the issue weeks later when dashboards show incorrect trends.
+The `projetos_execucao` table will be populated by a sync function that reads from `convenios`. If that sync uses an UPSERT without a precise conflict key, or if a status-inheritance step is added later without scoping by the correct grouping dimension, it will silently overwrite gestor annotations or produce the same cross-contamination bug that hit `vendedor_projetos` in March 2026.
 
 **Why it happens:**
-Most scraping/ETL code uses brittle selectors or column name matching without validation. When source changes (e.g., government site renames "Valor" to "ValorTotal"), the code either fails silently or maps the wrong field. Without schema validation, corrupt data flows into the database appearing "successful."
+TransferênciaGov deletes and reinserts emendas when data is updated (documented in `.planning/debug/contacted-status-regression.md`). The same pattern applies to convênios: a `situacao` change on the government side may trigger a delete + reinsert in the Python ETL, which then presents as a new row in `convenios`. If the new sync does a full truncate-and-reload from `convenios`, any gestor state stored in `projetos_execucao` is wiped. If it uses UPSERT without a precise conflict key (e.g., only `cnpj` instead of `(cnpj, nr_convenio)`), daily syncs produce duplicate rows. The STEP 7c bug — missing `vendedor_id` scoping in the status-inheritance query — is the canonical example: a single missing filter clause caused cross-vendor status contamination for every cron run.
 
 **How to avoid:**
-- Implement pre-ingestion schema validation that fails loudly on unexpected structure
-- Use multiple selector fallbacks (CSS class, XPath, text-based) with explicit failure when all fail
-- Add row-level validation: if critical fields are NULL, fail the entire batch
-- Create data quality checks: compare row counts, sum of values, presence of required fields against historical patterns
-- Implement schema fingerprinting: hash the source structure and alert on changes
+- Use `ON CONFLICT (cnpj, nr_convenio) DO UPDATE` as the UPSERT key, never `ON CONFLICT (cnpj)` alone.
+- Document in the sync function which fields are NEVER updated by the sync (the same discipline as `repo-sync.ts` lines 26-27: "NEVER updates: vendedor_id, status_contato, ...").
+- If a status-inheritance step is added (analogous to STEP 7c), always scope it by the grouping dimension (e.g., gestor annotations should be scoped per `nr_convenio`, not per `cnpj`).
+- Never truncate `projetos_execucao` in the sync — use UPSERT only.
+- Write the sync as a separate function, not an extension of `syncLeadsFromRepo()`.
 
 **Warning signs:**
-- Sudden appearance of NULL values in previously populated fields
-- Row counts drop but pipeline reports "success"
-- Aggregate metrics (sum, average) shift dramatically without business explanation
-- Users report "missing data" for recent time periods
-- No errors logged despite obvious data issues
+- `projetos_execucao` row count changes unexpectedly after a cron run.
+- Gestor overrides or annotations disappear after a sync.
+- The same CNPJ appears more than once in the execution tab.
+- `nr_convenio IS NULL` count in `projetos_execucao` grows after syncs.
 
-**Phase to address:**
-**Foundation (Phase 1)** - Build validation layer before any data ingestion. This is architectural; retrofitting is expensive and error-prone.
-
-**Detection strategy:**
-- Monitor NULL percentage per column (alert if >5% when historically <1%)
-- Track row count per extraction (alert if deviation >20% from rolling average)
-- Log schema structure on each run, diff against baseline
-- Implement "canary queries" that check for known data patterns
+**Phase to address:** Phase 1 (DB schema and sync design). The UPSERT key and the field-level update policy must be defined in writing before any sync code is written.
 
 ---
 
-### Pitfall 2: No Alerting = Hours of Undetected Failures
+### Pitfall 2: Cross-Source Join Silently Drops Projects (NULL proposta_id)
 
 **What goes wrong:**
-Scraper breaks (site added CAPTCHA, network timeout, server error), pipeline runs "successfully" with zero rows extracted, and no one notices until users complain. By discovery time, you've lost days of data and client trust. 68% of ETL failures need 4+ hours just to detect, with 15-hour average resolution time.
+The join path `convenios.proposta_id → propostas.transfer_gov_id → propostas.proponente_cnpj` is the bridge between the two data sources. The `schema.sql` defines `proposta_id VARCHAR` with no NOT NULL constraint and no foreign key. The existing `instruments/route.ts` uses `INNER JOIN propostas ON c.proposta_id = prop.transfer_gov_id` — if `proposta_id` is NULL or blank in a `convenios` row, the INNER JOIN silently drops that convênio. The execution tab will appear to be working (no errors) but will be missing legitimate "em execução" projects.
 
 **Why it happens:**
-Developers focus on the "happy path" - when scraping works, data flows in. They assume cron/scheduler success means data success. Pipeline exits with code 0 even when extraction yielded nothing. No one implements success criteria beyond "didn't crash."
+The Python ETL populates `convenios.proposta_id` from the government spreadsheet. The linkage is not always present in the source data — some convênios exist before the proposta is formally linked. The API that already queries this join (`instruments/route.ts`) has accepted this silent loss because it is used in the lead detail page where users notice individual missing records. In the execution tab, which is a management view of all active projects, this silent loss is much more dangerous.
 
 **How to avoid:**
-- Separate process success from data success: return exit code 1 if extracted rows = 0
-- Implement multi-channel alerting: Slack/email/SMS when extraction fails, returns empty, or deviates from baseline
-- Create heartbeat monitoring: if pipeline hasn't reported success in X hours, alert
-- Build a monitoring dashboard showing: last successful run, rows extracted, failures, data quality scores
-- Use observability tools (Prometheus + Grafana, New Relic, DataDog) - not just logs
-- Implement dead letter queues for failed extractions with automatic retry attempts
+- Before writing any API code, run this diagnostic: `SELECT COUNT(*) FROM convenios WHERE proposta_id IS NULL AND situacao ILIKE '%execu%'`. Document the count.
+- If the count is >0, add a fallback join path: when `proposta_id IS NULL`, try matching via `proponentes.cnpj` directly (requires knowing the proponente CNPJ from a different column on `convenios` if it exists).
+- Use `LEFT JOIN` for the `propostas` join, and log/count rows where `prop.transfer_gov_id IS NULL` in the sync stats.
+- Add a `join_miss_count` field to sync log output so gestores can see how many convênios could not be linked.
 
 **Warning signs:**
-- You discover failures by checking logs manually
-- Users report missing data before your team notices
-- No clear answer to "when did this last run successfully?"
-- Failed runs require SSH into server to diagnose
-- Team relies on "checking the database" to verify pipeline health
+- A gestor reports a known "em execução" client that does not appear in the tab.
+- Direct `SELECT COUNT(*) FROM convenios WHERE situacao ILIKE '%execu%'` returns more rows than the tab shows.
+- `proposta_id IS NULL` count in `convenios` is non-zero.
 
-**Phase to address:**
-**Foundation (Phase 1)** - Monitoring is not optional for unattended systems. Must be built-in from day 1, not added "when we have time."
-
-**Detection strategy:**
-- Daily pipeline health check: rows extracted yesterday > 0 AND > 50% of average
-- Alert escalation: Slack → Email → SMS if not acknowledged in 30 min
-- Weekly report: success rate, average extraction size, failure patterns
-- Synthetic monitoring: test scraper against known-good URL daily
+**Phase to address:** Phase 1 (data audit) — run the diagnostic query before writing a single line of API code. Phase 2 (API design) must handle NULL `proposta_id` explicitly with a logged fallback.
 
 ---
 
-### Pitfall 3: Website Structure Changes Break Everything
+### Pitfall 3: Financial Precision Loss — FLOAT in Old Schema vs. NUMERIC in CRM
 
 **What goes wrong:**
-Government site redesigns its layout, changes CSS classes, or moves elements in the DOM. Your hardcoded selectors (`div.price`, `#table-row-3`) return nothing. Scraper either fails loudly (good) or silently returns empty (catastrophic). McGill University research (2025) shows traditional scrapers break when page layouts change, while AI methods maintained 98.4% accuracy through changes.
+`schema.sql` defines all financial columns in `convenios`, `propostas`, and `desembolsos` as `FLOAT` (e.g., `valor_global FLOAT`, `valor_desembolsado FLOAT`, `saldo_conta FLOAT`). The CRM tables (`vendedor_projetos`) use `NUMERIC(15,2)`. When the execution tab computes `percentual_execucao = (valor_desembolsado / valor_global) * 100`, FLOAT arithmetic produces values like `99.9999999...` or `100.00000001`. These render incorrectly in the UI, break `=100%` comparisons, and confuse gestores.
 
 **Why it happens:**
-Developers use fragile, single-point-of-failure selectors: exact CSS classes, nth-child selectors, hardcoded IDs. Sites change these constantly without notice. No validation layer confirms extracted data matches expected patterns. No monitoring detects structural changes before extraction fails.
+The Python ETL that populated the old schema used Python `float` for all numeric fields. The CRM was built later with `NUMERIC(15,2)` as the correct type for financial data. The mismatch was never resolved because the old tables were not part of the CRM originally. Developers building the execution tab will query these existing columns and assume PostgreSQL handles the arithmetic correctly — it does, but in floating-point, not fixed-point.
 
 **How to avoid:**
-- Use resilient selector strategies: multiple fallback selectors (class → XPath → text-based)
-- Implement semantic selectors when possible: find by label text ("Preço:") rather than class name
-- Add structural validation: after extraction, verify data format (e.g., price matches `R$ \d+,\d{2}`)
-- Create change detection: hash page structure per run, alert on significant deviation
-- Build self-healing: when primary selector fails, try fallbacks and log which worked
-- Consider AI-powered extraction for high-value, frequently-changing sources (e.g., Kadoa, Apify)
-- Version your selectors: keep history of working patterns to diagnose/rollback
+- Cast all financial fields from old tables to `NUMERIC(15,2)` at the point of query: `CAST(c.valor_global AS NUMERIC(15,2))`.
+- Compute `percentual_execucao` entirely in PostgreSQL: `ROUND(CAST(c.valor_desembolsado AS NUMERIC(15,2)) / NULLIF(CAST(c.valor_global AS NUMERIC(15,2)), 0) * 100, 1)`.
+- Never pass raw FLOAT values to JavaScript and compute percentages there — browser floating-point rendering is inconsistent.
+- The new `projetos_execucao` table (if created as a materialized cache) must store all financial fields as `NUMERIC(15,2)`, not `FLOAT`.
 
 **Warning signs:**
-- Extraction suddenly returns zero results for previously stable source
-- Data validation failures spike (empty fields, wrong format)
-- Manual inspection shows data present on site but not in database
-- Error logs show "element not found" or timeout errors
-- Users report "data stopped updating" for specific sources
+- Percentual shows values like `99.9999999%` or `100.0000001%`.
+- A sum of desembolsos for a CNPJ differs from `convenios.valor_desembolsado` by fractional amounts.
+- `ROUND(percentual, 1)` in JavaScript produces different results than `ROUND(percentual, 1)` in PostgreSQL for the same value.
 
-**Phase to address:**
-**Foundation (Phase 1)** - Selector resilience is architectural. Fragile selectors accumulate as technical debt that's painful to fix later.
-
-**Detection strategy:**
-- Schema fingerprint per source: alert when structure hash changes
-- Extraction validation: fail if >10% of expected fields are empty
-- Weekly visual regression: screenshot key pages, diff against baseline
-- Automated recovery: test fallback selectors nightly against known sources
+**Phase to address:** Phase 2 (API query design). Establish the CAST-to-NUMERIC rule as a code review requirement for all queries in the execution tab.
 
 ---
 
-### Pitfall 4: Duplicate Data from Non-Idempotent Processes
+### Pitfall 4: Role Gate Omitted on New Routes — Execution Intelligence Leaks to Vendedores
 
 **What goes wrong:**
-Pipeline runs twice (manual re-run, cron misconfiguration, retry after transient failure) and inserts duplicate records. Database grows with redundant data, analytics count the same transaction multiple times, reports show inflated numbers. Without unique constraints, PostgreSQL happily accepts duplicates.
+The existing middleware (`middleware.ts`) checks only whether a session exists, not the user's role. Role enforcement is opt-in per route via `getApiSession()` + role check. If the new `/execucao` page or `/api/execucao` route is created without explicitly checking for `gestor` or `coordenador` role, vendedores can access post-sale financial intelligence (saldo em conta, desembolso rates, execution percentages) for all clients — including clients they do not own.
 
 **Why it happens:**
-ETL processes are written as append-only: `INSERT INTO ... VALUES`. No deduplication logic, no idempotency keys, no upsert patterns. Developers assume "pipeline runs once per day" so duplicates won't happen. But retries, re-runs, and failures break this assumption.
+Every existing route does its own role check (e.g., `setup-crm/route.ts`: `if (!session || session.role !== 'gestor')`). There is no centralized role enforcement for new routes. A route added in a fast iteration omits the check, or only adds authentication (`if (!session)`) without authorization (`if (session.role !== ...)`). The middleware does not catch this.
 
 **How to avoid:**
-- Use upsert operations (PostgreSQL `ON CONFLICT ... DO UPDATE`) instead of blind inserts
-- Define natural keys or business keys (e.g., `transaction_id + date`) as unique constraints
-- Implement idempotency keys: generate unique identifier per extraction batch, track processed batches in database
-- Add deduplication logic: before insert, check if record already exists by business key
-- Use timestamped staging tables: extract to `raw_data_YYYYMMDD`, validate, then merge to production
-- Implement exactly-once semantics: combination of idempotency keys + database constraints
-- Add batch tracking table: record start/end time, row count, status per pipeline run
+- Add `requireGestorOrCoordenador(session)` as a helper in `dal.ts` that returns a 401/403 response object if the role is wrong, so it can be called as the first line of any new route.
+- The page server component (`/execucao/page.tsx`) must call `verifySession()` and redirect vendedores before rendering anything — do not rely solely on the API returning 403, because the page will briefly render before the redirect.
+- Add a comment at the top of every new route file: `// RESTRICTED: gestor + coordenador only`.
+- Test role enforcement explicitly: verify `GET /api/execucao` returns 403 for a vendedor session token, not 200.
 
 **Warning signs:**
-- Database row counts grow faster than expected
-- Sum aggregations are higher than business reality
-- Duplicate records appear with same business key but different insertion timestamps
-- Manual deduplication queries needed regularly
-- Users report "inflated numbers" in reports
+- A vendedor can navigate to `/execucao` without being redirected to `/login`.
+- `GET /api/execucao` returns 200 or data (not 401/403) when called with a vendedor JWT.
+- The page renders briefly before redirecting.
 
-**Phase to address:**
-**Foundation (Phase 1)** - Data integrity is foundational. Retrofitting unique constraints on millions of duplicate rows is a nightmare.
-
-**Detection strategy:**
-- Daily duplicate check: `SELECT business_key, COUNT(*) FROM table GROUP BY business_key HAVING COUNT(*) > 1`
-- Monitor table growth rate: alert if daily growth exceeds 150% of average
-- Audit trail: track pipeline run ID, extraction timestamp per row
-- Synthetic test: run pipeline twice against test data, verify no duplicates
+**Phase to address:** Phase 2 (route creation). The role gate must be added at the same moment the route is created, not as a follow-up task.
 
 ---
 
-### Pitfall 5: Encoding Hell from Excel/CSV Files
+### Pitfall 5: CNPJ Normalization Mismatch Between Old ETL Tables and CRM
 
 **What goes wrong:**
-Government provides Excel/CSV with UTF-8 data, but your parser assumes ISO-8859-1. Portuguese characters (ç, ã, õ, á) become garbage (Ã§, Ã£). Or Excel mangles the CSV on export, mixing encodings. Data loads into PostgreSQL corrupted, searches fail, reports show gibberish. Users lose trust in data quality.
+`vendedor_projetos` stores CNPJs as 14-digit zero-padded strings (enforced by `cleanCNPJ()` in `repo-sync.ts`). The old Python ETL that populated `proponentes`, `propostas`, and `convenios` may have stored CNPJs without zero-padding (e.g., `2931950001005` instead of `02931950001005`). When the execution tab joins `convenios` data with `lead_contacts` (keyed by `lead_cnpj` which is 14-digit) or with `vendedor_projetos`, the join silently fails. The execution tab shows a project with no contact information, or a project that cannot be linked to the CRM record the vendedor has been working.
 
 **Why it happens:**
-CSV has no standard encoding declaration - it's a guess. Excel exports vary by locale and version. Brazilian government sites may use UTF-8, ISO-8859-1, or Windows-1252. Python's default encoding differs by platform. Pandas `read_csv()` without explicit encoding parameter guesses wrong. Once in database, corruption persists.
+Python's `str(int(cnpj))` drops leading zeros. If the ETL did `str(int(row['cnpj']))` for normalization, CNPJs starting with zero were stored as 13-digit strings. There is no FK constraint between the old ETL tables and `vendedor_projetos`, so the mismatch exists silently in the database. The CRM's `cleanCNPJ()` always zero-pads, but the old tables were populated before the CRM existed.
 
 **How to avoid:**
-- Always explicitly specify encoding: `pd.read_csv(file, encoding='utf-8')` or try UTF-8-sig for BOM
-- Implement encoding detection: use `chardet` library to auto-detect before parsing
-- Add fallback chain: try UTF-8 → UTF-8-sig → ISO-8859-1 → Windows-1252
-- Validate after parsing: check for replacement characters (�) or suspicious byte sequences
-- Store raw files before parsing: preserve original for debugging/reprocessing
-- Use PostgreSQL's `COPY` with explicit encoding, not INSERT with string interpolation
-- Test with real government data samples during development, not sanitized test data
+- Before writing any join query, run: `SELECT COUNT(*) FROM proponentes WHERE LENGTH(cnpj) < 14` and `SELECT COUNT(*) FROM propostas WHERE LENGTH(proponente_cnpj) < 14`. Document results.
+- If any count is >0, run a one-time migration: `UPDATE proponentes SET cnpj = LPAD(cnpj, 14, '0') WHERE LENGTH(cnpj) < 14`.
+- In all API queries that join across old and new tables, normalize on both sides: `LPAD(REGEXP_REPLACE(p.cnpj, '\D', '', 'g'), 14, '0')`.
+- The join to `lead_contacts` must use the same 14-digit normalized key: `lc.lead_cnpj = LPAD(REGEXP_REPLACE(conv_cnpj, '\D', '', 'g'), 14, '0')`.
 
 **Warning signs:**
-- Portuguese characters display as � or multi-byte garbage (Ã§)
-- Database searches for "São Paulo" return nothing (stored as "SÃ£o Paulo")
-- Excel export warnings about "data may be lost"
-- Inconsistent encoding across different government sources
-- Manual encoding fixes needed for every data load
+- A CNPJ visible in `vendedor_projetos` has no match in the execution tab even though `convenios` has a record for that organization.
+- `lead_contacts` data does not appear on execution tab entries for some CNPJs.
+- Direct `SELECT * FROM proponentes WHERE cnpj = '02931950001005'` returns 0 rows but `cnpj = '2931950001005'` returns 1 row.
 
-**Phase to address:**
-**Foundation (Phase 1)** - Character encoding must be handled before first data load. Fixing corrupted data in database is nearly impossible.
-
-**Detection strategy:**
-- Post-parse validation: scan for � characters, fail if found
-- Pattern matching: check for known Portuguese words with correct accents
-- Encoding metadata: log detected encoding per file, alert on mismatches
-- Manual QA: human review sample records for character corruption
+**Phase to address:** Phase 1 (data audit + DB migration). Fix CNPJ normalization before writing any cross-table join. This is a one-way door — if the join is built first and the migration comes later, some execution records will appear correct and others broken, making it hard to identify the scope of the problem.
 
 ---
 
-### Pitfall 6: Credentials in Code or Config Files
+### Pitfall 6: New Sync Pushes Vercel Cron Past 300-Second Limit
 
 **What goes wrong:**
-Developer hardcodes database password in `config.py` or `.env` file, commits to Git, pushes to repository. Credentials leak publicly or to unauthorized team members. Worse, credentials in logs, error messages, or screenshots. Security breach exposes client data, or attacker uses credentials to modify/delete database.
+The existing `syncLeadsFromRepo()` runs for up to ~200 seconds (the cron endpoint has `maxDuration = 300`, and STEP 8 has an `elapsed < 200000` guard). If the execution sync is added as a new STEP inside the same cron function, it extends the total runtime past 300 seconds. Vercel kills the function with a 504. This leaves `projetos_execucao` partially updated — some CNPJs updated, others stale. The CRM lead sync may also be cut short.
 
 **Why it happens:**
-Environment variables seem "good enough" for development. No clear guidance on production credential management. Developers don't realize `.env` files get committed, or logs capture SQL connection strings. Urgency ("just get it working") overrides security. No automated secrets scanning in CI/CD.
+The convênio sync reads from `convenios` (already in Supabase, so no external download needed), but iterating over potentially thousands of convênios with per-row UPSERTs still adds 30-90 seconds. Combined with BrasilAPI enrichment in STEP 8, the total exceeds the Vercel Pro limit. Developers append new sync steps to the existing function because it is convenient and avoids a second `vercel.json` entry.
 
 **How to avoid:**
-- Use managed secret stores: AWS Secrets Manager, Azure Key Vault, Google Secret Manager, or HashiCorp Vault
-- Never commit secrets to Git: add `.env`, `credentials.json`, `config.local.*` to `.gitignore` immediately
-- Use environment variables for local dev, secret manager for production
-- Rotate credentials automatically (30-90 days) - managed services do this
-- Implement least-privilege access: database user can only INSERT/UPDATE specific tables, not DROP or DELETE
-- Audit access: log who/when/what accessed credentials
-- Add pre-commit hooks: use tools like `git-secrets` or `detect-secrets` to scan for leaked credentials
-- Document credential management: clear README explaining how to set up secrets locally and in production
+- Create a **separate cron endpoint**: `/api/cron/sync-execucao` with its own `maxDuration = 300`.
+- Schedule it at a different time in `vercel.json` (e.g., 13:30 UTC instead of 12:30 UTC) so it does not compete for the DB connection pool.
+- The new sync function must include an elapsed-time guard (same pattern as STEP 8 in `repo-sync.ts`): stop processing if `Date.now() - startTime > 240000`.
+- The two syncs share the same `getPool()` but must not assume the other is not running simultaneously.
 
 **Warning signs:**
-- Credentials in any file tracked by Git
-- Database connection strings in error logs or stack traces
-- `.env` file contains production passwords
-- Team shares credentials via Slack or email
-- No process for credential rotation
-- Same password used across dev/staging/production
+- Vercel cron logs show 504 on the sync endpoint.
+- `projetos_execucao.updated_at` shows mixed timestamps — some from today, some stale.
+- The lead sync cron begins cutting short (`stats.enriched_api` suddenly much lower than usual).
 
-**Phase to address:**
-**Foundation (Phase 1)** - Security cannot be retrofitted. Once credentials leak, damage is done. Set up secret management before first production deployment.
-
-**Detection strategy:**
-- Automated scanning: run `detect-secrets` in CI/CD, fail if secrets found
-- Git history audit: scan entire commit history for leaked credentials (use `gitleaks`)
-- Access logs: monitor who accessed secret manager, alert on unusual patterns
-- Credential rotation testing: verify pipeline works after credential change
+**Phase to address:** Phase 1 (architecture decision) — separate endpoints must be planned before the sync is written. Phase 3 (cron setup) — `vercel.json` update with the new entry.
 
 ---
 
-### Pitfall 7: Lack of Retry Logic for Transient Failures
+### Pitfall 7: "Desembolso Negativo" Alert Logic Built on Literal Interpretation
 
 **What goes wrong:**
-Network hiccup, temporary site downtime, or database connection timeout causes extraction to fail. Pipeline exits with error, no retry attempted. Overnight run fails, no data collected, gaps appear in time-series analysis. For R$5k/month client, one failed run = lost revenue and trust.
+The spec says "desembolso negativo = alerta, positivo = verificar saldo." In government data, `valor_desembolsado` is always a positive number (money transferred to the beneficiary). A literally negative value never occurs. If the implementation checks `valor_desembolsado < 0`, the alert badge never fires. Alternatively, if the developer guesses that "negativo" means "very low saldo_conta," they implement a threshold without asking the client what threshold is correct, leading to false positives (alerts on healthy projects) or false negatives (no alert on stalled projects).
 
 **Why it happens:**
-Developers test in perfect conditions (local network, stable sites). Don't anticipate real-world failures: DNS timeouts, rate limiting, temporary 503 errors, connection pool exhaustion. No distinction between transient (retry-able) and permanent (alert-immediately) failures. Simple scripts lack retry logic frameworks.
+Government financial data uses domain-specific language where "negativo" often means "unfavorable business signal" rather than a negative number. Developers implement it literally without clarifying with the client. The `saldo_conta FLOAT` field in `convenios` can be very small (near zero) even for active projects in the early disbursement phase — using `saldo_conta < threshold` without understanding the business context fires false alerts.
 
 **How to avoid:**
-- Implement exponential backoff retry: wait 1s, 2s, 4s, 8s, 16s (max 5 attempts) for transient errors
-- Distinguish failure types: retry on 429/503/timeout, fail immediately on 401/404
-- Use circuit breaker pattern: if failure rate >50% over 10 requests, stop attempting (don't DDoS)
-- Add jitter to retries: random delay prevents thundering herd
-- Set maximum retry attempts: prevent infinite loops
-- Use libraries with built-in retry: `requests.adapters.HTTPAdapter` with retry strategy, `tenacity` decorator
-- Implement partial success: if 90% of extractions succeed, process those, alert on 10% failures
-- Create retry queue: failed items go to queue for later retry with different strategy
+- Before writing the alert logic, ask the client to identify 3 convênios that should show "alerta" and 3 that are healthy. Inspect those records directly in the database to determine the distinguishing conditions.
+- Document the confirmed business rule in the API route as a comment, referencing the client sign-off date.
+- Use named constants: `const SALDO_ALERTA_THRESHOLD_BRL = 5000` — not magic numbers embedded in SQL.
+- The alert and "verificar saldo" states should be mutually exclusive with a defined priority order (e.g., Alerta > Verificar Saldo > Normal).
 
 **Warning signs:**
-- Pipeline fails completely on single transient error
-- Manual re-runs frequently needed
-- Success rate <95% despite stable sources
-- Failures cluster around specific times (rate limiting window)
-- Error logs show timeout/connection errors without retry attempts
+- The alert badge never appears for any project.
+- The alert badge appears for all projects or for projects the gestor identifies as healthy.
+- The alert logic produces different results depending on whether the calculation runs in JavaScript or PostgreSQL (floating-point issue compound with Pitfall 3).
 
-**Phase to address:**
-**Foundation (Phase 1)** - Retry logic is part of robust foundation. Production systems without retries are brittle toys.
-
-**Detection strategy:**
-- Track success rate: alert if <95% over rolling 7 days
-- Monitor retry patterns: if retry exhaustion rate >5%, investigate root cause
-- Distinguish transient vs. permanent: ratio should guide infrastructure improvements
-- Test failure scenarios: simulate timeouts, verify retry logic works
+**Phase to address:** Phase 2 (API) — but requires client confirmation of the business rule *before* the API is written. Do not ship the highlight logic as a guess.
 
 ---
 
-### Pitfall 8: No Data Validation = Garbage In, Garbage Out
+### Pitfall 8: BrasilAPI Re-Enrichment Triggered for All New Execution CNPJs
 
 **What goes wrong:**
-Scraper extracts malformed data: negative prices, future dates, missing required fields, wrong data types. No validation layer catches this. Garbage flows into PostgreSQL, triggers downstream failures (analytics break, reports crash), or worse - silently corrupts business metrics. Gartner estimates $12.9M/year organizational losses from bad data.
+When the execution sync identifies CNPJs not yet in `lead_contacts`, it may attempt to enrich them via BrasilAPI. If this logic is implemented naively (loop over all execution CNPJs and call BrasilAPI), it will re-trigger enrichment for CNPJs that are already in the `enrichment_queue` with status `done` or `no_data`. This causes unnecessary BrasilAPI calls, rate-limiting (403 responses), and extends the sync runtime into timeout territory.
 
 **Why it happens:**
-Developers assume source data is clean. Focus on extraction, not validation. Database accepts any string as VARCHAR, so type violations don't fail. No schema enforcement. No business rule validation (e.g., price must be positive). Quick MVP skips "nice to have" validation.
+The existing `enrichment_queue` table (`repo-sync.ts` STEP 8) already tracks enrichment state per CNPJ with statuses: `pending`, `done`, `no_data`, `rate_limited`, `error`. New code that does not check this table will enqueue the same CNPJs again. BrasilAPI has rate limits (the existing system already handles 403 responses as `rate_limited` status), and ignoring the queue state means re-hitting those limits unnecessarily.
 
 **How to avoid:**
-- Define strict schemas: use Pydantic models or JSON Schema to validate extracted data structure and types
-- Implement business rule validation: price > 0, date <= today, required fields not null/empty
-- Use database constraints: CHECK constraints, NOT NULL, foreign keys enforce integrity
-- Add pre-insert validation layer: parse, validate, fail loudly before database write
-- Implement data quality metrics: track % of records failing validation per run
-- Use staging-to-production pattern: validate in staging, only promote clean data
-- Create data quality tests: pytest fixtures that verify validation catches known bad data
-- Log validation failures with examples: helps diagnose source issues
+- Before enqueuing any CNPJ from the execution sync, check the `enrichment_queue`: `INSERT INTO enrichment_queue (cnpj) ... ON CONFLICT (cnpj) DO NOTHING` — this pattern is already used in STEP 8a of `repo-sync.ts` and is safe to reuse.
+- The execution sync should only enqueue CNPJs not already in `lead_contacts` AND not already in `enrichment_queue` with status `done`.
+- Do not add enrichment logic inside the execution sync itself — let the existing lead sync's STEP 8 handle BrasilAPI enrichment. The execution tab will pick up contacts from `lead_contacts` which is populated by that existing pipeline.
 
 **Warning signs:**
-- Database contains impossible values (negative prices, future dates)
-- Downstream analytics fail with "division by zero" or type errors
-- Manual data cleaning needed regularly
-- Business users question data accuracy
-- No visibility into what % of extracted data is valid
+- BrasilAPI returns 403 (rate limit) more frequently than before the execution sync was deployed.
+- `enrichment_queue` gains many `rate_limited` entries after the execution sync runs.
+- Execution sync runtime increases significantly each day.
 
-**Phase to address:**
-**Foundation (Phase 1)** - Validation is the gatekeeper for data quality. Must be built before data flows into production.
-
-**Detection strategy:**
-- Daily validation report: % passing, common failure modes, examples
-- Monitor rejection rate: if >10%, investigate source quality issues
-- Schema drift detection: validate against expected schema, alert on new fields/missing fields
-- Business rule audits: periodically review rules, add new ones as domain knowledge grows
+**Phase to address:** Phase 3 (cron sync implementation). Reuse the existing `enrichment_queue` pattern; do not create parallel enrichment logic.
 
 ---
 
@@ -293,15 +197,12 @@ Developers assume source data is clean. Focus on extraction, not validation. Dat
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Hardcoded selectors (single CSS path) | Fast development, simple code | Breaks on every site change, high maintenance | Never - always use fallback selectors |
-| Skip retry logic | Less code complexity | Brittle pipeline, low success rate | Never for production - acceptable for POC only |
-| Blind INSERT instead of UPSERT | Simpler SQL, faster writes | Duplicate data, data integrity issues | Never - unique constraints are mandatory |
-| .env file for production secrets | Easy deployment | Security vulnerability, credential leaks | Never for production - only local development |
-| No schema validation | Faster extraction pipeline | Silent data corruption, garbage data | Never - validation is table stakes |
-| Append-only logs without rotation | No log management code needed | Disk fills up, server crashes | Never - implement log rotation from day 1 |
-| Single-threaded extraction | Simple linear code | Slow extraction, wastes time | Acceptable if total runtime <30 min |
-| String concatenation for SQL | Quick dynamic queries | SQL injection vulnerability | Never - always use parameterized queries |
-| Skip encoding specification | Works on developer's machine | Encoding corruption on different locales | Never - always specify encoding explicitly |
+| Storing execution data as a database view over `convenios` instead of a dedicated table | No migration needed, no sync to maintain | Cannot store gestor annotations, override flags, or last-reviewed timestamps; view recalculates on every page load | Never — the spec requires gestor-specific state per convênio |
+| Using FLOAT for financial calculations (reuse existing schema columns without casting) | No casting code in queries | Rounding errors in percentual display; inconsistent with `vendedor_projetos` NUMERIC columns | Never for any value shown to users |
+| Adding role check only in the API, not in the page server component | Simpler page code | Page briefly renders before 403, leaking column headers and UI structure to vendedores | Never for sensitive intelligence views |
+| Appending execution sync to the existing cron function instead of a separate endpoint | One less `vercel.json` entry | Risk of cascading timeout that kills both syncs; one failure disables all data freshness | Never — isolate syncs from day one |
+| Building the proposta-convenio join without first auditing NULL `proposta_id` rate | Faster to build the join and test manually | Silent data gaps discovered only when gestores report missing projects in production | Never — run the diagnostic query first |
+| Computing percentual and saldo alerts in JavaScript instead of PostgreSQL | Slightly simpler API response structure | Float precision bugs surface inconsistently per browser; logic is harder to test | Never for financial calculations |
 
 ---
 
@@ -309,14 +210,13 @@ Developers assume source data is clean. Focus on extraction, not validation. Dat
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Government websites | Assume stable URLs/structure | Use URL health checks, version selectors, monitor for redirects |
-| Excel/CSV parsing | Use default encoding (platform-dependent) | Explicitly set encoding (UTF-8-sig), implement detection fallback |
-| PostgreSQL writes | Build SQL via string concatenation | Use parameterized queries, ORM (SQLAlchemy), or `psycopg2` parameters |
-| CAPTCHA handling | Ignore until it blocks you | Implement human-like delays (1-3s), rotate user agents, use residential proxies |
-| Rate limiting | Hammer site with requests until blocked | Implement request throttling (1-2 req/sec), exponential backoff on 429 |
-| Network timeouts | Use default timeout (infinite) | Set aggressive timeouts (connect=5s, read=30s), retry on timeout |
-| Pandas large files | `read_csv()` entire file into memory | Use `chunksize` parameter for streaming, or `dask` for >1GB files |
-| Date parsing | Assume ISO format (YYYY-MM-DD) | Specify `dayfirst=True` for DD/MM/YYYY (Brazil), use `dateutil.parser` |
+| `convenios → propostas` join | Using `INNER JOIN` when `proposta_id` may be NULL | Use `LEFT JOIN` with NULL handling; log join miss count in sync stats |
+| `lead_contacts` join for contact display | Joining by raw CNPJ string without normalization | Always use `LPAD(REGEXP_REPLACE(cnpj, '\D', '', 'g'), 14, '0')` on both sides of the join |
+| `desembolsos` table for disbursement history | Summing `desembolsos.valor_desembolsado` per convênio and comparing to `convenios.valor_desembolsado` | The `convenios` column is the running total; `desembolsos` rows are the audit trail. For the execution tab display, use `convenios.valor_desembolsado` directly; only query `desembolsos` if a timeline or trend chart is needed |
+| Vercel cron (`vercel.json`) | Adding new cron path to the same entry object as the existing sync | Create a separate entry in the `crons` array with a different `path` and an offset time (not concurrent with lead sync) |
+| NextAuth middleware | Assuming `middleware.ts` enforces role restrictions | Middleware only verifies session existence; role must be checked per-route via `getApiSession()` |
+| `enrichment_queue` for new CNPJs | Enqueueing CNPJs without checking existing status | Use `INSERT ... ON CONFLICT (cnpj) DO NOTHING` — already established pattern in `repo-sync.ts` STEP 8a |
+| `setup-crm` for new table creation | Adding the new table creation SQL at the bottom of `runSetup()` without idempotency guards | Use `CREATE TABLE IF NOT EXISTS` + `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` — every step must be idempotent |
 
 ---
 
@@ -324,13 +224,11 @@ Developers assume source data is clean. Focus on extraction, not validation. Dat
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Scraping synchronously | Long runtime (1 hour for 100 pages) | Use async (aiohttp, asyncio) or threading for I/O-bound tasks | >50 pages, runtime >10 min |
-| Loading full CSV into memory | Process crashes with MemoryError | Use Pandas `chunksize` or streaming CSV parser | Files >1GB or memory <4GB |
-| N+1 database queries | Slow inserts (1 sec per row) | Use batch inserts (INSERT INTO ... VALUES (...), (...), ...) or COPY | >1000 rows per batch |
-| No database indexing | Queries slow over time, duplicate checks take minutes | Create indexes on foreign keys, unique constraints, query columns | Table >10k rows |
-| Fetching full page for small data | Slow extraction, high bandwidth | Use API if available, or fetch only required sections (if site supports) | Scraping >100 pages/day |
-| Logging everything to file | Disk fills up, I/O bottleneck | Use log rotation, log levels (DEBUG local only), centralized logging | Production systems |
-| No connection pooling | Connection overhead, rate limiting | Use connection pool (SQLAlchemy pool_size), reuse sessions | >100 requests/hour |
+| Joining `convenios → propostas → proponentes → lead_contacts` without indexes | Query >2s, UI hangs on load | Index `convenios.proposta_id` and `propostas.proponente_cnpj` (check if they exist; `lead_contacts(lead_cnpj)` already exists) | Immediately with any meaningful dataset — no warm-up period |
+| Aggregating `desembolsos` rows per CNPJ on every API call | Page loads slowly, DB connection pool exhausted | Pre-compute aggregates in the sync step; store as `total_desembolsado` in `projetos_execucao` | At ~500 convênios with 20+ desembolso rows each |
+| Returning all execution projects without pagination | Browser hangs, API response too large | Add `LIMIT` + `OFFSET` pagination or cursor-based pagination from the first version | At ~200+ rows in the execution tab response |
+| CNPJ normalization function (`LPAD(REGEXP_REPLACE(...))`) computed inline in every query | High CPU, no index usability | Normalize once in the sync step; store normalized CNPJ as a dedicated column in `projetos_execucao` | Immediately for any table without functional index on the expression |
+| Pool exhaustion when cron runs simultaneously with peak user load | `connectionTimeoutMillis` errors, 500 responses | Keep pool `max: 5` (existing setting); ensure the execution sync releases its client in a `finally` block | When cron runs at 09:30 BRT and multiple gestores open the app simultaneously |
 
 ---
 
@@ -338,118 +236,83 @@ Developers assume source data is clean. Focus on extraction, not validation. Dat
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Credentials in code/config files | Credential leak, unauthorized access | Use secret managers (AWS Secrets Manager, Azure Key Vault), never commit secrets |
-| SQL injection via string concat | Database compromise, data loss | Use parameterized queries, ORM, never interpolate user/source data into SQL |
-| Logging sensitive data | PII exposure, compliance violations | Sanitize logs, never log passwords/tokens/PII, use structured logging |
-| No access control on database | Unauthorized modification/deletion | Use least-privilege database users: read-only for queries, insert-only for ETL |
-| Running scraper as root/admin | System compromise if code exploited | Use unprivileged user, containerize (Docker), sandbox execution environment |
-| No HTTPS verification | Man-in-the-middle attacks | Verify SSL certificates (`verify=True` in requests), don't disable SSL warnings |
-| Storing raw passwords | Credential theft if database breached | Hash passwords (never needed for web scraping), store only in secret manager |
-| No audit trail | Can't trace unauthorized access | Log all database writes with timestamp, user, batch ID; enable PostgreSQL logging |
+| Exposing `/api/execucao` without role check | Vendedores see post-sale intelligence (saldo em conta, execution %, client financial health) — dangerous if a vendedor leaves the company | Add `requireGestorOrCoordenador()` helper in `dal.ts`; use as the first statement in every new route handler for this feature |
+| Showing exact `saldo_conta` values from government data | Reveals precise federal account balance; could be used to time payment pressure | Display rounded to nearest R$ 1,000 for the UI; keep exact value in DB for internal calculations |
+| CNPJ path parameter not validated in new routes | Path traversal or injection via crafted CNPJ strings | Use the existing pattern from `instruments/route.ts`: `decodeURIComponent(params.cnpj)` + digits-only cleanup before any DB query |
+
+---
+
+## UX Pitfalls
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Showing `0%` execution for a project that just started | Gestor assumes it is stalled when it is newly signed | Show `dias_em_execucao` alongside `percentual_execucao`; add a "Recente" badge for projects where `data_assinatura` is within the last 30 days |
+| Aggregating all convênios for a CNPJ into a single row with only a total fomento count | Gestor cannot identify which specific convênio needs attention | Show per-convênio breakdown expandable from the CNPJ row; the big number is the count, the detail is in the expandable section |
+| "Alerta" and "Verificar Saldo" states both showing for the same record | Contradictory UI signal — which action does the gestor take? | Mutually exclusive states with defined priority: Alerta > Verificar Saldo > Normal |
+| No visible data freshness indicator | Gestor acts on data that is 2+ days old after a sync failure with no way to know | Show "Última sincronização: [timestamp]" derived from `cron_sync_log.ran_at` or `projetos_execucao.updated_at` in the tab header |
+| Redirecting vendedores to `/login` instead of a "sem permissão" page | Vendedor thinks their session expired and logs in again, sees a confusing blank redirect loop | Redirect to a "403 — Acesso restrito" page with a link back to `/leads`, not to `/login` |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-Things that appear complete but are missing critical pieces:
-
-- [ ] **Scraper works:** Often missing validation that extracted data is non-empty and matches expected schema - **Verify:** Add assertions for row count >0, required fields present, data types correct
-
-- [ ] **Pipeline "succeeds":** Often missing distinction between process success (exit 0) and data success (rows extracted) - **Verify:** Check exit codes reflect data outcomes, not just "didn't crash"
-
-- [ ] **Extraction tested:** Often missing testing against real production data with encoding issues, malformed rows, structure changes - **Verify:** Test with actual government data downloads, not sanitized samples
-
-- [ ] **Database writes work:** Often missing duplicate detection, referential integrity checks, constraint handling - **Verify:** Attempt duplicate insert, verify unique constraint fires; test foreign key violations
-
-- [ ] **Monitoring "set up":** Often missing alerting on failures, validation failures, or data quality issues - **Verify:** Trigger failure condition, confirm alert fires and reaches team
-
-- [ ] **Credentials "secured":** Often missing rotation strategy, access auditing, or stored in secret manager but accessed insecurely - **Verify:** Credentials not in Git history, automated rotation tested
-
-- [ ] **Error handling implemented:** Often missing retry logic, circuit breakers, or distinguishing transient vs. permanent failures - **Verify:** Simulate network timeout, verify retry logic; simulate 404, verify immediate failure
-
-- [ ] **Logs configured:** Often missing log rotation, structured logging, or appropriate log levels - **Verify:** Let system run for days, check disk usage; verify log rotation configured
-
-- [ ] **Idempotency implemented:** Often missing upsert logic, idempotency keys, or safe re-run capability - **Verify:** Run pipeline twice with same data, verify no duplicates
+- [ ] **Role gate:** Verify `/execucao` returns 302 to a permission-denied page (not 200 and not `/login`) when a vendedor session is used — test both the page and the API endpoint separately.
+- [ ] **CNPJ normalization:** Run `SELECT COUNT(*) FROM proponentes WHERE LENGTH(cnpj) != 14` and `SELECT COUNT(*) FROM propostas WHERE LENGTH(proponente_cnpj) != 14` — both must return 0 before release.
+- [ ] **Financial precision:** Verify `percentual_execucao` shows `100.0%` (not `100.0000001%` or `99.9999999%`) for a convênio where `valor_desembolsado = valor_global`. Use a known test CNPJ from the database.
+- [ ] **Join completeness:** Verify `SELECT COUNT(*) FROM convenios WHERE situacao ILIKE '%execu%'` equals the count of rows visible in the execution tab (accounting for any legitimate filter differences). A gap means silent join drops.
+- [ ] **NULL proposta_id:** Confirm the sync log reports a `join_miss_count` for any convênios that could not be linked to a proposta — or confirm this count is 0.
+- [ ] **Sync isolation:** Run the lead sync cron manually while the execution sync is running; verify both complete without pool timeout errors.
+- [ ] **Alert logic:** Find one convênio the gestor identifies as problematic and confirm the alerta badge appears. Find one healthy project and confirm it does not appear. Both tests must pass with actual database records.
+- [ ] **Idempotency:** Run the execution sync three times in a row; verify row count in `projetos_execucao` does not change after the first run, and verify no duplicate rows exist.
+- [ ] **Contact join:** For at least 5 CNPJs in the execution tab, verify `lead_contacts` data (phone/email) appears correctly — test with CNPJs that have contacts and CNPJs that do not.
 
 ---
 
 ## Recovery Strategies
 
-When pitfalls occur despite prevention, how to recover:
-
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Silent data loss | HIGH (weeks undetected) | 1. Identify when corruption started (schema fingerprints, audit logs) 2. Re-scrape historical data if source allows 3. Notify users of data quality issue for affected time range 4. Implement validation to prevent recurrence |
-| Website structure change | MEDIUM (hours to fix) | 1. Check if fallback selectors exist, activate 2. Update primary selectors for new structure 3. Test against current site 4. Deploy fix 5. Backfill missing data 6. Add monitoring for this failure mode |
-| Duplicate data | MEDIUM (one-time cleanup) | 1. Identify duplicate records by business key 2. Keep most recent or most complete record 3. Delete duplicates in transaction 4. Add unique constraints 5. Fix ETL to use UPSERT 6. Test re-run safety |
-| Encoding corruption | HIGH (hard to fix once stored) | 1. If caught early: fix encoding, re-parse, re-load 2. If widespread: build character mapping repair function 3. Reprocess from raw files with correct encoding 4. Last resort: manual cleanup in database 5. Add encoding validation |
-| Credential leak | CRITICAL (immediate action) | 1. Rotate compromised credentials immediately 2. Audit access logs for unauthorized use 3. Scan Git history, if leaked remove with BFG Repo-Cleaner 4. Notify security team 5. Implement secret scanning |
-| Failed extraction (no retry) | LOW (just re-run) | 1. Identify failure cause (transient vs. permanent) 2. If transient: re-run pipeline 3. If permanent: fix root cause first 4. Implement retry logic to prevent future occurrences |
-| Missing monitoring | MEDIUM (must build before next failure) | 1. Implement basic alerting (failure alerts) 2. Add data quality metrics 3. Create monitoring dashboard 4. Set up escalation paths 5. Test alerting with synthetic failures |
+| Sync contamination (wrong UPSERT key, data overwritten) | HIGH | Restore from Supabase point-in-time backup; re-run sync with corrected key; no CRM state to restore if new table has no gestor annotations yet — if it does, backup must precede any sync change |
+| Cross-source join drops projects (NULL proposta_id) | MEDIUM | Add LEFT JOIN + fallback path; re-run sync; gestor must manually confirm previously-missing projects are now visible |
+| Float rounding displayed in UI | LOW | Add `CAST(... AS NUMERIC(15,2))` to API queries; deploy; no data migration needed |
+| Role gate missing, vendedores accessed the tab | LOW | Add role check immediately; audit Vercel logs for which vendedor IDs accessed the route; no data was mutated (read-only tab) |
+| CNPJ normalization mismatch (contacts missing) | MEDIUM | Run normalization `UPDATE` on `proponentes.cnpj` and `propostas.proponente_cnpj`; no API code change needed if the join uses the LPAD expression |
+| Cron timeout cascade, partial sync | LOW | Separate the syncs into independent endpoints; re-run the execution sync manually; no CRM state affected |
+| BrasilAPI rate-limited from duplicate enrichment | LOW | Fix to use `ON CONFLICT DO NOTHING` pattern; `enrichment_queue` will automatically reset `rate_limited` on next cron run |
 
 ---
 
 ## Pitfall-to-Phase Mapping
 
-How roadmap phases should address these pitfalls:
-
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Silent data loss | Foundation (Phase 1) | Run pipeline, inject schema change, verify loud failure |
-| No alerting | Foundation (Phase 1) | Trigger failure, confirm alert received within 5 minutes |
-| Website structure changes | Foundation (Phase 1) | Test fallback selectors, verify resilience to DOM changes |
-| Duplicate data | Foundation (Phase 1) | Run pipeline twice, verify no duplicates via database query |
-| Encoding issues | Foundation (Phase 1) | Parse real government files, verify Portuguese characters correct |
-| Credentials in code | Foundation (Phase 1) | Scan Git history, verify no secrets; test secret rotation |
-| No retry logic | Foundation (Phase 1) | Simulate network timeout, verify automatic retry |
-| No data validation | Foundation (Phase 1) | Inject invalid data, verify rejection before database write |
-| Performance bottlenecks | Polish (Phase 3) | Measure runtime, optimize if >30 min for daily extraction |
-| Advanced monitoring | Polish (Phase 3) | Add data quality dashboards, anomaly detection, trend analysis |
+| Sync contamination (Pitfall 1) | Phase 1: DB schema + sync design | UPSERT SQL reviewed and includes `(cnpj, nr_convenio)` conflict key; NEVER-UPDATE fields documented in code |
+| Cross-source join gaps (Pitfall 2) | Phase 1: Data audit | `SELECT COUNT(*) FROM convenios WHERE proposta_id IS NULL AND situacao ILIKE '%execu%'` run and result documented; gap handling strategy confirmed |
+| Financial precision loss (Pitfall 3) | Phase 2: API query design | All financial arithmetic uses `CAST(... AS NUMERIC(15,2))`; percentual verified on test CNPJ showing `100.0%` not `100.0000001%` |
+| Role gate missing (Pitfall 4) | Phase 2: Route creation | `GET /api/execucao` returns 403 for vendedor session; `/execucao` page redirects vendedor to permission-denied page |
+| CNPJ normalization mismatch (Pitfall 5) | Phase 1: Data audit + migration | `LENGTH(cnpj) != 14` count = 0 in `proponentes` and `propostas` before any join is built |
+| Cron timeout cascade (Pitfall 6) | Phase 1: Architecture + Phase 3: Cron setup | Two separate `crons` entries in `vercel.json`; both complete within their `maxDuration` on consecutive manual runs |
+| Alert logic inverted (Pitfall 7) | Phase 2: API + client sign-off | Written confirmation of alert thresholds from client; test case with known-problematic convênio triggers alert; known-healthy convênio does not |
+| BrasilAPI re-enrichment (Pitfall 8) | Phase 3: Sync implementation | Execution sync uses `INSERT ... ON CONFLICT (cnpj) DO NOTHING` for enrichment queue; rate-limited count in `enrichment_queue` does not increase after execution sync runs |
 
 ---
 
 ## Sources
 
-**Web Scraping:**
-- [DOs and DON'Ts of Web Scraping 2026: Best Practices | Medium](https://medium.com/@datajournal/dos-and-donts-of-web-scraping-e4f9b2a49431)
-- [9 Web Scraping Challenges and How to Solve Them | Octoparse](https://www.octoparse.com/blog/9-web-scraping-challenges)
-- [6 Web Scraping Challenges & Practical Solutions in 2026](https://research.aimultiple.com/web-scraping-challenges/)
-- [Stop Getting Blocked: 10 Common Web-Scraping Mistakes & Easy Fixes](https://www.firecrawl.dev/blog/web-scraping-mistakes-and-fixes)
-- [How to Fix Inaccurate Web Scraping Data: 2026 Best Practices](https://brightdata.com/blog/web-data/fix-inaccurate-web-scraping-data)
-- [State of Web Scraping 2026: Trends, Challenges & What's Next](https://www.browserless.io/blog/state-of-web-scraping-2026)
-- [Web Scraping Best Practices and Tools 2026 - ZenRows](https://www.zenrows.com/blog/web-scraping-best-practices)
-- [How to Build an E-Commerce Scraper That Survives a Website Redesign | Medium](https://medium.com/@hasdata/how-to-build-an-e-commerce-scraper-that-survives-a-website-redesign-86216e96cbd9)
-- [How AI Is Changing Web Scraping in 2026 · Kadoa](https://www.kadoa.com/blog/how-ai-is-changing-web-scraping-2026)
-
-**ETL & Data Quality:**
-- [5 Critical ETL Pipeline Design Pitfalls to Avoid in 2026](https://airbyte.com/data-engineering-resources/etl-pipeline-pitfalls-to-avoid)
-- [ETL Error Handling and Monitoring Metrics — 25 Statistics Every Data Leader Should Know in 2026 | Integrate.io](https://www.integrate.io/blog/etl-error-handling-and-monitoring-metrics/)
-- [Data Validation in ETL - 2026 Guide | Integrate.io](https://www.integrate.io/blog/data-validation-etl/)
-- [Why Your ETL Pipeline Works in Dev but Fails in Production | Medium](https://medium.com/@gankur277/why-your-etl-pipeline-works-in-dev-but-fails-in-production-62abfda06d46)
-- [Silent Failures in Data Pipelines: Why They're So Dangerous | Medium](https://medium.com/@chu.ngwoke/silent-failures-in-data-pipelines-why-theyre-so-dangerous-7c3c2aff8238)
-- [Understanding Idempotency: A Key to Reliable and Scalable Data Pipelines | Airbyte](https://airbyte.com/data-engineering-resources/idempotency-in-data-pipelines)
-- [How to make your data pipeline idempotent | Medium](https://medium.com/@iamanjlikaur/ensuring-idempotency-in-data-ingestion-pipelines-33301cf917fb)
-
-**File Parsing:**
-- [5 CSV File Import Errors (and How to Fix Them Quickly)](https://ingestro.com/blog/5-csv-file-import-errors-and-how-to-fix-them-quickly)
-- [Fix CSV File Encoding Issues in Excel | Zhenye Dong's Blog](https://dongzhenye.com/en/article/solved-fix-csv-file-encoding-issues-excel)
-- [Fixing CSV Files with Data Parsing Errors Using a LLM | Medium](https://medium.com/data-science-collective/fixing-csv-files-with-data-parsing-errors-using-a-llm-012470c31fbb)
-
-**Security & Credentials:**
-- [Mastering ETL Security: Challenges and Solutions | Hevo](https://hevodata.com/learn/factors-to-ensure-etl-security/)
-- [Secure credential management for ETL workloads using Azure Key Vault and Data Factory | Microsoft Azure Blog](https://azure.microsoft.com/en-us/blog/secure-credential-management-for-etl-workloads-using-azure-data-factory-and-azure-key-vault/)
-- [Top 11 Secure Storage Best Practices in 2026 | NetApp](https://www.netapp.com/learn/top-11-secure-storage-best-practices-2026/)
-
-**Database & Integrity:**
-- [Why Referential Data Integrity Is So Important (with Examples)](https://www.montecarlodata.com/blog-how-to-maintain-referential-data-integrity/)
-- [Understanding PostgreSQL Data Integrity](https://www.dbvis.com/thetable/understanding-postgresql-data-integrity/)
-- [Referential Integrity Constraint: Key to Reliable Databases](https://www.acceldata.io/blog/why-referential-integrity-constraints-are-vital-for-data-accuracy)
-
-**Monitoring & Observability:**
-- [Building a Production Ready Observability Stack: The Complete 2026 Guide | Medium](https://medium.com/@krishnafattepurkar/building-a-production-ready-observability-stack-the-complete-2026-guide-9ec6e7e06da2)
-- [15 Best Observability Tools in DevOps for 2026](https://spacelift.io/blog/observability-tools)
+- Direct codebase analysis (HIGH confidence):
+  - `web/src/lib/repo-sync.ts` — UPSERT discipline, STEP 7c, enrichment queue pattern
+  - `web/src/app/api/setup-crm/route.ts` — schema setup, idempotency patterns
+  - `web/schema.sql` — FLOAT vs NUMERIC mismatch, NULL constraints, existing indexes
+  - `web/src/middleware.ts` — auth-only middleware, no role enforcement
+  - `web/src/lib/dal.ts` — role helper patterns, existing lead access control
+  - `web/src/app/api/leads/[cnpj]/instruments/route.ts` — existing INNER JOIN pattern that drops NULL proposta_id
+  - `web/src/lib/db.ts` — connection pool `max: 5`, `statement_timeout: 30000`
+- Production incidents (HIGH confidence — documented with commits and DB queries):
+  - `.planning/debug/contacted-status-regression.md` — STEP 7c vendedor_id filter bug and fix (commit `9e20d04`)
+  - `.planning/debug/commission-sales-flow.md` — FLOAT/precision issues in commission calculation, SaleModal parser fragility
+  - `.planning/debug/comissoes-wellington-nao-aparecem.md` — CNPJ/vendedor ownership inconsistency, `updated_at` vs `fechamento_at` temporal filter bug
+  - `.planning/debug/duplicate-lead-cnpj.md` — CNPJ deduplication failure (UPSERT key deficiency)
 
 ---
-
-*Pitfalls research for: Transfer Gov Automation (Web Scraping/ETL System)*
-*Researched: 2026-02-04*
+*Pitfalls research for: Projetos em Execução tab — v4.0 CRM extension on TransferênciaGov data*
+*Researched: 2026-03-18*

@@ -1,303 +1,322 @@
-# Stack Research: Premium Streamlit Dashboard Styling
+# Stack Research — Projetos em Execução
 
-**Domain:** Dashboard UI/UX Enhancement - Dark Theme, Custom Styling, and Premium Visualizations
-**Researched:** 2026-02-09
-**Confidence:** HIGH
+**Domain:** Intelligence tab — post-sales project execution view for existing CRM
+**Researched:** 2026-03-18
+**Confidence:** HIGH (conclusions from live codebase inspection + direct verification of repo data sources)
 
-## Executive Summary
+---
 
-For transforming the existing Streamlit dashboard to premium Sigma-branded styling, the stack additions focus on three capabilities: native theming configuration, CSS injection for glassmorphic effects, and Plotly for premium charts. Streamlit's native config.toml theming (introduced 1.44+) provides dark theme foundation without third-party dependencies. For advanced glassmorphism and custom components, st.html (non-iframe, Streamlit 1.38+) enables direct CSS injection. Plotly 6.5+ integrates seamlessly with Streamlit for interactive, branded charts. Search functionality leverages existing pandas filtering patterns with session state—no additional dependencies needed.
+## Context
 
-## Recommended Stack Additions
+This is a milestone addition to an existing Next.js 14 + PostgreSQL (Supabase) CRM. The core stack is validated and in production. This document covers only what is new or different for the Projetos em Execução feature.
 
-### Core Visualization
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| plotly | >=6.5.2 | Interactive charts with Sigma branding | Official st.plotly_chart integration, customizable color schemes, WebGL for performance, supports theme inheritance from Streamlit config |
+The feature reads two new CSV sources from `repositorio.dados.gov.br/seges/detru/`:
+- `siconv_convenio.csv.zip` (15MB) — convenio records with financial state and situacao
+- `siconv_proposta.csv.zip` (187MB) — proposal records with CNPJ, nome, objeto, vigencia dates
 
-### CSS/Theming (No Additional Dependencies)
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| Streamlit config.toml | Built-in (1.44+) | Dark theme foundation with Sigma colors/fonts | Native theming with [theme.dark] configuration, supports custom fonts (Space Grotesk/Inter), no runtime overhead |
-| st.html | Built-in (1.38+) | Glassmorphic card components, custom HTML styling | Direct DOM injection without iframe isolation, safer than st.markdown unsafe_allow_html, accepts CSS files for clean organization |
+These must be cross-referenced via `id_proposta` to produce project execution cards grouped by CNPJ.
 
-### Optional Performance Enhancement
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| orjson | Latest | Faster JSON serialization for Plotly charts | Automatically detected by Plotly, improves chart rendering with large datasets (1,000+ points) |
+---
 
-## Existing Stack (Validated, No Changes)
+## Recommended Stack
 
-| Technology | Current Version | Status | Notes |
-|------------|----------------|--------|-------|
-| streamlit | 1.54.0 | Keep | Already includes st.html, config.toml theming, st.plotly_chart |
-| pandas | 2.3.3 | Keep | Used for search/filtering via DataFrame operations |
-| sqlalchemy | 2.0.46 | Keep | Database queries unchanged |
+### Core Technologies — No Changes
 
-## Installation
+The existing stack handles all new requirements. Do not add frameworks.
 
-```bash
-# New dependencies
-pip install plotly>=6.5.2
+| Technology | Version in use | Role | New usage |
+|------------|---------------|------|-----------|
+| Next.js 14 App Router | ^14.2.0 | Pages and API routes | New `/execucao` page + `/api/execucao` route |
+| PostgreSQL via `pg` | ^8.13.0 | Database | New `projetos_execucao` table |
+| Tailwind CSS | ^3.4.0 | UI styling | New page layout |
+| Auth.js v5 | ^5.0.0-beta.30 | Session auth | Gestor/coordenador-only guard (pattern already in `dal.ts`) |
+| Recharts | ^2.12.0 | Charts | Reuse for % execucao visualization if desired |
 
-# Optional performance enhancement
-pip install orjson
+### Supporting Libraries — Nothing New Required
 
-# No changes to existing dependencies
+Every capability needed for the new feature already exists in `package.json`:
+
+| Need | Already available | Why it covers this |
+|------|-----------------|-------------------|
+| Download + stream `.csv.zip` from HTTPS | Node stdlib: `Readable`, `createInflateRaw`, `createInterface` | Used in `repo-sync.ts` for siconv_programa/emenda/proponentes — exact same pattern applies to siconv_convenio and siconv_proposta |
+| Semi-colon delimited CSV streaming parser | Custom streaming parser in `repo-sync.ts` (`_parseZipBuffer`) | Handles BOM, handles encoding artifacts (the `fixText()` / `parseBRNumber()` quirks specific to governo CSVs), production-proven |
+| Brazilian number parsing | `parseBRNumber()` exported from `repo-sync.ts` | Handles comma-decimal format ("1.234,56") used in financial fields |
+| CNPJ normalization | `cleanCNPJ()` in `repo-sync.ts` | Handles padding, punctuation stripping, min-length validation |
+| XLSX reading (if manual upload path added) | `xlsx` ^0.18.5 | Already installed, used in `import-spreadsheet/route.ts` |
+| DB upsert (ON CONFLICT) | `pg` pool + parameterized queries | Pattern established in `repo-sync.ts` STEP 6 upsert |
+| Gestor-only access control | `getApiSession()` + `session.role` in `dal.ts` | Pattern: `if (session.role !== 'gestor' && session.role !== 'coordenador') return 403` |
+| Date arithmetic (dias em execucao, vigencia) | PostgreSQL `EXTRACT(DAY FROM NOW() - date)` | Already used in leads query for `days_since_last_contact` |
+| Percentage calculation | SQL arithmetic: `(valor_desembolsado / valor_repasse) * 100` | Pure PostgreSQL, no library needed |
+
+**Install command: none. Zero new dependencies.**
+
+---
+
+## Database Schema — New Table
+
+### `projetos_execucao`
+
+This table is populated by a new sync function that downloads siconv_convenio + siconv_proposta, cross-references via `id_proposta`, and stores the filtered+joined result. It is intentionally isolated from `vendedor_projetos` (CRM leads) — different domain, different lifecycle.
+
+```sql
+CREATE TABLE IF NOT EXISTS projetos_execucao (
+  id SERIAL PRIMARY KEY,
+
+  -- Convenio identity (from siconv_convenio)
+  nr_convenio          VARCHAR(30)   NOT NULL,  -- e.g. "912345/2023"
+  id_proposta          VARCHAR(30),              -- FK key to siconv_proposta.ID_PROPOSTA
+  situacao             VARCHAR(100),             -- e.g. "Em execucao"
+  modalidade           VARCHAR(100),             -- e.g. "Convenio", "Contrato de Repasse"
+
+  -- Proponent identity (from siconv_proposta via id_proposta join)
+  cnpj                 VARCHAR(14)   NOT NULL,   -- 14 digits, no punctuation
+  nome_proponente      VARCHAR(500),
+  objeto               TEXT,
+  uf                   VARCHAR(2),
+  municipio            VARCHAR(200),
+
+  -- Financial state (from siconv_convenio)
+  valor_global         NUMERIC(18,2),
+  valor_repasse        NUMERIC(18,2),
+  valor_desembolsado   NUMERIC(18,2),            -- cumulative disbursed to date
+  saldo_conta          NUMERIC(18,2),             -- balance in beneficiary account
+  valor_empenhado      NUMERIC(18,2),
+
+  -- Execution control (from siconv_convenio)
+  data_assinatura      DATE,
+  data_inicio_vigencia DATE,
+  data_fim_vigencia    DATE,
+
+  -- Computed columns (calculated at import time, refreshed daily)
+  pct_execucao         NUMERIC(6,2),             -- (valor_desembolsado / valor_repasse) * 100
+  dias_em_execucao     INTEGER,                   -- days since data_inicio_vigencia
+  dias_ate_vencimento  INTEGER,                   -- days until data_fim_vigencia (negative = expired)
+
+  -- Alert flags (logica de destaque from PROJECT.md)
+  alerta_desembolso    BOOLEAN DEFAULT FALSE,    -- TRUE when valor_desembolsado < 0 (credit reversal)
+  verificar_saldo      BOOLEAN DEFAULT FALSE,    -- TRUE when desembolso > 0 AND saldo_conta > 0
+
+  -- Sync metadata
+  synced_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sync_run_id          INTEGER,                   -- matches cron_sync_log.id for traceability
+
+  CONSTRAINT uq_projetos_execucao_nr_convenio UNIQUE (nr_convenio)
+);
+
+-- Indexes for primary access patterns
+CREATE INDEX IF NOT EXISTS ix_projetos_execucao_cnpj
+  ON projetos_execucao(cnpj);
+
+CREATE INDEX IF NOT EXISTS ix_projetos_execucao_situacao
+  ON projetos_execucao(situacao);
+
+CREATE INDEX IF NOT EXISTS ix_projetos_execucao_data_fim
+  ON projetos_execucao(data_fim_vigencia)
+  WHERE data_fim_vigencia IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS ix_projetos_execucao_alertas
+  ON projetos_execucao(alerta_desembolso, verificar_saldo)
+  WHERE alerta_desembolso = TRUE OR verificar_saldo = TRUE;
 ```
 
-## Implementation Architecture
+**Why NUMERIC not FLOAT:** All existing financial columns in `schema.sql` use `FLOAT`, which loses precision for currency. Since this is a new table, start correctly with `NUMERIC(18,2)`. Do not alter existing tables.
 
-### 1. Dark Theme Configuration (.streamlit/config.toml)
+**Why computed columns stored:** `pct_execucao`, `dias_em_execucao`, and `dias_ate_vencimento` could be computed at query time, but storing them avoids repeated division across potentially thousands of rows during every page load. They are not user-editable state — recompute on every sync (daily).
 
-```toml
-[theme.dark]
-primaryColor = "#00D4FF"  # Sigma neon blue
-backgroundColor = "#050B1F"  # Dark background
-secondaryBackgroundColor = "#0D1729"  # Card backgrounds
-textColor = "#FFFFFF"
-font = "Space Grotesk:https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap"
+**Why no FK to `vendedor_projetos`:** These are independent data domains. CNPJ is the join key at the API layer (used to link to `lead_contacts` for phone/email display). A hard FK would couple two unrelated domains and block inserts for CNPJs not yet in the CRM.
 
-[theme.dark.sidebar]
-backgroundColor = "#020714"
+---
+
+## Data Import Pattern — New Sync Function
+
+### Source Data (verified 2026-03-18)
+
+| File | URL | Size | Update cadence |
+|------|-----|------|---------------|
+| `siconv_convenio.csv.zip` | `https://repositorio.dados.gov.br/seges/detru/siconv_convenio.csv.zip` | 15MB | Daily (last seen: 2026-03-18 08:56) |
+| `siconv_proposta.csv.zip` | `https://repositorio.dados.gov.br/seges/detru/siconv_proposta.csv.zip` | 187MB | Daily (last seen: 2026-03-18 08:58) |
+
+`siconv_proposta.csv.zip` at 187MB is approximately 12x larger than the largest file currently handled by `repo-sync.ts`. The streaming approach in `_parseZipBuffer` does not buffer the full CSV into memory — it yields rows one at a time. This pattern works for 187MB but will take significantly longer to download (~30-60s on Vercel serverless network).
+
+**Critical optimization:** Do NOT load all proposta rows into a Map. Instead:
+1. Download siconv_convenio first, collect `id_proposta` values for matching records
+2. Build a `neededPropostaIds: Set<string>` from step 1
+3. Stream siconv_proposta, skip rows where `ID_PROPOSTA` is not in the needed set
+4. This limits memory to the join subset, not 187MB of parsed data
+
+### Recommended Import Algorithm
+
+```
+STEP 1: Download + stream siconv_convenio
+  - Filter: SITUACAO contains 'execu' (case-insensitive)
+  - Filter: MODALIDADE is OSC-relevant (skip pure government-to-government)
+  - Collect: nr_convenio, id_proposta, situacao, modalidade, all financial fields
+  - Build: convenioMap (id_proposta -> ConvenioRecord[])
+  - Build: neededPropostaIds Set<string>
+
+STEP 2: Download + stream siconv_proposta
+  - Skip rows where ID_PROPOSTA not in neededPropostaIds
+  - Collect: cnpj, nome_proponente, objeto, uf, municipio
+  - Build: propostaMap (id_proposta -> PropostaInfo)
+
+STEP 3: Join + compute
+  - For each convenio: look up proposta by id_proposta
+  - Compute pct_execucao, dias_em_execucao, dias_ate_vencimento, alert flags
+
+STEP 4: Upsert into projetos_execucao
+  - ON CONFLICT (nr_convenio) DO UPDATE SET all columns
+  - Log sync stats to cron_sync_log
 ```
 
-**Rationale:** Config-based theming is the official Streamlit approach as of 1.44. Provides foundational dark theme without runtime CSS injection overhead. Supports Google Fonts via URL syntax.
+### Financial Calculation Implementation
 
-**Confidence:** HIGH (official Streamlit documentation)
+All pure arithmetic — no library needed:
 
-### 2. Glassmorphic Components (st.html + CSS)
+```typescript
+// Percentage execution (guard against divide by zero)
+const pct_execucao = valor_repasse && valor_repasse > 0
+  ? Math.round((valor_desembolsado / valor_repasse) * 10000) / 100
+  : null
 
-**File structure:**
-```
-src/dashboard/
-  assets/
-    style.css          # Glassmorphism CSS
-  components/
-    premium_cards.py   # Reusable card components
-```
+// Alert flags (logica de destaque from PROJECT.md)
+const alerta_desembolso = valor_desembolsado < 0   // credit reversal = red alert
+const verificar_saldo = valor_desembolsado > 0 && (saldo_conta ?? 0) > 0
 
-**Implementation pattern:**
-```python
-# Load CSS once per session
-def load_custom_css():
-    if 'css_loaded' not in st.session_state:
-        css_path = Path(__file__).parent.parent / "assets" / "style.css"
-        st.html(css_path)
-        st.session_state.css_loaded = True
-
-# Glassmorphic card component
-def render_glass_card(content: str):
-    st.html(f"""
-        <div class="glass-card">
-            {content}
-        </div>
-    """)
+// Days computed from current time (will be stale by up to 24h — acceptable for daily sync)
+const now = Date.now()
+const dias_em_execucao = data_inicio_vigencia
+  ? Math.floor((now - data_inicio_vigencia.getTime()) / 86_400_000)
+  : null
+const dias_ate_vencimento = data_fim_vigencia
+  ? Math.floor((data_fim_vigencia.getTime() - now) / 86_400_000)
+  : null
 ```
 
-**CSS (assets/style.css):**
-```css
-.glass-card {
-    background: rgba(13, 23, 41, 0.6);  /* Sigma secondary with transparency */
-    backdrop-filter: blur(12px);
-    border-radius: 16px;
-    border: 1px solid rgba(0, 212, 255, 0.2);  /* Sigma blue border */
-    padding: 24px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+### Cron Route Pattern
+
+Follow the same pattern as `/api/cron/sync-leads/route.ts` exactly:
+
+```typescript
+// /api/cron/sync-execucao/route.ts
+export const dynamic = 'force-dynamic'
+export const maxDuration = 300  // Vercel Pro max timeout — needed for 187MB download
+
+export async function GET(request: Request) {
+  const authHeader = request.headers.get('authorization')
+  const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`
+  if (!isCron) {
+    const session = await getApiSession()
+    if (!session || (session.role !== 'gestor' && session.role !== 'coordenador')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  }
+  // ... call syncProjetosExecucao()
 }
 ```
 
-**Rationale:** st.html is non-iframe (no isolation issues), accepts CSS files (clean separation), and DOMPurify-sanitized by default. Superior to st.markdown with unsafe_allow_html.
+Add to `vercel.json` cron schedule with at least 30-minute offset from existing `sync-leads` cron to avoid concurrent DB load.
 
-**Confidence:** HIGH (official Streamlit docs, verified in 1.38+)
+### CNPJ Aggregation Query (grouped view)
 
-**Known issue:** Bug report (#10384) indicates CSS not applying in 1.42.1, but issue appears resolved in 1.54.0 based on timeline.
+The UI shows one row per CNPJ with count of fomentos. This is GROUP BY at query time:
 
-### 3. Premium Charts (Plotly)
+```sql
+SELECT
+  pe.cnpj,
+  pe.nome_proponente,
+  pe.uf,
+  pe.municipio,
+  COUNT(*)                          AS total_projetos,
+  SUM(pe.valor_repasse)             AS total_repasse,
+  SUM(pe.valor_desembolsado)        AS total_desembolsado,
+  SUM(pe.saldo_conta)               AS total_saldo,
+  AVG(pe.pct_execucao)              AS avg_pct_execucao,
+  BOOL_OR(pe.alerta_desembolso)     AS tem_alerta,
+  BOOL_OR(pe.verificar_saldo)       AS tem_verificar,
+  MIN(pe.dias_ate_vencimento)       AS vencimento_mais_proximo,
+  -- Contact from lead_contacts (same JOIN pattern as leads/route.ts)
+  (
+    SELECT lc.telefone
+    FROM lead_contacts lc
+    WHERE lc.lead_cnpj = pe.cnpj
+    ORDER BY lc.principal DESC, lc.created_at ASC
+    LIMIT 1
+  ) AS telefone
+FROM projetos_execucao pe
+GROUP BY pe.cnpj, pe.nome_proponente, pe.uf, pe.municipio
+ORDER BY tem_alerta DESC, total_projetos DESC, pe.cnpj
+```
 
-```python
-import plotly.express as px
-import plotly.graph_objects as go
+---
 
-# Sigma brand colors
-SIGMA_COLORS = {
-    'primary': '#00D4FF',
-    'background': '#050B1F',
-    'secondary': '#0D1729',
-    'accent': ['#00D4FF', '#0099FF', '#0066FF', '#0033FF']
+## Access Control Pattern
+
+Gestor-only access is already implemented in `dal.ts`. Pattern for the API route:
+
+```typescript
+const session = await getApiSession()
+if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+if (session.role !== 'gestor' && session.role !== 'coordenador') {
+  return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 }
-
-# Branded chart template
-def create_branded_chart(df, chart_type='bar'):
-    fig = px.bar(df, x='x', y='y', color_discrete_sequence=SIGMA_COLORS['accent'])
-
-    fig.update_layout(
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(family='Space Grotesk', color='#FFFFFF'),
-        margin=dict(l=20, r=20, t=40, b=20)
-    )
-
-    st.plotly_chart(fig, use_container_width=True, theme=None)  # theme=None to use custom
 ```
 
-**Rationale:**
-- Official st.plotly_chart integration (no custom component needed)
-- Supports Streamlit theme inheritance OR custom themes (theme=None for full control)
-- WebGL rendering automatic for 1,000+ points (performance)
-- Plotly Express for rapid development, Graph Objects for advanced customization
+The page itself redirects non-gestors via `verifySession()` from `dal.ts` — same pattern as all other protected pages. No new middleware needed.
 
-**Confidence:** HIGH (official Streamlit documentation, Plotly 6.5.2 verified on PyPI)
-
-### 4. Global Search (No Additional Dependencies)
-
-**Pattern:**
-```python
-# Session state for search query
-if 'search_query' not in st.session_state:
-    st.session_state.search_query = ''
-
-# Search input in sidebar
-search = st.sidebar.text_input('Search', value=st.session_state.search_query, key='search')
-
-# Filter DataFrame
-def filter_dataframe(df: pd.DataFrame, query: str) -> pd.DataFrame:
-    if not query:
-        return df
-
-    # Search across all string columns
-    mask = df.astype(str).apply(
-        lambda row: row.str.contains(query, case=False, na=False).any(),
-        axis=1
-    )
-    return df[mask]
-
-filtered_df = filter_dataframe(propostas_df, search)
-```
-
-**Rationale:** Leverages existing pandas (already in requirements.txt). Session state maintains search across page reruns. No third-party search library needed for this use case.
-
-**Confidence:** MEDIUM (community pattern, not official Streamlit feature)
-
-**Note:** Native dataframe search (Cmd/Ctrl+F) exists but doesn't provide global filtering—this pattern fills that gap.
+---
 
 ## Alternatives Considered
 
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| CSS Injection | st.html | st.markdown(unsafe_allow_html=True) | Deprecated pattern, explicit unsafe flag, st.html is safer and cleaner |
-| CSS Injection | st.html | st.components.v1.html | Iframe isolation breaks global styling, st.html injects directly into DOM |
-| Theming | config.toml | streamlit-extras | Unnecessary dependency for theming, config.toml is native and sufficient |
-| Charts | Plotly | Altair | Less customization for dark themes, Plotly has better enterprise styling options |
-| Charts | Plotly | Matplotlib | Static charts, no interactivity, poor dark theme support |
-| Search | pandas filtering | streamlit-aggrid | Heavy dependency (13+ packages), overkill for simple search, enterprise filtering not needed here |
-| Search | pandas filtering | streamlit-extras filter_dataframe | Adds dependency, custom implementation gives more control for branded UI |
+| Recommended | Alternative | Why not |
+|-------------|-------------|---------|
+| Stream siconv_proposta through a filter Set | Load all 187MB into memory as parsed objects | Memory exhaustion on Vercel serverless; streaming approach already proven in `repo-sync.ts` for similar data |
+| Single `projetos_execucao` table (denormalized join) | Separate `convenios_execucao` + `propostas_execucao` tables with join at query time | No need to normalize — this is a read-only intelligence view, not a normalized domain model; join at import time is simpler and faster at query time |
+| `NUMERIC(18,2)` for financial values | `FLOAT` (as used in existing tables) | Float loses precision for currency math; new table should start correctly |
+| Compute alert flags at import time, store as booleans | Compute in frontend JavaScript | Avoids redundant recalculation on every page load; simpler query layer |
+| Re-use `downloadAndStreamCSV` from `repo-sync.ts` | Write a new download utility | Identical problem solved already — export the function or move to `lib/csv-utils.ts` |
+| Vercel cron (existing mechanism) | Supabase Edge Function or separate worker | Existing infrastructure is already proven and covers the 300s window needed |
 
-## What NOT to Use
+---
 
-| Avoid | Why | Use Instead |
+## What NOT to Add
+
+| Avoid | Why | Use instead |
 |-------|-----|-------------|
-| st.markdown with unsafe_allow_html | Security risk, may be removed, flagged as "unsafe" in name | st.html (sanitized, official, safe) |
-| st.components.v1.html | Creates iframe, isolates CSS from main app, harder to theme | st.html (direct injection, no iframe) |
-| streamlit-aggrid | 13+ dependencies, enterprise grid features unused, maintenance concerns | Native st.dataframe + pandas filtering |
-| Custom component for search | Adds complexity, build tooling, maintenance burden | Session state + pandas (simpler, no build step) |
-| Inline CSS in Python strings | Unmaintainable, mixes concerns, hard to update | External CSS files loaded via st.html |
-| Chart.js/D3.js custom components | Requires custom component development, no Streamlit integration | Plotly with st.plotly_chart (native integration) |
+| A CSV parsing library (csv-parse, papaparse) | `repo-sync.ts` already has a production-proven streaming ZIP+CSV parser with encoding quirk handling specific to governo CSVs — adding a generic library would lose `fixText()` / `parseBRNumber()` handling and add a dependency | Extract `downloadAndStreamCSV` into `lib/csv-utils.ts` and reuse |
+| An ORM (Prisma, Drizzle) | The project uses raw `pg` queries throughout; introducing an ORM mid-project creates two query patterns, migration friction, and zero benefit for one new table | Raw `pg` queries via the existing `query()` helper in `lib/db.ts` |
+| A background job framework (BullMQ, Inngest) | Vercel cron + `maxDuration = 300` covers the use case; the 187MB download fits within this window | Vercel cron, same as `sync-leads` |
+| React Query / SWR | The existing pages use `useEffect` + `fetch` consistently; introducing a data-fetching library for one new page creates inconsistency | `useEffect` + `fetch` pattern, consistent with rest of app |
+| A new charting library | Recharts is already installed and used for the BI page | Recharts for % execucao bar visualization if needed |
+| `xlsx` dependency for siconv import | These are CSV files inside ZIP, not Excel | The existing streaming CSV parser handles them natively |
 
-## Stack Patterns by Feature
-
-### For Dark Theme Foundation:
-- Use `.streamlit/config.toml` with `[theme.dark]` configuration
-- Set Sigma brand colors (background: #050B1F, primary: #00D4FF)
-- Configure Google Fonts (Space Grotesk, Inter) via font URLs
-- **Why:** Native, no dependencies, automatic light/dark toggle in Streamlit UI
-
-### For Glassmorphic Cards:
-- Use `st.html(css_file_path)` to load CSS on first session
-- Store CSS in `src/dashboard/assets/style.css`
-- Create reusable component functions that return HTML strings
-- **Why:** Clean separation, reusable, DOMPurify-sanitized
-
-### For Premium Charts:
-- Use `plotly.express` for rapid chart creation
-- Use `plotly.graph_objects` for advanced customization (gradient fills, custom shapes)
-- Set `theme=None` in `st.plotly_chart()` to use custom Sigma colors
-- Install `orjson` for performance with large datasets
-- **Why:** Official integration, performance optimizations, extensive customization
-
-### For Global Search:
-- Use `st.sidebar.text_input()` with `st.session_state` for persistence
-- Filter DataFrames with pandas `.str.contains()` across all columns
-- Apply filtering before passing to `st.dataframe()`
-- **Why:** No dependencies, simple, maintainable
-
-### For Lead Profile Pages:
-- Use standard Streamlit page routing (existing pattern)
-- Query single lead from PostgreSQL via SQLAlchemy (existing pattern)
-- Combine glassmorphic cards (st.html) + Plotly charts + native metrics
-- **Why:** Leverages existing architecture, no new patterns needed
+---
 
 ## Version Compatibility
 
-| Package | Version | Compatible With | Notes |
-|---------|---------|-----------------|-------|
-| plotly | 6.5.2 | streamlit>=1.38 | Requires Python >=3.8, orjson optional for performance |
-| streamlit | 1.54.0 | plotly>=4.0.0 | st.html added in 1.38, advanced theming in 1.44 |
-| orjson | Latest | plotly>=4.0.0 | Auto-detected by Plotly, no code changes needed |
+All existing packages are compatible — zero new packages means zero compatibility risk.
 
-**Critical:** Streamlit 1.38+ required for st.html (non-iframe CSS injection). Streamlit 1.44+ required for advanced theming ([theme.dark] syntax). Current version 1.54.0 meets both requirements.
+One existing flag: `xlsx` ^0.18.5 refers to SheetJS Community Edition (the last MIT-licensed version). If the Projetos em Execução feature later adds a manual upload path for convenio/proposta data as an alternative to cron, this library handles it. Do not upgrade to SheetJS Pro (paid) unless the Community Edition specifically fails.
 
-## Configuration Checklist
-
-- [ ] Create `.streamlit/config.toml` with [theme.dark] configuration
-- [ ] Add Sigma brand colors (primary: #00D4FF, background: #050B1F)
-- [ ] Configure Google Fonts (Space Grotesk for headings, Inter for body)
-- [ ] Create `src/dashboard/assets/style.css` for glassmorphism
-- [ ] Install `plotly>=6.5.2` in requirements.txt
-- [ ] Optional: Install `orjson` for chart performance
-- [ ] Create reusable component functions in `src/dashboard/components/premium_cards.py`
-- [ ] Define Sigma color palette constants for Plotly charts
-- [ ] Implement session state search pattern in relevant pages
-- [ ] Test CSS injection with `st.html()` on first session load
-
-## Migration from Default Styling
-
-### Step 1: Theme Foundation
-Replace default Streamlit theme with Sigma dark theme via config.toml. No code changes required—purely configuration.
-
-### Step 2: CSS Loading
-Add CSS loader function to main app file (`streamlit_app.py`), called once on session start. Existing components continue working.
-
-### Step 3: Component Wrapping
-Wrap existing metrics/cards in glassmorphic HTML containers. Original functionality unchanged, purely visual enhancement.
-
-### Step 4: Chart Migration
-Replace existing chart code (if any) with Plotly equivalents. If no charts exist, add Plotly charts with Sigma branding from start.
-
-### Step 5: Search Integration
-Add search input to sidebar, apply filtering before existing dataframe rendering. Minimal changes to page logic.
-
-**Migration risk: LOW** — All additions are non-breaking. Existing Streamlit components continue functioning. CSS applies globally without modifying component code.
+---
 
 ## Sources
 
-### Official Documentation (HIGH Confidence)
-- [Streamlit Theming](https://docs.streamlit.io/develop/concepts/configuration/theming) — Theme configuration structure
-- [Customize Fonts](https://docs.streamlit.io/develop/concepts/configuration/theming-customize-fonts) — Google Fonts integration
-- [st.html Documentation](https://docs.streamlit.io/develop/api-reference/text/st.html) — CSS injection without iframe
-- [st.plotly_chart Documentation](https://docs.streamlit.io/develop/api-reference/charts/st.plotly_chart) — Plotly integration
-- [Plotly Python 6.5.2](https://pypi.org/project/plotly/) — Version verification
-
-### Community Resources (MEDIUM Confidence)
-- [Streamlit Custom CSS Theming](https://discuss.streamlit.io/t/customize-theme/39156) — Theme customization patterns
-- [Static File Serving](https://docs.streamlit.io/develop/concepts/configuration/serving-static-files) — Asset organization
-- [Session State Docs](https://docs.streamlit.io/develop/api-reference/caching-and-state/st.session_state) — Search state management
-
-### Design Resources (MEDIUM Confidence)
-- [Dark Glassmorphism 2026](https://medium.com/@developer_89726/dark-glassmorphism-the-aesthetic-that-will-define-ui-in-2026-93aa4153088f) — Glassmorphism design patterns
-- [Glassmorphism CSS Generator](https://ui.glass/generator/) — backdrop-filter reference
+- Live codebase at `/Users/pauloloureiro/Dev/SigmaProjects/projetustgov/web/` — HIGH confidence (direct inspection, 2026-03-18)
+  - `web/package.json` — exact installed versions
+  - `web/src/lib/repo-sync.ts` — streaming ZIP+CSV pattern, `downloadAndStreamCSV`, `_parseZipBuffer`, `parseBRNumber`, `cleanCNPJ`, `fixText`
+  - `web/src/app/api/import-spreadsheet/route.ts` — XLSX handling and header-mapping patterns
+  - `web/src/lib/db.ts` — pool singleton and `query()` helper
+  - `web/src/lib/dal.ts` — `getApiSession()`, `verifySession()`, role helpers
+  - `web/schema.sql` — existing table structure, financial column types
+  - `web/src/app/api/leads/route.ts` — GROUP BY aggregation and `lead_contacts` JOIN pattern
+  - `web/src/app/api/cron/sync-leads/route.ts` — cron auth pattern, `maxDuration`, manual trigger
+- `https://repositorio.dados.gov.br/seges/detru/` — verified 2026-03-18 — HIGH confidence
+  - `siconv_convenio.csv.zip` confirmed present at 15MB, updated 2026-03-18 08:56
+  - `siconv_proposta.csv.zip` confirmed present at 187MB, updated 2026-03-18 08:58
+  - Both update daily alongside existing siconv_programa/emenda/proponentes sources
 
 ---
-*Stack research for: Premium Streamlit Dashboard Styling*
-*Researched: 2026-02-09*
-*Focused on: Dark theme, glassmorphism, Plotly charts, global search*
+
+*Stack research for: Projetos em Execucao intelligence tab (v4.0 milestone)*
+*Researched: 2026-03-18*
+*Scope: Stack additions only — existing validated stack not re-researched*
