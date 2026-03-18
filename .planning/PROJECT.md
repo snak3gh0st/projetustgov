@@ -99,24 +99,30 @@ Sistema automatizado de extração e armazenamento de dados do Transfer Gov. Ace
 | Validação multicamada | Comparação manual inicial + alertas de volume + logs detalhados garante confiabilidade desde dia 1. | — Pending |
 | Railway → Supabase (fev/2026) | Railway deletado. Supabase é o único banco. Migração cobriu 100% das tabelas usadas pelo CRM. 3 tabelas pipeline parciais (propostas 87%, proposta_apoiadores 0%, proposta_emendas 0%) não afetam CRM. | Done |
 
-## Current Milestone: v3.0 CRM de Vendas
+## Current Milestone: v4.0 Projetos em Execução
 
-**Goal:** Transformar o dashboard de leads em um CRM funcional para vendedores, com autenticação por vendedor, atribuição manual de leads, pipeline visual kanban, tracking de contatos, e controle de comissão com cálculo.
+**Goal:** Nova aba de inteligência pós-venda para gestores, mostrando projetos em execução com dados financeiros cruzados de convênio e proposta do repo, agregados por CNPJ com contatos existentes.
 
 **Target features:**
-- Login por vendedor (gestor vê todos, vendedor vê seus leads)
-- Atribuição manual de leads pelo gestor (com controle de duplicatas)
-- Pipeline kanban: Novo → Contactado → Em negociação → Fechado
-- Registro de notas de contato com timeline
-- Cálculo de comissão por vendedor com relatório
-- Flag "Cliente existente" e link ao programa de trabalho
-- Dashboard individual do vendedor
+- Nova aba /execucao restrita a gestores (gestor, coordenador)
+- Nova tabela DB dedicada para projetos em execução (isolada do CRM)
+- Importação de dados de convênio + proposta do repo existente
+- Cruzamento convênio ↔ proposta via id_proposta
+- Filtro: status "em execução" + tipo "OSC"
+- Métricas financeiras: desembolso, saldo em conta, % execução
+- Controle de vigência: data fim, dias em execução
+- Agregação por CNPJ (quantidade de fomentos como big number)
+- Conexão com contatos existentes (BrasilAPI/lead_contacts)
+- Lógica de destaque: desembolso negativo = alerta, positivo = verificar saldo
 
-**Approach:** Next.js 14 App Router + PostgreSQL (Supabase). Frontend já migrado de Streamlit para React/Next.js em `web/`. Deploy via Vercel. Autenticação via next-auth v5 JWT. Tabelas CRM no mesmo banco PostgreSQL Supabase.
+**Approach:** Next.js 14 App Router + PostgreSQL (Supabase). Tabela(s) nova(s) dedicada(s) para projetos em execução. Dados importados das planilhas repo já baixadas (convenio, proposta). Somente visualização por enquanto — sem fluxo de handoff para pós-venda.
 
-**Primary workflow:** Vendedor faz login → vê pipeline kanban com seus leads → arrasta lead para nova coluna → registra nota de contato → marca como fechado → comissão calculada automaticamente.
+**Primary workflow:** Gestor acessa /execucao → vê lista de CNPJs com projetos em execução → expande para ver detalhes financeiros (desembolso, saldo, % execução) → identifica clientes qualificados → comunica manualmente ao time de pós-venda.
 
-**Milestone v2.0 Note:** Dashboard Premium Redesign (Streamlit) foi superseded pela migração para Next.js. Phases 6-8 completas, Phase 9 (polish) não aplicável ao novo stack.
+**Previous milestones:**
+- v1.0: Crawler & ETL Pipeline (Phases 1-5)
+- v2.0: Dashboard Premium Redesign — superseded by Next.js migration (Phases 6-8)
+- v3.0: CRM de Vendas (Phases 10-13 + 74 quick tasks)
 
 ## Infrastructure
 

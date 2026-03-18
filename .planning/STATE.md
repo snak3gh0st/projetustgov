@@ -1,25 +1,26 @@
-# Project State: PROJETUS CRM de Vendas
+# Project State: PROJETUS Projetos em Execução
 
 ## Project Reference
 
-**Core Value:** CRM funcional para vendedores qualificarem e contactarem leads do TransferênciaGov.
+**Core Value:** Inteligência pós-venda para gestores identificarem clientes qualificados com projetos em execução no TransferênciaGov.
 
-**Current Milestone:** v3.0 CRM de Vendas
+**Current Milestone:** v4.0 Projetos em Execução
 
-**Milestone Goal:** Transformar dashboard de leads em CRM com auth, pipeline kanban, tracking de contato, e comissões.
+**Milestone Goal:** Nova aba de inteligência pós-venda com dados financeiros cruzados de convênio e proposta, agregados por CNPJ.
 
-**Current Focus:** Phase 13 - Comissões (Plans 01-02 complete)
+**Current Focus:** Defining requirements
 
 ## Current Position
 
-**Phase:** 13 of 13 (Milestone v3.0)
-**Plan:** 2 of 2 (Phase 13)
-**Status:** Phase 13 Complete
-**Progress:** [█████████░] 87%
+**Phase:** Not started (defining requirements)
+**Plan:** —
+**Status:** Defining requirements
+**Progress:** [░░░░░░░░░░] 0%
 
 **Milestone v1.0 Status:** Complete (Phases 1, 2, 4, 5 delivered)
 **Milestone v2.0 Status:** Superseded by Next.js migration (Phases 6-8 delivered in Streamlit, Phase 9 N/A)
-**Milestone v3.0 Status:** Initialized (Phases 10-13 planned)
+**Milestone v3.0 Status:** Complete (Phases 10-13 + 74 quick tasks)
+**Last activity:** 2026-03-18 — Milestone v4.0 started
 
 ## Accumulated Context
 
