@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Inteligencia pos-venda para gestores identificarem clientes qualificados com projetos em execucao no TransferenciaGov.
-**Current focus:** Phase 16 — API & Business Logic
+**Current focus:** Phase 17 — UI & Navigation
 
 ## Current Position
 
-Phase: 16 of 17 in milestone v4.0 (API & Business Logic) — COMPLETE
-Plan: 2 of 2 in Phase 16 (both complete)
-Status: Phase 16 complete — API endpoints created, alert business rule confirmed and implemented
-Last activity: 2026-03-18 — Plan 16-02 complete: alert condition valor_desembolsado = 0 confirmed with client, BOOL_OR updated, alert_only filter updated in /api/execucao
+Phase: 17 of 17 in milestone v4.0 (UI & Navigation) — NOT STARTED
+Plan: 0 of TBD in Phase 17
+Status: Phase 16 verified and complete — ready for Phase 17 planning
+Last activity: 2026-03-18 — Phase 16 verified (5/5 must-haves passed), advancing to Phase 17
 
 Progress (v4.0): [████████░░] 75%
 
