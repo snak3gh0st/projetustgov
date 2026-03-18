@@ -115,7 +115,13 @@ export async function GET(request: NextRequest) {
       ORDER BY tem_alerta DESC, total_projetos DESC, pe.cnpj
     `, params)
 
-    return NextResponse.json(rows)
+    // Freshness timestamp from cron_sync_log
+    const syncLogResult = await query<{ ran_at: string }>(
+      `SELECT ran_at FROM cron_sync_log WHERE source = 'sync-execucao' ORDER BY ran_at DESC LIMIT 1`
+    )
+    const last_synced: string | null = syncLogResult[0]?.ran_at ?? null
+
+    return NextResponse.json({ rows, last_synced })
   } catch (error) {
     console.error('[api/execucao] Query error:', error)
     return NextResponse.json({ error: 'Failed to fetch execucao data' }, { status: 500 })
