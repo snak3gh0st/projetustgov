@@ -378,11 +378,11 @@ Plans:
   3. The projetos_execucao table exists in Supabase with NUMERIC(18,2) for all financial columns, UNIQUE constraint on nr_convenio, and indexes on cnpj and situacao
   4. The UPSERT conflict key (nr_convenio) and the list of fields the sync must never overwrite are documented before Phase 15 begins
 
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 14-01: DB migration — create projetos_execucao table with NUMERIC(18,2) columns, UNIQUE(nr_convenio), indexes
-- [ ] 14-02: Data audit — run NULL proposta_id diagnostic, CNPJ padding diagnostic, apply fixes, document gap strategy
+- [ ] 14-01-PLAN.md — Data audit diagnostics: NULL proposta_id count, CNPJ padding check, LPAD migration if needed, gap strategy documentation
+- [ ] 14-02-PLAN.md — Create projetos_execucao table with NUMERIC(18,2) columns, UNIQUE(nr_convenio), indexes, UPSERT policy documentation
 
 ### Phase 15: ETL Sync & Validation
 **Goal**: Build and validate the streaming sync that populates projetos_execucao from the two government CSV sources. Validate against real data before any API or UI code is written — an empty table hides correctness problems in GROUP BY logic.
