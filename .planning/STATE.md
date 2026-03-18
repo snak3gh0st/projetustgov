@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — Projetos em Execucao
 status: in_progress
-stopped_at: Completed 16-01-PLAN.md — GET /api/execucao and GET /api/execucao/[cnpj] created, Phase 16 Plan 01 complete
-last_updated: "2026-03-18T17:37:00.000Z"
-last_activity: "2026-03-18 — Plan 16-01 complete: GET /api/execucao (GROUP BY CNPJ, role guard, filters) and GET /api/execucao/[cnpj] (detail endpoint) created — both TypeScript clean"
+stopped_at: Completed 16-02-PLAN.md — alert business rule confirmed (valor_desembolsado = 0), ALERT_ZERO_EXECUTION constant, Phase 16 complete
+last_updated: "2026-03-18T18:00:00.000Z"
+last_activity: "2026-03-18 — Plan 16-02 complete: alert condition valor_desembolsado = 0 confirmed with client, BOOL_OR updated, alert_only filter updated in /api/execucao"
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State: PROJETUS — v4.0 Projetos em Execucao
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 ## Current Position
 
-Phase: 16 of 17 in milestone v4.0 (API & Business Logic) — IN PROGRESS
-Plan: 1 of 2 in current phase (Plan 01 complete)
-Status: Phase 16 Plan 01 complete — API endpoints created, awaiting Plan 02 (alert business rule)
-Last activity: 2026-03-18 — Plan 16-01 complete: GET /api/execucao (GROUP BY CNPJ, role guard, filters) and GET /api/execucao/[cnpj] (detail endpoint) created — both TypeScript clean
+Phase: 16 of 17 in milestone v4.0 (API & Business Logic) — COMPLETE
+Plan: 2 of 2 in Phase 16 (both complete)
+Status: Phase 16 complete — API endpoints created, alert business rule confirmed and implemented
+Last activity: 2026-03-18 — Plan 16-02 complete: alert condition valor_desembolsado = 0 confirmed with client, BOOL_OR updated, alert_only filter updated in /api/execucao
 
-Progress (v4.0): [█████░░░░░] 50%
+Progress (v4.0): [████████░░] 75%
 
 **Milestone v1.0:** Complete (Phases 1, 2, 4, 5)
 **Milestone v2.0:** Superseded by Next.js migration (Phases 6-8)
@@ -67,10 +67,11 @@ Progress (v4.0): [█████░░░░░] 50%
 | EXISTS subquery for contact_present (not JOIN) | JOIN on lead_contacts causes GROUP BY complications; EXISTS subquery returns boolean at zero extra cost per Pitfall 3 |
 | objeto excluded from GET /api/execucao grouped response | Large TEXT field would inflate 2000+ row payload; slide-over fetches it separately via /api/execucao/[cnpj] |
 | Alert placeholder logic uses ETL boolean columns | Plan 16-02 replaces after client provides 3+ convênio examples; code comment documents the gate |
+| Alert condition: valor_desembolsado = 0 (confirmed 2026-03-18) | Client confirmed: projects with zero disbursement (money approved but never moved) should surface as alerts — replaces ETL placeholder that never fired |
 
 ### Blockers / Concerns
 
-- **Alert business rule (Phase 16 blocker):** Client must identify 3+ convenios that should show the alert and 3+ that are healthy before Phase 16 plan 2 can be executed. Do not implement as a guess.
+- **Alert business rule (RESOLVED 2026-03-18):** Client confirmed valor_desembolsado = 0 as the alert condition. Implemented in Plan 16-02 with ALERT_ZERO_EXECUTION named constant. Phase 16 complete.
 - **NULL proposta_id scope (RESOLVED 2026-03-18):** Diagnostic ran — 0 of 44,035 em-execucao convenios have NULL proposta_id. All CNPJs in proponentes (27,215) already 14 digits. Phase 15 ETL uses LEFT JOIN with join_miss_count regardless (architecture decision is permanent, count is transient).
 - **OSC Map memory size (MEASURED 2026-03-18):** Heap peak ~1300MB during STEP A on local dev. Vercel Pro limit is 1GB — production cron may OOM. Solutions: --max-old-space-size=1536 flag on Vercel, or implement two-pass streaming approach in Phase 16 planning if cron fails.
 
@@ -89,5 +90,5 @@ Progress (v4.0): [█████░░░░░] 50%
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 16-01-PLAN.md — GET /api/execucao and GET /api/execucao/[cnpj] created, Phase 16 Plan 01 complete
+Stopped at: Completed 16-02-PLAN.md — alert business rule confirmed (valor_desembolsado = 0), Phase 16 API & Business Logic complete
 Resume file: None

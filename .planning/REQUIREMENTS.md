@@ -22,7 +22,7 @@ Requirements for the Projetos em Execucao milestone. Each maps to roadmap phases
 - [x] **FIN-01**: Gestor pode ver valor de desembolso por projeto
 - [x] **FIN-02**: Gestor pode ver saldo em conta por projeto
 - [x] **FIN-03**: Gestor pode ver percentual de execucao (desembolso vs valor global)
-- [ ] **FIN-04**: Projetos com desembolso negativo sao destacados visualmente como alerta
+- [x] **FIN-04**: Projetos com desembolso negativo sao destacados visualmente como alerta
 - [x] **FIN-05**: Gestor pode ver dias em execucao (desde inicio ate hoje)
 - [x] **FIN-06**: Gestor pode ver data fim de vigencia e tempo restante
 
@@ -105,7 +105,7 @@ Deferred to future milestone.
 | FIN-01 | Phase 16 | Complete |
 | FIN-02 | Phase 16 | Complete |
 | FIN-03 | Phase 16 | Complete |
-| FIN-04 | Phase 16 | Pending |
+| FIN-04 | Phase 16 | Complete |
 | FIN-05 | Phase 16 | Complete |
 | FIN-06 | Phase 16 | Complete |
 | AGR-01 | Phase 17 | Pending |
