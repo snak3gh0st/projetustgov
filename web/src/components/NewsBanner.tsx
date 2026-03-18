@@ -1,0 +1,67 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+
+const NEWS_VERSION = 'v4.0'
+const NEWS_ITEMS = [
+  'Projetos em Execucao — nova pagina de inteligencia pos-venda',
+  'Monitoramento de alertas para projetos sem desembolso',
+  'Removida aba "Importar Planilha" do menu lateral',
+  'Melhorias gerais de performance e estabilidade',
+]
+const STORAGE_KEY = `projetus-news-dismissed-${NEWS_VERSION}`
+
+export default function NewsBanner() {
+  const [dismissed, setDismissed] = useState(true)
+
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored !== 'true') {
+      setDismissed(false)
+    }
+  }, [])
+
+  if (dismissed) return null
+
+  function handleDismiss() {
+    localStorage.setItem(STORAGE_KEY, 'true')
+    setDismissed(true)
+  }
+
+  return (
+    <div className="bg-gradient-to-r from-[#FD225C]/5 via-[#7A4BAC]/5 to-[#0072F7]/5 border border-[#7A4BAC]/20 rounded-lg p-4 mb-6 relative">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-lg" role="img" aria-label="novidades">
+            &#9733;
+          </span>
+          <h3 className="font-semibold text-gray-800">
+            Novidades &mdash; {NEWS_VERSION}
+          </h3>
+        </div>
+        <button
+          onClick={handleDismiss}
+          className="text-gray-400 hover:text-gray-600 transition-colors"
+          aria-label="Fechar"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="w-5 h-5"
+          >
+            <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+          </svg>
+        </button>
+      </div>
+      <ul className="list-disc list-inside text-sm text-gray-600 mt-2 space-y-1">
+        {NEWS_ITEMS.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <p className="text-xs text-gray-400 mt-3">
+        Projetus CRM {NEWS_VERSION} &mdash; SigmaIntel
+      </p>
+    </div>
+  )
+}
