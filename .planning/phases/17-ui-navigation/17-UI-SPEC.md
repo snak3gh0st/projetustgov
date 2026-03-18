@@ -45,10 +45,12 @@ Declared values (multiples of 4 only):
 | 3xl | 64px | Not used in this phase |
 
 Exceptions:
-- Nav item vertical padding: 10px (`py-2.5`) — matches Sidebar.tsx existing pattern
 - Slide-over panel width: 420px — direct copy of LeadSlideOver pattern
 - Slide-over top accent line: 4px height — direct copy of LeadSlideOver pattern
-- Touch targets (close button): minimum 32px, padded with `p-1.5` to hit 32px effective area
+- Touch targets (close button): minimum 32px, padded with `p-2` (8px) for 36px effective area
+
+Notes:
+- Sidebar nav item vertical padding (`py-2.5`) is inherited unchanged from `Sidebar.tsx` and is not re-declared here. This phase does not modify Sidebar spacing.
 
 Source: Measured from `LeadSlideOver.tsx`, `Sidebar.tsx`, `KPICard.tsx`
 
@@ -90,6 +92,12 @@ Alert color note: `tem_alerta = true` rows render with a `border-l-4 border-ambe
 Border: `border border-gray-200` on all cards and the slide-over panel left edge. Sidebar already uses `border-r border-gray-200`.
 
 Source: `globals.css` (body #F8FAFC), `tailwind.config.ts` (sigma.neon #0072F7, sigma.magenta #FD225C), `LeadSlideOver.tsx` (color patterns), `KPICard.tsx`
+
+---
+
+## Visual Anchor
+
+Primary focal point on the /execucao main page: the main table — the eye is drawn first to alert rows (amber left border `border-l-4 border-amber-400`) and then to the blue financial values in the Desembolsado column (`text-[#0072F7] font-bold`). All other elements (KPI row, filter bar) support the table rather than compete with it.
 
 ---
 
