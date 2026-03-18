@@ -22,15 +22,23 @@ interface ExecucaoAggRow {
   contact_present: boolean
 }
 
-// Alert condition placeholder — to be replaced in Plan 16-02 after client confirmation.
-// See: .planning/STATE.md "Alert business rule (Phase 16 blocker)"
-// The alerta_desembolso column was computed in ETL as valor_desembolsado < 0 which may never
-// fire for real government data (Pitfall 7). Plan 16-02 replaces with confirmed business rule.
-// The verificar_saldo column uses: valor_desembolsado > 0 && saldo_conta <= 0
-const ALERT_PLACEHOLDER_NOTE = 'Using existing ETL-computed boolean columns as placeholder'
+// Alert business rule — Confirmed with client on 2026-03-18
+// Client decision: projects where valor_desembolsado = 0 trigger the alert.
+// These are projects where government repasse was approved/allocated but the beneficiary
+// never received any disbursement — money was never moved.
+//
+// Data context: 1,941 projects (22%) have pct_execucao < 10%, many with zero desembolso.
+// The previous ETL placeholder (alerta_desembolso = valor_desembolsado < 0) never fired
+// for real government data (Pitfall 7). The verified condition uses valor_desembolsado = 0.
+//
+// tem_alerta is TRUE when the CNPJ has ANY convenio with valor_desembolsado = 0.
+// The ALERT_ZERO_EXECUTION SQL fragment is used consistently in both:
+//   1. The GROUP BY SELECT (BOOL_OR) — computes tem_alerta per CNPJ
+//   2. The alert_only filter — restricts rows to those with tem_alerta = true
+const ALERT_ZERO_EXECUTION = 'pe.valor_desembolsado = 0'
 
 export async function GET(request: NextRequest) {
-  void ALERT_PLACEHOLDER_NOTE
+  void ALERT_ZERO_EXECUTION
   try {
     const session = await getApiSession()
     if (!session) {
@@ -62,7 +70,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (alert_only === 'true') {
-      conditions.push(`(pe.alerta_desembolso = TRUE OR pe.verificar_saldo = TRUE)`)
+      // Filter to CNPJs that have at least one convenio matching the confirmed alert condition.
+      // Uses a correlated subquery so the GROUP BY result is consistent with tem_alerta.
+      conditions.push(`EXISTS (
+        SELECT 1 FROM projetos_execucao pe2
+        WHERE pe2.cnpj = pe.cnpj
+          AND ${ALERT_ZERO_EXECUTION.replace('pe.', 'pe2.')}
+        LIMIT 1
+      )`)
     }
 
     const rows = await query<ExecucaoAggRow>(`
@@ -80,7 +95,7 @@ export async function GET(request: NextRequest) {
           THEN ROUND(SUM(pe.valor_desembolsado) / SUM(pe.valor_repasse) * 100, 1)
           ELSE NULL
         END                                                      AS pct_execucao_ponderado,
-        BOOL_OR(pe.alerta_desembolso)                            AS tem_alerta,
+        BOOL_OR(pe.valor_desembolsado = 0)                       AS tem_alerta,
         BOOL_OR(pe.verificar_saldo)                              AS tem_verificar_saldo,
         MIN(pe.data_fim_vigencia)                                AS data_fim_vigencia_mais_proxima,
         MIN(
