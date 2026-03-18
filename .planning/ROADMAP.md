@@ -382,7 +382,7 @@ Plans:
 
 Plans:
 - [x] 14-01-PLAN.md — Data audit diagnostics: NULL proposta_id count, CNPJ padding check, LPAD migration if needed, gap strategy documentation
-- [ ] 14-02-PLAN.md — Create projetos_execucao table with NUMERIC(18,2) columns, UNIQUE(nr_convenio), indexes, UPSERT policy documentation
+- [x] 14-02-PLAN.md — Create projetos_execucao table with NUMERIC(18,2) columns, UNIQUE(nr_convenio), indexes, UPSERT policy documentation
 
 ### Phase 15: ETL Sync & Validation
 **Goal**: Build and validate the streaming sync that populates projetos_execucao from the two government CSV sources. Validate against real data before any API or UI code is written — an empty table hides correctness problems in GROUP BY logic.
@@ -418,11 +418,11 @@ Plans:
   4. The API response includes a contact_present boolean per CNPJ derived from LEFT JOIN on lead_contacts (and vendedor_projetos as fallback), enabling the UI to show a contact indicator badge without a second fetch
   5. Dias em execucao and tempo restante are computed in SQL (not JavaScript) so the frontend receives ready-to-display integers
 
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 16-01: /api/execucao/route.ts — role guard, GROUP BY CNPJ query, NUMERIC casts, contact LEFT JOIN, filter params (search, uf, alert_only)
-- [ ] 16-02: Alert business rule confirmed with client, named constants added, cron endpoint verified within 300s budget
+- [ ] 16-01-PLAN.md — GET /api/execucao with role guard, GROUP BY CNPJ query, weighted pct_execucao, SQL-computed dias, contact EXISTS, filter params + CNPJ detail endpoint for slide-over
+- [ ] 16-02-PLAN.md — Alert business rule client confirmation checkpoint, named constants update, alert_only filter alignment
 
 ### Phase 17: UI & Navigation
 **Goal**: Build the /execucao page and sidebar entry that surfaces the data layer to gestores. Build UI last — after the data layer is validated — to avoid UX iteration on a broken foundation. All component patterns are direct copies of existing pages.
