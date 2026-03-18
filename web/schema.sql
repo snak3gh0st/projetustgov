@@ -230,3 +230,39 @@ CREATE TABLE IF NOT EXISTS cron_sync_log (
   errors INT NOT NULL DEFAULT 0,
   duration_ms INT NOT NULL DEFAULT 0
 );
+
+-- 14. Projetos em Execucao (v4.0 — isolated from CRM, NUMERIC financials)
+-- UPSERT conflict key: ON CONFLICT (nr_convenio) DO UPDATE
+-- NEVER use cnpj alone — one CNPJ has multiple convenios
+-- Column mapping: nr_convenio = siconv CSV NR_CONVENIO = convenios.transfer_gov_id
+CREATE TABLE IF NOT EXISTS projetos_execucao (
+  id SERIAL PRIMARY KEY,
+  nr_convenio          VARCHAR(30)    NOT NULL,
+  id_proposta          VARCHAR(30),
+  situacao             VARCHAR(100),
+  modalidade           VARCHAR(100),
+  cnpj                 VARCHAR(14)    NOT NULL,
+  nome_proponente      VARCHAR(500),
+  objeto               TEXT,
+  uf                   VARCHAR(2),
+  municipio            VARCHAR(200),
+  valor_global         NUMERIC(18,2),
+  valor_repasse        NUMERIC(18,2),
+  valor_desembolsado   NUMERIC(18,2),
+  saldo_conta          NUMERIC(18,2),
+  valor_empenhado      NUMERIC(18,2),
+  data_assinatura      DATE,
+  data_inicio_vigencia DATE,
+  data_fim_vigencia    DATE,
+  pct_execucao         NUMERIC(6,2),
+  dias_em_execucao     INTEGER,
+  dias_ate_vencimento  INTEGER,
+  alerta_desembolso    BOOLEAN DEFAULT FALSE,
+  verificar_saldo      BOOLEAN DEFAULT FALSE,
+  synced_at            TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
+  sync_run_id          INTEGER,
+  CONSTRAINT uq_projetos_execucao_nr_convenio UNIQUE (nr_convenio)
+);
+CREATE INDEX IF NOT EXISTS ix_projetos_execucao_cnpj ON projetos_execucao(cnpj);
+CREATE INDEX IF NOT EXISTS ix_projetos_execucao_situacao ON projetos_execucao(situacao);
+CREATE INDEX IF NOT EXISTS ix_projetos_execucao_data_fim ON projetos_execucao(data_fim_vigencia) WHERE data_fim_vigencia IS NOT NULL;
