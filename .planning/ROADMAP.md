@@ -48,7 +48,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 14: Data Audit & Foundation** - Validate data integrity before building, create projetos_execucao table (completed 2026-03-18)
 - [x] **Phase 15: ETL Sync & Validation** - Streaming sync of convenio + proposta CSVs into projetos_execucao (completed 2026-03-18)
 - [x] **Phase 16: API & Business Logic** - Role-guarded API route with CNPJ-grouped financial aggregation (completed 2026-03-18)
-- [ ] **Phase 17: UI & Navigation** - /execucao page with KPI cards, grouped table, slide-over, sidebar entry
+- [x] **Phase 17: UI & Navigation** - /execucao page with KPI cards, grouped table, slide-over, sidebar entry (completed 2026-03-18)
 
 ## Phase Details
 
@@ -474,7 +474,7 @@ Plans:
 | 14. Data Audit & Foundation | 2/2 | Complete    | 2026-03-18 |
 | 15. ETL Sync & Validation | 2/2 | Complete    | 2026-03-18 |
 | 16. API & Business Logic | 2/2 | Complete   | 2026-03-18 |
-| 17. UI & Navigation | 1/2 | In Progress|  |
+| 17. UI & Navigation | 2/2 | Complete   | 2026-03-18 |
 
 ---
 *Roadmap created: 2026-02-04*

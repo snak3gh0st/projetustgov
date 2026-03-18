@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — Projetos em Execucao
-status: planning
-stopped_at: "Completed 17-ui-navigation-01-PLAN.md"
-last_updated: "2026-03-18T20:53:30Z"
-last_activity: 2026-03-18 — Phase 17 Plan 01 executed (/execucao page, sem-permissao page, extended API)
+status: complete
+stopped_at: "Completed 17-ui-navigation-02-PLAN.md"
+last_updated: "2026-03-18T20:58:18Z"
+last_activity: 2026-03-18 — Phase 17 Plan 02 executed (ExecucaoSlideOver, Sidebar execucao nav entry)
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 6
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State: PROJETUS — v4.0 Projetos em Execucao
@@ -24,24 +24,24 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 ## Current Position
 
-Phase: 17 of 17 in milestone v4.0 (UI & Navigation) — IN PROGRESS
-Plan: 1 of TBD in Phase 17
-Status: Plan 17-01 complete — /execucao page, /sem-permissao, extended API with last_synced
-Last activity: 2026-03-18 — Plan 17-01 executed (2 tasks, 4 files, 3 min)
+Phase: 17 of 17 in milestone v4.0 (UI & Navigation) — COMPLETE
+Plan: 2 of 2 in Phase 17
+Status: Plan 17-02 complete — ExecucaoSlideOver, Sidebar execucao nav entry
+Last activity: 2026-03-18 — Plan 17-02 executed (2 tasks, 3 files, 2 min)
 
-Progress (v4.0): [█████████░] 80%
+Progress (v4.0): [██████████] 100%
 
 **Milestone v1.0:** Complete (Phases 1, 2, 4, 5)
 **Milestone v2.0:** Superseded by Next.js migration (Phases 6-8)
 **Milestone v3.0:** Complete (Phases 10-13 + 74 quick tasks)
-**Milestone v4.0:** In progress (Phases 14-17)
+**Milestone v4.0:** COMPLETE (Phases 14-17)
 
 ## Performance Metrics
 
 **v4.0 Velocity:**
-- Total plans completed: 4
-- Average duration: ~17 min
-- Total execution time: ~67 min
+- Total plans completed: 5
+- Average duration: ~14 min
+- Total execution time: ~69 min
 
 *Updated after each plan completion*
 
@@ -70,6 +70,8 @@ Progress (v4.0): [█████████░] 80%
 | Alert condition: valor_desembolsado = 0 (confirmed 2026-03-18) | Client confirmed: projects with zero disbursement (money approved but never moved) should surface as alerts — replaces ETL placeholder that never fired |
 | Two-file Next.js split for /execucao (Plan 17-01) | page.tsx as 6-line server component for role guard, ExecucaoClient.tsx as 218-line client component — avoids use-client/server-component conflict |
 | selectedCnpj stub in ExecucaoClient (Plan 17-01) | State declared but not consumed; void pragma suppresses TS warning; Plan 17-02 wires ExecucaoSlideOver to this state |
+| ClipboardDocumentCheck SVG for execucao sidebar icon (Plan 17-02) | ChartBarIcon already used by pipeline nav entry — distinct icon prevents visual ambiguity |
+| execucao nav entry first after BASE_NAV_ITEMS in gestor/coordenador arrays (Plan 17-02) | Natural grouping of data-view links before admin tools (upload, distribuir, monitoramento) |
 
 ### Blockers / Concerns
 
@@ -91,6 +93,6 @@ Progress (v4.0): [█████████░] 80%
 
 ## Session Continuity
 
-Last session: 2026-03-18T20:53:30Z
-Stopped at: Completed 17-ui-navigation-01-PLAN.md
-Resume file: .planning/phases/17-ui-navigation/17-01-SUMMARY.md
+Last session: 2026-03-18T20:58:18Z
+Stopped at: Completed 17-ui-navigation-02-PLAN.md
+Resume file: .planning/phases/17-ui-navigation/17-02-SUMMARY.md

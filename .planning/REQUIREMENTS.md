@@ -29,13 +29,13 @@ Requirements for the Projetos em Execucao milestone. Each maps to roadmap phases
 ### Agregacao & Visualizacao
 
 - [x] **AGR-01**: Propostas sao agrupadas por CNPJ (big number = quantidade de fomentos)
-- [ ] **AGR-02**: Gestor pode expandir CNPJ para ver propostas individuais com detalhes
+- [x] **AGR-02**: Gestor pode expandir CNPJ para ver propostas individuais com detalhes
 - [x] **AGR-03**: Contatos existentes (telefone/email) sao exibidos via lead_contacts/BrasilAPI
-- [ ] **AGR-04**: Slide-over com detalhes completos ao clicar num CNPJ
+- [x] **AGR-04**: Slide-over com detalhes completos ao clicar num CNPJ
 
 ### Interface & Acesso
 
-- [ ] **UI-01**: Nova aba /execucao no sidebar
+- [x] **UI-01**: Nova aba /execucao no sidebar
 - [x] **UI-02**: Acesso restrito a gestor e coordenador (vendedor nao ve)
 - [x] **UI-03**: KPI cards no topo (total projetos, valor desembolsado, clientes qualificados, etc.)
 - [x] **UI-04**: Tabela principal com colunas: CNPJ, nome, qtd fomentos, desembolso, saldo, % execucao, vigencia
@@ -109,10 +109,10 @@ Deferred to future milestone.
 | FIN-05 | Phase 16 | Complete |
 | FIN-06 | Phase 16 | Complete |
 | AGR-01 | Phase 17 | Complete |
-| AGR-02 | Phase 17 | Pending |
+| AGR-02 | Phase 17 | Complete |
 | AGR-03 | Phase 17 | Complete |
-| AGR-04 | Phase 17 | Pending |
-| UI-01 | Phase 17 | Pending |
+| AGR-04 | Phase 17 | Complete |
+| UI-01 | Phase 17 | Complete |
 | UI-02 | Phase 17 | Complete |
 | UI-03 | Phase 17 | Complete |
 | UI-04 | Phase 17 | Complete |
