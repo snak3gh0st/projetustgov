@@ -1,102 +1,127 @@
-# Requirements: PROJETUS CRM de Vendas
+# Requirements: PROJETUS — Projetos em Execução
 
-**Defined:** 2026-02-11
-**Core Value:** CRM funcional para vendedores qualificarem e contactarem leads do TransferênciaGov, com pipeline visual, atribuição de vendedor, tracking de contato, e controle de comissão.
+**Defined:** 2026-03-18
+**Core Value:** Inteligência pós-venda para gestores identificarem clientes qualificados com projetos em execução no TransferênciaGov.
 
-## v3.0 Requirements
+## v4.0 Requirements
+
+Requirements for the Projetos em Execução milestone. Each maps to roadmap phases.
+
+### Dados & ETL
+
+- [ ] **DATA-01**: Sistema importa dados de convenio do repo (filtro: situação "em execução")
+- [ ] **DATA-02**: Sistema importa dados de proposta do repo (filtro: tipo "OSC")
+- [ ] **DATA-03**: Dados são armazenados em tabela DB dedicada `projetos_execucao` (isolada do CRM)
+- [ ] **DATA-04**: Cruzamento convenio ↔ proposta via id_proposta com CNPJ do proponente
+- [ ] **DATA-05**: UPSERT incremental sem duplicar registros existentes (conflict key: cnpj + nr_convenio)
+- [ ] **DATA-06**: Sync diário via cron endpoint dedicado, separado do sync de leads
+- [ ] **DATA-07**: Auditoria de dados prévia: validar NULL proposta_id, CNPJ padding, join coverage
+
+### Métricas Financeiras
+
+- [ ] **FIN-01**: Gestor pode ver valor de desembolso por projeto
+- [ ] **FIN-02**: Gestor pode ver saldo em conta por projeto
+- [ ] **FIN-03**: Gestor pode ver percentual de execução (desembolso vs valor global)
+- [ ] **FIN-04**: Projetos com desembolso negativo são destacados visualmente como alerta
+- [ ] **FIN-05**: Gestor pode ver dias em execução (desde início até hoje)
+- [ ] **FIN-06**: Gestor pode ver data fim de vigência e tempo restante
+
+### Agregação & Visualização
+
+- [ ] **AGR-01**: Propostas são agrupadas por CNPJ (big number = quantidade de fomentos)
+- [ ] **AGR-02**: Gestor pode expandir CNPJ para ver propostas individuais com detalhes
+- [ ] **AGR-03**: Contatos existentes (telefone/email) são exibidos via lead_contacts/BrasilAPI
+- [ ] **AGR-04**: Slide-over com detalhes completos ao clicar num CNPJ
+
+### Interface & Acesso
+
+- [ ] **UI-01**: Nova aba /execucao no sidebar
+- [ ] **UI-02**: Acesso restrito a gestor e coordenador (vendedor não vê)
+- [ ] **UI-03**: KPI cards no topo (total projetos, valor desembolsado, clientes qualificados, etc.)
+- [ ] **UI-04**: Tabela principal com colunas: CNPJ, nome, qtd fomentos, desembolso, saldo, % execução, vigência
+
+## v3.0 Requirements (Previous — Complete)
 
 ### Autenticação
-
-- [ ] **AUTH-01**: Vendedor pode fazer login com email e senha
-- [ ] **AUTH-02**: Gestor pode criar/editar contas de vendedores
-- [ ] **AUTH-03**: Vendedor vê apenas leads atribuídos a ele (gestor vê todos)
-- [ ] **AUTH-04**: Sessão persiste entre refreshes do browser
+- [x] **AUTH-01**: Vendedor pode fazer login com email e senha
+- [x] **AUTH-02**: Gestor pode criar/editar contas de vendedores
+- [x] **AUTH-03**: Vendedor vê apenas leads atribuídos a ele (gestor vê todos)
+- [x] **AUTH-04**: Sessão persiste entre refreshes do browser
 
 ### Gestão de Leads
-
-- [ ] **LEAD-01**: Gestor pode atribuir lead a um vendedor específico
-- [ ] **LEAD-02**: Sistema detecta e alerta duplicatas (mesmo lead atribuído a dois vendedores)
-- [ ] **LEAD-03**: Lead mostra flag visível "CLIENTE EXISTENTE" quando já está na base de clientes
-- [ ] **LEAD-04**: Lead mostra link direto ao programa de trabalho no TransferênciaGov
+- [x] **LEAD-01**: Gestor pode atribuir lead a um vendedor específico
+- [x] **LEAD-02**: Sistema detecta e alerta duplicatas
+- [x] **LEAD-03**: Lead mostra flag "CLIENTE EXISTENTE"
+- [x] **LEAD-04**: Lead mostra link ao programa de trabalho
 
 ### Pipeline de Vendas
-
-- [ ] **PIPE-01**: Pipeline visual (kanban) com 4 colunas: Novo → Contactado → Em negociação → Fechado
-- [ ] **PIPE-02**: Vendedor pode arrastar lead entre colunas de status
-- [ ] **PIPE-03**: Cada lead no pipeline mostra: nome, CNPJ, valor emenda, tier, vendedor
-- [ ] **PIPE-04**: Pipeline filtável por vendedor, UF, tier de valor
+- [x] **PIPE-01**: Pipeline visual com colunas de status
+- [x] **PIPE-02**: Vendedor pode mudar status do lead
+- [x] **PIPE-03**: Lead mostra: nome, CNPJ, valor, tier, vendedor
+- [x] **PIPE-04**: Pipeline filtável por vendedor, UF, tier
 
 ### Contato & Tracking
-
-- [ ] **CONT-01**: Vendedor pode registrar nota de contato (data, tipo, observação)
-- [ ] **CONT-02**: Histórico de contatos visível na timeline do lead
-- [ ] **CONT-03**: Status de contato: "Não contactado", "Aguardando retorno", "Em conversa", "Fechado"
-- [ ] **CONT-04**: Dados de contato (telefone, email) editáveis pelo vendedor
+- [x] **CONT-01**: Vendedor pode registrar nota de contato
+- [x] **CONT-02**: Histórico de contatos em timeline
+- [x] **CONT-03**: Status de contato com pipeline
+- [x] **CONT-04**: Dados de contato editáveis
 
 ### Comissão
+- [x] **COM-01**: Vendedor vinculado ao lead ao fechar
+- [x] **COM-02**: Percentual configurável por gestor
+- [x] **COM-03**: Relatório de comissões com filtro
+- [x] **COM-04**: Dashboard do vendedor com comissões
 
-- [ ] **COM-01**: Vendedor vinculado ao lead quando marca status "Fechado"
-- [ ] **COM-02**: Percentual de comissão configurável por gestor (padrão + exceções)
-- [ ] **COM-03**: Relatório de comissões por vendedor com período filtável
-- [ ] **COM-04**: Dashboard do vendedor mostra seus leads, suas comissões acumuladas
+## Future Requirements
 
-### Plataforma Next.js
+Deferred to future milestone.
 
-- [ ] **PLAT-01**: Migrar dashboard existente (Pipeline, Leads, Lead Profile) para base de CRM
-- [ ] **PLAT-02**: Tabelas de CRM no PostgreSQL (users, lead_assignments, contact_notes, commissions)
-- [ ] **PLAT-03**: API routes protegidas por autenticação (JWT ou session)
-
-## v4 Requirements (Deferred)
-
-- **NOTIF-01**: Notificações quando novos leads são adicionados ao sistema
-- **NOTIF-02**: Alerta quando lead muda de status
-- **EXPORT-01**: Export de relatórios em PDF
-- **INTEG-01**: Integração WhatsApp para contato direto
-- **AUTO-01**: Atribuição automática round-robin de leads
+### Pós-Venda Workflow
+- **PV-01**: Gestor pode mudar status de projeto (ex: "Encaminhar para pós-venda")
+- **PV-02**: Post-sales team tem login/role próprio
+- **PV-03**: Handoff workflow com notificação ao time de pós-venda
+- **PV-04**: Push alerts para mudanças em projetos monitorados
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| WhatsApp automation | Projeto separado, complexidade alta |
-| Mobile app nativo | Web responsive é suficiente para v3 |
-| BI avançado | Dashboard atual atende, BI é projeto futuro |
-| Multi-tenant | Apenas um cliente (Projetus) por agora |
-| Integração com CRMs externos | Não há CRM existente para integrar |
+| Edição de dados de projetos | Read-only por decisão — validar valor da visualização primeiro |
+| Workflow de handoff pós-venda | Ainda não discutido com cliente, fica para próximo milestone |
+| Notas/contatos específicos para pós-venda | Depende do workflow de handoff |
+| Alertas push para projetos em execução | Depende de definição de regras de negócio com cliente |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 10 | Pending |
-| AUTH-02 | Phase 10 | Pending |
-| AUTH-03 | Phase 10 | Pending |
-| AUTH-04 | Phase 10 | Pending |
-| PLAT-01 | Phase 10 | Pending |
-| PLAT-02 | Phase 10 | Pending |
-| PLAT-03 | Phase 10 | Pending |
-| LEAD-01 | Phase 11 | Pending |
-| LEAD-02 | Phase 11 | Pending |
-| LEAD-03 | Phase 11 | Pending |
-| LEAD-04 | Phase 11 | Pending |
-| CONT-01 | Phase 11 | Pending |
-| CONT-02 | Phase 11 | Pending |
-| CONT-03 | Phase 11 | Pending |
-| CONT-04 | Phase 11 | Pending |
-| PIPE-01 | Phase 12 | Pending |
-| PIPE-02 | Phase 12 | Pending |
-| PIPE-03 | Phase 12 | Pending |
-| PIPE-04 | Phase 12 | Pending |
-| COM-01 | Phase 13 | Pending |
-| COM-02 | Phase 13 | Pending |
-| COM-03 | Phase 13 | Pending |
-| COM-04 | Phase 13 | Pending |
+| DATA-01 | — | Pending |
+| DATA-02 | — | Pending |
+| DATA-03 | — | Pending |
+| DATA-04 | — | Pending |
+| DATA-05 | — | Pending |
+| DATA-06 | — | Pending |
+| DATA-07 | — | Pending |
+| FIN-01 | — | Pending |
+| FIN-02 | — | Pending |
+| FIN-03 | — | Pending |
+| FIN-04 | — | Pending |
+| FIN-05 | — | Pending |
+| FIN-06 | — | Pending |
+| AGR-01 | — | Pending |
+| AGR-02 | — | Pending |
+| AGR-03 | — | Pending |
+| AGR-04 | — | Pending |
+| UI-01 | — | Pending |
+| UI-02 | — | Pending |
+| UI-03 | — | Pending |
+| UI-04 | — | Pending |
 
 **Coverage:**
-- v3.0 requirements: 21 total
-- Mapped to phases: 21
-- Unmapped: 0 ✓
+- v4.0 requirements: 21 total
+- Mapped to phases: 0
+- Unmapped: 21 ⚠️
 
 ---
-*Requirements defined: 2026-02-11*
-*Last updated: 2026-02-11 after milestone v3.0 definition*
+*Requirements defined: 2026-03-18*
+*Last updated: 2026-03-18 after initial definition*
