@@ -250,9 +250,12 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     const valor_empenhado = parseBRNumber(row['VL_EMPENHADO_CONV'] || row['VL_EMPENHADO'] || null)
 
     // Parse date values
-    const data_assinatura = parseBRDate(row['DT_ASSINATURA_CONV'] || row['DT_ASSINATURA'] || null)
-    const data_inicio_vigencia = parseBRDate(row['DT_INICIO_VIGENCIA'] || row['DT_INI_VIG'] || null)
-    const data_fim_vigencia = parseBRDate(row['DT_FIM_VIGENCIA'] || row['DT_FIM_VIG'] || null)
+    // Actual CSV column names (verified from siconv_convenio.csv.zip headers 2026-03-18):
+    //   DIA_ASSIN_CONV, DIA_INIC_VIGENC_CONV, DIA_FIM_VIGENC_CONV
+    // Fallback names kept for forward compatibility if CSV schema changes
+    const data_assinatura = parseBRDate(row['DIA_ASSIN_CONV'] || row['DT_ASSINATURA_CONV'] || row['DT_ASSINATURA'] || null)
+    const data_inicio_vigencia = parseBRDate(row['DIA_INIC_VIGENC_CONV'] || row['DT_INICIO_VIGENCIA'] || row['DT_INI_VIG'] || null)
+    const data_fim_vigencia = parseBRDate(row['DIA_FIM_VIGENC_CONV'] || row['DT_FIM_VIGENCIA'] || row['DT_FIM_VIG'] || null)
 
     // Computed fields
     const pct_execucao = valor_repasse > 0
