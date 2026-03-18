@@ -231,6 +231,10 @@ CREATE TABLE IF NOT EXISTS cron_sync_log (
   duration_ms INT NOT NULL DEFAULT 0
 );
 
+-- Phase 15: extend cron_sync_log for execucao sync observability
+ALTER TABLE cron_sync_log ADD COLUMN IF NOT EXISTS join_miss_count INT NOT NULL DEFAULT 0;
+ALTER TABLE cron_sync_log ADD COLUMN IF NOT EXISTS source VARCHAR(50) NOT NULL DEFAULT 'sync-leads';
+
 -- 14. Projetos em Execucao (v4.0 — isolated from CRM, NUMERIC financials)
 -- UPSERT conflict key: ON CONFLICT (nr_convenio) DO UPDATE
 -- NEVER use cnpj alone — one CNPJ has multiple convenios

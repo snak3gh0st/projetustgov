@@ -53,14 +53,14 @@ const ZIP_FILES = {
 // Helper functions (ported from import-repo-auto.mjs)
 // ---------------------------------------------------------------------------
 
-function cleanCNPJ(val: string | null | undefined): string | null {
+export function cleanCNPJ(val: string | null | undefined): string | null {
   if (!val) return null
   const str = String(val).replace(/\D/g, '')
   if (str.length < 11) return null
   return str.padStart(14, '0')
 }
 
-function parseBRNumber(val: string | null | undefined): number {
+export function parseBRNumber(val: string | null | undefined): number {
   if (!val || String(val).trim() === '') return 0
   const str = String(val).trim().replace(/\./g, '').replace(',', '.')
   const num = parseFloat(str)
@@ -82,7 +82,7 @@ export function formatPhone(raw: string | null | undefined): string | null {
   return null
 }
 
-function fixText(text: string | null | undefined): string | null {
+export function fixText(text: string | null | undefined): string | null {
   if (!text) return null
   let s = String(text)
 
@@ -181,7 +181,7 @@ function delay(ms: number): Promise<void> {
 // ZIP download + stream CSV parsing (no external dependencies)
 // ---------------------------------------------------------------------------
 
-async function downloadAndStreamCSV(
+export async function downloadAndStreamCSV(
   url: string,
   onRow: (row: Record<string, string>) => void
 ): Promise<number> {
