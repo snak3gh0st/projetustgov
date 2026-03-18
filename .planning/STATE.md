@@ -5,7 +5,7 @@ milestone_name: — Projetos em Execucao
 status: completed
 stopped_at: Completed 17-ui-navigation-02-PLAN.md
 last_updated: "2026-03-18T21:48:43Z"
-last_activity: 2026-03-18 — Quick task 260318-ook executed (1 task, 1 file, 1 min)
+last_activity: 2026-03-18 — Completed quick task 260318-ook: Delete import sheets tab from dashboard
 progress:
   total_phases: 4
   completed_phases: 4
@@ -72,6 +72,12 @@ Progress (v4.0): [██████████] 100%
 | selectedCnpj stub in ExecucaoClient (Plan 17-01) | State declared but not consumed; void pragma suppresses TS warning; Plan 17-02 wires ExecucaoSlideOver to this state |
 | ClipboardDocumentCheck SVG for execucao sidebar icon (Plan 17-02) | ChartBarIcon already used by pipeline nav entry — distinct icon prevents visual ambiguity |
 | execucao nav entry first after BASE_NAV_ITEMS in gestor/coordenador arrays (Plan 17-02) | Natural grouping of data-view links before admin tools (upload, distribuir, monitoramento) |
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260318-ook | Delete import sheets tab from dashboard | 2026-03-18 | 1fe0798 | [260318-ook-delete-import-sheets-tab-from-dashboard](./quick/260318-ook-delete-import-sheets-tab-from-dashboard/) |
 
 ### Blockers / Concerns
 

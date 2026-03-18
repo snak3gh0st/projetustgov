@@ -55,7 +55,7 @@ Each task was committed atomically:
 
 1. **Task 1: Remove Importar Planilha nav entry from gestor sidebar** - `dfa71f4` (feat)
 
-**Plan metadata:** (pending final commit)
+**Plan metadata:** `1fe0798` (docs: complete plan)
 
 ## Files Created/Modified
 - `web/src/components/Sidebar.tsx` - Removed Importar Planilha nav entry from gestor role's navItems array (line 58 deleted)
