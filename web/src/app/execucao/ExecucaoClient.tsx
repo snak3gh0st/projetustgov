@@ -37,6 +37,17 @@ export default function ExecucaoClient() {
   const [uf, setUf] = useState('')
   const [alertOnly, setAlertOnly] = useState(false)
   const [selectedCnpj, setSelectedCnpj] = useState<string | null>(null)
+  const [sortCol, setSortCol] = useState<string>('')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const toggleSort = (col: string) => {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -85,6 +96,39 @@ export default function ExecucaoClient() {
       icon: '\u26A0',
     },
   ], [rows])
+
+  const sortedRows = useMemo(() => {
+    if (!sortCol) return rows
+    const sorted = [...rows].sort((a, b) => {
+      let va: string | number | boolean | null = null
+      let vb: string | number | boolean | null = null
+      switch (sortCol) {
+        case 'cnpj': va = a.cnpj; vb = b.cnpj; break
+        case 'nome': va = a.nome_proponente ?? ''; vb = b.nome_proponente ?? ''; break
+        case 'uf': va = a.uf ?? ''; vb = b.uf ?? ''; break
+        case 'fomentos': va = a.total_projetos; vb = b.total_projetos; break
+        case 'desembolsado': va = Number(a.total_desembolsado); vb = Number(b.total_desembolsado); break
+        case 'saldo': va = Number(a.total_saldo); vb = Number(b.total_saldo); break
+        case 'execucao': va = Number(a.pct_execucao_ponderado ?? -1); vb = Number(b.pct_execucao_ponderado ?? -1); break
+        case 'vigencia': va = a.data_fim_vigencia_mais_proxima ?? ''; vb = b.data_fim_vigencia_mais_proxima ?? ''; break
+        case 'alerta': va = a.tem_alerta ? 1 : 0; vb = b.tem_alerta ? 1 : 0; break
+        case 'contato': va = a.contact_present ? 1 : 0; vb = b.contact_present ? 1 : 0; break
+      }
+      if (va == null && vb == null) return 0
+      if (va == null) return 1
+      if (vb == null) return -1
+      if (va < vb) return sortDir === 'asc' ? -1 : 1
+      if (va > vb) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+    return sorted
+  }, [rows, sortCol, sortDir])
+
+  const SortIcon = ({ col }: { col: string }) => (
+    <span className="inline-flex ml-1 text-gray-400">
+      {sortCol === col ? (sortDir === 'asc' ? '\u2191' : '\u2193') : '\u2195'}
+    </span>
+  )
 
   return (
     <div className="space-y-6 max-w-[1400px]">
@@ -156,20 +200,30 @@ export default function ExecucaoClient() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CNPJ</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UF</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fomentos</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Desembolsado</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo em Conta</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">% Execucao</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vigencia</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alerta</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contato</th>
+                {[
+                  { key: 'cnpj', label: 'CNPJ' },
+                  { key: 'nome', label: 'Nome' },
+                  { key: 'uf', label: 'UF' },
+                  { key: 'fomentos', label: 'Fomentos' },
+                  { key: 'desembolsado', label: 'Desembolsado' },
+                  { key: 'saldo', label: 'Saldo em Conta' },
+                  { key: 'execucao', label: '% Execucao' },
+                  { key: 'vigencia', label: 'Vigencia' },
+                  { key: 'alerta', label: 'Alerta' },
+                  { key: 'contato', label: 'Contato' },
+                ].map(({ key, label }) => (
+                  <th
+                    key={key}
+                    onClick={() => toggleSort(key)}
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none"
+                  >
+                    {label}<SortIcon col={key} />
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map(row => (
+              {sortedRows.map(row => (
                 <tr
                   key={row.cnpj}
                   onClick={() => setSelectedCnpj(row.cnpj)}
@@ -187,8 +241,12 @@ export default function ExecucaoClient() {
                   <td className="px-4 py-3 text-sm text-gray-500">{formatDate(row.data_fim_vigencia_mais_proxima)}</td>
                   <td className="px-4 py-3">
                     {row.tem_alerta && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200" aria-label="Projeto com alerta de desembolso zero">
-                        Alerta
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 cursor-help"
+                        title="Este proponente possui convenio(s) com valor desembolsado = R$ 0,00. O recurso foi aprovado mas nunca foi transferido."
+                      >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                        Sem desembolso
                       </span>
                     )}
                   </td>
