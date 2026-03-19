@@ -92,8 +92,8 @@ export async function GET(request: NextRequest) {
         SUM(pe.valor_desembolsado)                               AS total_desembolsado,
         SUM(pe.saldo_conta)                                      AS total_saldo,
         CASE
-          WHEN SUM(pe.valor_repasse) > 0
-          THEN ROUND(SUM(pe.valor_desembolsado) / SUM(pe.valor_repasse) * 100, 1)
+          WHEN SUM(pe.valor_desembolsado) > 0 AND SUM(pe.valor_global) > 0
+          THEN ROUND((SUM(pe.valor_desembolsado) - SUM(pe.saldo_conta)) / SUM(pe.valor_global) * 100, 1)
           ELSE NULL
         END                                                      AS pct_execucao_ponderado,
         BOOL_OR(pe.valor_desembolsado = 0)                       AS tem_alerta,

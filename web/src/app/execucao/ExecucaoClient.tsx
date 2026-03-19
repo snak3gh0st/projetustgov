@@ -87,8 +87,8 @@ export default function ExecucaoClient() {
       icon: '\u{1F4CB}',
     },
     {
-      title: 'Valor Desembolsado',
-      value: formatCompactCurrency(rows.reduce((s, r) => s + Number(r.total_desembolsado), 0)),
+      title: 'Saldo em Conta',
+      value: formatCompactCurrency(rows.reduce((s, r) => s + Number(r.total_saldo), 0)),
       icon: '\u{1F4B0}',
     },
     {
@@ -238,8 +238,8 @@ export default function ExecucaoClient() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 uppercase">{row.uf || '-'}</td>
                   <td className="px-4 py-3 font-bold text-gray-900">{row.total_projetos}</td>
-                  <td className="px-4 py-3 text-[#0072F7] font-bold text-sm">{formatCompactCurrency(row.total_desembolsado)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{formatCompactCurrency(row.total_saldo)}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{formatCompactCurrency(row.total_desembolsado)}</td>
+                  <td className="px-4 py-3 text-[#0072F7] font-bold text-sm">{formatCompactCurrency(row.total_saldo)}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{row.pct_execucao_ponderado != null ? `${Number(row.pct_execucao_ponderado).toFixed(1)}%` : '--'}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{formatDate(row.data_fim_vigencia_mais_proxima)}</td>
                   <td className="px-4 py-3">

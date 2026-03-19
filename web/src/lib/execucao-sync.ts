@@ -262,8 +262,10 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     const data_fim_vigencia = parseBRDate(row['DIA_FIM_VIGENC_CONV'] || row['DT_FIM_VIGENCIA'] || row['DT_FIM_VIG'] || null)
 
     // Computed fields
-    const pct_execucao = valor_repasse > 0
-      ? Math.round((valor_desembolsado / valor_repasse) * 10000) / 100
+    // % Execucao = (desembolsado - saldo_conta) / valor_global
+    // Only meaningful when desembolso > 0 (desembolso = 0 is an alert case)
+    const pct_execucao = valor_desembolsado > 0 && valor_global > 0
+      ? Math.round(((valor_desembolsado - saldo_conta) / valor_global) * 10000) / 100
       : null
 
     const dias_em_execucao = data_inicio_vigencia
