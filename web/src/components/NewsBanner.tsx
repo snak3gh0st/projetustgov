@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react'
 
-const NEWS_VERSION = 'v4.0'
+const NEWS_VERSION = 'v4.1'
 const NEWS_ITEMS = [
-  'Projetos em Execucao — nova pagina de inteligencia pos-venda',
-  'Monitoramento de alertas para projetos sem desembolso',
-  'Removida aba "Importar Planilha" do menu lateral',
-  'Melhorias gerais de performance e estabilidade',
+  'Destaque em "Saldo em Conta" na aba Execucao (coluna principal e KPI)',
+  'Nova formula de % Execucao: baseada em valor global e saldo em conta',
+  'Colunas ordenáveis com filtro por UF e alertas na aba Execucao',
+  'Correcao no calculo de saldo — valores agora refletem dados reais',
 ]
 const STORAGE_KEY = `projetus-news-dismissed-${NEWS_VERSION}`
 
