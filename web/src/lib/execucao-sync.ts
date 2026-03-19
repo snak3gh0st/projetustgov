@@ -246,7 +246,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     const valor_global = parseBRNumber(row['VL_GLOBAL_CONV'] || row['VL_GLOBAL'] || null)
     const valor_repasse = parseBRNumber(row['VL_REPASSE_CONV'] || row['VL_REPASSE'] || null)
     const valor_desembolsado = parseBRNumber(row['VL_DESEMBOLSADO_CONV'] || row['VL_DESEMBOLSADO'] || null)
-    const saldo_conta = parseBRNumber(row['VL_SALDO_CONTA_CORRENTE'] || row['VL_SALDO_REMAN_TESOURO'] || null)
+    const saldo_conta = parseBRNumber(row['VL_SALDO_CONTA'] || row['VL_SALDO_CONTA_CORRENTE'] || row['VL_SALDO_REMAN_TESOURO'] || null)
     const valor_empenhado = parseBRNumber(row['VL_EMPENHADO_CONV'] || row['VL_EMPENHADO'] || null)
 
     // Parse date values
