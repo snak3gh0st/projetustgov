@@ -22,6 +22,7 @@ interface ExecucaoAggRow {
   dias_ate_vencimento_min: number | null
   dias_em_execucao_max: number | null
   contact_present: boolean
+  total_propostas_db: number
 }
 
 const UF_OPTIONS = [
@@ -38,7 +39,7 @@ export default function ExecucaoClient() {
   const [uf, setUf] = useState('')
   const [alertOnly, setAlertOnly] = useState(false)
   const [selectedCnpj, setSelectedCnpj] = useState<string | null>(null)
-  const [sortCol, setSortCol] = useState<string>('')
+  const [sortCol, setSortCol] = useState<string>('execucao')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   const toggleSort = (col: string) => {
@@ -113,6 +114,7 @@ export default function ExecucaoClient() {
         case 'execucao': va = Number(a.pct_execucao_ponderado ?? -1); vb = Number(b.pct_execucao_ponderado ?? -1); break
         case 'vigencia': va = a.data_fim_vigencia_mais_proxima ?? ''; vb = b.data_fim_vigencia_mais_proxima ?? ''; break
         case 'alerta': va = a.tem_alerta ? 1 : 0; vb = b.tem_alerta ? 1 : 0; break
+        case 'propostas': va = a.total_propostas_db; vb = b.total_propostas_db; break
         case 'contato': va = a.contact_present ? 1 : 0; vb = b.contact_present ? 1 : 0; break
       }
       if (va == null && vb == null) return 0
@@ -210,6 +212,7 @@ export default function ExecucaoClient() {
                   { key: 'saldo', label: 'Saldo em Conta' },
                   { key: 'execucao', label: '% Execucao' },
                   { key: 'vigencia', label: 'Vigencia' },
+                  { key: 'propostas', label: 'Propostas' },
                   { key: 'alerta', label: 'Alerta' },
                   { key: 'contato', label: 'Contato' },
                 ].map(({ key, label }) => (
@@ -242,6 +245,22 @@ export default function ExecucaoClient() {
                   <td className="px-4 py-3 text-[#0072F7] font-bold text-sm">{formatCompactCurrency(row.total_saldo)}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{row.pct_execucao_ponderado != null ? `${Number(row.pct_execucao_ponderado).toFixed(1)}%` : '--'}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{formatDate(row.data_fim_vigencia_mais_proxima)}</td>
+                  <td className="px-4 py-3 text-center">
+                    {row.total_propostas_db > 0 ? (
+                      <span
+                        className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-bold ${
+                          row.total_propostas_db >= 6 ? 'bg-green-50 text-green-700 border border-green-200' :
+                          row.total_propostas_db >= 3 ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
+                          'bg-gray-50 text-gray-700 border border-gray-200'
+                        }`}
+                        title={`${row.total_propostas_db} proposta(s) no banco — quanto mais propostas, menor a prioridade`}
+                      >
+                        {row.total_propostas_db}
+                      </span>
+                    ) : (
+                      <span className="text-gray-300">-</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {row.tem_alerta && (
                       <span

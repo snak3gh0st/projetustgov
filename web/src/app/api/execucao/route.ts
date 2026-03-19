@@ -21,6 +21,7 @@ interface ExecucaoAggRow {
   dias_ate_vencimento_min: number | null
   dias_em_execucao_max: number | null
   contact_present: boolean
+  total_propostas_db: number
 }
 
 // Alert business rule — Confirmed with client on 2026-03-18
@@ -110,11 +111,15 @@ export async function GET(request: NextRequest) {
           SELECT 1 FROM lead_contacts lc
           WHERE lc.lead_cnpj = pe.cnpj
           LIMIT 1
-        )                                                        AS contact_present
+        )                                                        AS contact_present,
+        COALESCE((
+          SELECT COUNT(*)::INT FROM propostas p
+          WHERE p.proponente_cnpj = pe.cnpj
+        ), 0)                                                    AS total_propostas_db
       FROM projetos_execucao pe
       WHERE ${conditions.join(' AND ')}
       GROUP BY pe.cnpj
-      ORDER BY tem_alerta DESC, total_projetos DESC, pe.cnpj
+      ORDER BY pct_execucao_ponderado ASC NULLS LAST, tem_alerta DESC, pe.cnpj
     `, params)
 
     // Freshness timestamp from cron_sync_log
