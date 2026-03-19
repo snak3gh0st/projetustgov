@@ -16,6 +16,7 @@ interface ExecucaoAggRow {
   total_saldo: string
   pct_execucao_ponderado: string | null
   tem_alerta: boolean
+  qtd_alertas: number
   tem_verificar_saldo: boolean
   data_fim_vigencia_mais_proxima: string | null
   dias_ate_vencimento_min: number | null
@@ -232,7 +233,9 @@ export default function ExecucaoClient() {
                   }`}
                 >
                   <td className="px-4 py-3 font-mono text-sm text-gray-400">{formatCNPJ(row.cnpj)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900 max-w-[200px] truncate" title={row.nome_proponente || ''}>{row.nome_proponente || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <span className="block max-w-[300px] leading-snug" title={row.nome_proponente || ''}>{row.nome_proponente || '-'}</span>
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-500 uppercase">{row.uf || '-'}</td>
                   <td className="px-4 py-3 font-bold text-gray-900">{row.total_projetos}</td>
                   <td className="px-4 py-3 text-[#0072F7] font-bold text-sm">{formatCompactCurrency(row.total_desembolsado)}</td>
@@ -243,10 +246,10 @@ export default function ExecucaoClient() {
                     {row.tem_alerta && (
                       <span
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 cursor-help"
-                        title="Este proponente possui convenio(s) com valor desembolsado = R$ 0,00. O recurso foi aprovado mas nunca foi transferido."
+                        title={`${row.qtd_alertas} de ${row.total_projetos} convenio(s) com valor desembolsado = R$ 0,00. O recurso foi aprovado mas nunca foi transferido.`}
                       >
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-                        Sem desembolso
+                        {row.qtd_alertas}/{row.total_projetos} sem desembolso
                       </span>
                     )}
                   </td>

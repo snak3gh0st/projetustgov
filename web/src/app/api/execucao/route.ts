@@ -15,6 +15,7 @@ interface ExecucaoAggRow {
   total_saldo: string          // pg returns NUMERIC as string
   pct_execucao_ponderado: string | null
   tem_alerta: boolean
+  qtd_alertas: number
   tem_verificar_saldo: boolean
   data_fim_vigencia_mais_proxima: string | null
   dias_ate_vencimento_min: number | null
@@ -96,6 +97,7 @@ export async function GET(request: NextRequest) {
           ELSE NULL
         END                                                      AS pct_execucao_ponderado,
         BOOL_OR(pe.valor_desembolsado = 0)                       AS tem_alerta,
+        SUM(CASE WHEN pe.valor_desembolsado = 0 THEN 1 ELSE 0 END)::INT AS qtd_alertas,
         BOOL_OR(pe.verificar_saldo)                              AS tem_verificar_saldo,
         MIN(pe.data_fim_vigencia)                                AS data_fim_vigencia_mais_proxima,
         MIN(
