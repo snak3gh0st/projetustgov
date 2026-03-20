@@ -1,7 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { formatCNPJ, formatCompactCurrency, formatDate } from '@/lib/format'
+
+interface ContactRow {
+  id: number
+  lead_cnpj: string
+  nome_pessoa: string | null
+  cargo: string | null
+  telefone: string | null
+  email: string | null
+  telefone_status: string | null
+  principal: boolean
+}
 
 interface ExecucaoSlideOverProps {
   cnpj: string | null
@@ -66,6 +77,81 @@ export default function ExecucaoSlideOver({
   const [detailRows, setDetailRows] = useState<ExecucaoDetailRow[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState(false)
+  const [contacts, setContacts] = useState<ContactRow[]>([])
+  const [contactsLoading, setContactsLoading] = useState(false)
+  const [enriching, setEnriching] = useState(false)
+  const [enrichResult, setEnrichResult] = useState<string | null>(null)
+
+  const fetchContacts = useCallback(async (targetCnpj: string) => {
+    setContactsLoading(true)
+    try {
+      const res = await fetch(`/api/leads/${encodeURIComponent(targetCnpj)}/contacts`)
+      if (res.ok) {
+        const data = await res.json()
+        setContacts(Array.isArray(data) ? data : [])
+      } else {
+        setContacts([])
+      }
+    } catch {
+      setContacts([])
+    } finally {
+      setContactsLoading(false)
+    }
+  }, [])
+
+  const enrichFromBrasilAPI = useCallback(async (targetCnpj: string) => {
+    setEnriching(true)
+    setEnrichResult(null)
+    try {
+      const apiRes = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${targetCnpj}`, {
+        signal: AbortSignal.timeout(10000),
+      })
+      if (!apiRes.ok) {
+        setEnrichResult('CNPJ nao encontrado na Receita Federal')
+        return
+      }
+      const data = await apiRes.json()
+      const phone1 = (data.ddd_telefone_1 || '').replace(/\D/g, '')
+      const phone2 = (data.ddd_telefone_2 || '').replace(/\D/g, '')
+      const rawEmail = (data.email || '').trim().toLowerCase()
+      const email = rawEmail && rawEmail !== 'none' && rawEmail.includes('@') ? rawEmail : null
+
+      let created = 0
+
+      // Format phone for display
+      const fmtPhone = (digits: string) => {
+        if (!digits || digits.length < 10) return null
+        return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+      }
+
+      const p1 = fmtPhone(phone1)
+      if (p1 || email) {
+        const res = await fetch(`/api/leads/${encodeURIComponent(targetCnpj)}/contacts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ telefone: p1, email, telefone_status: 'desconhecido', principal: true }),
+        })
+        if (res.ok) created++
+      }
+
+      const p2 = fmtPhone(phone2)
+      if (p2 && p2 !== fmtPhone(phone1)) {
+        const res = await fetch(`/api/leads/${encodeURIComponent(targetCnpj)}/contacts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ telefone: p2, telefone_status: 'desconhecido' }),
+        })
+        if (res.ok) created++
+      }
+
+      setEnrichResult(created > 0 ? `${created} contato(s) adicionado(s)` : 'Nenhum contato novo encontrado')
+      await fetchContacts(targetCnpj)
+    } catch {
+      setEnrichResult('Erro ao consultar API Brasil')
+    } finally {
+      setEnriching(false)
+    }
+  }, [fetchContacts])
 
   useEffect(() => {
     if (!cnpj) return
@@ -74,6 +160,8 @@ export default function ExecucaoSlideOver({
     setDetailRows([])
     setDetailLoading(true)
     setDetailError(false)
+    setContacts([])
+    setEnrichResult(null)
 
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -89,8 +177,10 @@ export default function ExecucaoSlideOver({
       .catch(() => setDetailError(true))
       .finally(() => setDetailLoading(false))
 
+    fetchContacts(cnpj)
+
     return () => document.removeEventListener('keydown', handler)
-  }, [cnpj, onClose])
+  }, [cnpj, onClose, fetchContacts])
 
   if (!cnpj) return null
 
@@ -182,6 +272,67 @@ export default function ExecucaoSlideOver({
 
         {/* Content — scrollable */}
         <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
+          {/* Contacts section */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Contatos {contacts.length > 0 && `(${contacts.length})`}
+              </h3>
+              <button
+                onClick={() => cnpj && enrichFromBrasilAPI(cnpj)}
+                disabled={enriching}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-[#0072F7] text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {enriching ? (
+                  <>
+                    <span className="animate-spin inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full" />
+                    Buscando...
+                  </>
+                ) : (
+                  'Buscar API Brasil'
+                )}
+              </button>
+            </div>
+            {enrichResult && (
+              <p className="text-[11px] text-gray-500 bg-gray-50 rounded px-2 py-1">{enrichResult}</p>
+            )}
+            {contactsLoading && (
+              <p className="text-xs text-gray-400">Carregando contatos...</p>
+            )}
+            {!contactsLoading && contacts.length === 0 && (
+              <p className="text-xs text-gray-400">Nenhum contato registrado. Use o botao acima para buscar.</p>
+            )}
+            {contacts.length > 0 && (
+              <div className="space-y-2">
+                {contacts.map(c => (
+                  <div key={c.id} className={`bg-gray-50 rounded-lg p-3 border ${c.principal ? 'border-[#0072F7] bg-blue-50/30' : 'border-gray-200'}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      {c.nome_pessoa && <span className="text-sm font-medium text-gray-900">{c.nome_pessoa}</span>}
+                      {c.cargo && <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{c.cargo}</span>}
+                      {c.principal && <span className="text-[10px] text-[#0072F7] font-medium">Principal</span>}
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      {c.telefone && (
+                        <a href={`https://wa.me/55${c.telefone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-700">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.553 4.12 1.52 5.86L0 24l6.335-1.652A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75c-1.875 0-3.615-.525-5.1-1.44l-.36-.225-3.75.975.99-3.645-.24-.375A9.69 9.69 0 012.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75z"/></svg>
+                          {c.telefone}
+                        </a>
+                      )}
+                      {c.email && (
+                        <a href={`mailto:${c.email}`} className="inline-flex items-center gap-1 text-xs text-[#0072F7] hover:text-blue-700">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
+                          {c.email}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-gray-200" />
+
           {detailLoading && (
             <div className="flex items-center justify-center py-12">
               <span className="text-sm text-gray-400">Carregando convenios...</span>
