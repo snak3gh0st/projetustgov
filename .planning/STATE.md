@@ -5,7 +5,7 @@ milestone_name: — Projetos em Execucao
 status: completed
 stopped_at: Completed 17-ui-navigation-02-PLAN.md
 last_updated: "2026-03-18T23:47:00Z"
-last_activity: 2026-03-18 — Completed quick task 260318-re1: Add in-app news notification with v4.0 updates
+last_activity: 2026-03-20 — Completed quick task 260320-d8f: Add Valor Convenio column, propostas priority colors, slide-over summary
 progress:
   total_phases: 4
   completed_phases: 4
@@ -79,6 +79,7 @@ Progress (v4.0): [██████████] 100%
 |---|-------------|------|--------|-----------|
 | 260318-ook | Delete import sheets tab from dashboard | 2026-03-18 | 1fe0798 | [260318-ook-delete-import-sheets-tab-from-dashboard](./quick/260318-ook-delete-import-sheets-tab-from-dashboard/) |
 | 260318-re1 | Add in-app news notification with v4.0 updates | 2026-03-18 | f451ebb | [260318-re1-add-in-app-news-notification-with-update](./quick/260318-re1-add-in-app-news-notification-with-update/) |
+| 260320-d8f | Add Valor Convenio column, propostas priority colors, slide-over summary | 2026-03-20 | 8a05d1d | [260320-d8f-link-com-a-respectiva-proposta-valor-do-](./quick/260320-d8f-link-com-a-respectiva-proposta-valor-do-/) |
 
 ### Blockers / Concerns
 
