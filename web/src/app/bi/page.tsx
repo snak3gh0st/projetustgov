@@ -102,7 +102,7 @@ export default function BIDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-6 max-w-7xl">
+      <div className="space-y-6 w-full max-w-[1800px] mx-auto">
         <div>
           <div className="h-8 w-80 bg-gray-200 rounded animate-pulse" />
           <div className="h-4 w-64 bg-gray-100 rounded animate-pulse mt-2" />
@@ -123,7 +123,7 @@ export default function BIDashboard() {
 
   if (error || !data) {
     return (
-      <div className="space-y-4 max-w-7xl">
+      <div className="space-y-4 w-full max-w-[1800px] mx-auto">
         <div>
           <h1 className="font-heading text-2xl font-bold text-gray-900">BI Analytics</h1>
         </div>
@@ -182,7 +182,7 @@ export default function BIDashboard() {
   const top10uf = data.leads_by_uf.slice(0, 10)
 
   return (
-    <div className="space-y-6 max-w-7xl">
+    <div className="space-y-6 w-full max-w-[1800px] mx-auto">
       {/* 1. Page Header */}
       <div>
         <h1 className="font-heading text-2xl font-bold text-gray-900">

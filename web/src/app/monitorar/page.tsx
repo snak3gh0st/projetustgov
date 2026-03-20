@@ -181,7 +181,7 @@ export default function MonitorarPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="w-full max-w-[1800px] mx-auto">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 font-heading">CNPJs Monitorados</h1>

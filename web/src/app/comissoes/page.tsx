@@ -215,7 +215,7 @@ export default function ComissoesPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 max-w-7xl">
+      <div className="space-y-6 w-full max-w-[1800px] mx-auto">
         <div className="h-8 w-96 bg-gray-100 rounded animate-pulse" />
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[1,2,3,4,5].map(i => (
@@ -252,7 +252,7 @@ export default function ComissoesPage() {
     : null
 
   return (
-    <div className="space-y-6 max-w-7xl">
+    <div className="space-y-6 w-full max-w-[1800px] mx-auto">
       {/* Header */}
       <div>
         <h1 className="font-heading text-2xl font-bold text-gray-900">

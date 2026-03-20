@@ -243,7 +243,7 @@ export default function CRMDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-6 max-w-7xl">
+      <div className="space-y-6 w-full max-w-[1800px] mx-auto">
         <div>
           <div className="h-8 w-96 bg-gray-200 rounded animate-pulse" />
           <div className="h-4 w-64 bg-gray-100 rounded animate-pulse mt-2" />
@@ -275,7 +275,7 @@ export default function CRMDashboard() {
   const isVendedor = role === 'vendedor' || role === 'coordenador' || role === 'gestor'
 
   return (
-    <div className="space-y-6 max-w-7xl">
+    <div className="space-y-6 w-full max-w-[1800px] mx-auto">
       {/* 1. Page header */}
       <div>
         <h1 className="font-heading text-2xl font-bold text-gray-900">
