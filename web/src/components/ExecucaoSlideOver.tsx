@@ -79,79 +79,75 @@ export default function ExecucaoSlideOver({
   const [detailError, setDetailError] = useState(false)
   const [contacts, setContacts] = useState<ContactRow[]>([])
   const [contactsLoading, setContactsLoading] = useState(false)
-  const [enriching, setEnriching] = useState(false)
-  const [enrichResult, setEnrichResult] = useState<string | null>(null)
 
-  const fetchContacts = useCallback(async (targetCnpj: string) => {
+  const fetchAndEnrichContacts = useCallback(async (targetCnpj: string) => {
     setContactsLoading(true)
     try {
+      // 1. Fetch existing contacts from DB
       const res = await fetch(`/api/leads/${encodeURIComponent(targetCnpj)}/contacts`)
       if (res.ok) {
         const data = await res.json()
-        setContacts(Array.isArray(data) ? data : [])
-      } else {
-        setContacts([])
+        const existing: ContactRow[] = Array.isArray(data) ? data : []
+        if (existing.length > 0) {
+          setContacts(existing)
+          return
+        }
       }
+
+      // 2. No contacts — auto-enrich from BrasilAPI silently
+      try {
+        const apiRes = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${targetCnpj}`, {
+          signal: AbortSignal.timeout(10000),
+        })
+        if (apiRes.ok) {
+          const data = await apiRes.json()
+          const phone1 = (data.ddd_telefone_1 || '').replace(/\D/g, '')
+          const phone2 = (data.ddd_telefone_2 || '').replace(/\D/g, '')
+          const rawEmail = (data.email || '').trim().toLowerCase()
+          const email = rawEmail && rawEmail !== 'none' && rawEmail.includes('@') ? rawEmail : null
+
+          const fmtPhone = (digits: string) => {
+            if (!digits || digits.length < 10) return null
+            return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+          }
+
+          const p1 = fmtPhone(phone1)
+          if (p1 || email) {
+            await fetch(`/api/leads/${encodeURIComponent(targetCnpj)}/contacts`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ telefone: p1, email, telefone_status: 'desconhecido', principal: true }),
+            })
+          }
+
+          const p2 = fmtPhone(phone2)
+          if (p2 && p2 !== fmtPhone(phone1)) {
+            await fetch(`/api/leads/${encodeURIComponent(targetCnpj)}/contacts`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ telefone: p2, telefone_status: 'desconhecido' }),
+            })
+          }
+
+          // 3. Re-fetch to show saved contacts
+          const res2 = await fetch(`/api/leads/${encodeURIComponent(targetCnpj)}/contacts`)
+          if (res2.ok) {
+            const data2 = await res2.json()
+            setContacts(Array.isArray(data2) ? data2 : [])
+            return
+          }
+        }
+      } catch {
+        // BrasilAPI failed silently — no contacts to show
+      }
+
+      setContacts([])
     } catch {
       setContacts([])
     } finally {
       setContactsLoading(false)
     }
   }, [])
-
-  const enrichFromBrasilAPI = useCallback(async (targetCnpj: string) => {
-    setEnriching(true)
-    setEnrichResult(null)
-    try {
-      const apiRes = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${targetCnpj}`, {
-        signal: AbortSignal.timeout(10000),
-      })
-      if (!apiRes.ok) {
-        setEnrichResult('CNPJ nao encontrado na Receita Federal')
-        return
-      }
-      const data = await apiRes.json()
-      const phone1 = (data.ddd_telefone_1 || '').replace(/\D/g, '')
-      const phone2 = (data.ddd_telefone_2 || '').replace(/\D/g, '')
-      const rawEmail = (data.email || '').trim().toLowerCase()
-      const email = rawEmail && rawEmail !== 'none' && rawEmail.includes('@') ? rawEmail : null
-
-      let created = 0
-
-      // Format phone for display
-      const fmtPhone = (digits: string) => {
-        if (!digits || digits.length < 10) return null
-        return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
-      }
-
-      const p1 = fmtPhone(phone1)
-      if (p1 || email) {
-        const res = await fetch(`/api/leads/${encodeURIComponent(targetCnpj)}/contacts`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ telefone: p1, email, telefone_status: 'desconhecido', principal: true }),
-        })
-        if (res.ok) created++
-      }
-
-      const p2 = fmtPhone(phone2)
-      if (p2 && p2 !== fmtPhone(phone1)) {
-        const res = await fetch(`/api/leads/${encodeURIComponent(targetCnpj)}/contacts`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ telefone: p2, telefone_status: 'desconhecido' }),
-        })
-        if (res.ok) created++
-      }
-
-      setEnrichResult(created > 0 ? `${created} contato(s) adicionado(s)` : 'Nenhum contato novo encontrado')
-      await fetchContacts(targetCnpj)
-    } catch {
-      setEnrichResult('Erro ao consultar API Brasil')
-    } finally {
-      setEnriching(false)
-    }
-  }, [fetchContacts])
 
   useEffect(() => {
     if (!cnpj) return
@@ -161,7 +157,6 @@ export default function ExecucaoSlideOver({
     setDetailLoading(true)
     setDetailError(false)
     setContacts([])
-    setEnrichResult(null)
 
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -177,10 +172,10 @@ export default function ExecucaoSlideOver({
       .catch(() => setDetailError(true))
       .finally(() => setDetailLoading(false))
 
-    fetchContacts(cnpj)
+    fetchAndEnrichContacts(cnpj)
 
     return () => document.removeEventListener('keydown', handler)
-  }, [cnpj, onClose, fetchContacts])
+  }, [cnpj, onClose, fetchAndEnrichContacts])
 
   if (!cnpj) return null
 
@@ -278,29 +273,12 @@ export default function ExecucaoSlideOver({
               <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Contatos {contacts.length > 0 && `(${contacts.length})`}
               </h3>
-              <button
-                onClick={() => cnpj && enrichFromBrasilAPI(cnpj)}
-                disabled={enriching}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-[#0072F7] text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                {enriching ? (
-                  <>
-                    <span className="animate-spin inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full" />
-                    Buscando...
-                  </>
-                ) : (
-                  'Buscar API Brasil'
-                )}
-              </button>
             </div>
-            {enrichResult && (
-              <p className="text-[11px] text-gray-500 bg-gray-50 rounded px-2 py-1">{enrichResult}</p>
-            )}
             {contactsLoading && (
-              <p className="text-xs text-gray-400">Carregando contatos...</p>
+              <p className="text-xs text-gray-400">Buscando contatos...</p>
             )}
             {!contactsLoading && contacts.length === 0 && (
-              <p className="text-xs text-gray-400">Nenhum contato registrado. Use o botao acima para buscar.</p>
+              <p className="text-xs text-gray-400">Nenhum contato encontrado para este CNPJ.</p>
             )}
             {contacts.length > 0 && (
               <div className="space-y-2">
