@@ -317,7 +317,7 @@ export default function LeadsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-[1400px]">
+    <div className="space-y-6 w-full max-w-[1800px] mx-auto">
       <div>
         <h1 className="font-heading text-2xl font-bold text-gray-900">Lista de Leads</h1>
         <p className="text-sm text-gray-500 mt-1">
@@ -403,15 +403,15 @@ export default function LeadsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  <th onClick={() => handleSort('nome')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Instituição<SortIcon col="nome" /></th>
-                  <th onClick={() => handleSort('valor')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Valor<SortIcon col="valor" /></th>
-                  <th onClick={() => handleSort('orgao')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Ministério<SortIcon col="orgao" /></th>
-                  <th onClick={() => handleSort('local')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Local<SortIcon col="local" /></th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contato</th>
-                  <th onClick={() => handleSort('dias')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Ult. Contato<SortIcon col="dias" /></th>
-                  <th onClick={() => handleSort('status')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Status<SortIcon col="status" /></th>
+                  <th onClick={() => handleSort('nome')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Instituição<SortIcon col="nome" /></th>
+                  <th onClick={() => handleSort('valor')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Valor<SortIcon col="valor" /></th>
+                  <th onClick={() => handleSort('orgao')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Ministério<SortIcon col="orgao" /></th>
+                  <th onClick={() => handleSort('local')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Local<SortIcon col="local" /></th>
+                  <th className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Contato</th>
+                  <th onClick={() => handleSort('dias')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Ult. Contato<SortIcon col="dias" /></th>
+                  <th onClick={() => handleSort('status')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Status<SortIcon col="status" /></th>
                   {(sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador') && (
-                    <th onClick={() => handleSort('vendedor')} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">
+                    <th onClick={() => handleSort('vendedor')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                       {sessionUser?.role === 'coordenador' ? 'SDR' : 'Vendedor'}
                       <SortIcon col="vendedor" />
                     </th>
@@ -434,7 +434,7 @@ export default function LeadsPage() {
                       !hasContact ? 'bg-red-50/50 border-l-2 border-l-red-300' : ''
                     }`}
                   >
-                    <td className="px-4 py-3 max-w-[280px]">
+                    <td className="px-3 py-2.5 max-w-[280px]">
                       <div className="flex items-start gap-1.5">
                         {hasMultipleEmendas && (
                           <button
@@ -463,7 +463,7 @@ export default function LeadsPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-3 py-2.5 whitespace-nowrap">
                       {totalComissao > 0 ? (
                         <div>
                           <span className="text-green-600 font-semibold text-sm">
@@ -489,15 +489,15 @@ export default function LeadsPage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 max-w-[220px]">
+                    <td className="px-3 py-2.5 max-w-[220px]">
                       <div className="text-gray-600 text-xs leading-tight whitespace-normal break-words">{lead.orgao_concedente || '-'}</div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-3 py-2.5 whitespace-nowrap">
                       <span className="text-gray-600 text-xs">
                         {lead.uf && lead.municipio ? `${lead.municipio}, ${lead.uf}` : lead.uf || lead.municipio || '-'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 max-w-[200px]">
+                    <td className="px-3 py-2.5 max-w-[200px]">
                       {hasContact ? (
                         <div className="space-y-0.5">
                           {lead.telefone && (
@@ -522,7 +522,7 @@ export default function LeadsPage() {
                         <span className="text-xs text-red-500/70">Sem contato</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-3 py-2.5 whitespace-nowrap">
                       {lead.days_since_last_contact == null ? (
                         <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Nunca</span>
                       ) : lead.days_since_last_contact <= 2 ? (
@@ -533,7 +533,7 @@ export default function LeadsPage() {
                         <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">{lead.days_since_last_contact}d</span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2.5">
                       <select
                         value={lead.status_contato || 'Não Contatado'}
                         onClick={e => e.stopPropagation()}
@@ -544,7 +544,7 @@ export default function LeadsPage() {
                       </select>
                     </td>
                     {(sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador') && (
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2.5">
                         {sessionUser?.role === 'gestor' ? (
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-2">
