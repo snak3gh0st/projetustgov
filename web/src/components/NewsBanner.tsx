@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react'
 
-const NEWS_VERSION = 'v4.1'
+const NEWS_VERSION = 'v4.2'
 const NEWS_ITEMS = [
-  'Destaque em "Saldo em Conta" na aba Execucao (coluna principal e KPI)',
-  'Nova formula de % Execucao: baseada em valor global e saldo em conta',
-  'Colunas ordenáveis com filtro por UF e alertas na aba Execucao',
-  'Correcao no calculo de saldo — valores agora refletem dados reais',
+  'Tags de classificacao: Autossuficiente, Iniciante, Desembolso, Lobby, Rendimento',
+  'Filtros por tag na aba Execucao — KPIs atualizam em tempo real',
+  'Valor do Convenio na tabela e no detalhe do slide-over',
+  'Links diretos para Convenio e Proposta no TransfereGov',
+  'Contatos automaticos via API Brasil ao abrir o detalhe',
+  'Nova aba "Em Execucao" na pagina de Leads para vendedores',
+  'Enriquecimento automatico de contatos no sync diario',
 ]
 const STORAGE_KEY = `projetus-news-dismissed-${NEWS_VERSION}`
 
