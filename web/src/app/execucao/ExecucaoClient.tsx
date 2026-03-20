@@ -24,6 +24,11 @@ interface ExecucaoAggRow {
   dias_em_execucao_max: number | null
   contact_present: boolean
   total_propostas_db: number
+  tag_autossuficiente: boolean
+  tag_iniciante: boolean
+  tag_desembolso: boolean
+  tag_lobby: boolean
+  tag_rendimento: boolean
 }
 
 const UF_OPTIONS = [
@@ -211,25 +216,26 @@ export default function ExecucaoClient() {
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
                 {[
-                  { key: 'cnpj', label: 'CNPJ' },
-                  { key: 'nome', label: 'Nome' },
-                  { key: 'uf', label: 'UF' },
-                  { key: 'valor_convenio', label: 'Valor Convenio' },
-                  { key: 'fomentos', label: 'Fomentos' },
-                  { key: 'desembolsado', label: 'Desembolsado' },
-                  { key: 'saldo', label: 'Saldo em Conta' },
-                  { key: 'execucao', label: '% Execucao' },
-                  { key: 'vigencia', label: 'Vigencia' },
-                  { key: 'propostas', label: 'Propostas' },
-                  { key: 'alerta', label: 'Alerta' },
-                  { key: 'contato', label: 'Contato' },
-                ].map(({ key, label }) => (
+                  { key: 'cnpj', label: 'CNPJ', sortable: true },
+                  { key: 'nome', label: 'Nome', sortable: true },
+                  { key: 'uf', label: 'UF', sortable: true },
+                  { key: 'valor_convenio', label: 'Valor Convenio', sortable: true },
+                  { key: 'fomentos', label: 'Fomentos', sortable: true },
+                  { key: 'desembolsado', label: 'Desembolsado', sortable: true },
+                  { key: 'saldo', label: 'Saldo em Conta', sortable: true },
+                  { key: 'execucao', label: '% Execucao', sortable: true },
+                  { key: 'vigencia', label: 'Vigencia', sortable: true },
+                  { key: 'propostas', label: 'Propostas', sortable: true },
+                  { key: 'alerta', label: 'Alerta', sortable: true },
+                  { key: 'contato', label: 'Contato', sortable: true },
+                  { key: 'tags', label: 'Tags', sortable: false },
+                ].map(({ key, label, sortable }) => (
                   <th
                     key={key}
-                    onClick={() => toggleSort(key)}
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none"
+                    onClick={sortable ? () => toggleSort(key) : undefined}
+                    className={`px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider select-none ${sortable ? 'cursor-pointer hover:text-gray-700' : ''}`}
                   >
-                    {label}<SortIcon col={key} />
+                    {label}{sortable && <SortIcon col={key} />}
                   </th>
                 ))}
               </tr>
@@ -288,6 +294,35 @@ export default function ExecucaoClient() {
                       </span>
                     )}
                   </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {row.tag_autossuficiente && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200" title="Mais de 5 propostas executadas">
+                          Autossuficiente
+                        </span>
+                      )}
+                      {row.tag_iniciante && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-violet-50 text-violet-700 border border-violet-200" title="Menos de 5 propostas executadas">
+                          Iniciante
+                        </span>
+                      )}
+                      {row.tag_desembolso && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-50 text-sky-700 border border-sky-200" title="Projeto com menos de 100 dias de execucao">
+                          Desembolso
+                        </span>
+                      )}
+                      {row.tag_lobby && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200" title="Projeto com +100 dias de execucao e desembolso zero">
+                          Lobby
+                        </span>
+                      )}
+                      {row.tag_rendimento && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-teal-50 text-teal-700 border border-teal-200" title="Rendimento bancario significativo">
+                          Rendimento
+                        </span>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -313,6 +348,11 @@ export default function ExecucaoClient() {
             contactPresent={selectedRow?.contact_present ?? false}
             totalValorGlobal={selectedRow?.total_valor_global ?? null}
             totalPropostas={selectedRow?.total_propostas_db ?? 0}
+            tagAutossuficiente={selectedRow?.tag_autossuficiente ?? false}
+            tagIniciante={selectedRow?.tag_iniciante ?? false}
+            tagDesembolso={selectedRow?.tag_desembolso ?? false}
+            tagLobby={selectedRow?.tag_lobby ?? false}
+            tagRendimento={selectedRow?.tag_rendimento ?? false}
             onClose={() => setSelectedCnpj(null)}
           />
         )

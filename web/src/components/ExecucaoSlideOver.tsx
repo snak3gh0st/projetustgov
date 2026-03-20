@@ -10,6 +10,11 @@ interface ExecucaoSlideOverProps {
   contactPresent: boolean
   totalValorGlobal: string | null
   totalPropostas: number
+  tagAutossuficiente: boolean
+  tagIniciante: boolean
+  tagDesembolso: boolean
+  tagLobby: boolean
+  tagRendimento: boolean
   onClose: () => void
 }
 
@@ -32,6 +37,8 @@ interface ExecucaoDetailRow {
   data_fim_vigencia: string | null
   alerta_desembolso: boolean
   verificar_saldo: boolean
+  tag_desembolso: boolean
+  tag_lobby: boolean
 }
 
 function diasColor(dias: number | null): string {
@@ -49,6 +56,11 @@ export default function ExecucaoSlideOver({
   contactPresent,
   totalValorGlobal,
   totalPropostas,
+  tagAutossuficiente,
+  tagIniciante,
+  tagDesembolso,
+  tagLobby,
+  tagRendimento,
   onClose,
 }: ExecucaoSlideOverProps) {
   const [detailRows, setDetailRows] = useState<ExecucaoDetailRow[]>([])
@@ -109,7 +121,7 @@ export default function ExecucaoSlideOver({
           </h2>
           <p className="font-mono text-sm text-gray-400 mt-1">{formatCNPJ(cnpj)}</p>
 
-          <div className="flex items-center gap-2 mt-3">
+          <div className="flex flex-wrap items-center gap-2 mt-3">
             {temAlerta && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
                 Alerta
@@ -118,6 +130,31 @@ export default function ExecucaoSlideOver({
             {contactPresent && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-[#0072F7] border border-blue-200">
                 Contato
+              </span>
+            )}
+            {tagAutossuficiente && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200" title="Mais de 5 propostas executadas">
+                Autossuficiente
+              </span>
+            )}
+            {tagIniciante && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200" title="Menos de 5 propostas executadas">
+                Iniciante
+              </span>
+            )}
+            {tagDesembolso && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200" title="Projeto com menos de 100 dias de execucao">
+                Desembolso
+              </span>
+            )}
+            {tagLobby && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200" title="Projeto com +100 dias de execucao e desembolso zero">
+                Lobby
+              </span>
+            )}
+            {tagRendimento && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200" title="Rendimento bancario significativo">
+                Rendimento
               </span>
             )}
           </div>
@@ -246,6 +283,22 @@ export default function ExecucaoSlideOver({
                         <span className={`text-sm ${diasColor(conv.dias_ate_vencimento)}`}>
                           {conv.dias_ate_vencimento < 0 ? `${Math.abs(conv.dias_ate_vencimento)}d vencido` : `${conv.dias_ate_vencimento}d`}
                         </span>
+                      </div>
+                    )}
+
+                    {/* Per-convenio tag badges */}
+                    {(conv.tag_desembolso || conv.tag_lobby) && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {conv.tag_desembolso && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-50 text-sky-700 border border-sky-200">
+                            Desembolso
+                          </span>
+                        )}
+                        {conv.tag_lobby && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                            Lobby
+                          </span>
+                        )}
                       </div>
                     )}
 
