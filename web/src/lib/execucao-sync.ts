@@ -403,6 +403,23 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     console.log(`[execucao-sync] STEP C complete: inserted=${stats.inserted}, updated=${stats.updated}, errors=${stats.errors}`)
 
     // -------------------------------------------------------------------------
+    // STEP C2: Purge stale rows — convenios no longer "em execucao"
+    // Records not touched by this sync run have synced_at < startTime.
+    // They were "em execucao" in a prior sync but are no longer in the CSV.
+    // -------------------------------------------------------------------------
+    const syncStartTimestamp = new Date(startTime).toISOString()
+    const purgeResult = await client.query<{ n: string }>(
+      `WITH deleted AS (
+        DELETE FROM projetos_execucao WHERE synced_at < $1 RETURNING 1
+      ) SELECT COUNT(*) AS n FROM deleted`,
+      [syncStartTimestamp]
+    )
+    const purged = parseInt(purgeResult.rows[0].n, 10)
+    if (purged > 0) {
+      console.log(`[execucao-sync] STEP C2: purged ${purged} stale rows (no longer em execucao)`)
+    }
+
+    // -------------------------------------------------------------------------
     // STEP D: Log to cron_sync_log
     // -------------------------------------------------------------------------
     await client.query(
