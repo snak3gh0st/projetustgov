@@ -133,22 +133,22 @@ export default function ExecucaoSlideOver({
               </span>
             )}
             {tagAutossuficiente && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200" title="Mais de 5 propostas executadas">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200" title="Mais de 5 propostas executadas">
                 Autossuficiente
               </span>
             )}
             {tagIniciante && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200" title="Menos de 5 propostas executadas">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200" title="Menos de 5 propostas executadas">
                 Iniciante
               </span>
             )}
             {tagDesembolso && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200" title="Projeto com menos de 100 dias de execucao">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200" title="Projeto com menos de 100 dias de execucao">
                 Desembolso
               </span>
             )}
             {tagLobby && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200" title="Projeto com +100 dias de execucao e desembolso zero">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200" title="Projeto com +100 dias de execucao e desembolso zero">
                 Lobby
               </span>
             )}
@@ -301,12 +301,12 @@ export default function ExecucaoSlideOver({
                     {(conv.tag_desembolso || conv.tag_lobby) && (
                       <div className="flex flex-wrap gap-1 pt-1">
                         {conv.tag_desembolso && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-50 text-sky-700 border border-sky-200">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                             Desembolso
                           </span>
                         )}
                         {conv.tag_lobby && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-violet-50 text-violet-700 border border-violet-200">
                             Lobby
                           </span>
                         )}

@@ -83,34 +83,6 @@ export default function ExecucaoClient() {
     return () => clearTimeout(timer)
   }, [fetchData])
 
-  const kpis = useMemo(() => [
-    {
-      title: 'Clientes Qualificados',
-      value: String(rows.length),
-      icon: '\u{1F3E2}',
-    },
-    {
-      title: 'Total Fomentos',
-      value: String(rows.reduce((s, r) => s + r.total_projetos, 0)),
-      icon: '\u{1F4CB}',
-    },
-    {
-      title: 'Valor Total Convenios',
-      value: formatCompactCurrency(rows.reduce((s, r) => s + Number(r.total_valor_global), 0)),
-      icon: '\u{1F4B0}',
-    },
-    {
-      title: 'Saldo em Conta',
-      value: formatCompactCurrency(rows.reduce((s, r) => s + Number(r.total_saldo), 0)),
-      icon: '\u{1F4B3}',
-    },
-    {
-      title: 'Alertas Ativos',
-      value: String(rows.filter(r => r.tem_alerta).length),
-      icon: '\u26A0',
-    },
-  ], [rows])
-
   const toggleTag = (tag: string) => {
     setActiveTags(prev => {
       const next = new Set(prev)
@@ -121,10 +93,10 @@ export default function ExecucaoClient() {
   }
 
   const TAG_KEYS: { key: string; field: keyof ExecucaoAggRow; label: string; bg: string; text: string; border: string }[] = [
-    { key: 'autossuficiente', field: 'tag_autossuficiente', label: 'Autossuficiente', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-    { key: 'iniciante', field: 'tag_iniciante', label: 'Iniciante', bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
-    { key: 'desembolso', field: 'tag_desembolso', label: 'Desembolso', bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
-    { key: 'lobby', field: 'tag_lobby', label: 'Lobby', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
+    { key: 'autossuficiente', field: 'tag_autossuficiente', label: 'Autossuficiente', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
+    { key: 'iniciante', field: 'tag_iniciante', label: 'Iniciante', bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
+    { key: 'desembolso', field: 'tag_desembolso', label: 'Desembolso', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+    { key: 'lobby', field: 'tag_lobby', label: 'Lobby', bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
     { key: 'rendimento', field: 'tag_rendimento', label: 'Rendimento', bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' },
   ]
 
@@ -139,6 +111,34 @@ export default function ExecucaoClient() {
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, activeTags])
+
+  const kpis = useMemo(() => [
+    {
+      title: 'Clientes Qualificados',
+      value: String(filteredRows.length),
+      icon: '\u{1F3E2}',
+    },
+    {
+      title: 'Total Fomentos',
+      value: String(filteredRows.reduce((s, r) => s + r.total_projetos, 0)),
+      icon: '\u{1F4CB}',
+    },
+    {
+      title: 'Valor Total Convenios',
+      value: formatCompactCurrency(filteredRows.reduce((s, r) => s + Number(r.total_valor_global), 0)),
+      icon: '\u{1F4B0}',
+    },
+    {
+      title: 'Saldo em Conta',
+      value: formatCompactCurrency(filteredRows.reduce((s, r) => s + Number(r.total_saldo), 0)),
+      icon: '\u{1F4B3}',
+    },
+    {
+      title: 'Alertas Ativos',
+      value: String(filteredRows.filter(r => r.tem_alerta).length),
+      icon: '\u26A0',
+    },
+  ], [filteredRows])
 
   const sortedRows = useMemo(() => {
     if (!sortCol) return filteredRows
@@ -359,22 +359,22 @@ export default function ExecucaoClient() {
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       {row.tag_autossuficiente && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200" title="Mais de 5 propostas executadas">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200" title="Mais de 5 propostas executadas">
                           Autossuficiente
                         </span>
                       )}
                       {row.tag_iniciante && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-violet-50 text-violet-700 border border-violet-200" title="Menos de 5 propostas executadas">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-50 text-sky-700 border border-sky-200" title="Menos de 5 propostas executadas">
                           Iniciante
                         </span>
                       )}
                       {row.tag_desembolso && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-50 text-sky-700 border border-sky-200" title="Projeto com menos de 100 dias de execucao">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200" title="Projeto com menos de 100 dias de execucao">
                           Desembolso
                         </span>
                       )}
                       {row.tag_lobby && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200" title="Projeto com +100 dias de execucao e desembolso zero">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-violet-50 text-violet-700 border border-violet-200" title="Projeto com +100 dias de execucao e desembolso zero">
                           Lobby
                         </span>
                       )}
