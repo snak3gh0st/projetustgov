@@ -13,6 +13,7 @@ interface ExecucaoAggRow {
   total_repasse: string        // pg returns NUMERIC as string
   total_desembolsado: string   // pg returns NUMERIC as string
   total_saldo: string          // pg returns NUMERIC as string
+  total_valor_global: string   // pg returns NUMERIC as string
   pct_execucao_ponderado: string | null
   tem_alerta: boolean
   qtd_alertas: number
@@ -92,6 +93,7 @@ export async function GET(request: NextRequest) {
         SUM(pe.valor_repasse)                                    AS total_repasse,
         SUM(pe.valor_desembolsado)                               AS total_desembolsado,
         SUM(pe.saldo_conta)                                      AS total_saldo,
+        SUM(pe.valor_global)                                     AS total_valor_global,
         CASE
           WHEN SUM(pe.valor_desembolsado) > 0 AND SUM(pe.valor_global) > 0
           THEN ROUND((SUM(pe.valor_desembolsado) - SUM(pe.saldo_conta)) / SUM(pe.valor_global) * 100, 1)

@@ -14,6 +14,7 @@ interface ExecucaoAggRow {
   total_repasse: string
   total_desembolsado: string
   total_saldo: string
+  total_valor_global: string
   pct_execucao_ponderado: string | null
   tem_alerta: boolean
   qtd_alertas: number
@@ -88,9 +89,14 @@ export default function ExecucaoClient() {
       icon: '\u{1F4CB}',
     },
     {
+      title: 'Valor Total Convenios',
+      value: formatCompactCurrency(rows.reduce((s, r) => s + Number(r.total_valor_global), 0)),
+      icon: '\u{1F4B0}',
+    },
+    {
       title: 'Saldo em Conta',
       value: formatCompactCurrency(rows.reduce((s, r) => s + Number(r.total_saldo), 0)),
-      icon: '\u{1F4B0}',
+      icon: '\u{1F4B3}',
     },
     {
       title: 'Alertas Ativos',
@@ -109,6 +115,7 @@ export default function ExecucaoClient() {
         case 'nome': va = a.nome_proponente ?? ''; vb = b.nome_proponente ?? ''; break
         case 'uf': va = a.uf ?? ''; vb = b.uf ?? ''; break
         case 'fomentos': va = a.total_projetos; vb = b.total_projetos; break
+        case 'valor_convenio': va = Number(a.total_valor_global); vb = Number(b.total_valor_global); break
         case 'desembolsado': va = Number(a.total_desembolsado); vb = Number(b.total_desembolsado); break
         case 'saldo': va = Number(a.total_saldo); vb = Number(b.total_saldo); break
         case 'execucao': va = Number(a.pct_execucao_ponderado ?? -1); vb = Number(b.pct_execucao_ponderado ?? -1); break
@@ -207,6 +214,7 @@ export default function ExecucaoClient() {
                   { key: 'cnpj', label: 'CNPJ' },
                   { key: 'nome', label: 'Nome' },
                   { key: 'uf', label: 'UF' },
+                  { key: 'valor_convenio', label: 'Valor Convenio' },
                   { key: 'fomentos', label: 'Fomentos' },
                   { key: 'desembolsado', label: 'Desembolsado' },
                   { key: 'saldo', label: 'Saldo em Conta' },
@@ -240,6 +248,7 @@ export default function ExecucaoClient() {
                     <span className="block max-w-[300px] leading-snug" title={row.nome_proponente || ''}>{row.nome_proponente || '-'}</span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 uppercase">{row.uf || '-'}</td>
+                  <td className="px-4 py-3 text-sm font-bold text-gray-900">{formatCompactCurrency(row.total_valor_global)}</td>
                   <td className="px-4 py-3 font-bold text-gray-900">{row.total_projetos}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{formatCompactCurrency(row.total_desembolsado)}</td>
                   <td className="px-4 py-3 text-[#0072F7] font-bold text-sm">{formatCompactCurrency(row.total_saldo)}</td>
@@ -249,11 +258,11 @@ export default function ExecucaoClient() {
                     {row.total_propostas_db > 0 ? (
                       <span
                         className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-bold ${
-                          row.total_propostas_db >= 6 ? 'bg-green-50 text-green-700 border border-green-200' :
-                          row.total_propostas_db >= 3 ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
-                          'bg-gray-50 text-gray-700 border border-gray-200'
+                          row.total_propostas_db >= 6 ? 'bg-red-50 text-red-700 border border-red-200' :
+                          row.total_propostas_db >= 3 ? 'bg-orange-50 text-orange-700 border border-orange-200' :
+                          'bg-gray-50 text-gray-600 border border-gray-200'
                         }`}
-                        title={`${row.total_propostas_db} proposta(s) no banco — quanto mais propostas, menor a prioridade`}
+                        title={`${row.total_propostas_db} proposta(s) ja executadas — quanto mais, menor a prioridade`}
                       >
                         {row.total_propostas_db}
                       </span>
