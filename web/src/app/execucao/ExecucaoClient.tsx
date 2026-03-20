@@ -24,6 +24,7 @@ interface ExecucaoAggRow {
   dias_em_execucao_max: number | null
   contact_present: boolean
   total_propostas_db: number
+  vendedor_nome: string | null
   tag_autossuficiente: boolean
   tag_iniciante: boolean
   tag_desembolso: boolean
@@ -36,7 +37,8 @@ const UF_OPTIONS = [
   'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'
 ]
 
-export default function ExecucaoClient() {
+export default function ExecucaoClient({ userRole }: { userRole: string }) {
+  const isGestor = userRole === 'gestor' || userRole === 'coordenador'
   const [rows, setRows] = useState<ExecucaoAggRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -158,6 +160,7 @@ export default function ExecucaoClient() {
         case 'alerta': va = a.tem_alerta ? 1 : 0; vb = b.tem_alerta ? 1 : 0; break
         case 'propostas': va = a.total_propostas_db; vb = b.total_propostas_db; break
         case 'contato': va = a.contact_present ? 1 : 0; vb = b.contact_present ? 1 : 0; break
+        case 'vendedor': va = (a.vendedor_nome ?? '').toLowerCase(); vb = (b.vendedor_nome ?? '').toLowerCase(); break
       }
       if (va == null && vb == null) return 0
       if (va == null) return 1
@@ -280,6 +283,7 @@ export default function ExecucaoClient() {
                 {[
                   { key: 'cnpj', label: 'CNPJ', sortable: true },
                   { key: 'nome', label: 'Nome', sortable: true },
+                  ...(isGestor ? [{ key: 'vendedor', label: 'Vendedor', sortable: true }] : []),
                   { key: 'uf', label: 'UF', sortable: true },
                   { key: 'valor_convenio', label: 'Valor Convenio', sortable: true },
                   { key: 'fomentos', label: 'Fomentos', sortable: true },
@@ -315,6 +319,9 @@ export default function ExecucaoClient() {
                   <td className="px-3 py-2.5 text-sm text-gray-900">
                     <span className="block max-w-[250px] truncate leading-snug" title={row.nome_proponente || ''}>{row.nome_proponente || '-'}</span>
                   </td>
+                  {isGestor && (
+                    <td className="px-3 py-2.5 text-sm text-gray-600 whitespace-nowrap">{row.vendedor_nome || <span className="text-gray-300">Sem dono</span>}</td>
+                  )}
                   <td className="px-3 py-2.5 text-sm text-gray-500 uppercase">{row.uf || '-'}</td>
                   <td className="px-3 py-2.5 text-sm font-bold text-gray-900">{formatCompactCurrency(row.total_valor_global)}</td>
                   <td className="px-3 py-2.5 font-bold text-gray-900">{row.total_projetos}</td>

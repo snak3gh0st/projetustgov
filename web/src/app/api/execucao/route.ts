@@ -23,6 +23,7 @@ interface ExecucaoAggRow {
   dias_em_execucao_max: number | null
   contact_present: boolean
   total_propostas_db: number
+  vendedor_nome: string | null
   tag_autossuficiente: boolean
   tag_iniciante: boolean
   tag_desembolso: boolean
@@ -52,10 +53,6 @@ export async function GET(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    if (session.role !== 'gestor' && session.role !== 'coordenador') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
     const uf = searchParams.get('uf')
@@ -64,6 +61,16 @@ export async function GET(request: NextRequest) {
     const conditions: string[] = ['1=1']
     const params: unknown[] = []
     let paramIndex = 1
+
+    // Vendedores only see CNPJs assigned to them in vendedor_projetos
+    if (session.role === 'vendedor') {
+      conditions.push(`EXISTS (
+        SELECT 1 FROM vendedor_projetos vp_owner
+        WHERE vp_owner.cnpj = pe.cnpj AND vp_owner.vendedor_id = $${paramIndex++}
+        LIMIT 1
+      )`)
+      params.push(session.userId)
+    }
 
     if (search) {
       const searchClean = search.replace(/[.\-\/]/g, '')
@@ -123,6 +130,13 @@ export async function GET(request: NextRequest) {
           SELECT COUNT(*)::INT FROM propostas p
           WHERE p.proponente_cnpj = pe.cnpj
         ), 0)                                                    AS total_propostas_db,
+        -- Vendedor owner (from vendedor_projetos, most frequent vendedor_id for this CNPJ)
+        (SELECT u.nome FROM vendedor_projetos vp_v
+         JOIN users u ON u.id = vp_v.vendedor_id
+         WHERE vp_v.cnpj = pe.cnpj AND vp_v.vendedor_id IS NOT NULL
+         GROUP BY u.nome, vp_v.vendedor_id
+         ORDER BY COUNT(*) DESC LIMIT 1
+        ) AS vendedor_nome,
         -- Tag: Autossuficiente (>5 propostas)
         COALESCE((SELECT COUNT(*)::INT FROM propostas p WHERE p.proponente_cnpj = pe.cnpj), 0) > 5 AS tag_autossuficiente,
         -- Tag: Iniciante (<5 propostas)

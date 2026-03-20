@@ -68,7 +68,10 @@ export default function Sidebar({ user }: SidebarProps) {
       ]
     : user.role === 'visualizador'
     ? BASE_NAV_ITEMS.filter((item) => item.href !== '/monitorar')
-    : BASE_NAV_ITEMS
+    : [
+        ...BASE_NAV_ITEMS,
+        { href: '/execucao', label: 'Projetos em Execucao', icon: 'execucao' },
+      ]
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-56 bg-white border-r border-gray-200 flex flex-col z-50">
