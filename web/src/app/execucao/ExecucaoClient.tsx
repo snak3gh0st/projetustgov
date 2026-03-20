@@ -176,7 +176,7 @@ export default function ExecucaoClient() {
   )
 
   return (
-    <div className="space-y-6 max-w-[1400px]">
+    <div className="space-y-6 w-full max-w-[1800px] mx-auto">
       {/* Header */}
       <div>
         <h1 className="font-heading text-2xl font-bold text-gray-900">Projetos em Execucao</h1>
@@ -295,7 +295,7 @@ export default function ExecucaoClient() {
                   <th
                     key={key}
                     onClick={sortable ? () => toggleSort(key) : undefined}
-                    className={`px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider select-none ${sortable ? 'cursor-pointer hover:text-gray-700' : ''}`}
+                    className={`px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider select-none whitespace-nowrap ${sortable ? 'cursor-pointer hover:text-gray-700' : ''}`}
                   >
                     {label}{sortable && <SortIcon col={key} />}
                   </th>
@@ -311,18 +311,18 @@ export default function ExecucaoClient() {
                     row.tem_alerta ? 'border-l-4 border-amber-400 bg-amber-50/30' : ''
                   }`}
                 >
-                  <td className="px-4 py-3 font-mono text-sm text-gray-400">{formatCNPJ(row.cnpj)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900">
-                    <span className="block max-w-[300px] leading-snug" title={row.nome_proponente || ''}>{row.nome_proponente || '-'}</span>
+                  <td className="px-3 py-2.5 font-mono text-xs text-gray-400 whitespace-nowrap">{formatCNPJ(row.cnpj)}</td>
+                  <td className="px-3 py-2.5 text-sm text-gray-900">
+                    <span className="block max-w-[250px] truncate leading-snug" title={row.nome_proponente || ''}>{row.nome_proponente || '-'}</span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500 uppercase">{row.uf || '-'}</td>
-                  <td className="px-4 py-3 text-sm font-bold text-gray-900">{formatCompactCurrency(row.total_valor_global)}</td>
-                  <td className="px-4 py-3 font-bold text-gray-900">{row.total_projetos}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{formatCompactCurrency(row.total_desembolsado)}</td>
-                  <td className="px-4 py-3 text-[#0072F7] font-bold text-sm">{formatCompactCurrency(row.total_saldo)}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{row.pct_execucao_ponderado != null ? `${Number(row.pct_execucao_ponderado).toFixed(1)}%` : '--'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{formatDate(row.data_fim_vigencia_mais_proxima)}</td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-3 py-2.5 text-sm text-gray-500 uppercase">{row.uf || '-'}</td>
+                  <td className="px-3 py-2.5 text-sm font-bold text-gray-900">{formatCompactCurrency(row.total_valor_global)}</td>
+                  <td className="px-3 py-2.5 font-bold text-gray-900">{row.total_projetos}</td>
+                  <td className="px-3 py-2.5 text-sm text-gray-700">{formatCompactCurrency(row.total_desembolsado)}</td>
+                  <td className="px-3 py-2.5 text-[#0072F7] font-bold text-sm">{formatCompactCurrency(row.total_saldo)}</td>
+                  <td className="px-3 py-2.5 text-sm text-gray-700">{row.pct_execucao_ponderado != null ? `${Number(row.pct_execucao_ponderado).toFixed(1)}%` : '--'}</td>
+                  <td className="px-3 py-2.5 text-sm text-gray-500">{formatDate(row.data_fim_vigencia_mais_proxima)}</td>
+                  <td className="px-3 py-2.5 text-center">
                     {row.total_propostas_db > 0 ? (
                       <span
                         className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-bold ${
@@ -338,7 +338,7 @@ export default function ExecucaoClient() {
                       <span className="text-gray-300">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     {row.tem_alerta && (
                       <span
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 cursor-help"
@@ -349,14 +349,14 @@ export default function ExecucaoClient() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     {row.contact_present && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-[#0072F7] border border-blue-200">
                         Contato
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     <div className="flex flex-wrap gap-1">
                       {row.tag_autossuficiente && (
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200" title="Mais de 5 propostas executadas">
