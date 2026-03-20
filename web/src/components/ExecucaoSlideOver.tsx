@@ -210,19 +210,17 @@ export default function ExecucaoSlideOver({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-xs text-gray-400">#{conv.nr_convenio}</span>
-                        {conv.id_proposta && (
-                          <a
-                            href={`https://discricionarias.transferegov.sistema.gov.br/voluntarias/DetalharProposta/DetalharProposta.do?idProp=${conv.id_proposta}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-0.5 text-[10px] text-[#0072F7] hover:text-blue-800 transition-colors"
-                            title="Ver proposta no TransfereGov"
-                            onClick={e => e.stopPropagation()}
-                          >
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
-                            Proposta
-                          </a>
-                        )}
+                        <a
+                          href={`https://discricionarias.transferegov.sistema.gov.br/voluntarias/ConsultarProposta/ResultadoDaConsultaDeConvenioSelecionarConvenio.do?idConvenio=${conv.nr_convenio}&destino=`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-0.5 text-[10px] text-[#0072F7] hover:text-blue-800 transition-colors"
+                          title="Ver convenio no TransfereGov"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                          Convenio
+                        </a>
                       </div>
                       {conv.modalidade && (
                         <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{conv.modalidade}</span>
