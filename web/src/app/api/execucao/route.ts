@@ -23,6 +23,11 @@ interface ExecucaoAggRow {
   dias_em_execucao_max: number | null
   contact_present: boolean
   total_propostas_db: number
+  tag_autossuficiente: boolean
+  tag_iniciante: boolean
+  tag_desembolso: boolean
+  tag_lobby: boolean
+  tag_rendimento: boolean
 }
 
 // Alert business rule — Confirmed with client on 2026-03-18
@@ -117,7 +122,22 @@ export async function GET(request: NextRequest) {
         COALESCE((
           SELECT COUNT(*)::INT FROM propostas p
           WHERE p.proponente_cnpj = pe.cnpj
-        ), 0)                                                    AS total_propostas_db
+        ), 0)                                                    AS total_propostas_db,
+        -- Tag: Autossuficiente (>5 propostas)
+        COALESCE((SELECT COUNT(*)::INT FROM propostas p WHERE p.proponente_cnpj = pe.cnpj), 0) > 5 AS tag_autossuficiente,
+        -- Tag: Iniciante (<5 propostas)
+        COALESCE((SELECT COUNT(*)::INT FROM propostas p WHERE p.proponente_cnpj = pe.cnpj), 0) < 5 AS tag_iniciante,
+        -- Tag: Desembolso (<100 dias execucao)
+        BOOL_OR(GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT) < 100) AS tag_desembolso,
+        -- Tag: Lobby (100+ dias execucao AND desembolso = 0)
+        BOOL_OR(GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT) >= 100 AND pe.valor_desembolsado = 0) AS tag_lobby,
+        -- Tag: Rendimento (has rendimento_aplicacao > 0 in convenios table)
+        EXISTS(
+          SELECT 1 FROM convenios c
+          INNER JOIN propostas p ON c.proposta_id = p.transfer_gov_id
+          WHERE p.proponente_cnpj = pe.cnpj AND c.rendimento_aplicacao > 0
+          LIMIT 1
+        ) AS tag_rendimento
       FROM projetos_execucao pe
       WHERE ${conditions.join(' AND ')}
       GROUP BY pe.cnpj

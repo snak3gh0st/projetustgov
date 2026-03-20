@@ -23,6 +23,8 @@ interface ExecucaoDetailRow {
   data_fim_vigencia: string | null
   alerta_desembolso: boolean
   verificar_saldo: boolean
+  tag_desembolso: boolean
+  tag_lobby: boolean
 }
 
 export async function GET(
@@ -59,7 +61,9 @@ export async function GET(
         pe.data_inicio_vigencia,
         pe.data_fim_vigencia,
         pe.alerta_desembolso,
-        pe.verificar_saldo
+        pe.verificar_saldo,
+        GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT) < 100 AS tag_desembolso,
+        (GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT) >= 100 AND pe.valor_desembolsado = 0) AS tag_lobby
       FROM projetos_execucao pe
       WHERE pe.cnpj = $1
       ORDER BY pe.valor_global DESC NULLS LAST
