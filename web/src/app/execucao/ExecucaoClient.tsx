@@ -44,6 +44,7 @@ export default function ExecucaoClient() {
   const [search, setSearch] = useState('')
   const [uf, setUf] = useState('')
   const [alertOnly, setAlertOnly] = useState(false)
+  const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
   const [selectedCnpj, setSelectedCnpj] = useState<string | null>(null)
   const [sortCol, setSortCol] = useState<string>('execucao')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -110,9 +111,38 @@ export default function ExecucaoClient() {
     },
   ], [rows])
 
+  const toggleTag = (tag: string) => {
+    setActiveTags(prev => {
+      const next = new Set(prev)
+      if (next.has(tag)) next.delete(tag)
+      else next.add(tag)
+      return next
+    })
+  }
+
+  const TAG_KEYS: { key: string; field: keyof ExecucaoAggRow; label: string; bg: string; text: string; border: string }[] = [
+    { key: 'autossuficiente', field: 'tag_autossuficiente', label: 'Autossuficiente', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+    { key: 'iniciante', field: 'tag_iniciante', label: 'Iniciante', bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
+    { key: 'desembolso', field: 'tag_desembolso', label: 'Desembolso', bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
+    { key: 'lobby', field: 'tag_lobby', label: 'Lobby', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
+    { key: 'rendimento', field: 'tag_rendimento', label: 'Rendimento', bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' },
+  ]
+
+  const filteredRows = useMemo(() => {
+    if (activeTags.size === 0) return rows
+    const tagsArr = Array.from(activeTags)
+    return rows.filter(r =>
+      tagsArr.every(tag => {
+        const def = TAG_KEYS.find(t => t.key === tag)
+        return def ? r[def.field] : true
+      })
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, activeTags])
+
   const sortedRows = useMemo(() => {
-    if (!sortCol) return rows
-    const sorted = [...rows].sort((a, b) => {
+    if (!sortCol) return filteredRows
+    const sorted = [...filteredRows].sort((a, b) => {
       let va: string | number | boolean | null = null
       let vb: string | number | boolean | null = null
       switch (sortCol) {
@@ -137,7 +167,7 @@ export default function ExecucaoClient() {
       return 0
     })
     return sorted
-  }, [rows, sortCol, sortDir])
+  }, [filteredRows, sortCol, sortDir])
 
   const SortIcon = ({ col }: { col: string }) => (
     <span className="inline-flex ml-1 text-gray-400">
@@ -185,6 +215,38 @@ export default function ExecucaoClient() {
           />
           Apenas alertas
         </label>
+      </div>
+
+      {/* Tag filters */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-xs text-gray-500 font-medium mr-1">Tags:</span>
+        {TAG_KEYS.map(tag => {
+          const active = activeTags.has(tag.key)
+          return (
+            <button
+              key={tag.key}
+              onClick={() => toggleTag(tag.key)}
+              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                active
+                  ? `${tag.bg} ${tag.text} ${tag.border} ring-2 ring-offset-1 ring-current`
+                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              {tag.label}
+              {active && (
+                <span className="ml-1 text-[10px]">&times;</span>
+              )}
+            </button>
+          )
+        })}
+        {activeTags.size > 0 && (
+          <button
+            onClick={() => setActiveTags(new Set())}
+            className="text-xs text-gray-400 hover:text-gray-600 underline ml-1"
+          >
+            Limpar
+          </button>
+        )}
       </div>
 
       {/* Loading state */}
@@ -333,7 +395,10 @@ export default function ExecucaoClient() {
       {/* Row count */}
       {!loading && !error && rows.length > 0 && (
         <div className="text-sm text-gray-500">
-          {rows.length} CNPJs ({rows.reduce((s, r) => s + r.total_projetos, 0)} fomentos)
+          {activeTags.size > 0
+            ? `${sortedRows.length} de ${rows.length} CNPJs (filtrado por tags)`
+            : `${rows.length} CNPJs (${rows.reduce((s, r) => s + r.total_projetos, 0)} fomentos)`
+          }
         </div>
       )}
 
