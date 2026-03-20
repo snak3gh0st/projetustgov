@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const vendedorId = searchParams.get('vendedor_id')
     const search = searchParams.get('search')
     const statusContato = searchParams.get('status_contato')
+    const emExecucao = searchParams.get('em_execucao')
     const limit = searchParams.get('limit') || '10000'
 
     const conditions: string[] = ['1=1']
@@ -52,6 +53,10 @@ export async function GET(request: NextRequest) {
     if (statusContato && statusContato !== 'all') {
       conditions.push(`vp.status_contato = $${paramIndex++}`)
       params.push(statusContato)
+    }
+
+    if (emExecucao === 'true') {
+      conditions.push(`EXISTS (SELECT 1 FROM projetos_execucao pe WHERE pe.cnpj = vp.cnpj)`)
     }
 
     params.push(Number(limit))
