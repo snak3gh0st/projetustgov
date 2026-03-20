@@ -21,7 +21,13 @@
 // ============================================================================
 
 import { getPool } from '@/lib/db'
-import { cleanCNPJ, parseBRNumber, fixText, downloadAndStreamCSV } from '@/lib/repo-sync'
+import { cleanCNPJ, parseBRNumber, fixText, downloadAndStreamCSV, formatPhone } from '@/lib/repo-sync'
+
+// ---------------------------------------------------------------------------
+// Internal utility
+// ---------------------------------------------------------------------------
+
+function delay(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)) }
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -45,6 +51,7 @@ export interface ExecucaoSyncStats {
   inserted: number
   updated: number
   errors: number
+  enriched_contacts: number
   duration_ms: number
   memory_peak_mb: number
 }
@@ -114,6 +121,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     inserted: 0,
     updated: 0,
     errors: 0,
+    enriched_contacts: 0,
     duration_ms: 0,
     memory_peak_mb: 0,
   }
@@ -417,6 +425,83 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     const purged = parseInt(purgeResult.rows[0].n, 10)
     if (purged > 0) {
       console.log(`[execucao-sync] STEP C2: purged ${purged} stale rows (no longer em execucao)`)
+    }
+
+    // -------------------------------------------------------------------------
+    // STEP C3: BrasilAPI contact enrichment for projetos_execucao CNPJs
+    // Enriches CNPJs in projetos_execucao that have NO lead_contacts yet.
+    // Only INSERTs — never modifies existing contacts.
+    // -------------------------------------------------------------------------
+    const c3Res = await client.query<{ cnpj: string }>(`
+      SELECT DISTINCT pe.cnpj FROM projetos_execucao pe
+      LEFT JOIN lead_contacts lc ON pe.cnpj = lc.lead_cnpj
+      WHERE lc.lead_cnpj IS NULL
+      LIMIT 100
+    `)
+    console.log(`[execucao-sync] STEP C3: ${c3Res.rows.length} CNPJs in projetos_execucao need contacts`)
+
+    if (Date.now() - startTime > 200000) {
+      console.log('[execucao-sync] STEP C3: Skipped — elapsed time exceeds 200s, too close to Vercel timeout')
+    } else {
+      for (const { cnpj } of c3Res.rows) {
+        // Check per-CNPJ timeout
+        if (Date.now() - startTime > 260000) {
+          console.log('[execucao-sync] STEP C3: Approaching 260s timeout, stopping enrichment loop')
+          break
+        }
+
+        try {
+          const apiRes = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
+            signal: AbortSignal.timeout(10000),
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ProjetusCRM/1.0)' },
+          })
+
+          if (apiRes.status === 403 || apiRes.status === 429) {
+            console.log(`[execucao-sync] STEP C3: Rate limited (HTTP ${apiRes.status}) for ${cnpj}, stopping loop`)
+            break
+          }
+
+          if (!apiRes.ok) {
+            console.log(`[execucao-sync] STEP C3: Non-ok response (HTTP ${apiRes.status}) for ${cnpj}, skipping`)
+            await delay(300)
+            continue
+          }
+
+          const data = await apiRes.json()
+          const phone1 = formatPhone(data.ddd_telefone_1 || '')
+          const phone2 = formatPhone(data.ddd_telefone_2 || '')
+          const rawEmail = (data.email || '').trim().toLowerCase()
+          const email = rawEmail && rawEmail !== 'none' && rawEmail !== 'null' && rawEmail.includes('@') ? rawEmail : null
+
+          if (phone1 || email) {
+            await client.query(
+              `INSERT INTO lead_contacts (lead_cnpj, telefone, email, principal, telefone_status)
+               VALUES ($1, $2, $3, true, 'desconhecido')`,
+              [cnpj, phone1 || null, email || null]
+            )
+            stats.enriched_contacts++
+          }
+
+          // Insert phone2 as separate row if it differs from phone1 (digits-only comparison)
+          if (phone2) {
+            const phone1Digits = (phone1 || '').replace(/\D/g, '')
+            const phone2Digits = phone2.replace(/\D/g, '')
+            if (phone2Digits && phone2Digits !== phone1Digits) {
+              await client.query(
+                `INSERT INTO lead_contacts (lead_cnpj, telefone, email, principal, telefone_status)
+                 VALUES ($1, $2, NULL, false, 'desconhecido')`,
+                [cnpj, phone2]
+              )
+              stats.enriched_contacts++
+            }
+          }
+        } catch (err) {
+          console.error(`[execucao-sync] STEP C3: Error for CNPJ ${cnpj}:`, err)
+        }
+
+        await delay(300)
+      }
+      console.log(`[execucao-sync] STEP C3 complete: enriched_contacts=${stats.enriched_contacts}`)
     }
 
     // -------------------------------------------------------------------------
