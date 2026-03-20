@@ -303,13 +303,20 @@ export default function ExecucaoClient() {
       )}
 
       {/* Slide-over for CNPJ detail */}
-      <ExecucaoSlideOver
-        cnpj={selectedCnpj}
-        nomeProponente={rows.find(r => r.cnpj === selectedCnpj)?.nome_proponente ?? null}
-        temAlerta={rows.find(r => r.cnpj === selectedCnpj)?.tem_alerta ?? false}
-        contactPresent={rows.find(r => r.cnpj === selectedCnpj)?.contact_present ?? false}
-        onClose={() => setSelectedCnpj(null)}
-      />
+      {(() => {
+        const selectedRow = rows.find(r => r.cnpj === selectedCnpj)
+        return (
+          <ExecucaoSlideOver
+            cnpj={selectedCnpj}
+            nomeProponente={selectedRow?.nome_proponente ?? null}
+            temAlerta={selectedRow?.tem_alerta ?? false}
+            contactPresent={selectedRow?.contact_present ?? false}
+            totalValorGlobal={selectedRow?.total_valor_global ?? null}
+            totalPropostas={selectedRow?.total_propostas_db ?? 0}
+            onClose={() => setSelectedCnpj(null)}
+          />
+        )
+      })()}
     </div>
   )
 }

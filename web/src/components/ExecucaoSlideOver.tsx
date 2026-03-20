@@ -8,6 +8,8 @@ interface ExecucaoSlideOverProps {
   nomeProponente: string | null
   temAlerta: boolean
   contactPresent: boolean
+  totalValorGlobal: string | null
+  totalPropostas: number
   onClose: () => void
 }
 
@@ -45,6 +47,8 @@ export default function ExecucaoSlideOver({
   nomeProponente,
   temAlerta,
   contactPresent,
+  totalValorGlobal,
+  totalPropostas,
   onClose,
 }: ExecucaoSlideOverProps) {
   const [detailRows, setDetailRows] = useState<ExecucaoDetailRow[]>([])
@@ -114,6 +118,26 @@ export default function ExecucaoSlideOver({
             {contactPresent && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-[#0072F7] border border-blue-200">
                 Contato
+              </span>
+            )}
+          </div>
+
+          {/* Summary: total valor convenio + propostas badge */}
+          <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-gray-500">Valor total dos convenios</span>
+              <p className="text-lg font-bold text-gray-900">{formatCompactCurrency(totalValorGlobal)}</p>
+            </div>
+            {totalPropostas > 0 && (
+              <span
+                className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                  totalPropostas >= 6 ? 'bg-red-50 text-red-700 border border-red-200' :
+                  totalPropostas >= 3 ? 'bg-orange-50 text-orange-700 border border-orange-200' :
+                  'bg-gray-50 text-gray-600 border border-gray-200'
+                }`}
+                title={`${totalPropostas} proposta(s) ja executadas — quanto mais, menor a prioridade`}
+              >
+                {totalPropostas} proposta(s) ja executada(s)
               </span>
             )}
           </div>
