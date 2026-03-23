@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 interface ExecucaoDetailRow {
   nr_convenio: string
   id_proposta: string | null
+  nome_proponente: string | null
   situacao: string | null
   modalidade: string | null
   objeto: string | null
@@ -53,6 +54,7 @@ export async function GET(
       SELECT
         pe.nr_convenio,
         pe.id_proposta,
+        pe.nome_proponente,
         pe.situacao,
         pe.modalidade,
         pe.objeto,

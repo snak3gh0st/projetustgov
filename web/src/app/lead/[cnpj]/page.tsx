@@ -39,11 +39,19 @@ export default function LeadDetailPage() {
     tipoVendedor: string | null
     isExclusivo: boolean
   } | null>(null)
+  const [execucaoFallback, setExecucaoFallback] = useState<{
+    nome_proponente: string | null
+    nr_convenio: string
+    objeto: string | null
+    situacao: string | null
+    valor_global: string | null
+    pct_execucao: string | null
+  }[] | null>(null)
 
   useEffect(() => {
     fetch(`/api/leads?search=${encodeURIComponent(cnpj)}&limit=100`)
       .then(r => r.json())
-      .then(data => {
+      .then(async data => {
         const filtered = (Array.isArray(data) ? data : []).filter(
           (p: VendedorProjeto) => p.cnpj === cnpj
         )
@@ -51,6 +59,17 @@ export default function LeadDetailPage() {
         if (filtered.length > 0) {
           setIsPriority(filtered[0].is_max_priority || false)
           setIsExistingClient(filtered[0].is_existing_client || false)
+        } else {
+          // Fallback: check if this CNPJ is an execution project
+          try {
+            const execRes = await fetch(`/api/execucao/${encodeURIComponent(cnpj)}`)
+            if (execRes.ok) {
+              const execData = await execRes.json()
+              if (Array.isArray(execData) && execData.length > 0) {
+                setExecucaoFallback(execData)
+              }
+            }
+          } catch {}
         }
         setLoading(false)
       })
@@ -158,6 +177,44 @@ export default function LeadDetailPage() {
   }
 
   if (projetos.length === 0) {
+    if (execucaoFallback && execucaoFallback.length > 0) {
+      const nomeInst = execucaoFallback[0].nome_proponente || 'Instituição'
+      return (
+        <div className="space-y-6 max-w-5xl">
+          <Link href="/execucao" className="text-gray-500 hover:text-gray-900 transition-colors text-sm">
+            &#8592; Voltar para execução
+          </Link>
+          <div>
+            <h1 className="font-heading text-2xl font-bold text-gray-900">{nomeInst}</h1>
+            <p className="text-sm text-gray-500 mt-1">CNPJ: {formatCNPJ(cnpj)}</p>
+            <span className="inline-block mt-2 text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full border border-blue-200">
+              Projeto em Execução — não está em prospecção no CRM
+            </span>
+          </div>
+          <div className="space-y-3">
+            {execucaoFallback.map((conv) => (
+              <div key={conv.nr_convenio} className="border border-gray-200 rounded-xl p-4 bg-white space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-mono text-gray-400">{conv.nr_convenio}</span>
+                  {conv.situacao && (
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{conv.situacao}</span>
+                  )}
+                </div>
+                {conv.objeto && <p className="text-sm text-gray-700">{conv.objeto}</p>}
+                <div className="flex gap-4 text-sm">
+                  {conv.valor_global && (
+                    <span className="text-gray-600">Valor global: <strong>{formatCurrency(Number(conv.valor_global))}</strong></span>
+                  )}
+                  {conv.pct_execucao && (
+                    <span className="text-gray-600">Execução: <strong>{Number(conv.pct_execucao).toFixed(1)}%</strong></span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <div className="text-red-500">Nenhum projeto encontrado para este CNPJ</div>
