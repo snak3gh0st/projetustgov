@@ -36,11 +36,18 @@ export async function GET(
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    if (session.role !== 'gestor' && session.role !== 'coordenador') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const cnpj = decodeURIComponent(params.cnpj)
+
+    // Vendedores only see CNPJs assigned to them
+    if (session.role === 'vendedor') {
+      const ownership = await query<{ exists: boolean }>(
+        `SELECT EXISTS(SELECT 1 FROM vendedor_projetos WHERE cnpj = $1 AND vendedor_id = $2) AS exists`,
+        [cnpj, session.userId]
+      )
+      if (!ownership[0]?.exists) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+    }
 
     const rows = await query<ExecucaoDetailRow>(`
       SELECT

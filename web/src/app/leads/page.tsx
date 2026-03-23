@@ -8,11 +8,13 @@ import LeadSlideOver from '@/components/LeadSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
 import SaleModal from '@/components/SaleModal'
 
-const STATUS_OPTIONS = ['Não Contatado', 'Ainda Não', 'Retorno', 'Proposta', 'Aguardando Closer', 'Fechado', 'Telefone Invalido']
+const STATUS_OPTIONS = ['Não Contatado', 'Ainda Não', 'Retorno', 'Quente', 'Muito Quente', 'Proposta', 'Aguardando Closer', 'Fechado', 'Telefone Invalido']
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-orange-50 text-orange-600',
   'Ainda Não': 'bg-yellow-50 text-yellow-600',
   'Retorno': 'bg-amber-50 text-amber-600',
+  'Quente': 'bg-red-50 text-red-600',
+  'Muito Quente': 'bg-red-100 text-red-700',
   'Proposta': 'bg-blue-50 text-[#0072F7]',
   'Aguardando Closer': 'bg-purple-50 text-purple-600',
   'Fechado': 'bg-green-50 text-green-600',

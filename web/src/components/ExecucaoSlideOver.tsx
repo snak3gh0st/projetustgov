@@ -201,9 +201,22 @@ export default function ExecucaoSlideOver({
             </svg>
           </button>
 
-          <h2 className="text-xl font-bold text-gray-900 pr-8 whitespace-normal break-words">
-            {nomeProponente || 'Sem nome'}
-          </h2>
+          <div className="flex items-start justify-between pr-8 gap-2">
+            <h2 className="text-xl font-bold text-gray-900 whitespace-normal break-words">
+              {nomeProponente || 'Sem nome'}
+            </h2>
+            <a
+              href={`/lead/${encodeURIComponent(cnpj)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="flex-shrink-0 mt-1 inline-flex items-center gap-1 text-xs text-[#0072F7] hover:text-blue-800 border border-blue-200 bg-blue-50 px-2 py-1 rounded-lg transition-colors"
+              title="Abrir perfil completo em nova aba"
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+              Nova aba
+            </a>
+          </div>
           <p className="font-mono text-sm text-gray-400 mt-1">{formatCNPJ(cnpj)}</p>
 
           <div className="flex flex-wrap items-center gap-2 mt-3">
@@ -333,7 +346,7 @@ export default function ExecucaoSlideOver({
                 return (
                   <div
                     key={conv.nr_convenio}
-                    className={`bg-gray-50 rounded-xl p-4 border ${conv.alerta_desembolso ? 'border-amber-300 bg-amber-50/20' : 'border-gray-200'} space-y-3`}
+                    className={`bg-gray-50 rounded-xl p-4 border ${Number(conv.valor_desembolsado) === 0 ? 'border-amber-300 bg-amber-50/20' : 'border-gray-200'} space-y-3`}
                   >
                     {/* Convenio number + modalidade + link */}
                     <div className="flex items-center justify-between">
@@ -399,12 +412,16 @@ export default function ExecucaoSlideOver({
                         <p className="text-lg font-bold text-gray-900">{formatCompactCurrency(conv.valor_global)}</p>
                       </div>
                       <div>
-                        <span className="text-xs text-gray-500">Desembolsado</span>
+                        <span className="text-xs text-gray-500">Transferido ao beneficiário</span>
                         <p className="text-sm font-bold text-[#0072F7]">{formatCompactCurrency(conv.valor_desembolsado)}</p>
                       </div>
                       <div>
-                        <span className="text-xs text-gray-500">Saldo em conta</span>
-                        <p className="text-sm font-medium text-gray-800">{formatCompactCurrency(conv.saldo_conta)}</p>
+                        <span className="text-xs text-gray-500">Saldo em conta (não gasto)</span>
+                        <p className="text-sm font-medium text-amber-700">{formatCompactCurrency(conv.saldo_conta)}</p>
+                      </div>
+                      <div className="col-span-2 bg-blue-50/60 rounded-lg px-3 py-2 border border-blue-100">
+                        <span className="text-xs text-gray-500">Gasto efetivo (transferido − saldo)</span>
+                        <p className="text-sm font-bold text-gray-900">{formatCompactCurrency(Math.max(0, Number(conv.valor_desembolsado) - Number(conv.saldo_conta)))}</p>
                       </div>
                       <div>
                         <span className="text-xs text-gray-500">Fim de vigencia</span>
@@ -443,7 +460,7 @@ export default function ExecucaoSlideOver({
                     )}
 
                     {/* Alert badge per-convenio */}
-                    {conv.alerta_desembolso && (
+                    {Number(conv.valor_desembolsado) === 0 && (
                       <div className="flex items-center gap-1.5 pt-1">
                         <span className="text-xs text-amber-700 font-medium" title="Projeto sem desembolso — repasse aprovado mas nenhum valor movimentado">Projeto sem desembolso — repasse aprovado mas nenhum valor movimentado</span>
                       </div>
