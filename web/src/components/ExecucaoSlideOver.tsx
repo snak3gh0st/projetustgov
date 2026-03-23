@@ -79,6 +79,8 @@ export default function ExecucaoSlideOver({
   const [detailError, setDetailError] = useState(false)
   const [contacts, setContacts] = useState<ContactRow[]>([])
   const [contactsLoading, setContactsLoading] = useState(false)
+  const [crmStatus, setCrmStatus] = useState<string | null>(null)
+  const [crmObservacoes, setCrmObservacoes] = useState<string | null>(null)
 
   const fetchAndEnrichContacts = useCallback(async (targetCnpj: string) => {
     setContactsLoading(true)
@@ -157,6 +159,21 @@ export default function ExecucaoSlideOver({
     setDetailLoading(true)
     setDetailError(false)
     setContacts([])
+    setCrmStatus(null)
+    setCrmObservacoes(null)
+
+    // Fetch CRM status + observacoes from vendedor_projetos via leads API
+    fetch(`/api/leads?search=${encodeURIComponent(cnpj)}&limit=1`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => {
+        const rows = Array.isArray(data) ? data : []
+        const match = rows.find((r: { cnpj: string }) => r.cnpj === cnpj)
+        if (match) {
+          setCrmStatus(match.status_contato || null)
+          setCrmObservacoes(match.observacoes || null)
+        }
+      })
+      .catch(() => {})
 
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -321,6 +338,33 @@ export default function ExecucaoSlideOver({
               </div>
             )}
           </div>
+
+          {/* CRM Status + Observações */}
+          {(crmStatus || crmObservacoes) && (
+            <div className="space-y-2 border border-gray-200 rounded-xl p-3 bg-gray-50">
+              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">CRM — Contato</h3>
+              {crmStatus && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Status:</span>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    crmStatus === 'Fechado' ? 'bg-green-100 text-green-700' :
+                    crmStatus === 'Muito Quente' ? 'bg-red-200 text-red-800' :
+                    crmStatus === 'Quente' ? 'bg-red-100 text-red-700' :
+                    crmStatus === 'Proposta' ? 'bg-blue-100 text-blue-700' :
+                    crmStatus === 'Aguardando Closer' ? 'bg-purple-100 text-purple-700' :
+                    crmStatus === 'Retorno' ? 'bg-amber-100 text-amber-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>{crmStatus}</span>
+                </div>
+              )}
+              {crmObservacoes && (
+                <div>
+                  <span className="text-xs text-gray-500">Observações:</span>
+                  <p className="text-xs text-gray-700 mt-0.5 whitespace-pre-wrap">{crmObservacoes}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="border-t border-gray-200" />
 

@@ -217,6 +217,50 @@ export default function DistribuirPage() {
     }
   }
 
+  async function handleAutoDistribute() {
+    if (vendedores.length === 0 || leads.length === 0) return
+    setAssigning(true)
+    try {
+      // Unique unassigned CNPJs, each counted as 1 lead slot
+      const uniqueCnpjs = Array.from(new Set(leads.map(l => l.cnpj)))
+      // Sort vendedores by current lead_count ASC (least loaded first)
+      const sorted = [...vendedores].sort((a, b) => a.lead_count - b.lead_count)
+      // Round-robin assignment batches
+      const batches: Record<string, string[]> = {}
+      sorted.forEach(v => { batches[v.id] = [] })
+      uniqueCnpjs.forEach((cnpj, i) => {
+        const v = sorted[i % sorted.length]
+        batches[v.id].push(cnpj)
+      })
+      let total = 0
+      for (const [vendedorId, cnpjs] of Object.entries(batches)) {
+        if (cnpjs.length === 0) continue
+        // Collect lead_ids for these CNPJs
+        const ids = leads.filter(l => cnpjs.includes(l.cnpj)).map(l => l.id)
+        const res = await fetch('/api/leads/assign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lead_ids: ids, vendedor_id: vendedorId }),
+        })
+        if (res.ok) {
+          const d = await res.json()
+          total += d.assigned_count ?? ids.length
+        }
+      }
+      setToast(`Roleta concluída! ${total} leads distribuídos igualmente entre ${sorted.length} vendedores.`)
+      setSelectedLeadIds(new Set())
+      fetchLeads()
+      fetchAssignedLeads()
+      fetchVendedores()
+      setTimeout(() => setToast(''), 6000)
+    } catch {
+      setToast('Erro na distribuição automática')
+      setTimeout(() => setToast(''), 3000)
+    } finally {
+      setAssigning(false)
+    }
+  }
+
   async function handleAssign() {
     if (selectedLeadIds.size === 0 || !selectedVendedorId) return
     setAssigning(true)
@@ -349,6 +393,25 @@ export default function DistribuirPage() {
           }
         </p>
       </div>
+
+      {/* Roleta — balanced auto-distribution */}
+      {tab === 'unassigned' && leads.length > 0 && vendedores.length > 0 && (
+        <div className="border border-blue-200 bg-blue-50/50 rounded-xl p-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-blue-800">Distribuir Igualmente (Roleta)</p>
+            <p className="text-xs text-blue-600 mt-0.5">
+              {uniqueUnassignedCount} CNPJs não atribuídos → distribuídos em round-robin entre {vendedores.length} vendedores (~{Math.ceil(uniqueUnassignedCount / vendedores.length)} cada)
+            </p>
+          </div>
+          <button
+            onClick={handleAutoDistribute}
+            disabled={assigning}
+            className="px-4 py-2 rounded-lg text-sm font-semibold bg-[#0072F7] text-white hover:bg-[#0058C4] disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+          >
+            {assigning ? 'Distribuindo...' : '🎲 Distribuir Igualmente'}
+          </button>
+        </div>
+      )}
 
       {/* CNPJ Monitoring section - gestor only, assign directly to Paulo Gabriel */}
       {userRole === 'gestor' && (

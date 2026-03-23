@@ -62,9 +62,12 @@ const FUNNEL_COLORS: Record<string, string> = {
   'Não Contatado': '#ef4444',
   'Ainda Não': '#f43f5e',         // rose-500 (distinct from red)
   'Retorno': '#f59e0b',
+  'Quente': '#dc2626',            // red-600
+  'Muito Quente': '#b91c1c',      // red-700 (priority)
   'Proposta': '#3b82f6',
   'Aguardando Closer': '#8b5cf6', // violet-500
   'Fechado': '#22c55e',
+  'Telefone Invalido': '#9ca3af',
 }
 
 // --- Month formatter (pt-BR short names) ---
