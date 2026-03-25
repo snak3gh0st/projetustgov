@@ -69,7 +69,8 @@ export async function GET(request: NextRequest) {
     if (session.role === 'vendedor') {
       conditions.push(`EXISTS (
         SELECT 1 FROM vendedor_projetos vp_owner
-        WHERE vp_owner.cnpj = pe.cnpj AND vp_owner.vendedor_id = $${paramIndex++}
+        WHERE REGEXP_REPLACE(vp_owner.cnpj, '[^0-9]', '', 'g') = pe.cnpj
+          AND vp_owner.vendedor_id = $${paramIndex++}
         LIMIT 1
       )`)
       params.push(session.userId)
@@ -99,87 +100,94 @@ export async function GET(request: NextRequest) {
     }
 
     const rows = await query<ExecucaoAggRow>(`
+      WITH agg AS (
+        SELECT
+          pe.cnpj,
+          MAX(pe.nome_proponente)   AS nome_proponente,
+          MAX(pe.uf)               AS uf,
+          MAX(pe.municipio)        AS municipio,
+          COUNT(*)::INT            AS total_projetos,
+          SUM(pe.valor_repasse)    AS total_repasse,
+          SUM(pe.valor_desembolsado) AS total_desembolsado,
+          SUM(pe.saldo_conta)      AS total_saldo,
+          SUM(pe.valor_global)     AS total_valor_global,
+          CASE
+            WHEN (SUM(pe.valor_desembolsado) + SUM(pe.ingresso_contrapartida) + SUM(pe.rendimento_aplicacao)) > 0 AND SUM(pe.valor_global) > 0
+            THEN ROUND(GREATEST(0, SUM(pe.valor_desembolsado) + SUM(pe.ingresso_contrapartida) + SUM(pe.rendimento_aplicacao) - SUM(pe.saldo_conta)) / SUM(pe.valor_global) * 100, 1)
+            ELSE NULL
+          END AS pct_execucao_ponderado,
+          BOOL_OR(pe.valor_desembolsado = 0) AS tem_alerta,
+          SUM(CASE WHEN pe.valor_desembolsado = 0 THEN 1 ELSE 0 END)::INT AS qtd_alertas,
+          BOOL_OR(pe.verificar_saldo) AS tem_verificar_saldo,
+          MIN(pe.data_fim_vigencia) AS data_fim_vigencia_mais_proxima,
+          MIN(EXTRACT(DAY FROM pe.data_fim_vigencia - NOW())::INT) AS dias_ate_vencimento_min,
+          MAX(GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT)) AS dias_em_execucao_max,
+          BOOL_OR(GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT) < 100) AS tag_desembolso,
+          BOOL_OR(GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT) >= 100 AND pe.valor_desembolsado = 0) AS tag_lobby
+        FROM projetos_execucao pe
+        WHERE ${conditions.join(' AND ')}
+        GROUP BY pe.cnpj
+      ),
+      contacts AS (
+        SELECT DISTINCT ON (REGEXP_REPLACE(lead_cnpj, '[^0-9]', '', 'g'))
+          REGEXP_REPLACE(lead_cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
+          nome_pessoa, telefone, email, telefone_status
+        FROM lead_contacts
+        ORDER BY REGEXP_REPLACE(lead_cnpj, '[^0-9]', '', 'g'), principal DESC, created_at ASC
+      ),
+      vp_contacts AS (
+        SELECT DISTINCT ON (REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g'))
+          REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
+          telefone, email
+        FROM vendedor_projetos
+        WHERE telefone IS NOT NULL AND telefone != ''
+        ORDER BY REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g')
+      ),
+      proposta_counts AS (
+        SELECT proponente_cnpj AS cnpj, COUNT(*)::INT AS cnt
+        FROM propostas
+        GROUP BY proponente_cnpj
+      ),
+      vendedor_owners AS (
+        SELECT DISTINCT ON (vp_v.cnpj)
+          vp_v.cnpj, u.nome
+        FROM vendedor_projetos vp_v
+        JOIN users u ON u.id = vp_v.vendedor_id
+        WHERE vp_v.vendedor_id IS NOT NULL
+        GROUP BY vp_v.cnpj, u.nome, vp_v.vendedor_id
+        ORDER BY vp_v.cnpj, COUNT(*) DESC
+      ),
+      rendimento_cnpjs AS (
+        SELECT DISTINCT p.proponente_cnpj AS cnpj
+        FROM convenios c
+        INNER JOIN propostas p ON c.proposta_id = p.transfer_gov_id
+        WHERE c.rendimento_aplicacao > 0
+      )
       SELECT
-        pe.cnpj,
-        MAX(pe.nome_proponente)                                  AS nome_proponente,
-        MAX(pe.uf)                                               AS uf,
-        MAX(pe.municipio)                                        AS municipio,
-        COUNT(*)::INT                                            AS total_projetos,
-        SUM(pe.valor_repasse)                                    AS total_repasse,
-        SUM(pe.valor_desembolsado)                               AS total_desembolsado,
-        SUM(pe.saldo_conta)                                      AS total_saldo,
-        SUM(pe.valor_global)                                     AS total_valor_global,
-        CASE
-          WHEN (SUM(pe.valor_desembolsado) + SUM(pe.ingresso_contrapartida) + SUM(pe.rendimento_aplicacao)) > 0 AND SUM(pe.valor_global) > 0
-          THEN ROUND(GREATEST(0, SUM(pe.valor_desembolsado) + SUM(pe.ingresso_contrapartida) + SUM(pe.rendimento_aplicacao) - SUM(pe.saldo_conta)) / SUM(pe.valor_global) * 100, 1)
-          ELSE NULL
-        END                                                      AS pct_execucao_ponderado,
-        BOOL_OR(pe.valor_desembolsado = 0)                       AS tem_alerta,
-        SUM(CASE WHEN pe.valor_desembolsado = 0 THEN 1 ELSE 0 END)::INT AS qtd_alertas,
-        BOOL_OR(pe.verificar_saldo)                              AS tem_verificar_saldo,
-        MIN(pe.data_fim_vigencia)                                AS data_fim_vigencia_mais_proxima,
-        MIN(
-          EXTRACT(DAY FROM pe.data_fim_vigencia - NOW())::INT
-        )                                                        AS dias_ate_vencimento_min,
-        MAX(
-          GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT)
-        )                                                        AS dias_em_execucao_max,
-        COALESCE(
-          (SELECT lc.telefone FROM lead_contacts lc
-           WHERE REGEXP_REPLACE(lc.lead_cnpj, '[^0-9]', '', 'g') = REGEXP_REPLACE(pe.cnpj, '[^0-9]', '', 'g')
-           ORDER BY lc.principal DESC, lc.created_at ASC LIMIT 1),
-          (SELECT vp.telefone FROM vendedor_projetos vp
-           WHERE REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = REGEXP_REPLACE(pe.cnpj, '[^0-9]', '', 'g')
-             AND vp.telefone IS NOT NULL AND vp.telefone != ''
-           LIMIT 1)
-        )                                                        AS contact_telefone,
-        COALESCE(
-          (SELECT lc.email FROM lead_contacts lc
-           WHERE REGEXP_REPLACE(lc.lead_cnpj, '[^0-9]', '', 'g') = REGEXP_REPLACE(pe.cnpj, '[^0-9]', '', 'g')
-           ORDER BY lc.principal DESC, lc.created_at ASC LIMIT 1),
-          (SELECT vp.email FROM vendedor_projetos vp
-           WHERE REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = REGEXP_REPLACE(pe.cnpj, '[^0-9]', '', 'g')
-             AND vp.email IS NOT NULL AND vp.email != ''
-           LIMIT 1)
-        )                                                        AS contact_email,
-        (SELECT lc.nome_pessoa FROM lead_contacts lc
-         WHERE REGEXP_REPLACE(lc.lead_cnpj, '[^0-9]', '', 'g') = REGEXP_REPLACE(pe.cnpj, '[^0-9]', '', 'g')
-         ORDER BY lc.principal DESC, lc.created_at ASC LIMIT 1
-        )                                                        AS contact_nome,
-        (SELECT lc.telefone_status FROM lead_contacts lc
-         WHERE REGEXP_REPLACE(lc.lead_cnpj, '[^0-9]', '', 'g') = REGEXP_REPLACE(pe.cnpj, '[^0-9]', '', 'g')
-         ORDER BY lc.principal DESC, lc.created_at ASC LIMIT 1
-        )                                                        AS contact_telefone_status,
-        COALESCE((
-          SELECT COUNT(*)::INT FROM propostas p
-          WHERE p.proponente_cnpj = pe.cnpj
-        ), 0)                                                    AS total_propostas_db,
-        -- Vendedor owner (from vendedor_projetos, most frequent vendedor_id for this CNPJ)
-        (SELECT u.nome FROM vendedor_projetos vp_v
-         JOIN users u ON u.id = vp_v.vendedor_id
-         WHERE vp_v.cnpj = pe.cnpj AND vp_v.vendedor_id IS NOT NULL
-         GROUP BY u.nome, vp_v.vendedor_id
-         ORDER BY COUNT(*) DESC LIMIT 1
-        ) AS vendedor_nome,
-        -- Tag: Autossuficiente (>5 propostas)
-        COALESCE((SELECT COUNT(*)::INT FROM propostas p WHERE p.proponente_cnpj = pe.cnpj), 0) > 5 AS tag_autossuficiente,
-        -- Tag: Iniciante (<5 propostas)
-        COALESCE((SELECT COUNT(*)::INT FROM propostas p WHERE p.proponente_cnpj = pe.cnpj), 0) < 5 AS tag_iniciante,
-        -- Tag: Desembolso (<100 dias execucao)
-        BOOL_OR(GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT) < 100) AS tag_desembolso,
-        -- Tag: Lobby (100+ dias execucao AND desembolso = 0)
-        BOOL_OR(GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT) >= 100 AND pe.valor_desembolsado = 0) AS tag_lobby,
-        -- Tag: Rendimento (has rendimento_aplicacao > 0 in convenios table)
-        EXISTS(
-          SELECT 1 FROM convenios c
-          INNER JOIN propostas p ON c.proposta_id = p.transfer_gov_id
-          WHERE p.proponente_cnpj = pe.cnpj AND c.rendimento_aplicacao > 0
-          LIMIT 1
-        ) AS tag_rendimento
-      FROM projetos_execucao pe
-      WHERE ${conditions.join(' AND ')}
-      GROUP BY pe.cnpj
-      ORDER BY pct_execucao_ponderado ASC NULLS LAST, tem_alerta DESC, pe.cnpj
+        a.cnpj, a.nome_proponente, a.uf, a.municipio,
+        a.total_projetos, a.total_repasse, a.total_desembolsado,
+        a.total_saldo, a.total_valor_global, a.pct_execucao_ponderado,
+        a.tem_alerta, a.qtd_alertas, a.tem_verificar_saldo,
+        a.data_fim_vigencia_mais_proxima, a.dias_ate_vencimento_min,
+        a.dias_em_execucao_max,
+        COALESCE(ct.telefone, vpc.telefone) AS contact_telefone,
+        COALESCE(ct.email, vpc.email) AS contact_email,
+        ct.nome_pessoa AS contact_nome,
+        ct.telefone_status AS contact_telefone_status,
+        COALESCE(pc.cnt, 0) AS total_propostas_db,
+        vo.nome AS vendedor_nome,
+        COALESCE(pc.cnt, 0) > 5 AS tag_autossuficiente,
+        COALESCE(pc.cnt, 0) < 5 AS tag_iniciante,
+        a.tag_desembolso,
+        a.tag_lobby,
+        rc.cnpj IS NOT NULL AS tag_rendimento
+      FROM agg a
+      LEFT JOIN contacts ct ON ct.cnpj_clean = a.cnpj
+      LEFT JOIN vp_contacts vpc ON vpc.cnpj_clean = a.cnpj
+      LEFT JOIN proposta_counts pc ON pc.cnpj = a.cnpj
+      LEFT JOIN vendedor_owners vo ON vo.cnpj = a.cnpj
+      LEFT JOIN rendimento_cnpjs rc ON rc.cnpj = a.cnpj
+      ORDER BY a.pct_execucao_ponderado ASC NULLS LAST, a.tem_alerta DESC, a.cnpj
     `, params)
 
     // Freshness timestamp from cron_sync_log

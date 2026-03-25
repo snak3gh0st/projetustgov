@@ -40,12 +40,18 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const cnpj = decodeURIComponent(params.cnpj)
+    const cnpjClean = cnpj.replace(/\D/g, '')
 
     // Vendedores only see CNPJs assigned to them
     if (session.role === 'vendedor') {
       const ownership = await query<{ exists: boolean }>(
-        `SELECT EXISTS(SELECT 1 FROM vendedor_projetos WHERE cnpj = $1 AND vendedor_id = $2) AS exists`,
-        [cnpj, session.userId]
+        `SELECT EXISTS(
+          SELECT 1
+          FROM vendedor_projetos
+          WHERE REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') = $1
+            AND vendedor_id = $2
+        ) AS exists`,
+        [cnpjClean, session.userId]
       )
       if (!ownership[0]?.exists) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -80,7 +86,7 @@ export async function GET(
       FROM projetos_execucao pe
       WHERE pe.cnpj = $1
       ORDER BY pe.valor_global DESC NULLS LAST
-    `, [cnpj])
+    `, [cnpjClean])
 
     return NextResponse.json(rows)
   } catch (error) {

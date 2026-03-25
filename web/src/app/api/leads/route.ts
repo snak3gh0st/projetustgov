@@ -45,7 +45,11 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       const searchClean = search.replace(/[.\-\/]/g, '')
-      conditions.push(`(vp.nome ILIKE $${paramIndex} OR vp.cnpj LIKE $${paramIndex} OR vp.cnpj LIKE $${paramIndex + 1})`)
+      conditions.push(`(
+        vp.nome ILIKE $${paramIndex}
+        OR vp.cnpj LIKE $${paramIndex}
+        OR REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') LIKE $${paramIndex + 1}
+      )`)
       params.push(`%${search}%`, `%${searchClean}%`)
       paramIndex += 2
     }

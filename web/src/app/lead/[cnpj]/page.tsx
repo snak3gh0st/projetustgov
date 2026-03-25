@@ -25,6 +25,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function LeadDetailPage() {
   const params = useParams()
   const cnpj = decodeURIComponent(params.cnpj as string)
+  const cnpjClean = cnpj.replace(/\D/g, '')
 
   const [projetos, setProjetos] = useState<VendedorProjeto[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,7 +54,7 @@ export default function LeadDetailPage() {
       .then(r => r.json())
       .then(async data => {
         const filtered = (Array.isArray(data) ? data : []).filter(
-          (p: VendedorProjeto) => p.cnpj === cnpj
+          (p: VendedorProjeto) => p.cnpj?.replace(/\D/g, '') === cnpjClean
         )
         setProjetos(filtered)
         if (filtered.length > 0) {
@@ -85,7 +86,7 @@ export default function LeadDetailPage() {
         }
       })
       .catch(() => {})
-  }, [cnpj])
+  }, [cnpj, cnpjClean])
 
   async function updateProjeto(id: number, field: string, value: string) {
     try {
