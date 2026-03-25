@@ -22,7 +22,8 @@ interface ExecucaoAggRow {
   data_fim_vigencia_mais_proxima: string | null
   dias_ate_vencimento_min: number | null
   dias_em_execucao_max: number | null
-  contact_count: number
+  contact_telefone: string | null
+  contact_nome: string | null
   total_propostas_db: number
   vendedor_nome: string | null
   tag_autossuficiente: boolean
@@ -159,7 +160,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
         case 'vigencia': va = a.data_fim_vigencia_mais_proxima ?? ''; vb = b.data_fim_vigencia_mais_proxima ?? ''; break
         case 'alerta': va = a.tem_alerta ? 1 : 0; vb = b.tem_alerta ? 1 : 0; break
         case 'propostas': va = a.total_propostas_db; vb = b.total_propostas_db; break
-        case 'contato': va = a.contact_count; vb = b.contact_count; break
+        case 'contato': va = a.contact_telefone ?? ''; vb = b.contact_telefone ?? ''; break
         case 'vendedor': va = (a.vendedor_nome ?? '').toLowerCase(); vb = (b.vendedor_nome ?? '').toLowerCase(); break
       }
       if (va == null && vb == null) return 0
@@ -356,13 +357,24 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 text-center">
-                    {row.contact_count > 0 ? (
-                      <span className="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-[#0072F7] border border-blue-200">
-                        {row.contact_count}
-                      </span>
+                  <td className="px-3 py-2.5 max-w-[180px]">
+                    {row.contact_telefone ? (
+                      <div>
+                        <a
+                          href={`https://wa.me/55${row.contact_telefone.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener"
+                          onClick={e => e.stopPropagation()}
+                          className="text-xs text-green-600 hover:text-green-700 hover:underline"
+                        >
+                          {row.contact_telefone}
+                        </a>
+                        {row.contact_nome && (
+                          <span className="block text-[10px] text-gray-400 truncate">{row.contact_nome}</span>
+                        )}
+                      </div>
                     ) : (
-                      <span className="text-gray-300">-</span>
+                      <span className="text-xs text-gray-300">-</span>
                     )}
                   </td>
                   <td className="px-3 py-2.5">
@@ -419,7 +431,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
             cnpj={selectedCnpj}
             nomeProponente={selectedRow?.nome_proponente ?? null}
             temAlerta={selectedRow?.tem_alerta ?? false}
-            contactPresent={selectedRow ? selectedRow.contact_count > 0 : false}
+            contactPresent={selectedRow ? !!selectedRow.contact_telefone : false}
             totalValorGlobal={selectedRow?.total_valor_global ?? null}
             totalPropostas={selectedRow?.total_propostas_db ?? 0}
             tagAutossuficiente={selectedRow?.tag_autossuficiente ?? false}

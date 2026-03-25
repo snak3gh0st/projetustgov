@@ -21,7 +21,8 @@ interface ExecucaoAggRow {
   data_fim_vigencia_mais_proxima: string | null
   dias_ate_vencimento_min: number | null
   dias_em_execucao_max: number | null
-  contact_count: number
+  contact_telefone: string | null
+  contact_nome: string | null
   total_propostas_db: number
   vendedor_nome: string | null
   tag_autossuficiente: boolean
@@ -121,10 +122,14 @@ export async function GET(request: NextRequest) {
         MAX(
           GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT)
         )                                                        AS dias_em_execucao_max,
-        COALESCE((
-          SELECT COUNT(*)::INT FROM lead_contacts lc
-          WHERE lc.lead_cnpj = pe.cnpj
-        ), 0)                                                    AS contact_count,
+        (SELECT lc.telefone FROM lead_contacts lc
+         WHERE lc.lead_cnpj = pe.cnpj
+         ORDER BY lc.principal DESC, lc.id ASC LIMIT 1
+        )                                                        AS contact_telefone,
+        (SELECT lc.nome_pessoa FROM lead_contacts lc
+         WHERE lc.lead_cnpj = pe.cnpj
+         ORDER BY lc.principal DESC, lc.id ASC LIMIT 1
+        )                                                        AS contact_nome,
         COALESCE((
           SELECT COUNT(*)::INT FROM propostas p
           WHERE p.proponente_cnpj = pe.cnpj
