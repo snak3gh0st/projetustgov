@@ -10,6 +10,7 @@ interface ExecucaoAggRow {
   nome_proponente: string | null
   uf: string | null
   municipio: string | null
+  crm_status: string
   total_projetos: number
   total_repasse: string
   total_desembolsado: string
@@ -39,6 +40,18 @@ const UF_OPTIONS = [
   'AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT',
   'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'
 ]
+
+const STATUS_COLORS: Record<string, string> = {
+  'Não Contatado': 'bg-orange-50 text-orange-600',
+  'Ainda Não': 'bg-yellow-50 text-yellow-600',
+  'Retorno': 'bg-amber-50 text-amber-600',
+  'Quente': 'bg-red-50 text-red-600',
+  'Muito Quente': 'bg-red-100 text-red-700',
+  'Proposta': 'bg-blue-50 text-[#0072F7]',
+  'Aguardando Closer': 'bg-purple-50 text-purple-600',
+  'Fechado': 'bg-green-50 text-green-600',
+  'Telefone Invalido': 'bg-gray-50 text-gray-500',
+}
 
 export default function ExecucaoClient({ userRole }: { userRole: string }) {
   const isGestor = userRole === 'gestor' || userRole === 'coordenador'
@@ -353,11 +366,12 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                   { key: 'saldo', label: 'Saldo em Conta', sortable: true },
                   { key: 'execucao', label: '% Execucao', sortable: true },
                   { key: 'vigencia', label: 'Vigencia', sortable: true },
-                  { key: 'propostas', label: 'Propostas', sortable: true },
-                  { key: 'alerta', label: 'Alerta', sortable: true },
-                  { key: 'contato', label: 'Contato', sortable: true },
-                  { key: 'tags', label: 'Tags', sortable: false },
-                ].map(({ key, label, sortable }) => (
+                   { key: 'propostas', label: 'Propostas', sortable: true },
+                   { key: 'alerta', label: 'Alerta', sortable: true },
+                   { key: 'contato', label: 'Contato', sortable: true },
+                   { key: 'status', label: 'Status', sortable: false },
+                   { key: 'tags', label: 'Tags', sortable: false },
+                 ].map(({ key, label, sortable }) => (
                   <th
                     key={key}
                     onClick={sortable ? () => toggleSort(key) : undefined}
@@ -369,18 +383,21 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
               </tr>
             </thead>
             <tbody>
-              {sortedRows.map(row => (
+              {sortedRows.map(row => {
+                const crmStatus = row.crm_status || 'Não Contatado'
+
+                return (
                 <tr
-                  key={row.cnpj}
-                  onClick={() => setSelectedCnpj(row.cnpj)}
-                  className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
-                    row.tem_alerta ? 'border-l-4 border-amber-400 bg-amber-50/30' : ''
-                  }`}
-                >
-                  <td className="px-3 py-2.5 font-mono text-xs text-gray-400 whitespace-nowrap">{formatCNPJ(row.cnpj)}</td>
-                  <td className="px-3 py-2.5 text-sm text-gray-900 max-w-[300px]">
-                    <span className="block leading-snug whitespace-normal break-words">{row.nome_proponente || '-'}</span>
-                  </td>
+                   key={row.cnpj}
+                   onClick={() => setSelectedCnpj(row.cnpj)}
+                   className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
+                     row.tem_alerta ? 'border-l-4 border-amber-400 bg-amber-50/30' : ''
+                   }`}
+                 >
+                   <td className="px-3 py-2.5 font-mono text-xs text-gray-400 whitespace-nowrap">{formatCNPJ(row.cnpj)}</td>
+                   <td className="px-3 py-2.5 text-sm text-gray-900 max-w-[300px]">
+                     <span className="block leading-snug whitespace-normal break-words">{row.nome_proponente || '-'}</span>
+                   </td>
                   {isGestor && (
                     <td className="px-3 py-2.5 text-sm text-gray-600 whitespace-nowrap">{row.vendedor_nome || <span className="text-gray-300">Sem dono</span>}</td>
                   )}
@@ -443,9 +460,14 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                       <span className="text-xs text-red-500/70">Sem contato</span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex flex-wrap gap-1">
-                      {row.tag_autossuficiente && (
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <span className={`inline-flex items-center ${STATUS_COLORS[crmStatus] || STATUS_COLORS['Não Contatado']} text-xs font-medium rounded-full px-3 py-1`}>
+                      {crmStatus}
+                    </span>
+                  </td>
+                   <td className="px-3 py-2.5">
+                     <div className="flex flex-wrap gap-1">
+                       {row.tag_autossuficiente && (
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200" title="Mais de 5 propostas executadas">
                           Autossuficiente
                         </span>
@@ -469,11 +491,12 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-teal-50 text-teal-700 border border-teal-200" title="Rendimento bancario significativo">
                           Rendimento
                         </span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                       )}
+                     </div>
+                   </td>
+                 </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
