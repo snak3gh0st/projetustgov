@@ -124,21 +124,29 @@ export async function GET(request: NextRequest) {
         MAX(
           GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT)
         )                                                        AS dias_em_execucao_max,
-        (SELECT lc.telefone FROM lead_contacts lc
-         WHERE lc.lead_cnpj = pe.cnpj
-         ORDER BY lc.principal DESC, lc.id ASC LIMIT 1
+        COALESCE(
+          (SELECT lc.telefone FROM lead_contacts lc
+           WHERE lc.lead_cnpj = pe.cnpj
+           ORDER BY lc.principal DESC, lc.created_at ASC LIMIT 1),
+          (SELECT vp.telefone FROM vendedor_projetos vp
+           WHERE vp.cnpj = pe.cnpj AND vp.telefone IS NOT NULL AND vp.telefone != ''
+           LIMIT 1)
         )                                                        AS contact_telefone,
-        (SELECT lc.email FROM lead_contacts lc
-         WHERE lc.lead_cnpj = pe.cnpj
-         ORDER BY lc.principal DESC, lc.id ASC LIMIT 1
+        COALESCE(
+          (SELECT lc.email FROM lead_contacts lc
+           WHERE lc.lead_cnpj = pe.cnpj
+           ORDER BY lc.principal DESC, lc.created_at ASC LIMIT 1),
+          (SELECT vp.email FROM vendedor_projetos vp
+           WHERE vp.cnpj = pe.cnpj AND vp.email IS NOT NULL AND vp.email != ''
+           LIMIT 1)
         )                                                        AS contact_email,
         (SELECT lc.nome_pessoa FROM lead_contacts lc
          WHERE lc.lead_cnpj = pe.cnpj
-         ORDER BY lc.principal DESC, lc.id ASC LIMIT 1
+         ORDER BY lc.principal DESC, lc.created_at ASC LIMIT 1
         )                                                        AS contact_nome,
         (SELECT lc.telefone_status FROM lead_contacts lc
          WHERE lc.lead_cnpj = pe.cnpj
-         ORDER BY lc.principal DESC, lc.id ASC LIMIT 1
+         ORDER BY lc.principal DESC, lc.created_at ASC LIMIT 1
         )                                                        AS contact_telefone_status,
         COALESCE((
           SELECT COUNT(*)::INT FROM propostas p

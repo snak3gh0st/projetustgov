@@ -40,9 +40,21 @@ function NavIcon({ name, className }: { name: string; className?: string }) {
   }
 }
 
+const LEADS_ITEM = { href: '/leads', label: 'Lead Aprovacao', icon: 'leads' }
+const EXECUCAO_ITEM = { href: '/execucao', label: 'Lead Execucao', icon: 'execucao' }
+
 const BASE_NAV_ITEMS = [
   { href: '/', label: 'Pipeline', icon: 'pipeline' },
-  { href: '/leads', label: 'Leads em Aprovacao', icon: 'leads' },
+  LEADS_ITEM,
+  { href: '/comissoes', label: 'Comissoes', icon: 'comissoes' },
+  { href: '/bi', label: 'BI Analytics', icon: 'bi' },
+  { href: '/monitorar', label: 'Meus Monitorados', icon: 'monitorar' },
+]
+
+const BASE_WITH_EXECUCAO = [
+  { href: '/', label: 'Pipeline', icon: 'pipeline' },
+  LEADS_ITEM,
+  EXECUCAO_ITEM,
   { href: '/comissoes', label: 'Comissoes', icon: 'comissoes' },
   { href: '/bi', label: 'BI Analytics', icon: 'bi' },
   { href: '/monitorar', label: 'Meus Monitorados', icon: 'monitorar' },
@@ -53,25 +65,20 @@ export default function Sidebar({ user }: SidebarProps) {
 
   const navItems = user.role === 'gestor'
     ? [
-        ...BASE_NAV_ITEMS,
-        { href: '/execucao', label: 'Leads em Execucao', icon: 'execucao' },
+        ...BASE_WITH_EXECUCAO,
         { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
         { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
         { href: '/cadastro-vendedor', label: 'Usuarios', icon: 'vendedores' },
       ]
     : user.role === 'coordenador'
     ? [
-        ...BASE_NAV_ITEMS,
-        { href: '/execucao', label: 'Leads em Execucao', icon: 'execucao' },
+        ...BASE_WITH_EXECUCAO,
         { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
         { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
       ]
     : user.role === 'visualizador'
     ? BASE_NAV_ITEMS.filter((item) => item.href !== '/monitorar')
-    : [
-        ...BASE_NAV_ITEMS,
-        { href: '/execucao', label: 'Leads em Execucao', icon: 'execucao' },
-      ]
+    : BASE_WITH_EXECUCAO
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-56 bg-white border-r border-gray-200 flex flex-col z-50">
