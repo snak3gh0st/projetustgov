@@ -41,6 +41,8 @@ interface ExecucaoDetailRow {
   valor_desembolsado: string | null
   saldo_conta: string | null
   valor_empenhado: string | null
+  rendimento_aplicacao: string | null
+  ingresso_contrapartida: string | null
   pct_execucao: string | null
   dias_em_execucao: number | null
   dias_ate_vencimento: number | null
@@ -452,22 +454,46 @@ export default function ExecucaoSlideOver({
                     </div>
 
                     {/* Financial details grid */}
+                    {(() => {
+                      const desembolsado = Number(conv.valor_desembolsado) || 0
+                      const contrapartida = Number(conv.ingresso_contrapartida) || 0
+                      const rendimento = Number(conv.rendimento_aplicacao) || 0
+                      const saldo = Number(conv.saldo_conta) || 0
+                      const totalEntradas = desembolsado + contrapartida + rendimento
+                      const gastoEfetivo = Math.max(0, totalEntradas - saldo)
+                      return (
                     <div className="grid grid-cols-2 gap-3">
                       <div className="col-span-2 pb-1 mb-1 border-b border-gray-200">
                         <span className="text-xs text-gray-500">Valor do Convenio</span>
                         <p className="text-lg font-bold text-gray-900">{formatCompactCurrency(conv.valor_global)}</p>
                       </div>
                       <div>
-                        <span className="text-xs text-gray-500">Transferido ao beneficiário</span>
+                        <span className="text-xs text-gray-500">Desembolsado (federal)</span>
                         <p className="text-sm font-bold text-[#0072F7]">{formatCompactCurrency(conv.valor_desembolsado)}</p>
                       </div>
                       <div>
-                        <span className="text-xs text-gray-500">Saldo em conta (não gasto)</span>
+                        <span className="text-xs text-gray-500">Saldo em conta</span>
                         <p className="text-sm font-medium text-amber-700">{formatCompactCurrency(conv.saldo_conta)}</p>
                       </div>
+                      {(contrapartida > 0 || rendimento > 0) && (
+                        <>
+                          {contrapartida > 0 && (
+                            <div>
+                              <span className="text-xs text-gray-500">Contrapartida depositada</span>
+                              <p className="text-sm text-gray-700">{formatCompactCurrency(contrapartida)}</p>
+                            </div>
+                          )}
+                          {rendimento > 0 && (
+                            <div>
+                              <span className="text-xs text-gray-500">Rendimento aplicação</span>
+                              <p className="text-sm text-gray-700">{formatCompactCurrency(rendimento)}</p>
+                            </div>
+                          )}
+                        </>
+                      )}
                       <div className="col-span-2 bg-blue-50/60 rounded-lg px-3 py-2 border border-blue-100">
-                        <span className="text-xs text-gray-500">Gasto efetivo (transferido − saldo)</span>
-                        <p className="text-sm font-bold text-gray-900">{formatCompactCurrency(Math.max(0, Number(conv.valor_desembolsado) - Number(conv.saldo_conta)))}</p>
+                        <span className="text-xs text-gray-500">Gasto efetivo (entradas − saldo)</span>
+                        <p className="text-sm font-bold text-gray-900">{formatCompactCurrency(gastoEfetivo)}</p>
                       </div>
                       <div>
                         <span className="text-xs text-gray-500">Fim de vigencia</span>
@@ -478,6 +504,8 @@ export default function ExecucaoSlideOver({
                         <p className="text-sm text-gray-700">{conv.dias_em_execucao ?? '-'}</p>
                       </div>
                     </div>
+                      )
+                    })()}
 
                     {/* Dias ate vencimento with color */}
                     {conv.dias_ate_vencimento != null && (

@@ -79,6 +79,8 @@ interface ExecucaoRecord {
   valor_desembolsado: number
   saldo_conta: number
   valor_empenhado: number
+  rendimento_aplicacao: number
+  ingresso_contrapartida: number
   data_assinatura: string | null
   data_inicio_vigencia: string | null
   data_fim_vigencia: string | null
@@ -254,12 +256,12 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     const valor_global = parseBRNumber(row['VL_GLOBAL_CONV'] || row['VL_GLOBAL'] || null)
     const valor_repasse = parseBRNumber(row['VL_REPASSE_CONV'] || row['VL_REPASSE'] || null)
     const valor_desembolsado = parseBRNumber(row['VL_DESEMBOLSADO_CONV'] || row['VL_DESEMBOLSADO'] || null)
-    // VL_SALDO_CONTA uses US decimal format (dot), other columns use BR format (comma).
-    // Parse each with the correct parser and take the larger value.
-    const saldoUS = parseFloat(row['VL_SALDO_CONTA'] || '0') || 0
-    const saldoBR = parseBRNumber(row['VL_SALDO_REMAN_TESOURO'] || null)
-    const saldo_conta = Math.max(saldoUS, saldoBR)
+    // VL_SALDO_CONTA = actual bank account balance (US decimal format with dot).
+    // VL_SALDO_REMAN_TESOURO = treasury remainder (repasse − desembolsado) — different concept, do NOT mix.
+    const saldo_conta = parseFloat(row['VL_SALDO_CONTA'] || '0') || 0
     const valor_empenhado = parseBRNumber(row['VL_EMPENHADO_CONV'] || row['VL_EMPENHADO'] || null)
+    const rendimento_aplicacao = parseFloat(row['VL_RENDIMENTO_APLICACAO'] || '0') || 0
+    const ingresso_contrapartida = parseFloat(row['VL_INGRESSO_CONTRAPARTIDA'] || '0') || 0
 
     // Parse date values
     // Actual CSV column names (verified from siconv_convenio.csv.zip headers 2026-03-18):
@@ -270,10 +272,13 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     const data_fim_vigencia = parseBRDate(row['DIA_FIM_VIGENC_CONV'] || row['DT_FIM_VIGENCIA'] || row['DT_FIM_VIG'] || null)
 
     // Computed fields
-    // % Execucao = (desembolsado - saldo_conta) / valor_global
-    // Only meaningful when desembolso > 0 (desembolso = 0 is an alert case)
-    const pct_execucao = valor_desembolsado > 0 && valor_global > 0
-      ? Math.round(((valor_desembolsado - saldo_conta) / valor_global) * 10000) / 100
+    // % Execucao = gasto_efetivo / valor_global
+    // gasto_efetivo = (desembolsado + contrapartida + rendimento) - saldo_conta
+    // The bank account receives desembolso + contrapartida + rendimento; what remains is saldo_conta.
+    const total_entradas = valor_desembolsado + ingresso_contrapartida + rendimento_aplicacao
+    const gasto_efetivo = Math.max(0, total_entradas - saldo_conta)
+    const pct_execucao = total_entradas > 0 && valor_global > 0
+      ? Math.round((gasto_efetivo / valor_global) * 10000) / 100
       : null
 
     const dias_em_execucao = data_inicio_vigencia
@@ -303,6 +308,8 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
       valor_desembolsado,
       saldo_conta,
       valor_empenhado,
+      rendimento_aplicacao,
+      ingresso_contrapartida,
       data_assinatura,
       data_inicio_vigencia,
       data_fim_vigencia,
@@ -340,34 +347,37 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
         nr_convenio, id_proposta, situacao, modalidade,
         cnpj, nome_proponente, objeto, uf, municipio,
         valor_global, valor_repasse, valor_desembolsado, saldo_conta, valor_empenhado,
+        rendimento_aplicacao, ingresso_contrapartida,
         data_assinatura, data_inicio_vigencia, data_fim_vigencia,
         pct_execucao, dias_em_execucao, dias_ate_vencimento,
         alerta_desembolso, verificar_saldo,
         synced_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,NOW())
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,NOW())
       ON CONFLICT (nr_convenio) DO UPDATE SET
-        id_proposta          = EXCLUDED.id_proposta,
-        situacao             = EXCLUDED.situacao,
-        modalidade           = EXCLUDED.modalidade,
-        cnpj                 = EXCLUDED.cnpj,
-        nome_proponente      = EXCLUDED.nome_proponente,
-        objeto               = EXCLUDED.objeto,
-        uf                   = EXCLUDED.uf,
-        municipio            = EXCLUDED.municipio,
-        valor_global         = EXCLUDED.valor_global,
-        valor_repasse        = EXCLUDED.valor_repasse,
-        valor_desembolsado   = EXCLUDED.valor_desembolsado,
-        saldo_conta          = EXCLUDED.saldo_conta,
-        valor_empenhado      = EXCLUDED.valor_empenhado,
-        data_assinatura      = EXCLUDED.data_assinatura,
-        data_inicio_vigencia = EXCLUDED.data_inicio_vigencia,
-        data_fim_vigencia    = EXCLUDED.data_fim_vigencia,
-        pct_execucao         = EXCLUDED.pct_execucao,
-        dias_em_execucao     = EXCLUDED.dias_em_execucao,
-        dias_ate_vencimento  = EXCLUDED.dias_ate_vencimento,
-        alerta_desembolso    = EXCLUDED.alerta_desembolso,
-        verificar_saldo      = EXCLUDED.verificar_saldo,
-        synced_at            = NOW()
+        id_proposta            = EXCLUDED.id_proposta,
+        situacao               = EXCLUDED.situacao,
+        modalidade             = EXCLUDED.modalidade,
+        cnpj                   = EXCLUDED.cnpj,
+        nome_proponente        = EXCLUDED.nome_proponente,
+        objeto                 = EXCLUDED.objeto,
+        uf                     = EXCLUDED.uf,
+        municipio              = EXCLUDED.municipio,
+        valor_global           = EXCLUDED.valor_global,
+        valor_repasse          = EXCLUDED.valor_repasse,
+        valor_desembolsado     = EXCLUDED.valor_desembolsado,
+        saldo_conta            = EXCLUDED.saldo_conta,
+        valor_empenhado        = EXCLUDED.valor_empenhado,
+        rendimento_aplicacao   = EXCLUDED.rendimento_aplicacao,
+        ingresso_contrapartida = EXCLUDED.ingresso_contrapartida,
+        data_assinatura        = EXCLUDED.data_assinatura,
+        data_inicio_vigencia   = EXCLUDED.data_inicio_vigencia,
+        data_fim_vigencia      = EXCLUDED.data_fim_vigencia,
+        pct_execucao           = EXCLUDED.pct_execucao,
+        dias_em_execucao       = EXCLUDED.dias_em_execucao,
+        dias_ate_vencimento    = EXCLUDED.dias_ate_vencimento,
+        alerta_desembolso      = EXCLUDED.alerta_desembolso,
+        verificar_saldo        = EXCLUDED.verificar_saldo,
+        synced_at              = NOW()
     `
 
     for (const rec of records) {
@@ -387,6 +397,8 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
           rec.valor_desembolsado,
           rec.saldo_conta,
           rec.valor_empenhado,
+          rec.rendimento_aplicacao,
+          rec.ingresso_contrapartida,
           rec.data_assinatura,
           rec.data_inicio_vigencia,
           rec.data_fim_vigencia,

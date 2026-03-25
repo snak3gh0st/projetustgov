@@ -16,6 +16,8 @@ interface ExecucaoDetailRow {
   valor_desembolsado: string | null
   saldo_conta: string | null
   valor_empenhado: string | null
+  rendimento_aplicacao: string | null
+  ingresso_contrapartida: string | null
   pct_execucao: string | null
   dias_em_execucao: number | null
   dias_ate_vencimento: number | null
@@ -63,6 +65,8 @@ export async function GET(
         pe.valor_desembolsado,
         pe.saldo_conta,
         pe.valor_empenhado,
+        pe.rendimento_aplicacao,
+        pe.ingresso_contrapartida,
         pe.pct_execucao,
         GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT)  AS dias_em_execucao,
         EXTRACT(DAY FROM pe.data_fim_vigencia - NOW())::INT                  AS dias_ate_vencimento,

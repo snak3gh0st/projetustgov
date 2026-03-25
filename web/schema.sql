@@ -255,6 +255,8 @@ CREATE TABLE IF NOT EXISTS projetos_execucao (
   valor_desembolsado   NUMERIC(18,2),
   saldo_conta          NUMERIC(18,2),
   valor_empenhado      NUMERIC(18,2),
+  rendimento_aplicacao   NUMERIC(18,2) DEFAULT 0,
+  ingresso_contrapartida NUMERIC(18,2) DEFAULT 0,
   data_assinatura      DATE,
   data_inicio_vigencia DATE,
   data_fim_vigencia    DATE,

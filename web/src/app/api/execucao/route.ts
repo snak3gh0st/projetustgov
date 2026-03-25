@@ -110,8 +110,8 @@ export async function GET(request: NextRequest) {
         SUM(pe.saldo_conta)                                      AS total_saldo,
         SUM(pe.valor_global)                                     AS total_valor_global,
         CASE
-          WHEN SUM(pe.valor_desembolsado) > 0 AND SUM(pe.valor_global) > 0
-          THEN ROUND(GREATEST(0, SUM(pe.valor_desembolsado) - SUM(pe.saldo_conta)) / SUM(pe.valor_global) * 100, 1)
+          WHEN (SUM(pe.valor_desembolsado) + SUM(pe.ingresso_contrapartida) + SUM(pe.rendimento_aplicacao)) > 0 AND SUM(pe.valor_global) > 0
+          THEN ROUND(GREATEST(0, SUM(pe.valor_desembolsado) + SUM(pe.ingresso_contrapartida) + SUM(pe.rendimento_aplicacao) - SUM(pe.saldo_conta)) / SUM(pe.valor_global) * 100, 1)
           ELSE NULL
         END                                                      AS pct_execucao_ponderado,
         BOOL_OR(pe.valor_desembolsado = 0)                       AS tem_alerta,
