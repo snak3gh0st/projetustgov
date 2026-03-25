@@ -124,7 +124,11 @@ export async function GET(request: NextRequest) {
           MIN(EXTRACT(DAY FROM pe.data_fim_vigencia - NOW())::INT) AS dias_ate_vencimento_min,
           MAX(GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT)) AS dias_em_execucao_max,
           BOOL_OR(GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT) < 100) AS tag_desembolso,
-          BOOL_OR(GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT) >= 100 AND pe.valor_desembolsado = 0) AS tag_lobby
+          BOOL_OR(GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT) >= 100 AND pe.valor_desembolsado = 0) AS tag_lobby,
+          BOOL_OR(
+            COALESCE(pe.rendimento_aplicacao, 0) > 5000
+            AND COALESCE(pe.saldo_conta, 0) >= COALESCE(pe.rendimento_aplicacao, 0)
+          ) AS tag_rendimento
         FROM projetos_execucao pe
         WHERE ${conditions.join(' AND ')}
         GROUP BY pe.cnpj
@@ -172,12 +176,6 @@ export async function GET(request: NextRequest) {
         WHERE vp_v.vendedor_id IS NOT NULL
         GROUP BY vp_v.cnpj, u.nome, vp_v.vendedor_id
         ORDER BY vp_v.cnpj, COUNT(*) DESC
-      ),
-      rendimento_cnpjs AS (
-        SELECT DISTINCT p.proponente_cnpj AS cnpj
-        FROM convenios c
-        INNER JOIN propostas p ON c.proposta_id = p.transfer_gov_id
-        WHERE c.rendimento_aplicacao > 0
       )
       SELECT
         a.cnpj, a.nome_proponente, a.uf, a.municipio,
@@ -214,17 +212,16 @@ export async function GET(request: NextRequest) {
         ct.telefone_status AS contact_telefone_status,
         COALESCE(pc.cnt, 0) AS total_propostas_db,
         vo.nome AS vendedor_nome,
-        COALESCE(pc.cnt, 0) > 5 AS tag_autossuficiente,
+        COALESCE(pc.cnt, 0) >= 5 AS tag_autossuficiente,
         COALESCE(pc.cnt, 0) < 5 AS tag_iniciante,
         a.tag_desembolso,
         a.tag_lobby,
-        rc.cnpj IS NOT NULL AS tag_rendimento
+        a.tag_rendimento
       FROM agg a
       LEFT JOIN contacts ct ON ct.cnpj_clean = a.cnpj
       LEFT JOIN vp_contacts vpc ON vpc.cnpj_clean = a.cnpj
       LEFT JOIN proposta_counts pc ON pc.cnpj = a.cnpj
       LEFT JOIN vendedor_owners vo ON vo.cnpj = a.cnpj
-      LEFT JOIN rendimento_cnpjs rc ON rc.cnpj = a.cnpj
       ORDER BY a.pct_execucao_ponderado ASC NULLS LAST, a.tem_alerta DESC, a.cnpj
     `, params)
 
