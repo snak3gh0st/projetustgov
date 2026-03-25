@@ -231,6 +231,8 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
         case 'valor': va = Number(a.total_valor_global); vb = Number(b.total_valor_global); break
         case 'fomentos': va = a.total_projetos; vb = b.total_projetos; break
         case 'local': va = `${a.municipio ?? ''} ${a.uf ?? ''}`; vb = `${b.municipio ?? ''} ${b.uf ?? ''}`; break
+        case 'desembolsado': va = Number(a.total_desembolsado); vb = Number(b.total_desembolsado); break
+        case 'saldo': va = Number(a.total_saldo); vb = Number(b.total_saldo); break
         case 'execucao': va = Number(a.pct_execucao_ponderado ?? -1); vb = Number(b.pct_execucao_ponderado ?? -1); break
         case 'status': va = a.crm_status; vb = b.crm_status; break
         case 'vendedor': va = (a.vendedor_nome ?? '').toLowerCase(); vb = (b.vendedor_nome ?? '').toLowerCase(); break
@@ -393,6 +395,12 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                 <th className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                   Contato
                 </th>
+                <th onClick={() => toggleSort('desembolsado')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                  Desembolsado<SortIcon col="desembolsado" />
+                </th>
+                <th onClick={() => toggleSort('saldo')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                  Saldo<SortIcon col="saldo" />
+                </th>
                 <th onClick={() => toggleSort('execucao')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   % Execução<SortIcon col="execucao" />
                 </th>
@@ -503,6 +511,16 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                       ) : (
                         <span className="text-xs text-red-500/70">Sem contato</span>
                       )}
+                    </td>
+
+                    {/* DESEMBOLSADO */}
+                    <td className="px-3 py-2.5 text-sm text-gray-700 whitespace-nowrap">
+                      {formatCompactCurrency(Number(row.total_desembolsado))}
+                    </td>
+
+                    {/* SALDO */}
+                    <td className="px-3 py-2.5 text-[#0072F7] font-bold text-sm whitespace-nowrap">
+                      {formatCompactCurrency(Number(row.total_saldo))}
                     </td>
 
                     {/* % EXECUÇÃO */}
