@@ -341,6 +341,7 @@ export default function CRMDashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [pipelineTab, setPipelineTab] = useState<'aprovacao' | 'execucao'>('aprovacao')
 
   useEffect(() => {
     fetch('/api/dashboard-crm')
@@ -495,29 +496,57 @@ export default function CRMDashboard() {
       {/* 2b. Sync panel — gestor only */}
       {role === 'gestor' && <SyncPanel role={role} />}
 
-      {/* 3. Status pipeline — approval and execution funnels */}
-      <div className="space-y-6">
-        <PipelineSection
-          title="Pipeline Aprovação"
-          subtitle="Funil comercial atual baseado em vendedor_projetos para acompanhar a campanha de emendas."
-          total={g.total_leads}
-          totalLabel="leads no pipeline"
-          statuses={STATUS_ORDER}
-          counts={g.by_status}
-          hrefForStatus={status => `/leads?status_contato=${encodeURIComponent(status)}`}
-          isVendedor={isVendedor}
-          role={role}
-        />
+      {/* 3. Status pipeline — tabbed: aprovacao / execucao */}
+      <div className="space-y-4">
+        {/* Tab switcher */}
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+          <button
+            onClick={() => setPipelineTab('aprovacao')}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              pipelineTab === 'aprovacao'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Pipeline Aprovação
+          </button>
+          <button
+            onClick={() => setPipelineTab('execucao')}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              pipelineTab === 'execucao'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Pipeline Execução
+          </button>
+        </div>
 
-        <PipelineSection
-          title="Pipeline Execução"
-          subtitle="CNPJs com projetos em execução, mantendo a etapa comercial separada do funil de aprovação."
-          total={execucao_pipeline.total_cnpjs}
-          totalLabel="CNPJs em execução"
-          statuses={EXECUCAO_STATUS_ORDER}
-          counts={execucao_pipeline.by_status}
-          hrefForStatus={() => '/execucao'}
-        />
+        {pipelineTab === 'aprovacao' && (
+          <PipelineSection
+            title="Pipeline Aprovação"
+            subtitle="Funil comercial atual baseado em vendedor_projetos para acompanhar a campanha de emendas."
+            total={g.total_leads}
+            totalLabel="leads no pipeline"
+            statuses={STATUS_ORDER}
+            counts={g.by_status}
+            hrefForStatus={status => `/leads?status_contato=${encodeURIComponent(status)}`}
+            isVendedor={isVendedor}
+            role={role}
+          />
+        )}
+
+        {pipelineTab === 'execucao' && (
+          <PipelineSection
+            title="Pipeline Execução"
+            subtitle="CNPJs com projetos em execução, mantendo a etapa comercial separada do funil de aprovação."
+            total={execucao_pipeline.total_cnpjs}
+            totalLabel="CNPJs em execução"
+            statuses={EXECUCAO_STATUS_ORDER}
+            counts={execucao_pipeline.by_status}
+            hrefForStatus={() => '/execucao'}
+          />
+        )}
       </div>
 
       {/* 3b. Contact health alerts */}
