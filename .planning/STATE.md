@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — Projetos em Execucao
 status: completed
-stopped_at: Completed 17-ui-navigation-02-PLAN.md
-last_updated: "2026-03-18T23:47:00Z"
-last_activity: 2026-03-20 — Completed quick task 260320-hgb: BrasilAPI enrichment in execucao-sync + Em Execucao tab on leads page
+stopped_at: Completed quick task 260321 (status column in execucao)
+last_updated: "2026-03-25T18:40:25Z"
+last_activity: 2026-03-25 — Completed quick task 260321: CRM status column in /execucao
 progress:
   total_phases: 4
   completed_phases: 4
@@ -82,6 +82,7 @@ Progress (v4.0): [██████████] 100%
 | 260320-d8f | Add Valor Convenio column, propostas priority colors, slide-over summary | 2026-03-20 | 8a05d1d | [260320-d8f-link-com-a-respectiva-proposta-valor-do-](./quick/260320-d8f-link-com-a-respectiva-proposta-valor-do-/) |
 | 260320-dj7 | Add 5 execution classification tags (Autossuficiente, Iniciante, Desembolso, Lobby, Rendimento) | 2026-03-20 | 7bb3bc7 | [260320-dj7-add-execution-tags-autossuficiente-5-pro](./quick/260320-dj7-add-execution-tags-autossuficiente-5-pro/) |
 | 260320-hgb | BrasilAPI enrichment in execucao-sync + Em Execucao tab on leads page | 2026-03-20 | c4103fd | [260320-hgb-add-brasilapi-enrichment-to-execucao-syn](./quick/260320-hgb-add-brasilapi-enrichment-to-execucao-syn/) |
+| 260321 | Add CRM status column to /execucao from vendedor_projetos | 2026-03-25 | 1ad08b2 | [260321-coluna-de-status-no-lead-execucao-com-os](./quick/260321-coluna-de-status-no-lead-execucao-com-os/) |
 
 ### Blockers / Concerns
 
@@ -103,6 +104,6 @@ Progress (v4.0): [██████████] 100%
 
 ## Session Continuity
 
-Last session: 2026-03-18T23:47:00Z
-Stopped at: Completed quick task 260318-re1 (add in-app news banner for v4.0 updates)
-Resume file: .planning/quick/260318-re1-add-in-app-news-notification-with-update/260318-re1-SUMMARY.md
+Last session: 2026-03-25T18:40:25Z
+Stopped at: Completed quick task 260321 (status column in execucao)
+Resume file: .planning/quick/260321-coluna-de-status-no-lead-execucao-com-os/260321-SUMMARY.md
