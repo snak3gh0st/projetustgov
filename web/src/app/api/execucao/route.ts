@@ -9,6 +9,7 @@ interface ExecucaoAggRow {
   nome_proponente: string | null
   uf: string | null
   municipio: string | null
+  crm_status: string
   total_projetos: number
   total_repasse: string        // pg returns NUMERIC as string
   total_desembolsado: string   // pg returns NUMERIC as string
@@ -180,6 +181,28 @@ export async function GET(request: NextRequest) {
       )
       SELECT
         a.cnpj, a.nome_proponente, a.uf, a.municipio,
+        COALESCE((
+          SELECT CASE
+            WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 'Não Contatado'
+            ELSE COALESCE(vp.status_contato, 'Não Contatado')
+          END
+          FROM vendedor_projetos vp
+          WHERE REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = a.cnpj
+          ORDER BY CASE
+            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Fechado' THEN 1
+            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Aguardando Closer' THEN 2
+            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Proposta' THEN 3
+            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Retorno' THEN 4
+            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Ainda Não' THEN 5
+            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Quente' THEN 6
+            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Muito Quente' THEN 7
+            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Telefone Invalido' THEN 8
+            WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 10
+            ELSE 9
+          END ASC,
+          vp.updated_at DESC NULLS LAST
+          LIMIT 1
+        ), 'Não Contatado') AS crm_status,
         a.total_projetos, a.total_repasse, a.total_desembolsado,
         a.total_saldo, a.total_valor_global, a.pct_execucao_ponderado,
         a.tem_alerta, a.qtd_alertas, a.tem_verificar_saldo,
