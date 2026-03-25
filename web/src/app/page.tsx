@@ -22,6 +22,11 @@ interface GlobalStats {
   by_status: StatusCounts
 }
 
+interface ExecucaoPipelineStats {
+  total_cnpjs: number
+  by_status: StatusCounts
+}
+
 interface VendedorStats {
   vendedor_id: string
   vendedor_nome: string
@@ -65,6 +70,7 @@ interface StaleLead {
 interface DashboardData {
   role?: string
   global: GlobalStats
+  execucao_pipeline: ExecucaoPipelineStats
   vendedores: VendedorStats[]
   recent_activity: RecentActivity[]
   commission_breakdown?: {
@@ -91,6 +97,8 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; la
   'Não Contatado': { color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200', bar: 'bg-orange-500', label: 'Não Contatado' },
   'Ainda Não': { color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-200', bar: 'bg-yellow-500', label: 'Ainda Não' },
   'Retorno': { color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', bar: 'bg-amber-500', label: 'Retorno' },
+  'Quente': { color: 'text-red-600', bg: 'bg-red-50 border-red-200', bar: 'bg-red-500', label: 'Quente' },
+  'Muito Quente': { color: 'text-red-700', bg: 'bg-red-100 border-red-200', bar: 'bg-red-600', label: 'Muito Quente' },
   'Proposta': { color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', bar: 'bg-blue-500', label: 'Proposta' },
   'Aguardando Closer': { color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200', bar: 'bg-purple-500', label: 'Aguardando Closer' },
   'Fechado': { color: 'text-green-600', bg: 'bg-green-50 border-green-200', bar: 'bg-green-500', label: 'Fechado' },
@@ -98,6 +106,17 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; la
 }
 
 const STATUS_ORDER = ['Não Contatado', 'Ainda Não', 'Retorno', 'Proposta', 'Aguardando Closer', 'Fechado'] as const
+const EXECUCAO_STATUS_ORDER = [
+  'Não Contatado',
+  'Ainda Não',
+  'Retorno',
+  'Quente',
+  'Muito Quente',
+  'Proposta',
+  'Aguardando Closer',
+  'Telefone Invalido',
+  'Fechado',
+] as const
 
 function timeAgo(date: string | null): string {
   if (!date) return 'nunca'
@@ -111,6 +130,99 @@ function timeAgo(date: string | null): string {
   if (hours < 24) return `ha ${hours}h`
   const days = Math.floor(hours / 24)
   return `ha ${days}d`
+}
+
+function PipelineSection({
+  title,
+  subtitle,
+  total,
+  statuses,
+  counts,
+  hrefForStatus,
+  isVendedor,
+  role,
+  totalLabel,
+}: {
+  title: string
+  subtitle: string
+  total: number
+  statuses: readonly string[]
+  counts: StatusCounts
+  hrefForStatus: (status: string) => string
+  isVendedor?: boolean
+  role?: string
+  totalLabel: string
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs text-gray-500 uppercase tracking-wider">{title}</p>
+        <p className="text-sm text-gray-500">{subtitle}</p>
+        <p className="text-xs text-gray-400">{total.toLocaleString('pt-BR')} {totalLabel}</p>
+      </div>
+
+      <div className={`grid grid-cols-2 gap-3 ${statuses.length > 6 ? 'md:grid-cols-3 xl:grid-cols-9' : 'md:grid-cols-6'}`}>
+        {statuses.map((status, idx) => {
+          const count = counts[status] || 0
+          const pct = total > 0 ? (count / total) * 100 : 0
+          const cfg = STATUS_CONFIG[status]
+          const prevCount = idx > 0 ? (counts[statuses[idx - 1]] || 0) : null
+          const conversionRate = prevCount && prevCount > 0 ? ((count / prevCount) * 100).toFixed(0) : null
+
+          return (
+            <div
+              key={`${title}-${status}`}
+              role="button"
+              onClick={() => { window.location.href = hrefForStatus(status) }}
+              className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+            >
+              <div className={`h-1.5 ${cfg.bar}`} />
+              <div className="p-4">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className={`text-3xl font-heading font-bold ${cfg.color}`}>{count}</span>
+                  <span className="text-xs text-gray-400 font-medium">{pct.toFixed(0)}%</span>
+                </div>
+
+                <p className="text-sm font-medium text-gray-700 mt-1">{cfg.label}</p>
+
+                <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className={`h-full ${cfg.bar} rounded-full transition-all`} style={{ width: `${Math.min(Math.max(pct, 2), 100)}%` }} />
+                </div>
+
+                {conversionRate && Number(conversionRate) <= 100 && (
+                  <p className="text-[10px] text-gray-400 mt-1.5">
+                    {conversionRate}% de {STATUS_CONFIG[statuses[idx - 1]].label}
+                  </p>
+                )}
+
+                {isVendedor && status === 'Fechado' && count > 0 && role !== 'gestor' && (
+                  <p className="text-xs text-green-600 font-medium mt-1">
+                    {count} × R$50 = {formatCurrency(count * 50)}
+                  </p>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="hidden md:flex items-center justify-center gap-1 py-1">
+        {statuses.map((status, idx) => {
+          const cfg = STATUS_CONFIG[status]
+          return (
+            <div key={`${title}-flow-${status}`} className="flex items-center gap-1 flex-1">
+              <div className={`h-2 ${cfg.bar} rounded-full flex-1 transition-all opacity-80`} style={{ minWidth: '8px' }} />
+              {idx < statuses.length - 1 && (
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-gray-300 flex-shrink-0">
+                  <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 // --- SyncPanel: visible only to gestor role ---
@@ -271,7 +383,7 @@ export default function CRMDashboard() {
     )
   }
 
-  const { global: g, vendedores, recent_activity, role } = data
+  const { global: g, execucao_pipeline, vendedores, recent_activity, role } = data
   const isVendedor = role === 'vendedor' || role === 'coordenador' || role === 'gestor'
 
   return (
@@ -383,79 +495,29 @@ export default function CRMDashboard() {
       {/* 2b. Sync panel — gestor only */}
       {role === 'gestor' && <SyncPanel role={role} />}
 
-      {/* 3. Status pipeline — funnel cards */}
-      <div className="space-y-3">
-        <p className="text-xs text-gray-500 uppercase tracking-wider">Pipeline de Vendas</p>
+      {/* 3. Status pipeline — approval and execution funnels */}
+      <div className="space-y-6">
+        <PipelineSection
+          title="Pipeline Aprovação"
+          subtitle="Funil comercial atual baseado em vendedor_projetos para acompanhar a campanha de emendas."
+          total={g.total_leads}
+          totalLabel="leads no pipeline"
+          statuses={STATUS_ORDER}
+          counts={g.by_status}
+          hrefForStatus={status => `/leads?status_contato=${encodeURIComponent(status)}`}
+          isVendedor={isVendedor}
+          role={role}
+        />
 
-        {/* Status cards row */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-          {(() => {
-            return STATUS_ORDER.map((status, idx) => {
-            const count = g.by_status[status] || 0
-            const pct = g.total_leads > 0 ? (count / g.total_leads) * 100 : 0
-            const cfg = STATUS_CONFIG[status]
-            const prevCount = idx > 0 ? (g.by_status[STATUS_ORDER[idx - 1]] || 0) : null
-            const conversionRate = prevCount && prevCount > 0 ? ((count / prevCount) * 100).toFixed(0) : null
-            return (
-              <div
-                key={status}
-                role="button"
-                onClick={() => { window.location.href = `/leads?status_contato=${encodeURIComponent(status)}` }}
-                className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-              >
-                {/* Colored top bar */}
-                <div className={`h-1.5 ${cfg.bar}`} />
-                <div className="p-4">
-                  {/* Count + percentage */}
-                  <div className="flex items-baseline justify-between">
-                    <span className={`text-3xl font-heading font-bold ${cfg.color}`}>{count}</span>
-                    <span className="text-xs text-gray-400 font-medium">{pct.toFixed(0)}%</span>
-                  </div>
-
-                  {/* Label */}
-                  <p className="text-sm font-medium text-gray-700 mt-1">{cfg.label}</p>
-
-                  {/* Progress bar */}
-                  <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className={`h-full ${cfg.bar} rounded-full transition-all`} style={{ width: `${Math.min(Math.max(pct, 2), 100)}%` }} />
-                  </div>
-
-                  {/* Conversion rate from previous stage */}
-                  {conversionRate && Number(conversionRate) <= 100 && (
-                    <p className="text-[10px] text-gray-400 mt-1.5">
-                      {conversionRate}% de {STATUS_CONFIG[STATUS_ORDER[idx - 1]].label}
-                    </p>
-                  )}
-
-                  {/* Vendedor bonus on Fechado */}
-                  {isVendedor && status === 'Fechado' && count > 0 && role !== 'gestor' && (
-                    <p className="text-xs text-green-600 font-medium mt-1">
-                      {count} × R$50 = {formatCurrency(count * 50)}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )
-          })
-          })()}
-        </div>
-
-        {/* Flow bar with arrows */}
-        <div className="hidden md:flex items-center justify-center gap-1 py-1">
-          {STATUS_ORDER.map((status, idx) => {
-            const cfg = STATUS_CONFIG[status]
-            return (
-              <div key={status} className="flex items-center gap-1 flex-1">
-                <div className={`h-2 ${cfg.bar} rounded-full flex-1 transition-all opacity-80`} style={{ minWidth: '8px' }} />
-                {idx < STATUS_ORDER.length - 1 && (
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-gray-300 flex-shrink-0">
-                    <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
-              </div>
-            )
-          })}
-        </div>
+        <PipelineSection
+          title="Pipeline Execução"
+          subtitle="CNPJs com projetos em execução, mantendo a etapa comercial separada do funil de aprovação."
+          total={execucao_pipeline.total_cnpjs}
+          totalLabel="CNPJs em execução"
+          statuses={EXECUCAO_STATUS_ORDER}
+          counts={execucao_pipeline.by_status}
+          hrefForStatus={() => '/execucao'}
+        />
       </div>
 
       {/* 3b. Contact health alerts */}
