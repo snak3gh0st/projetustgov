@@ -176,17 +176,18 @@ export async function GET(request: NextRequest) {
         WHERE vp_v.vendedor_id IS NOT NULL
         GROUP BY vp_v.cnpj, u.nome, vp_v.vendedor_id
         ORDER BY vp_v.cnpj, COUNT(*) DESC
-      )
-      SELECT
-        a.cnpj, a.nome_proponente, a.uf, a.municipio,
-        COALESCE((
-          SELECT CASE
+      ),
+      crm_statuses AS (
+        SELECT DISTINCT ON (REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'))
+          REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
+          CASE
             WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 'Não Contatado'
             ELSE COALESCE(vp.status_contato, 'Não Contatado')
-          END
-          FROM vendedor_projetos vp
-          WHERE REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = a.cnpj
-          ORDER BY CASE
+          END AS crm_status
+        FROM vendedor_projetos vp
+        ORDER BY
+          REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'),
+          CASE
             WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Fechado' THEN 1
             WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Aguardando Closer' THEN 2
             WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Proposta' THEN 3
@@ -199,8 +200,10 @@ export async function GET(request: NextRequest) {
             ELSE 9
           END ASC,
           vp.updated_at DESC NULLS LAST
-          LIMIT 1
-        ), 'Não Contatado') AS crm_status,
+      )
+      SELECT
+        a.cnpj, a.nome_proponente, a.uf, a.municipio,
+        COALESCE(cs.crm_status, 'Não Contatado') AS crm_status,
         a.total_projetos, a.total_repasse, a.total_desembolsado,
         a.total_saldo, a.total_valor_global, a.pct_execucao_ponderado,
         a.tem_alerta, a.qtd_alertas, a.tem_verificar_saldo,
@@ -218,6 +221,7 @@ export async function GET(request: NextRequest) {
         a.tag_lobby,
         a.tag_rendimento
       FROM agg a
+      LEFT JOIN crm_statuses cs ON cs.cnpj_clean = a.cnpj
       LEFT JOIN contacts ct ON ct.cnpj_clean = a.cnpj
       LEFT JOIN vp_contacts vpc ON vpc.cnpj_clean = a.cnpj
       LEFT JOIN proposta_counts pc ON pc.cnpj = a.cnpj

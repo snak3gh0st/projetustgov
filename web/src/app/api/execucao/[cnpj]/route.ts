@@ -30,6 +30,46 @@ interface ExecucaoDetailRow {
   tag_lobby: boolean
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { cnpj: string } }
+) {
+  try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const cnpj = decodeURIComponent(params.cnpj)
+    const cnpjClean = cnpj.replace(/\D/g, '')
+    const body = await request.json() as { status_contato?: string }
+
+    if (!body.status_contato) {
+      return NextResponse.json({ error: 'status_contato required' }, { status: 400 })
+    }
+
+    if (session.role === 'vendedor') {
+      await query(
+        `UPDATE vendedor_projetos
+         SET status_contato = $1, updated_at = NOW()
+         WHERE REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') = $2
+           AND vendedor_id = $3`,
+        [body.status_contato, cnpjClean, session.userId]
+      )
+    } else {
+      await query(
+        `UPDATE vendedor_projetos
+         SET status_contato = $1, updated_at = NOW()
+         WHERE REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') = $2`,
+        [body.status_contato, cnpjClean]
+      )
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error('[api/execucao/[cnpj]] PATCH error:', error)
+    return NextResponse.json({ error: 'Failed to update status' }, { status: 500 })
+  }
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: { cnpj: string } }

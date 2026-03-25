@@ -41,6 +41,8 @@ const UF_OPTIONS = [
   'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'
 ]
 
+const STATUS_OPTIONS = ['Não Contatado', 'Ainda Não', 'Retorno', 'Quente', 'Muito Quente', 'Proposta', 'Aguardando Closer', 'Fechado', 'Telefone Invalido']
+
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-orange-50 text-orange-600',
   'Ainda Não': 'bg-yellow-50 text-yellow-600',
@@ -62,6 +64,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
   const [lastSynced, setLastSynced] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [uf, setUf] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [alertOnly, setAlertOnly] = useState(false)
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
   const [selectedCnpj, setSelectedCnpj] = useState<string | null>(null)
@@ -123,6 +126,20 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
     return () => fetchAbortRef.current?.abort()
   }, [])
 
+  const updateStatus = useCallback(async (cnpj: string, newStatus: string) => {
+    setRows(prev => prev.map(r => r.cnpj === cnpj ? { ...r, crm_status: newStatus } : r))
+    try {
+      await fetch(`/api/execucao/${encodeURIComponent(cnpj)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status_contato: newStatus }),
+      })
+    } catch {
+      // Revert on failure
+      void fetchData({ background: true })
+    }
+  }, [fetchData])
+
   const toggleTag = (tag: string) => {
     setActiveTags(prev => {
       const next = new Set(prev)
@@ -161,16 +178,20 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
   ]
 
   const filteredRows = useMemo(() => {
-    if (activeTags.size === 0) return rows
+    let result = rows
+    if (statusFilter) {
+      result = result.filter(r => r.crm_status === statusFilter)
+    }
+    if (activeTags.size === 0) return result
     const tagsArr = Array.from(activeTags)
-    return rows.filter(r =>
+    return result.filter(r =>
       tagsArr.every(tag => {
         const def = TAG_KEYS.find(t => t.key === tag)
         return def ? r[def.field] : true
       })
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, activeTags])
+  }, [rows, activeTags, statusFilter])
 
   const kpis = useMemo(() => [
     {
@@ -206,18 +227,12 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
       let va: string | number | boolean | null = null
       let vb: string | number | boolean | null = null
       switch (sortCol) {
-        case 'cnpj': va = a.cnpj; vb = b.cnpj; break
         case 'nome': va = a.nome_proponente ?? ''; vb = b.nome_proponente ?? ''; break
-        case 'uf': va = a.uf ?? ''; vb = b.uf ?? ''; break
+        case 'valor': va = Number(a.total_valor_global); vb = Number(b.total_valor_global); break
         case 'fomentos': va = a.total_projetos; vb = b.total_projetos; break
-        case 'valor_convenio': va = Number(a.total_valor_global); vb = Number(b.total_valor_global); break
-        case 'desembolsado': va = Number(a.total_desembolsado); vb = Number(b.total_desembolsado); break
-        case 'saldo': va = Number(a.total_saldo); vb = Number(b.total_saldo); break
+        case 'local': va = `${a.municipio ?? ''} ${a.uf ?? ''}`; vb = `${b.municipio ?? ''} ${b.uf ?? ''}`; break
         case 'execucao': va = Number(a.pct_execucao_ponderado ?? -1); vb = Number(b.pct_execucao_ponderado ?? -1); break
-        case 'vigencia': va = a.data_fim_vigencia_mais_proxima ?? ''; vb = b.data_fim_vigencia_mais_proxima ?? ''; break
-        case 'alerta': va = a.tem_alerta ? 1 : 0; vb = b.tem_alerta ? 1 : 0; break
-        case 'propostas': va = a.total_propostas_db; vb = b.total_propostas_db; break
-        case 'contato': va = a.contact_telefone ?? ''; vb = b.contact_telefone ?? ''; break
+        case 'status': va = a.crm_status; vb = b.crm_status; break
         case 'vendedor': va = (a.vendedor_nome ?? '').toLowerCase(); vb = (b.vendedor_nome ?? '').toLowerCase(); break
       }
       if (va == null && vb == null) return 0
@@ -276,6 +291,14 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
         >
           <option value="">UF</option>
           {UF_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+          className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
+        >
+          <option value="">Todos Status</option>
+          {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
           <input
@@ -355,146 +378,167 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                {[
-                  { key: 'cnpj', label: 'CNPJ', sortable: true },
-                  { key: 'nome', label: 'Nome', sortable: true },
-                  ...(isGestor ? [{ key: 'vendedor', label: 'Vendedor', sortable: true }] : []),
-                  { key: 'uf', label: 'UF', sortable: true },
-                  { key: 'valor_convenio', label: 'Valor Convenio', sortable: true },
-                  { key: 'fomentos', label: 'Fomentos', sortable: true },
-                  { key: 'desembolsado', label: 'Desembolsado', sortable: true },
-                  { key: 'saldo', label: 'Saldo em Conta', sortable: true },
-                  { key: 'execucao', label: '% Execucao', sortable: true },
-                  { key: 'vigencia', label: 'Vigencia', sortable: true },
-                   { key: 'propostas', label: 'Propostas', sortable: true },
-                   { key: 'alerta', label: 'Alerta', sortable: true },
-                   { key: 'contato', label: 'Contato', sortable: true },
-                   { key: 'status', label: 'Status', sortable: false },
-                   { key: 'tags', label: 'Tags', sortable: false },
-                 ].map(({ key, label, sortable }) => (
-                  <th
-                    key={key}
-                    onClick={sortable ? () => toggleSort(key) : undefined}
-                    className={`px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider select-none whitespace-nowrap ${sortable ? 'cursor-pointer hover:text-gray-700' : ''}`}
-                  >
-                    {label}{sortable && <SortIcon col={key} />}
+                <th onClick={() => toggleSort('nome')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                  Instituição<SortIcon col="nome" />
+                </th>
+                <th onClick={() => toggleSort('valor')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                  Valor<SortIcon col="valor" />
+                </th>
+                <th onClick={() => toggleSort('fomentos')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                  Fomentos<SortIcon col="fomentos" />
+                </th>
+                <th onClick={() => toggleSort('local')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                  Local<SortIcon col="local" />
+                </th>
+                <th className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                  Contato
+                </th>
+                <th onClick={() => toggleSort('execucao')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                  % Execução<SortIcon col="execucao" />
+                </th>
+                <th onClick={() => toggleSort('status')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                  Status<SortIcon col="status" />
+                </th>
+                {isGestor && (
+                  <th onClick={() => toggleSort('vendedor')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                    Vendedor<SortIcon col="vendedor" />
                   </th>
-                ))}
+                )}
               </tr>
             </thead>
             <tbody>
               {sortedRows.map(row => {
-                const crmStatus = row.crm_status || 'Não Contatado'
+                const hasContact = row.contact_telefone || row.contact_email
+                const pct = row.pct_execucao_ponderado != null ? Number(row.pct_execucao_ponderado) : null
 
                 return (
-                <tr
-                   key={row.cnpj}
-                   onClick={() => setSelectedCnpj(row.cnpj)}
-                   className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
-                     row.tem_alerta ? 'border-l-4 border-amber-400 bg-amber-50/30' : ''
-                   }`}
-                 >
-                   <td className="px-3 py-2.5 font-mono text-xs text-gray-400 whitespace-nowrap">{formatCNPJ(row.cnpj)}</td>
-                   <td className="px-3 py-2.5 text-sm text-gray-900 max-w-[300px]">
-                     <span className="block leading-snug whitespace-normal break-words">{row.nome_proponente || '-'}</span>
-                   </td>
-                  {isGestor && (
-                    <td className="px-3 py-2.5 text-sm text-gray-600 whitespace-nowrap">{row.vendedor_nome || <span className="text-gray-300">Sem dono</span>}</td>
-                  )}
-                  <td className="px-3 py-2.5 text-sm text-gray-500 uppercase">{row.uf || '-'}</td>
-                  <td className="px-3 py-2.5 text-sm font-bold text-gray-900">{formatCompactCurrency(row.total_valor_global)}</td>
-                  <td className="px-3 py-2.5 font-bold text-gray-900">{row.total_projetos}</td>
-                  <td className="px-3 py-2.5 text-sm text-gray-700">{formatCompactCurrency(row.total_desembolsado)}</td>
-                  <td className="px-3 py-2.5 text-[#0072F7] font-bold text-sm">{formatCompactCurrency(row.total_saldo)}</td>
-                  <td className="px-3 py-2.5 text-sm text-gray-700">{row.pct_execucao_ponderado != null ? `${Number(row.pct_execucao_ponderado).toFixed(1)}%` : '--'}</td>
-                  <td className="px-3 py-2.5 text-sm text-gray-500">{formatDate(row.data_fim_vigencia_mais_proxima)}</td>
-                  <td className="px-3 py-2.5 text-center">
-                    {row.total_propostas_db > 0 ? (
-                      <span
-                        className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-bold ${
-                          row.total_propostas_db >= 6 ? 'bg-red-50 text-red-700 border border-red-200' :
-                          row.total_propostas_db >= 3 ? 'bg-orange-50 text-orange-700 border border-orange-200' :
-                          'bg-gray-50 text-gray-600 border border-gray-200'
-                        }`}
-                        title={`${row.total_propostas_db} proposta(s) ja executadas — quanto mais, menor a prioridade`}
-                      >
-                        {row.total_propostas_db}
-                      </span>
-                    ) : (
-                      <span className="text-gray-300">-</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    {row.tem_alerta && (
-                      <span
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 cursor-help"
-                        title={`${row.qtd_alertas} de ${row.total_projetos} convenio(s) com valor desembolsado = R$ 0,00. O recurso foi aprovado mas nunca foi transferido.`}
-                      >
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-                        {row.qtd_alertas}/{row.total_projetos} sem desembolso
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5 max-w-[200px]">
-                    {row.contact_telefone || row.contact_email ? (
-                      <div className="space-y-0.5">
-                        {row.contact_telefone && (
-                          <div className="flex items-center text-xs text-gray-600 truncate">
-                            {row.contact_telefone_status === 'valido' && (
-                              <span className="w-2 h-2 rounded-full bg-green-500 inline-block mr-1 flex-shrink-0" title="Telefone valido" />
-                            )}
-                            {row.contact_telefone_status === 'invalido' && (
-                              <span className="w-2 h-2 rounded-full bg-red-500 inline-block mr-1 flex-shrink-0" title="Telefone invalido" />
-                            )}
-                            {row.contact_telefone_status === 'nao_atende' && (
-                              <span className="w-2 h-2 rounded-full bg-amber-500 inline-block mr-1 flex-shrink-0" title="Nao atende" />
-                            )}
-                            {row.contact_telefone}
-                          </div>
-                        )}
-                        {row.contact_email && (
-                          <div className="text-xs text-gray-400 truncate">{row.contact_email}</div>
-                        )}
+                  <tr
+                    key={row.cnpj}
+                    onClick={() => setSelectedCnpj(row.cnpj)}
+                    className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors ${
+                      !hasContact ? 'bg-red-50/30 border-l-2 border-l-red-300' :
+                      row.tem_alerta ? 'border-l-2 border-l-amber-400' : ''
+                    }`}
+                  >
+                    {/* INSTITUIÇÃO */}
+                    <td className="px-3 py-2.5 max-w-[280px]">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-gray-900 font-medium text-sm leading-tight whitespace-normal break-words">
+                            {row.nome_proponente || '-'}
+                          </span>
+                          <a
+                            href={`/lead/${encodeURIComponent(row.cnpj)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="flex-shrink-0 text-gray-300 hover:text-[#0072F7] transition-colors"
+                            title="Abrir em nova aba"
+                          >
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                          </a>
+                          {row.tem_alerta && (
+                            <span
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-amber-50 text-amber-700 border border-amber-200"
+                              title={`${row.qtd_alertas} convenio(s) sem desembolso`}
+                            >
+                              ⚠ {row.qtd_alertas}
+                            </span>
+                          )}
+                        </div>
+                        <span className="font-mono text-[11px] text-gray-400 mt-0.5 block">{formatCNPJ(row.cnpj)}</span>
                       </div>
-                    ) : (
-                      <span className="text-xs text-red-500/70">Sem contato</span>
+                    </td>
+
+                    {/* VALOR */}
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <span className="text-sigma-neon font-semibold text-sm">
+                        {formatCompactCurrency(Number(row.total_valor_global))}
+                      </span>
+                    </td>
+
+                    {/* FOMENTOS */}
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <div>
+                        <span className="font-bold text-gray-900 text-sm">{row.total_projetos}</span>
+                        <div className="flex flex-wrap gap-0.5 mt-0.5">
+                          {row.tag_autossuficiente && <span className="text-[9px] bg-rose-50 text-rose-600 px-1 py-0.5 rounded border border-rose-200">Auto</span>}
+                          {row.tag_iniciante && <span className="text-[9px] bg-sky-50 text-sky-600 px-1 py-0.5 rounded border border-sky-200">Inic</span>}
+                          {row.tag_desembolso && <span className="text-[9px] bg-emerald-50 text-emerald-600 px-1 py-0.5 rounded border border-emerald-200">Desemb</span>}
+                          {row.tag_lobby && <span className="text-[9px] bg-violet-50 text-violet-600 px-1 py-0.5 rounded border border-violet-200">Lobby</span>}
+                          {row.tag_rendimento && <span className="text-[9px] bg-teal-50 text-teal-600 px-1 py-0.5 rounded border border-teal-200">Rend</span>}
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* LOCAL */}
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <span className="text-gray-600 text-xs">
+                        {row.municipio && row.uf ? `${row.municipio}, ${row.uf}` : row.uf || row.municipio || '-'}
+                      </span>
+                    </td>
+
+                    {/* CONTATO */}
+                    <td className="px-3 py-2.5 max-w-[200px]">
+                      {hasContact ? (
+                        <div className="space-y-0.5">
+                          {row.contact_telefone && (
+                            <div className="flex items-center text-xs text-gray-600 truncate">
+                              {row.contact_telefone_status === 'valido' && (
+                                <span className="w-2 h-2 rounded-full bg-green-500 inline-block mr-1 flex-shrink-0" />
+                              )}
+                              {row.contact_telefone_status === 'invalido' && (
+                                <span className="w-2 h-2 rounded-full bg-red-500 inline-block mr-1 flex-shrink-0" />
+                              )}
+                              {row.contact_telefone_status === 'nao_atende' && (
+                                <span className="w-2 h-2 rounded-full bg-amber-500 inline-block mr-1 flex-shrink-0" />
+                              )}
+                              {row.contact_telefone}
+                            </div>
+                          )}
+                          {row.contact_email && (
+                            <div className="text-xs text-gray-400 truncate">{row.contact_email}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-red-500/70">Sem contato</span>
+                      )}
+                    </td>
+
+                    {/* % EXECUÇÃO */}
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      {pct != null ? (
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                          pct >= 80 ? 'bg-green-100 text-green-700' :
+                          pct >= 50 ? 'bg-amber-100 text-amber-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {pct.toFixed(1)}%
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">--</span>
+                      )}
+                    </td>
+
+                    {/* STATUS */}
+                    <td className="px-3 py-2.5">
+                      <select
+                        value={row.crm_status || 'Não Contatado'}
+                        onClick={e => e.stopPropagation()}
+                        onChange={e => { void updateStatus(row.cnpj, e.target.value) }}
+                        className={`text-xs font-medium rounded-full px-3 py-1 border-0 cursor-pointer ${STATUS_COLORS[row.crm_status] || STATUS_COLORS['Não Contatado']}`}
+                      >
+                        {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </td>
+
+                    {/* VENDEDOR */}
+                    {isGestor && (
+                      <td className="px-3 py-2.5">
+                        <span className="text-xs text-gray-500">{row.vendedor_nome || <span className="text-gray-300">Sem dono</span>}</span>
+                      </td>
                     )}
-                  </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
-                    <span className={`inline-flex items-center ${STATUS_COLORS[crmStatus] || STATUS_COLORS['Não Contatado']} text-xs font-medium rounded-full px-3 py-1`}>
-                      {crmStatus}
-                    </span>
-                  </td>
-                   <td className="px-3 py-2.5">
-                     <div className="flex flex-wrap gap-1">
-                       {row.tag_autossuficiente && (
-                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200" title="5 ou mais propostas executadas">
-                          Autossuficiente
-                        </span>
-                      )}
-                      {row.tag_iniciante && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-50 text-sky-700 border border-sky-200" title="Menos de 5 propostas executadas">
-                          Iniciante
-                        </span>
-                      )}
-                      {row.tag_desembolso && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200" title="Projeto com menos de 100 dias de execucao">
-                          Desembolso
-                        </span>
-                      )}
-                      {row.tag_lobby && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-violet-50 text-violet-700 border border-violet-200" title="Projeto com +100 dias de execucao e desembolso zero">
-                          Lobby
-                        </span>
-                      )}
-                      {row.tag_rendimento && (
-                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-teal-50 text-teal-700 border border-teal-200" title="Rendimento acima de R$ 5 mil com saldo compativel e ainda nao consumido no convenio">
-                          Rendimento
-                        </span>
-                       )}
-                     </div>
-                   </td>
-                 </tr>
+                  </tr>
                 )
               })}
             </tbody>
@@ -505,8 +549,8 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
       {/* Row count */}
       {!showBlockingLoad && rows.length > 0 && (
         <div className="text-sm text-gray-500">
-          {activeTags.size > 0
-            ? `${sortedRows.length} de ${rows.length} CNPJs (filtrado por tags)`
+          {activeTags.size > 0 || statusFilter
+            ? `${sortedRows.length} de ${rows.length} CNPJs`
             : `${rows.length} CNPJs (${rows.reduce((s, r) => s + r.total_projetos, 0)} fomentos)`
           }
         </div>
