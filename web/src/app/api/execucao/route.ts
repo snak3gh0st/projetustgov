@@ -22,7 +22,9 @@ interface ExecucaoAggRow {
   dias_ate_vencimento_min: number | null
   dias_em_execucao_max: number | null
   contact_telefone: string | null
+  contact_email: string | null
   contact_nome: string | null
+  contact_telefone_status: string | null
   total_propostas_db: number
   vendedor_nome: string | null
   tag_autossuficiente: boolean
@@ -126,10 +128,18 @@ export async function GET(request: NextRequest) {
          WHERE lc.lead_cnpj = pe.cnpj
          ORDER BY lc.principal DESC, lc.id ASC LIMIT 1
         )                                                        AS contact_telefone,
+        (SELECT lc.email FROM lead_contacts lc
+         WHERE lc.lead_cnpj = pe.cnpj
+         ORDER BY lc.principal DESC, lc.id ASC LIMIT 1
+        )                                                        AS contact_email,
         (SELECT lc.nome_pessoa FROM lead_contacts lc
          WHERE lc.lead_cnpj = pe.cnpj
          ORDER BY lc.principal DESC, lc.id ASC LIMIT 1
         )                                                        AS contact_nome,
+        (SELECT lc.telefone_status FROM lead_contacts lc
+         WHERE lc.lead_cnpj = pe.cnpj
+         ORDER BY lc.principal DESC, lc.id ASC LIMIT 1
+        )                                                        AS contact_telefone_status,
         COALESCE((
           SELECT COUNT(*)::INT FROM propostas p
           WHERE p.proponente_cnpj = pe.cnpj

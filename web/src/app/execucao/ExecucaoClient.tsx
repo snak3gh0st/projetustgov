@@ -23,7 +23,9 @@ interface ExecucaoAggRow {
   dias_ate_vencimento_min: number | null
   dias_em_execucao_max: number | null
   contact_telefone: string | null
+  contact_email: string | null
   contact_nome: string | null
+  contact_telefone_status: string | null
   total_propostas_db: number
   vendedor_nome: string | null
   tag_autossuficiente: boolean
@@ -357,24 +359,29 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 max-w-[180px]">
-                    {row.contact_telefone ? (
-                      <div>
-                        <a
-                          href={`https://wa.me/55${row.contact_telefone.replace(/\D/g, '')}`}
-                          target="_blank"
-                          rel="noopener"
-                          onClick={e => e.stopPropagation()}
-                          className="text-xs text-green-600 hover:text-green-700 hover:underline"
-                        >
-                          {row.contact_telefone}
-                        </a>
-                        {row.contact_nome && (
-                          <span className="block text-[10px] text-gray-400 truncate">{row.contact_nome}</span>
+                  <td className="px-3 py-2.5 max-w-[200px]">
+                    {row.contact_telefone || row.contact_email ? (
+                      <div className="space-y-0.5">
+                        {row.contact_telefone && (
+                          <div className="flex items-center text-xs text-gray-600 truncate">
+                            {row.contact_telefone_status === 'valido' && (
+                              <span className="w-2 h-2 rounded-full bg-green-500 inline-block mr-1 flex-shrink-0" title="Telefone valido" />
+                            )}
+                            {row.contact_telefone_status === 'invalido' && (
+                              <span className="w-2 h-2 rounded-full bg-red-500 inline-block mr-1 flex-shrink-0" title="Telefone invalido" />
+                            )}
+                            {row.contact_telefone_status === 'nao_atende' && (
+                              <span className="w-2 h-2 rounded-full bg-amber-500 inline-block mr-1 flex-shrink-0" title="Nao atende" />
+                            )}
+                            {row.contact_telefone}
+                          </div>
+                        )}
+                        {row.contact_email && (
+                          <div className="text-xs text-gray-400 truncate">{row.contact_email}</div>
                         )}
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-300">-</span>
+                      <span className="text-xs text-red-500/70">Sem contato</span>
                     )}
                   </td>
                   <td className="px-3 py-2.5">
