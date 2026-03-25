@@ -2,15 +2,13 @@
 
 import { useState, useEffect } from 'react'
 
-const NEWS_VERSION = 'v4.2'
+const NEWS_VERSION = 'v4.3'
 const NEWS_ITEMS = [
-  'Tags de classificacao: Autossuficiente, Iniciante, Desembolso, Lobby, Rendimento',
-  'Filtros por tag na aba Execucao — KPIs atualizam em tempo real',
-  'Valor do Convenio na tabela e no detalhe do slide-over',
-  'Links diretos para Convenio e Proposta no TransfereGov',
-  'Contatos automaticos via API Brasil ao abrir o detalhe',
-  'Nova aba "Em Execucao" na pagina de Leads para vendedores',
-  'Enriquecimento automatico de contatos no sync diario',
+  'Execucao: novo layout igual ao de Aprovacao — mais limpo e compacto',
+  'Execucao: status agora interativo, muda diretamente na tabela',
+  'Execucao: filtro por status adicionado na barra de filtros',
+  'Performance: carregamento drasticamente mais rapido (correcao de query critica)',
+  'Pipeline Execucao no dashboard voltou a funcionar corretamente',
 ]
 const STORAGE_KEY = `projetus-news-dismissed-${NEWS_VERSION}`
 
