@@ -468,7 +468,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                    <td className="px-3 py-2.5">
                      <div className="flex flex-wrap gap-1">
                        {row.tag_autossuficiente && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200" title="Mais de 5 propostas executadas">
+                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200" title="5 ou mais propostas executadas">
                           Autossuficiente
                         </span>
                       )}
@@ -488,7 +488,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                         </span>
                       )}
                       {row.tag_rendimento && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-teal-50 text-teal-700 border border-teal-200" title="Rendimento bancario significativo">
+                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-teal-50 text-teal-700 border border-teal-200" title="Rendimento acima de R$ 5 mil com saldo compativel e ainda nao consumido no convenio">
                           Rendimento
                         </span>
                        )}
