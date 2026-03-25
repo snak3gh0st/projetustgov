@@ -126,26 +126,28 @@ export async function GET(request: NextRequest) {
         )                                                        AS dias_em_execucao_max,
         COALESCE(
           (SELECT lc.telefone FROM lead_contacts lc
-           WHERE lc.lead_cnpj = pe.cnpj
+           WHERE REGEXP_REPLACE(lc.lead_cnpj, '[^0-9]', '', 'g') = REGEXP_REPLACE(pe.cnpj, '[^0-9]', '', 'g')
            ORDER BY lc.principal DESC, lc.created_at ASC LIMIT 1),
           (SELECT vp.telefone FROM vendedor_projetos vp
-           WHERE vp.cnpj = pe.cnpj AND vp.telefone IS NOT NULL AND vp.telefone != ''
+           WHERE REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = REGEXP_REPLACE(pe.cnpj, '[^0-9]', '', 'g')
+             AND vp.telefone IS NOT NULL AND vp.telefone != ''
            LIMIT 1)
         )                                                        AS contact_telefone,
         COALESCE(
           (SELECT lc.email FROM lead_contacts lc
-           WHERE lc.lead_cnpj = pe.cnpj
+           WHERE REGEXP_REPLACE(lc.lead_cnpj, '[^0-9]', '', 'g') = REGEXP_REPLACE(pe.cnpj, '[^0-9]', '', 'g')
            ORDER BY lc.principal DESC, lc.created_at ASC LIMIT 1),
           (SELECT vp.email FROM vendedor_projetos vp
-           WHERE vp.cnpj = pe.cnpj AND vp.email IS NOT NULL AND vp.email != ''
+           WHERE REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = REGEXP_REPLACE(pe.cnpj, '[^0-9]', '', 'g')
+             AND vp.email IS NOT NULL AND vp.email != ''
            LIMIT 1)
         )                                                        AS contact_email,
         (SELECT lc.nome_pessoa FROM lead_contacts lc
-         WHERE lc.lead_cnpj = pe.cnpj
+         WHERE REGEXP_REPLACE(lc.lead_cnpj, '[^0-9]', '', 'g') = REGEXP_REPLACE(pe.cnpj, '[^0-9]', '', 'g')
          ORDER BY lc.principal DESC, lc.created_at ASC LIMIT 1
         )                                                        AS contact_nome,
         (SELECT lc.telefone_status FROM lead_contacts lc
-         WHERE lc.lead_cnpj = pe.cnpj
+         WHERE REGEXP_REPLACE(lc.lead_cnpj, '[^0-9]', '', 'g') = REGEXP_REPLACE(pe.cnpj, '[^0-9]', '', 'g')
          ORDER BY lc.principal DESC, lc.created_at ASC LIMIT 1
         )                                                        AS contact_telefone_status,
         COALESCE((
