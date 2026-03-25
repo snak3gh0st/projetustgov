@@ -42,7 +42,7 @@ function NavIcon({ name, className }: { name: string; className?: string }) {
 
 const BASE_NAV_ITEMS = [
   { href: '/', label: 'Pipeline', icon: 'pipeline' },
-  { href: '/leads', label: 'Leads', icon: 'leads' },
+  { href: '/leads', label: 'Leads em Aprovacao', icon: 'leads' },
   { href: '/comissoes', label: 'Comissoes', icon: 'comissoes' },
   { href: '/bi', label: 'BI Analytics', icon: 'bi' },
   { href: '/monitorar', label: 'Meus Monitorados', icon: 'monitorar' },
@@ -54,7 +54,7 @@ export default function Sidebar({ user }: SidebarProps) {
   const navItems = user.role === 'gestor'
     ? [
         ...BASE_NAV_ITEMS,
-        { href: '/execucao', label: 'Projetos em Execucao', icon: 'execucao' },
+        { href: '/execucao', label: 'Leads em Execucao', icon: 'execucao' },
         { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
         { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
         { href: '/cadastro-vendedor', label: 'Usuarios', icon: 'vendedores' },
@@ -62,7 +62,7 @@ export default function Sidebar({ user }: SidebarProps) {
     : user.role === 'coordenador'
     ? [
         ...BASE_NAV_ITEMS,
-        { href: '/execucao', label: 'Projetos em Execucao', icon: 'execucao' },
+        { href: '/execucao', label: 'Leads em Execucao', icon: 'execucao' },
         { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
         { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
       ]
@@ -70,7 +70,7 @@ export default function Sidebar({ user }: SidebarProps) {
     ? BASE_NAV_ITEMS.filter((item) => item.href !== '/monitorar')
     : [
         ...BASE_NAV_ITEMS,
-        { href: '/execucao', label: 'Projetos em Execucao', icon: 'execucao' },
+        { href: '/execucao', label: 'Leads em Execucao', icon: 'execucao' },
       ]
 
   return (

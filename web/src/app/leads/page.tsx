@@ -56,7 +56,6 @@ export default function LeadsPage() {
   } | null>(null)
   const [expandedCnpjs, setExpandedCnpjs] = useState<Set<string>>(new Set())
   const [clientFilter, setClientFilter] = useState('')
-  const [emExecucaoFilter, setEmExecucaoFilter] = useState(false)
   const [sortCol, setSortCol] = useState('')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const scrollPositionRef = useRef<number>(0)
@@ -102,7 +101,6 @@ export default function LeadsPage() {
     if (search) params.set('search', search)
     if (statusFilter) params.set('status_contato', statusFilter)
     if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
-    if (emExecucaoFilter) params.set('em_execucao', 'true')
     params.set('limit', '10000')
 
     try {
@@ -114,7 +112,7 @@ export default function LeadsPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, statusFilter, vendedorFilter, emExecucaoFilter, sessionUser])
+  }, [search, statusFilter, vendedorFilter, sessionUser])
 
   useEffect(() => {
     const timer = setTimeout(fetchLeads, 300)
@@ -327,29 +325,6 @@ export default function LeadsPage() {
             ? 'Seus leads atribuídos'
             : 'Todos os projetos dos vendedores'}
         </p>
-      </div>
-
-      <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
-        <button
-          onClick={() => setEmExecucaoFilter(false)}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            !emExecucaoFilter
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Todos
-        </button>
-        <button
-          onClick={() => setEmExecucaoFilter(true)}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            emExecucaoFilter
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Em Execucao
-        </button>
       </div>
 
       <input
