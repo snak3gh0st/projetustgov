@@ -131,17 +131,32 @@ export async function GET(request: NextRequest) {
       contacts AS (
         SELECT DISTINCT ON (REGEXP_REPLACE(lead_cnpj, '[^0-9]', '', 'g'))
           REGEXP_REPLACE(lead_cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
-          nome_pessoa, telefone, email, telefone_status
+          nome_pessoa,
+          NULLIF(TRIM(telefone), '') AS telefone,
+          NULLIF(TRIM(email), '') AS email,
+          telefone_status
         FROM lead_contacts
-        ORDER BY REGEXP_REPLACE(lead_cnpj, '[^0-9]', '', 'g'), principal DESC, created_at ASC
+        WHERE NULLIF(TRIM(telefone), '') IS NOT NULL
+           OR NULLIF(TRIM(email), '') IS NOT NULL
+        ORDER BY
+          REGEXP_REPLACE(lead_cnpj, '[^0-9]', '', 'g'),
+          principal DESC NULLS LAST,
+          (NULLIF(TRIM(telefone), '') IS NOT NULL) DESC,
+          (NULLIF(TRIM(email), '') IS NOT NULL) DESC,
+          created_at ASC
       ),
       vp_contacts AS (
         SELECT DISTINCT ON (REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g'))
           REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
-          telefone, email
+          NULLIF(TRIM(telefone), '') AS telefone,
+          NULLIF(TRIM(email), '') AS email
         FROM vendedor_projetos
-        WHERE telefone IS NOT NULL AND telefone != ''
-        ORDER BY REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g')
+        WHERE NULLIF(TRIM(telefone), '') IS NOT NULL
+           OR NULLIF(TRIM(email), '') IS NOT NULL
+        ORDER BY
+          REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g'),
+          (NULLIF(TRIM(telefone), '') IS NOT NULL) DESC,
+          (NULLIF(TRIM(email), '') IS NOT NULL) DESC
       ),
       proposta_counts AS (
         SELECT proponente_cnpj AS cnpj, COUNT(*)::INT AS cnt
