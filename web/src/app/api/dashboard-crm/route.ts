@@ -4,6 +4,40 @@ import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
 
+const EXECUCAO_PIPELINE_STATUSES = [
+  'Não Contatado',
+  'Ainda Não',
+  'Retorno',
+  'Quente',
+  'Muito Quente',
+  'Proposta',
+  'Aguardando Closer',
+  'Telefone Invalido',
+  'Fechado',
+] as const
+
+const CRM_STATUS_NORMALIZED_SQL = `
+  CASE
+    WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 'Não Contatado'
+    ELSE COALESCE(vp.status_contato, 'Não Contatado')
+  END
+`
+
+const CRM_STATUS_PRIORITY_SQL = `
+  CASE
+    WHEN ${CRM_STATUS_NORMALIZED_SQL} = 'Fechado' THEN 1
+    WHEN ${CRM_STATUS_NORMALIZED_SQL} = 'Aguardando Closer' THEN 2
+    WHEN ${CRM_STATUS_NORMALIZED_SQL} = 'Proposta' THEN 3
+    WHEN ${CRM_STATUS_NORMALIZED_SQL} = 'Retorno' THEN 4
+    WHEN ${CRM_STATUS_NORMALIZED_SQL} = 'Ainda Não' THEN 5
+    WHEN ${CRM_STATUS_NORMALIZED_SQL} = 'Quente' THEN 6
+    WHEN ${CRM_STATUS_NORMALIZED_SQL} = 'Muito Quente' THEN 7
+    WHEN ${CRM_STATUS_NORMALIZED_SQL} = 'Telefone Invalido' THEN 8
+    WHEN ${CRM_STATUS_NORMALIZED_SQL} = 'Não Contatado' THEN 10
+    ELSE 9
+  END
+`
+
 export async function GET() {
   try {
     const session = await getApiSession()
@@ -23,7 +57,7 @@ export async function GET() {
     const vendedorParams = isFiltered ? [session.userId] : []
 
     // Run all queries in parallel to avoid sequential connection queuing
-    const [globalRows, vendedorRows, todayRows, recentRows, commissionRows, contactHealthRows, staleLeadsRows] = await Promise.all([
+    const [globalRows, vendedorRows, todayRows, recentRows, commissionRows, contactHealthRows, staleLeadsRows, execucaoPipelineRows] = await Promise.all([
       // 1. Global stats with status breakdown
       query(`
         SELECT
@@ -180,9 +214,49 @@ export async function GET() {
           (SELECT MAX(cn.created_at) FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj) ASC NULLS FIRST
         LIMIT 8
       `, vendedorParams),
+
+      // 8. Separate execution pipeline based only on projetos_execucao CNPJs
+      query(`
+        WITH execucao_cnpjs AS (
+          SELECT DISTINCT pe.cnpj
+          FROM projetos_execucao pe
+          ${isFiltered ? `WHERE EXISTS (
+            SELECT 1
+            FROM vendedor_projetos vp_owner
+            WHERE REGEXP_REPLACE(vp_owner.cnpj, '[^0-9]', '', 'g') = pe.cnpj
+              AND (vp_owner.vendedor_id = $1 OR vp_owner.closer_id = $1)
+          )` : ''}
+        ),
+        execucao_status AS (
+          SELECT
+            ec.cnpj,
+            COALESCE((
+              SELECT ${CRM_STATUS_NORMALIZED_SQL}
+              FROM vendedor_projetos vp
+              WHERE REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = ec.cnpj
+              ${isFiltered ? 'AND (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
+              ORDER BY ${CRM_STATUS_PRIORITY_SQL} ASC, vp.updated_at DESC NULLS LAST
+              LIMIT 1
+            ), 'Não Contatado') AS crm_status
+          FROM execucao_cnpjs ec
+        )
+        SELECT
+          COUNT(*)::int AS total_cnpjs,
+          COUNT(*) FILTER (WHERE crm_status = 'Não Contatado')::int AS status_nao_contatado,
+          COUNT(*) FILTER (WHERE crm_status = 'Ainda Não')::int AS status_ainda_nao,
+          COUNT(*) FILTER (WHERE crm_status = 'Retorno')::int AS status_retorno,
+          COUNT(*) FILTER (WHERE crm_status = 'Quente')::int AS status_quente,
+          COUNT(*) FILTER (WHERE crm_status = 'Muito Quente')::int AS status_muito_quente,
+          COUNT(*) FILTER (WHERE crm_status = 'Proposta')::int AS status_proposta,
+          COUNT(*) FILTER (WHERE crm_status = 'Aguardando Closer')::int AS status_aguardando_closer,
+          COUNT(*) FILTER (WHERE crm_status = 'Telefone Invalido')::int AS status_telefone_invalido,
+          COUNT(*) FILTER (WHERE crm_status = 'Fechado')::int AS status_fechado
+        FROM execucao_status
+      `, vendedorParams),
     ])
 
     const g = globalRows[0] || {}
+    const execucao = execucaoPipelineRows[0] || {}
     const todayByVendedor = new Map<string, { ligacoes: number; propostas: number; fechados: number }>()
     for (const t of todayRows) {
       todayByVendedor.set(t.vendedor_id as string, {
@@ -206,6 +280,20 @@ export async function GET() {
           'Proposta': Number(g.status_proposta) || 0,
           'Aguardando Closer': Number(g.status_aguardando_closer) || 0,
           'Fechado': Number(g.status_fechado) || 0,
+        },
+      },
+      execucao_pipeline: {
+        total_cnpjs: Number(execucao.total_cnpjs) || 0,
+        by_status: {
+          [EXECUCAO_PIPELINE_STATUSES[0]]: Number(execucao.status_nao_contatado) || 0,
+          [EXECUCAO_PIPELINE_STATUSES[1]]: Number(execucao.status_ainda_nao) || 0,
+          [EXECUCAO_PIPELINE_STATUSES[2]]: Number(execucao.status_retorno) || 0,
+          [EXECUCAO_PIPELINE_STATUSES[3]]: Number(execucao.status_quente) || 0,
+          [EXECUCAO_PIPELINE_STATUSES[4]]: Number(execucao.status_muito_quente) || 0,
+          [EXECUCAO_PIPELINE_STATUSES[5]]: Number(execucao.status_proposta) || 0,
+          [EXECUCAO_PIPELINE_STATUSES[6]]: Number(execucao.status_aguardando_closer) || 0,
+          [EXECUCAO_PIPELINE_STATUSES[7]]: Number(execucao.status_telefone_invalido) || 0,
+          [EXECUCAO_PIPELINE_STATUSES[8]]: Number(execucao.status_fechado) || 0,
         },
       },
       vendedores: vendedorRows.map((v: Record<string, unknown>) => {
