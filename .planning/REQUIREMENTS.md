@@ -32,6 +32,7 @@ Requirements for the Projetos em Execucao milestone. Each maps to roadmap phases
 - [x] **AGR-02**: Gestor pode expandir CNPJ para ver propostas individuais com detalhes
 - [x] **AGR-03**: Contatos existentes (telefone/email) sao exibidos via lead_contacts/BrasilAPI
 - [x] **AGR-04**: Slide-over com detalhes completos ao clicar num CNPJ
+- [x] **PIPE-EXEC-01**: Dashboard principal compara Pipeline Aprovação vs Pipeline Execução sem misturar contagens
 
 ### Interface & Acesso
 
@@ -112,16 +113,17 @@ Deferred to future milestone.
 | AGR-02 | Phase 17 | Complete |
 | AGR-03 | Phase 17 | Complete |
 | AGR-04 | Phase 17 | Complete |
+| PIPE-EXEC-01 | Quick 260323 | Complete |
 | UI-01 | Phase 17 | Complete |
 | UI-02 | Phase 17 | Complete |
 | UI-03 | Phase 17 | Complete |
 | UI-04 | Phase 17 | Complete |
 
 **Coverage:**
-- v4.0 requirements: 21 total
-- Mapped to phases: 21
+- v4.0 requirements: 22 total
+- Mapped to phases: 22
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-18*
-*Last updated: 2026-03-18 — traceability mapped after roadmap creation*
+*Last updated: 2026-03-25 — added quick requirement traceability for dashboard execution pipeline split*

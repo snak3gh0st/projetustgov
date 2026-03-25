@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — Projetos em Execucao
 status: completed
-stopped_at: Completed quick task 260322 (rendimento tag eligibility in execucao)
-last_updated: "2026-03-25T19:58:04Z"
-last_activity: 2026-03-25 — Completed quick task 260322: rendimento tag eligibility and 5-proposal boundary in /execucao
+stopped_at: Completed quick task 260323 (pipeline de execucao separado no dashboard)
+last_updated: "2026-03-25T20:18:22Z"
+last_activity: 2026-03-25 — Completed quick task 260323: separate approval vs execution funnels on home dashboard
 progress:
   total_phases: 4
   completed_phases: 4
@@ -72,6 +72,8 @@ Progress (v4.0): [██████████] 100%
 | selectedCnpj stub in ExecucaoClient (Plan 17-01) | State declared but not consumed; void pragma suppresses TS warning; Plan 17-02 wires ExecucaoSlideOver to this state |
 | ClipboardDocumentCheck SVG for execucao sidebar icon (Plan 17-02) | ChartBarIcon already used by pipeline nav entry — distinct icon prevents visual ambiguity |
 | execucao nav entry first after BASE_NAV_ITEMS in gestor/coordenador arrays (Plan 17-02) | Natural grouping of data-view links before admin tools (upload, distribuir, monitoramento) |
+| Keep execucao_pipeline inside /api/dashboard-crm (Quick 260323) | Home compares approval vs execution in one fetch; separate route would add sync drift and extra client plumbing |
+| Execution funnel uses distinct projetos_execucao CNPJs with CRM priority ladder (Quick 260323) | Prevents duplicated convenio counts and keeps execution stage semantics aligned with /api/execucao |
 
 ### Quick Tasks Completed
 
@@ -84,6 +86,7 @@ Progress (v4.0): [██████████] 100%
 | 260320-hgb | BrasilAPI enrichment in execucao-sync + Em Execucao tab on leads page | 2026-03-20 | c4103fd | [260320-hgb-add-brasilapi-enrichment-to-execucao-syn](./quick/260320-hgb-add-brasilapi-enrichment-to-execucao-syn/) |
 | 260321 | Add CRM status column to /execucao from vendedor_projetos | 2026-03-25 | 1ad08b2 | [260321-coluna-de-status-no-lead-execucao-com-os](./quick/260321-coluna-de-status-no-lead-execucao-com-os/) |
 | 260322 | Tighten Rendimento tag eligibility and 5-proposal maturity boundary in /execucao | 2026-03-25 | fd21fa2 | [260322-atualizar-o-vinculo-da-tag-rendimento-pa](./quick/260322-atualizar-o-vinculo-da-tag-rendimento-pa/) |
+| 260323 | Separate Pipeline Aprovação vs Pipeline Execução on home dashboard | 2026-03-25 | 0377b2c | [260323-criar-pipeline-de-execucao-podendo-ficar](./quick/260323-criar-pipeline-de-execucao-podendo-ficar/) |
 
 ### Blockers / Concerns
 
@@ -105,6 +108,6 @@ Progress (v4.0): [██████████] 100%
 
 ## Session Continuity
 
-Last session: 2026-03-25T19:58:04Z
-Stopped at: Completed quick task 260322 (rendimento tag eligibility in execucao)
-Resume file: .planning/quick/260322-atualizar-o-vinculo-da-tag-rendimento-pa/260322-SUMMARY.md
+Last session: 2026-03-25T20:18:22Z
+Stopped at: Completed quick task 260323 (pipeline de execucao separado no dashboard)
+Resume file: .planning/quick/260323-criar-pipeline-de-execucao-podendo-ficar/260323-SUMMARY.md
