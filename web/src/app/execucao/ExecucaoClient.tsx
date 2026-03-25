@@ -319,8 +319,8 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                   }`}
                 >
                   <td className="px-3 py-2.5 font-mono text-xs text-gray-400 whitespace-nowrap">{formatCNPJ(row.cnpj)}</td>
-                  <td className="px-3 py-2.5 text-sm text-gray-900">
-                    <span className="block max-w-[250px] truncate leading-snug" title={row.nome_proponente || ''}>{row.nome_proponente || '-'}</span>
+                  <td className="px-3 py-2.5 text-sm text-gray-900 max-w-[300px]">
+                    <span className="block leading-snug whitespace-normal break-words">{row.nome_proponente || '-'}</span>
                   </td>
                   {isGestor && (
                     <td className="px-3 py-2.5 text-sm text-gray-600 whitespace-nowrap">{row.vendedor_nome || <span className="text-gray-300">Sem dono</span>}</td>
@@ -446,7 +446,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
             tagDesembolso={selectedRow?.tag_desembolso ?? false}
             tagLobby={selectedRow?.tag_lobby ?? false}
             tagRendimento={selectedRow?.tag_rendimento ?? false}
-            onClose={() => setSelectedCnpj(null)}
+            onClose={() => { setSelectedCnpj(null); fetchData() }}
           />
         )
       })()}
