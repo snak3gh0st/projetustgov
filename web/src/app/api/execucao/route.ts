@@ -169,13 +169,13 @@ export async function GET(request: NextRequest) {
         GROUP BY proponente_cnpj
       ),
       vendedor_owners AS (
-        SELECT DISTINCT ON (vp_v.cnpj)
-          vp_v.cnpj, u.nome
+        SELECT DISTINCT ON (REGEXP_REPLACE(vp_v.cnpj, '[^0-9]', '', 'g'))
+          REGEXP_REPLACE(vp_v.cnpj, '[^0-9]', '', 'g') AS cnpj_clean, u.nome
         FROM vendedor_projetos vp_v
         JOIN users u ON u.id = vp_v.vendedor_id
         WHERE vp_v.vendedor_id IS NOT NULL
-        GROUP BY vp_v.cnpj, u.nome, vp_v.vendedor_id
-        ORDER BY vp_v.cnpj, COUNT(*) DESC
+        GROUP BY REGEXP_REPLACE(vp_v.cnpj, '[^0-9]', '', 'g'), u.nome, vp_v.vendedor_id
+        ORDER BY REGEXP_REPLACE(vp_v.cnpj, '[^0-9]', '', 'g'), COUNT(*) DESC
       ),
       crm_statuses AS (
         SELECT DISTINCT ON (REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'))
@@ -225,7 +225,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN contacts ct ON ct.cnpj_clean = a.cnpj
       LEFT JOIN vp_contacts vpc ON vpc.cnpj_clean = a.cnpj
       LEFT JOIN proposta_counts pc ON pc.cnpj = a.cnpj
-      LEFT JOIN vendedor_owners vo ON vo.cnpj = a.cnpj
+      LEFT JOIN vendedor_owners vo ON vo.cnpj_clean = a.cnpj
       ORDER BY a.pct_execucao_ponderado ASC NULLS LAST, a.tem_alerta DESC, a.cnpj
     `, params)
 

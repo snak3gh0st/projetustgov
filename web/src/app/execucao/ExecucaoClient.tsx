@@ -233,7 +233,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
         case 'local': va = `${a.municipio ?? ''} ${a.uf ?? ''}`; vb = `${b.municipio ?? ''} ${b.uf ?? ''}`; break
         case 'desembolsado': va = Number(a.total_desembolsado); vb = Number(b.total_desembolsado); break
         case 'saldo': va = Number(a.total_saldo); vb = Number(b.total_saldo); break
-        case 'execucao': va = Number(a.pct_execucao_ponderado ?? -1); vb = Number(b.pct_execucao_ponderado ?? -1); break
+        case 'execucao': va = a.pct_execucao_ponderado != null ? Number(a.pct_execucao_ponderado) : null; vb = b.pct_execucao_ponderado != null ? Number(b.pct_execucao_ponderado) : null; break
         case 'vigencia': va = a.data_fim_vigencia_mais_proxima ?? ''; vb = b.data_fim_vigencia_mais_proxima ?? ''; break
         case 'propostas': va = a.total_propostas_db; vb = b.total_propostas_db; break
         case 'alerta': va = a.tem_alerta ? 1 : 0; vb = b.tem_alerta ? 1 : 0; break
@@ -256,6 +256,14 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
       {sortCol === col ? (sortDir === 'asc' ? '\u2191' : '\u2193') : '\u2195'}
     </span>
   )
+
+  const PAGE_SIZE = 50
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+
+  // Reset visible count when data or filters change
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [sortedRows.length, sortCol, sortDir])
+
+  const visibleRows = useMemo(() => sortedRows.slice(0, visibleCount), [sortedRows, visibleCount])
 
   const showBlockingLoad = loading && rows.length === 0
   const showBlockingError = error && rows.length === 0
@@ -387,6 +395,11 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                 <th onClick={() => toggleSort('nome')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   Instituição<SortIcon col="nome" />
                 </th>
+                {isGestor && (
+                  <th onClick={() => toggleSort('vendedor')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                    Vendedor<SortIcon col="vendedor" />
+                  </th>
+                )}
                 <th onClick={() => toggleSort('valor')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   Valor<SortIcon col="valor" />
                 </th>
@@ -420,18 +433,13 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                 <th onClick={() => toggleSort('status')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   Status<SortIcon col="status" />
                 </th>
-                {isGestor && (
-                  <th onClick={() => toggleSort('vendedor')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                    Vendedor<SortIcon col="vendedor" />
-                  </th>
-                )}
                 <th className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                   Tags
                 </th>
               </tr>
             </thead>
             <tbody>
-              {sortedRows.map(row => {
+              {visibleRows.map(row => {
                 const hasContact = row.contact_telefone || row.contact_email
                 const pct = row.pct_execucao_ponderado != null ? Number(row.pct_execucao_ponderado) : null
 
@@ -465,6 +473,11 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                         <span className="font-mono text-[11px] text-gray-400 mt-0.5 block">{formatCNPJ(row.cnpj)}</span>
                       </div>
                     </td>
+
+                    {/* VENDEDOR */}
+                    {isGestor && (
+                      <td className="px-3 py-2.5 text-sm text-gray-600 whitespace-nowrap">{row.vendedor_nome || <span className="text-gray-300">Sem dono</span>}</td>
+                    )}
 
                     {/* VALOR */}
                     <td className="px-3 py-2.5 whitespace-nowrap">
@@ -581,13 +594,6 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                       </select>
                     </td>
 
-                    {/* VENDEDOR */}
-                    {isGestor && (
-                      <td className="px-3 py-2.5">
-                        <span className="text-xs text-gray-500">{row.vendedor_nome || <span className="text-gray-300">Sem dono</span>}</span>
-                      </td>
-                    )}
-
                     {/* TAGS */}
                     <td className="px-3 py-2.5">
                       <div className="flex flex-wrap gap-1">
@@ -606,13 +612,23 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
         </div>
       )}
 
-      {/* Row count */}
+      {/* Load more + Row count */}
       {!showBlockingLoad && rows.length > 0 && (
-        <div className="text-sm text-gray-500">
-          {activeTags.size > 0 || statusFilter
-            ? `${sortedRows.length} de ${rows.length} CNPJs`
-            : `${rows.length} CNPJs (${rows.reduce((s, r) => s + r.total_projetos, 0)} fomentos)`
-          }
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-500">
+            {activeTags.size > 0 || statusFilter
+              ? `Mostrando ${visibleRows.length} de ${sortedRows.length} CNPJs (${rows.length} total)`
+              : `Mostrando ${visibleRows.length} de ${rows.length} CNPJs (${rows.reduce((s, r) => s + r.total_projetos, 0)} fomentos)`
+            }
+          </div>
+          {visibleCount < sortedRows.length && (
+            <button
+              onClick={() => setVisibleCount(c => Math.min(c + PAGE_SIZE, sortedRows.length))}
+              className="px-4 py-2 text-sm font-medium text-[#0072F7] bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+            >
+              Carregar mais {Math.min(PAGE_SIZE, sortedRows.length - visibleCount)}
+            </button>
+          )}
         </div>
       )}
 

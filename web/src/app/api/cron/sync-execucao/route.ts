@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server'
 import { syncProjetosExecucao } from '@/lib/execucao-sync'
+import { distributeUnassignedExecucao } from '@/lib/distribute-execucao'
 import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
@@ -24,12 +25,17 @@ export async function GET(request: Request) {
   try {
     console.log('[cron/sync-execucao] Starting daily execucao sync...')
     const stats = await syncProjetosExecucao()
-
     console.log('[cron/sync-execucao] Sync complete:', JSON.stringify(stats))
+
+    // Auto-distribute unassigned CNPJs among vendedores (round-robin)
+    console.log('[cron/sync-execucao] Starting auto-distribute...')
+    const distResult = await distributeUnassignedExecucao()
+    console.log(`[cron/sync-execucao] Distributed ${distResult.distributed} CNPJs:`, distResult.vendedores.map(v => `${v.nome}: +${v.assigned}`).join(', '))
 
     return NextResponse.json({
       success: true,
       ...stats,
+      distribution: distResult,
     })
   } catch (error) {
     console.error('[cron/sync-execucao] Sync failed:', error)
