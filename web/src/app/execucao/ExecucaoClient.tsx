@@ -234,6 +234,10 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
         case 'desembolsado': va = Number(a.total_desembolsado); vb = Number(b.total_desembolsado); break
         case 'saldo': va = Number(a.total_saldo); vb = Number(b.total_saldo); break
         case 'execucao': va = Number(a.pct_execucao_ponderado ?? -1); vb = Number(b.pct_execucao_ponderado ?? -1); break
+        case 'vigencia': va = a.data_fim_vigencia_mais_proxima ?? ''; vb = b.data_fim_vigencia_mais_proxima ?? ''; break
+        case 'propostas': va = a.total_propostas_db; vb = b.total_propostas_db; break
+        case 'alerta': va = a.tem_alerta ? 1 : 0; vb = b.tem_alerta ? 1 : 0; break
+        case 'contato': va = a.contact_telefone ?? ''; vb = b.contact_telefone ?? ''; break
         case 'status': va = a.crm_status; vb = b.crm_status; break
         case 'vendedor': va = (a.vendedor_nome ?? '').toLowerCase(); vb = (b.vendedor_nome ?? '').toLowerCase(); break
       }
@@ -404,6 +408,15 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                 <th onClick={() => toggleSort('execucao')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   % Execução<SortIcon col="execucao" />
                 </th>
+                <th onClick={() => toggleSort('vigencia')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                  Vigência<SortIcon col="vigencia" />
+                </th>
+                <th onClick={() => toggleSort('propostas')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                  Propostas<SortIcon col="propostas" />
+                </th>
+                <th onClick={() => toggleSort('alerta')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                  Alerta<SortIcon col="alerta" />
+                </th>
                 <th onClick={() => toggleSort('status')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   Status<SortIcon col="status" />
                 </th>
@@ -412,6 +425,9 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                     Vendedor<SortIcon col="vendedor" />
                   </th>
                 )}
+                <th className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                  Tags
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -445,14 +461,6 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                           >
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
                           </a>
-                          {row.tem_alerta && (
-                            <span
-                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-amber-50 text-amber-700 border border-amber-200"
-                              title={`${row.qtd_alertas} convenio(s) sem desembolso`}
-                            >
-                              ⚠ {row.qtd_alertas}
-                            </span>
-                          )}
                         </div>
                         <span className="font-mono text-[11px] text-gray-400 mt-0.5 block">{formatCNPJ(row.cnpj)}</span>
                       </div>
@@ -466,18 +474,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                     </td>
 
                     {/* FOMENTOS */}
-                    <td className="px-3 py-2.5 whitespace-nowrap">
-                      <div>
-                        <span className="font-bold text-gray-900 text-sm">{row.total_projetos}</span>
-                        <div className="flex flex-wrap gap-0.5 mt-0.5">
-                          {row.tag_autossuficiente && <span className="text-[9px] bg-rose-50 text-rose-600 px-1 py-0.5 rounded border border-rose-200">Auto</span>}
-                          {row.tag_iniciante && <span className="text-[9px] bg-sky-50 text-sky-600 px-1 py-0.5 rounded border border-sky-200">Inic</span>}
-                          {row.tag_desembolso && <span className="text-[9px] bg-emerald-50 text-emerald-600 px-1 py-0.5 rounded border border-emerald-200">Desemb</span>}
-                          {row.tag_lobby && <span className="text-[9px] bg-violet-50 text-violet-600 px-1 py-0.5 rounded border border-violet-200">Lobby</span>}
-                          {row.tag_rendimento && <span className="text-[9px] bg-teal-50 text-teal-600 px-1 py-0.5 rounded border border-teal-200">Rend</span>}
-                        </div>
-                      </div>
-                    </td>
+                    <td className="px-3 py-2.5 font-bold text-gray-900">{row.total_projetos}</td>
 
                     {/* LOCAL */}
                     <td className="px-3 py-2.5 whitespace-nowrap">
@@ -538,6 +535,40 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                       )}
                     </td>
 
+                    {/* VIGÊNCIA */}
+                    <td className="px-3 py-2.5 text-sm text-gray-500 whitespace-nowrap">{formatDate(row.data_fim_vigencia_mais_proxima)}</td>
+
+                    {/* PROPOSTAS */}
+                    <td className="px-3 py-2.5 text-center">
+                      {row.total_propostas_db > 0 ? (
+                        <span
+                          className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-bold ${
+                            row.total_propostas_db >= 6 ? 'bg-red-50 text-red-700 border border-red-200' :
+                            row.total_propostas_db >= 3 ? 'bg-orange-50 text-orange-700 border border-orange-200' :
+                            'bg-gray-50 text-gray-600 border border-gray-200'
+                          }`}
+                          title={`${row.total_propostas_db} proposta(s) ja executadas`}
+                        >
+                          {row.total_propostas_db}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">-</span>
+                      )}
+                    </td>
+
+                    {/* ALERTA */}
+                    <td className="px-3 py-2.5">
+                      {row.tem_alerta && (
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 cursor-help"
+                          title={`${row.qtd_alertas} de ${row.total_projetos} convenio(s) com valor desembolsado = R$ 0,00`}
+                        >
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                          {row.qtd_alertas}/{row.total_projetos}
+                        </span>
+                      )}
+                    </td>
+
                     {/* STATUS */}
                     <td className="px-3 py-2.5">
                       <select
@@ -556,6 +587,17 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                         <span className="text-xs text-gray-500">{row.vendedor_nome || <span className="text-gray-300">Sem dono</span>}</span>
                       </td>
                     )}
+
+                    {/* TAGS */}
+                    <td className="px-3 py-2.5">
+                      <div className="flex flex-wrap gap-1">
+                        {row.tag_autossuficiente && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200">Autossuficiente</span>}
+                        {row.tag_iniciante && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-50 text-sky-700 border border-sky-200">Iniciante</span>}
+                        {row.tag_desembolso && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Desembolso</span>}
+                        {row.tag_lobby && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-violet-50 text-violet-700 border border-violet-200">Lobby</span>}
+                        {row.tag_rendimento && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-teal-50 text-teal-700 border border-teal-200">Rendimento</span>}
+                      </div>
+                    </td>
                   </tr>
                 )
               })}
