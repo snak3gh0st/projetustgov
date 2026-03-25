@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatCNPJ, formatCompactCurrency, formatDate } from '@/lib/format'
 
@@ -27,6 +27,13 @@ interface ExecucaoSlideOverProps {
   tagDesembolso: boolean
   tagLobby: boolean
   tagRendimento: boolean
+  onContactSummaryUpdate?: (payload: {
+    cnpj: string
+    contact_telefone: string | null
+    contact_email: string | null
+    contact_nome: string | null
+    contact_telefone_status: string | null
+  }) => void
   onClose: () => void
 }
 
@@ -75,6 +82,7 @@ export default function ExecucaoSlideOver({
   tagDesembolso,
   tagLobby,
   tagRendimento,
+  onContactSummaryUpdate,
   onClose,
 }: ExecucaoSlideOverProps) {
   const router = useRouter()
@@ -85,9 +93,28 @@ export default function ExecucaoSlideOver({
   const [contactsLoading, setContactsLoading] = useState(false)
   const [crmStatus, setCrmStatus] = useState<string | null>(null)
   const [crmObservacoes, setCrmObservacoes] = useState<string | null>(null)
+  const detailCacheRef = useRef<Record<string, ExecucaoDetailRow[]>>({})
+  const contactsCacheRef = useRef<Record<string, ContactRow[]>>({})
+  const crmCacheRef = useRef<Record<string, { status: string | null; observacoes: string | null }>>({})
 
-  const fetchAndEnrichContacts = useCallback(async (targetCnpj: string) => {
-    setContactsLoading(true)
+  const emitContactSummary = useCallback((targetCnpj: string, list: ContactRow[]) => {
+    if (!onContactSummaryUpdate) return
+    const principal = list.find(c => c.principal && (c.telefone || c.email))
+      || list.find(c => c.telefone || c.email)
+      || null
+
+    onContactSummaryUpdate({
+      cnpj: targetCnpj,
+      contact_telefone: principal?.telefone ?? null,
+      contact_email: principal?.email ?? null,
+      contact_nome: principal?.nome_pessoa ?? null,
+      contact_telefone_status: principal?.telefone_status ?? null,
+    })
+  }, [onContactSummaryUpdate])
+
+  const fetchAndEnrichContacts = useCallback(async (targetCnpj: string, showLoader = true) => {
+    setContactsLoading(showLoader)
+    const cachedContacts = contactsCacheRef.current[targetCnpj]
     try {
       // 1. Fetch existing contacts from DB
       const res = await fetch(`/api/leads/${encodeURIComponent(targetCnpj)}/contacts`)
@@ -95,7 +122,9 @@ export default function ExecucaoSlideOver({
         const data = await res.json()
         const existing: ContactRow[] = Array.isArray(data) ? data : []
         if (existing.length > 0) {
+          contactsCacheRef.current[targetCnpj] = existing
           setContacts(existing)
+          emitContactSummary(targetCnpj, existing)
           return
         }
       }
@@ -139,7 +168,10 @@ export default function ExecucaoSlideOver({
           const res2 = await fetch(`/api/leads/${encodeURIComponent(targetCnpj)}/contacts`)
           if (res2.ok) {
             const data2 = await res2.json()
-            setContacts(Array.isArray(data2) ? data2 : [])
+            const enriched = Array.isArray(data2) ? data2 : []
+            contactsCacheRef.current[targetCnpj] = enriched
+            setContacts(enriched)
+            emitContactSummary(targetCnpj, enriched)
             return
           }
         }
@@ -148,34 +180,48 @@ export default function ExecucaoSlideOver({
       }
 
       setContacts([])
+      contactsCacheRef.current[targetCnpj] = []
+      emitContactSummary(targetCnpj, [])
     } catch {
-      setContacts([])
+      if (cachedContacts === undefined) {
+        setContacts([])
+        contactsCacheRef.current[targetCnpj] = []
+        emitContactSummary(targetCnpj, [])
+      }
     } finally {
       setContactsLoading(false)
     }
-  }, [])
+  }, [emitContactSummary])
 
   useEffect(() => {
     if (!cnpj) return
 
-    // Clear stale data immediately (Pitfall 6 from RESEARCH)
-    setDetailRows([])
-    setDetailLoading(true)
+    const cachedDetails = detailCacheRef.current[cnpj]
+    const cachedContacts = contactsCacheRef.current[cnpj]
+    const cachedCrm = crmCacheRef.current[cnpj]
+    const hasCachedDetails = cachedDetails !== undefined
+    const hasCachedContacts = cachedContacts !== undefined
+    setDetailRows(cachedDetails ?? [])
+    setDetailLoading(!hasCachedDetails)
     setDetailError(false)
-    setContacts([])
-    setCrmStatus(null)
-    setCrmObservacoes(null)
+    setContacts(cachedContacts ?? [])
+    setContactsLoading(!hasCachedContacts)
+    setCrmStatus(cachedCrm?.status ?? null)
+    setCrmObservacoes(cachedCrm?.observacoes ?? null)
 
     // Fetch CRM status + observacoes from vendedor_projetos via leads API
     fetch(`/api/leads?search=${encodeURIComponent(cnpj)}&limit=1`)
       .then(r => r.ok ? r.json() : [])
       .then(data => {
         const rows = Array.isArray(data) ? data : []
-        const match = rows.find((r: { cnpj: string }) => r.cnpj === cnpj)
-        if (match) {
-          setCrmStatus(match.status_contato || null)
-          setCrmObservacoes(match.observacoes || null)
+        const match = rows.find((r: { cnpj: string }) => r.cnpj?.replace(/\D/g, '') === cnpj.replace(/\D/g, ''))
+        const next = {
+          status: match?.status_contato || null,
+          observacoes: match?.observacoes || null,
         }
+        crmCacheRef.current[cnpj] = next
+        setCrmStatus(next.status)
+        setCrmObservacoes(next.observacoes)
       })
       .catch(() => {})
 
@@ -189,11 +235,17 @@ export default function ExecucaoSlideOver({
         if (!r.ok) throw new Error('fetch failed')
         return r.json()
       })
-      .then(data => setDetailRows(Array.isArray(data) ? data : []))
-      .catch(() => setDetailError(true))
+      .then(data => {
+        const nextRows = Array.isArray(data) ? data : []
+        detailCacheRef.current[cnpj] = nextRows
+        setDetailRows(nextRows)
+      })
+      .catch(() => {
+        if (!hasCachedDetails) setDetailError(true)
+      })
       .finally(() => setDetailLoading(false))
 
-    fetchAndEnrichContacts(cnpj)
+    void fetchAndEnrichContacts(cnpj, !hasCachedContacts)
 
     return () => document.removeEventListener('keydown', handler)
   }, [cnpj, onClose, fetchAndEnrichContacts])

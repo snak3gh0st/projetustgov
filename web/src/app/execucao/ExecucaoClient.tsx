@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { formatCNPJ, formatCompactCurrency, formatDate } from '@/lib/format'
 import KPIRow from '@/components/KPIRow'
 import ExecucaoSlideOver from '@/components/ExecucaoSlideOver'
@@ -44,6 +44,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
   const isGestor = userRole === 'gestor' || userRole === 'coordenador'
   const [rows, setRows] = useState<ExecucaoAggRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(false)
   const [lastSynced, setLastSynced] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -53,6 +54,8 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
   const [selectedCnpj, setSelectedCnpj] = useState<string | null>(null)
   const [sortCol, setSortCol] = useState<string>('execucao')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const hasLoadedRef = useRef(false)
+  const fetchAbortRef = useRef<AbortController | null>(null)
 
   const toggleSort = (col: string) => {
     if (sortCol === col) {
@@ -63,30 +66,49 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
     }
   }
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
+  const fetchData = useCallback(async (options?: { background?: boolean }) => {
+    const background = options?.background ?? hasLoadedRef.current
+    fetchAbortRef.current?.abort()
+    const controller = new AbortController()
+    fetchAbortRef.current = controller
+
+    if (background) setRefreshing(true)
+    else setLoading(true)
+
     setError(false)
     const params = new URLSearchParams()
     if (search) params.set('search', search)
     if (uf) params.set('uf', uf)
     if (alertOnly) params.set('alert_only', 'true')
     try {
-      const res = await fetch(`/api/execucao?${params}`)
+      const res = await fetch(`/api/execucao?${params}`, { signal: controller.signal })
       if (!res.ok) throw new Error('fetch failed')
       const data = await res.json()
       setRows(data.rows ?? [])
       setLastSynced(data.last_synced ?? null)
-    } catch {
+      hasLoadedRef.current = true
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
       setError(true)
     } finally {
-      setLoading(false)
+      if (fetchAbortRef.current === controller) {
+        fetchAbortRef.current = null
+      }
+      if (!controller.signal.aborted) {
+        if (background) setRefreshing(false)
+        else setLoading(false)
+      }
     }
   }, [search, uf, alertOnly])
 
   useEffect(() => {
-    const timer = setTimeout(fetchData, 300)
+    const timer = setTimeout(() => { void fetchData() }, 300)
     return () => clearTimeout(timer)
   }, [fetchData])
+
+  useEffect(() => {
+    return () => fetchAbortRef.current?.abort()
+  }, [])
 
   const toggleTag = (tag: string) => {
     setActiveTags(prev => {
@@ -96,6 +118,26 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
       return next
     })
   }
+
+  const handleContactSummaryUpdate = useCallback((payload: {
+    cnpj: string
+    contact_telefone: string | null
+    contact_email: string | null
+    contact_nome: string | null
+    contact_telefone_status: string | null
+  }) => {
+    setRows(prev => prev.map(row =>
+      row.cnpj === payload.cnpj
+        ? {
+            ...row,
+            contact_telefone: payload.contact_telefone,
+            contact_email: payload.contact_email,
+            contact_nome: payload.contact_nome,
+            contact_telefone_status: payload.contact_telefone_status,
+          }
+        : row
+    ))
+  }, [])
 
   const TAG_KEYS: { key: string; field: keyof ExecucaoAggRow; label: string; bg: string; text: string; border: string }[] = [
     { key: 'autossuficiente', field: 'tag_autossuficiente', label: 'Autossuficiente', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
@@ -181,11 +223,21 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
     </span>
   )
 
+  const showBlockingLoad = loading && rows.length === 0
+  const showBlockingError = error && rows.length === 0
+
   return (
     <div className="space-y-6 w-full max-w-[1800px] mx-auto">
       {/* Header */}
       <div>
-        <h1 className="font-heading text-2xl font-bold text-gray-900">Projetos em Execucao</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="font-heading text-2xl font-bold text-gray-900">Projetos em Execucao</h1>
+          {refreshing && (
+            <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-[#0072F7]">
+              Atualizando lista...
+            </span>
+          )}
+        </div>
         <p className="text-sm text-gray-500 mt-1">Convenios ativos por proponente — dados TransferenciaGov</p>
         {lastSynced && (
           <p className="text-xs text-gray-400 mt-1">Dados atualizados em {formatDate(lastSynced)}</p>
@@ -193,7 +245,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
       </div>
 
       {/* KPI Row */}
-      {!loading && !error && <KPIRow items={kpis} />}
+      {!showBlockingLoad && !showBlockingError && <KPIRow items={kpis} />}
 
       {/* Filter bar */}
       <div className="flex flex-wrap gap-3 items-center">
@@ -256,21 +308,28 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
       </div>
 
       {/* Loading state */}
-      {loading && (
+      {showBlockingLoad && (
         <div className="flex items-center justify-center py-20">
           <div className="animate-pulse text-gray-400">Carregando projetos...</div>
         </div>
       )}
 
       {/* Error state */}
-      {error && !loading && (
+      {showBlockingError && (
         <div className="flex items-center justify-center py-20">
           <p className="text-sm text-red-500">Erro ao carregar dados. Verifique sua conexao e tente novamente.</p>
         </div>
       )}
 
+      {/* Non-blocking refresh error */}
+      {error && rows.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          Nao foi possivel atualizar a lista agora. Mantendo os projetos ja carregados.
+        </div>
+      )}
+
       {/* Empty state */}
-      {!loading && !error && rows.length === 0 && (
+      {!showBlockingLoad && !error && rows.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 gap-2">
           <h2 className="text-lg font-medium text-gray-700">Nenhum projeto encontrado</h2>
           <p className="text-sm text-gray-400">Nao foram encontrados projetos em execucao. Verifique os filtros ou aguarde o proximo sync.</p>
@@ -278,7 +337,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
       )}
 
       {/* Table */}
-      {!loading && !error && rows.length > 0 && (
+      {!showBlockingLoad && rows.length > 0 && (
         <div className="overflow-x-auto rounded-xl border border-gray-200">
           <table className="w-full text-sm">
             <thead>
@@ -421,7 +480,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
       )}
 
       {/* Row count */}
-      {!loading && !error && rows.length > 0 && (
+      {!showBlockingLoad && rows.length > 0 && (
         <div className="text-sm text-gray-500">
           {activeTags.size > 0
             ? `${sortedRows.length} de ${rows.length} CNPJs (filtrado por tags)`
@@ -438,7 +497,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
             cnpj={selectedCnpj}
             nomeProponente={selectedRow?.nome_proponente ?? null}
             temAlerta={selectedRow?.tem_alerta ?? false}
-            contactPresent={selectedRow ? !!selectedRow.contact_telefone : false}
+            contactPresent={selectedRow ? !!(selectedRow.contact_telefone || selectedRow.contact_email) : false}
             totalValorGlobal={selectedRow?.total_valor_global ?? null}
             totalPropostas={selectedRow?.total_propostas_db ?? 0}
             tagAutossuficiente={selectedRow?.tag_autossuficiente ?? false}
@@ -446,7 +505,11 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
             tagDesembolso={selectedRow?.tag_desembolso ?? false}
             tagLobby={selectedRow?.tag_lobby ?? false}
             tagRendimento={selectedRow?.tag_rendimento ?? false}
-            onClose={() => { setSelectedCnpj(null); fetchData() }}
+            onContactSummaryUpdate={handleContactSummaryUpdate}
+            onClose={() => {
+              setSelectedCnpj(null)
+              void fetchData({ background: true })
+            }}
           />
         )
       })()}
