@@ -227,18 +227,23 @@ export async function GET() {
               AND (vp_owner.vendedor_id = $1 OR vp_owner.closer_id = $1)
           )` : ''}
         ),
+        vp_statuses AS (
+          SELECT DISTINCT ON (REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'))
+            REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
+            ${CRM_STATUS_NORMALIZED_SQL} AS crm_status
+          FROM vendedor_projetos vp
+          ${isFiltered ? 'WHERE (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
+          ORDER BY
+            REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'),
+            ${CRM_STATUS_PRIORITY_SQL} ASC,
+            vp.updated_at DESC NULLS LAST
+        ),
         execucao_status AS (
           SELECT
             ec.cnpj,
-            COALESCE((
-              SELECT ${CRM_STATUS_NORMALIZED_SQL}
-              FROM vendedor_projetos vp
-              WHERE REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = ec.cnpj
-              ${isFiltered ? 'AND (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
-              ORDER BY ${CRM_STATUS_PRIORITY_SQL} ASC, vp.updated_at DESC NULLS LAST
-              LIMIT 1
-            ), 'Não Contatado') AS crm_status
+            COALESCE(vs.crm_status, 'Não Contatado') AS crm_status
           FROM execucao_cnpjs ec
+          LEFT JOIN vp_statuses vs ON vs.cnpj_clean = ec.cnpj
         )
         SELECT
           COUNT(*)::int AS total_cnpjs,
