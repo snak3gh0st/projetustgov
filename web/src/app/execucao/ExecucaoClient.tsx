@@ -597,6 +597,19 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                     {/* TAGS */}
                     <td className="px-3 py-2.5">
                       <div className="flex flex-wrap gap-1">
+                        {row.crm_status && row.crm_status !== 'Não Contatado' && (
+                          <a
+                            href={`/lead/${encodeURIComponent(row.cnpj)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors cursor-pointer"
+                            title={`Status em Aprovação: ${row.crm_status} — clique para ver detalhes`}
+                          >
+                            <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                            Contatado (Aprovação)
+                          </a>
+                        )}
                         {row.tag_autossuficiente && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200">Autossuficiente</span>}
                         {row.tag_iniciante && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-50 text-sky-700 border border-sky-200">Iniciante</span>}
                         {row.tag_desembolso && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Desembolso</span>}
