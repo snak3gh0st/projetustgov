@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatCNPJ, formatCompactCurrency, formatDate } from '@/lib/format'
+import ContactNotesTimeline from '@/components/ContactNotesTimeline'
 
 interface ContactRow {
   id: number
@@ -27,6 +28,8 @@ interface ExecucaoSlideOverProps {
   tagDesembolso: boolean
   tagLobby: boolean
   tagRendimento: boolean
+  observacoesExecucao?: string | null
+  userRole?: string
   onContactSummaryUpdate?: (payload: {
     cnpj: string
     contact_telefone: string | null
@@ -82,6 +85,8 @@ export default function ExecucaoSlideOver({
   tagDesembolso,
   tagLobby,
   tagRendimento,
+  observacoesExecucao: initialObs,
+  userRole,
   onContactSummaryUpdate,
   onClose,
 }: ExecucaoSlideOverProps) {
@@ -93,6 +98,8 @@ export default function ExecucaoSlideOver({
   const [contactsLoading, setContactsLoading] = useState(false)
   const [crmStatus, setCrmStatus] = useState<string | null>(null)
   const [crmObservacoes, setCrmObservacoes] = useState<string | null>(null)
+  const [obsExecucao, setObsExecucao] = useState(initialObs ?? '')
+  const canModify = userRole !== 'visualizador'
   const detailCacheRef = useRef<Record<string, ExecucaoDetailRow[]>>({})
   const contactsCacheRef = useRef<Record<string, ContactRow[]>>({})
   const crmCacheRef = useRef<Record<string, { status: string | null; observacoes: string | null }>>({})
@@ -208,6 +215,7 @@ export default function ExecucaoSlideOver({
     setContactsLoading(!hasCachedContacts)
     setCrmStatus(cachedCrm?.status ?? null)
     setCrmObservacoes(cachedCrm?.observacoes ?? null)
+    setObsExecucao(initialObs ?? '')
 
     // Fetch CRM status + observacoes from vendedor_projetos via leads API
     fetch(`/api/leads?search=${encodeURIComponent(cnpj)}&limit=1`)
@@ -395,10 +403,35 @@ export default function ExecucaoSlideOver({
             )}
           </div>
 
-          {/* CRM Status + Observações */}
+          {/* Observações Execução — editable */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Observações</h3>
+            {canModify ? (
+              <textarea
+                rows={3}
+                value={obsExecucao}
+                onChange={e => setObsExecucao(e.target.value)}
+                onBlur={() => {
+                  fetch(`/api/execucao/${encodeURIComponent(cnpj)}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ observacoes_execucao: obsExecucao }),
+                  }).catch(() => {})
+                }}
+                placeholder="Adicione observações sobre este lead..."
+                className="w-full text-xs text-gray-700 border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#0072F7] resize-none"
+              />
+            ) : (
+              <div className="bg-gray-50 rounded-lg border border-gray-200 p-3">
+                <p className="text-xs text-gray-700 whitespace-pre-wrap">{obsExecucao || 'Sem observações'}</p>
+              </div>
+            )}
+          </div>
+
+          {/* CRM Aprovação Status (read-only reference) */}
           {(crmStatus || crmObservacoes) && (
             <div className="space-y-2 border border-gray-200 rounded-xl p-3 bg-gray-50">
-              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">CRM — Contato</h3>
+              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">CRM — Aprovação</h3>
               {crmStatus && (
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">Status:</span>
@@ -421,6 +454,9 @@ export default function ExecucaoSlideOver({
               )}
             </div>
           )}
+
+          {/* Contact Notes Timeline */}
+          <ContactNotesTimeline cnpj={cnpj} canModify={canModify} />
 
           <div className="border-t border-gray-200" />
 

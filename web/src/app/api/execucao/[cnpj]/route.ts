@@ -40,26 +40,41 @@ export async function PATCH(
 
     const cnpj = decodeURIComponent(params.cnpj)
     const cnpjClean = cnpj.replace(/\D/g, '')
-    const body = await request.json() as { status_contato?: string }
+    const body = await request.json() as { status_contato?: string; observacoes_execucao?: string }
 
-    if (!body.status_contato) {
-      return NextResponse.json({ error: 'status_contato required' }, { status: 400 })
+    const setClauses: string[] = ['updated_at = NOW()']
+    const updateParams: unknown[] = []
+    let pi = 1
+
+    if (body.status_contato !== undefined) {
+      setClauses.push(`status_contato_execucao = $${pi++}`)
+      updateParams.push(body.status_contato)
+    }
+    if (body.observacoes_execucao !== undefined) {
+      setClauses.push(`observacoes_execucao = $${pi++}`)
+      updateParams.push(body.observacoes_execucao)
+    }
+
+    if (setClauses.length === 1) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
     }
 
     if (session.role === 'vendedor') {
+      updateParams.push(cnpjClean, session.userId)
       await query(
         `UPDATE vendedor_projetos
-         SET status_contato = $1, updated_at = NOW()
-         WHERE REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') = $2
-           AND vendedor_id = $3`,
-        [body.status_contato, cnpjClean, session.userId]
+         SET ${setClauses.join(', ')}
+         WHERE REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') = $${pi++}
+           AND vendedor_id = $${pi++}`,
+        updateParams
       )
     } else {
+      updateParams.push(cnpjClean)
       await query(
         `UPDATE vendedor_projetos
-         SET status_contato = $1, updated_at = NOW()
-         WHERE REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') = $2`,
-        [body.status_contato, cnpjClean]
+         SET ${setClauses.join(', ')}
+         WHERE REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') = $${pi++}`,
+        updateParams
       )
     }
 

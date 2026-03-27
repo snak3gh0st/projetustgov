@@ -10,6 +10,7 @@ interface ExecucaoAggRow {
   uf: string | null
   municipio: string | null
   crm_status: string
+  aprovacao_status: string
   total_projetos: number
   total_repasse: string        // pg returns NUMERIC as string
   total_desembolsado: string   // pg returns NUMERIC as string
@@ -28,6 +29,9 @@ interface ExecucaoAggRow {
   contact_telefone_status: string | null
   total_propostas_db: number
   vendedor_nome: string | null
+  vendedor_id: string | null
+  observacoes_execucao: string | null
+  days_since_last_contact: number | null
   tag_autossuficiente: boolean
   tag_iniciante: boolean
   tag_desembolso: boolean
@@ -61,6 +65,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
     const uf = searchParams.get('uf')
     const alert_only = searchParams.get('alert_only')
+    const vendedor_id = searchParams.get('vendedor_id')
 
     const conditions: string[] = ['1=1']
     const params: unknown[] = []
@@ -90,14 +95,31 @@ export async function GET(request: NextRequest) {
     }
 
     if (alert_only === 'true') {
-      // Filter to CNPJs that have at least one convenio matching the confirmed alert condition.
-      // Uses a correlated subquery so the GROUP BY result is consistent with tem_alerta.
       conditions.push(`EXISTS (
         SELECT 1 FROM projetos_execucao pe2
         WHERE pe2.cnpj = pe.cnpj
           AND ${ALERT_ZERO_EXECUTION.replace('pe.', 'pe2.')}
         LIMIT 1
       )`)
+    }
+
+    if (vendedor_id) {
+      if (vendedor_id === 'unassigned') {
+        conditions.push(`NOT EXISTS (
+          SELECT 1 FROM vendedor_projetos vp_f
+          WHERE REGEXP_REPLACE(vp_f.cnpj, '[^0-9]', '', 'g') = pe.cnpj
+            AND vp_f.vendedor_id IS NOT NULL
+          LIMIT 1
+        )`)
+      } else {
+        conditions.push(`EXISTS (
+          SELECT 1 FROM vendedor_projetos vp_f
+          WHERE REGEXP_REPLACE(vp_f.cnpj, '[^0-9]', '', 'g') = pe.cnpj
+            AND vp_f.vendedor_id = $${paramIndex++}
+          LIMIT 1
+        )`)
+        params.push(vendedor_id)
+      }
     }
 
     const rows = await query<ExecucaoAggRow>(`
@@ -170,20 +192,54 @@ export async function GET(request: NextRequest) {
       ),
       vendedor_owners AS (
         SELECT DISTINCT ON (REGEXP_REPLACE(vp_v.cnpj, '[^0-9]', '', 'g'))
-          REGEXP_REPLACE(vp_v.cnpj, '[^0-9]', '', 'g') AS cnpj_clean, u.nome
+          REGEXP_REPLACE(vp_v.cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
+          u.nome,
+          vp_v.vendedor_id,
+          vp_v.observacoes_execucao
         FROM vendedor_projetos vp_v
         JOIN users u ON u.id = vp_v.vendedor_id
         WHERE vp_v.vendedor_id IS NOT NULL
-        GROUP BY REGEXP_REPLACE(vp_v.cnpj, '[^0-9]', '', 'g'), u.nome, vp_v.vendedor_id
+        GROUP BY REGEXP_REPLACE(vp_v.cnpj, '[^0-9]', '', 'g'), u.nome, vp_v.vendedor_id, vp_v.observacoes_execucao
         ORDER BY REGEXP_REPLACE(vp_v.cnpj, '[^0-9]', '', 'g'), COUNT(*) DESC
+      ),
+      last_contact AS (
+        SELECT
+          REGEXP_REPLACE(cn.lead_cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
+          EXTRACT(DAY FROM NOW() - MAX(cn.created_at))::INT AS days_since
+        FROM contact_notes cn
+        GROUP BY REGEXP_REPLACE(cn.lead_cnpj, '[^0-9]', '', 'g')
       ),
       crm_statuses AS (
         SELECT DISTINCT ON (REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'))
           REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
           CASE
+            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 'Não Contatado'
+            ELSE COALESCE(vp.status_contato_execucao, 'Não Contatado')
+          END AS crm_status
+        FROM vendedor_projetos vp
+        ORDER BY
+          REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'),
+          CASE
+            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Fechado' THEN 1
+            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Aguardando Closer' THEN 2
+            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Proposta' THEN 3
+            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Retorno' THEN 4
+            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Ainda Não' THEN 5
+            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Quente' THEN 6
+            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Muito Quente' THEN 7
+            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Telefone Invalido' THEN 8
+            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 10
+            ELSE 9
+          END ASC,
+          vp.updated_at DESC NULLS LAST
+      ),
+      aprovacao_statuses AS (
+        SELECT DISTINCT ON (REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'))
+          REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
+          CASE
             WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 'Não Contatado'
             ELSE COALESCE(vp.status_contato, 'Não Contatado')
-          END AS crm_status
+          END AS aprovacao_status
         FROM vendedor_projetos vp
         ORDER BY
           REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'),
@@ -204,6 +260,7 @@ export async function GET(request: NextRequest) {
       SELECT
         a.cnpj, a.nome_proponente, a.uf, a.municipio,
         COALESCE(cs.crm_status, 'Não Contatado') AS crm_status,
+        COALESCE(aps.aprovacao_status, 'Não Contatado') AS aprovacao_status,
         a.total_projetos, a.total_repasse, a.total_desembolsado,
         a.total_saldo, a.total_valor_global, a.pct_execucao_ponderado,
         a.tem_alerta, a.qtd_alertas, a.tem_verificar_saldo,
@@ -215,6 +272,9 @@ export async function GET(request: NextRequest) {
         ct.telefone_status AS contact_telefone_status,
         COALESCE(pc.cnt, 0) AS total_propostas_db,
         vo.nome AS vendedor_nome,
+        vo.vendedor_id,
+        vo.observacoes_execucao,
+        lc.days_since AS days_since_last_contact,
         COALESCE(pc.cnt, 0) >= 5 AS tag_autossuficiente,
         COALESCE(pc.cnt, 0) < 5 AS tag_iniciante,
         a.tag_desembolso,
@@ -222,10 +282,12 @@ export async function GET(request: NextRequest) {
         a.tag_rendimento
       FROM agg a
       LEFT JOIN crm_statuses cs ON cs.cnpj_clean = a.cnpj
+      LEFT JOIN aprovacao_statuses aps ON aps.cnpj_clean = a.cnpj
       LEFT JOIN contacts ct ON ct.cnpj_clean = a.cnpj
       LEFT JOIN vp_contacts vpc ON vpc.cnpj_clean = a.cnpj
       LEFT JOIN proposta_counts pc ON pc.cnpj = a.cnpj
       LEFT JOIN vendedor_owners vo ON vo.cnpj_clean = a.cnpj
+      LEFT JOIN last_contact lc ON lc.cnpj_clean = a.cnpj
       ORDER BY a.pct_execucao_ponderado ASC NULLS LAST, a.tem_alerta DESC, a.cnpj
     `, params)
 
