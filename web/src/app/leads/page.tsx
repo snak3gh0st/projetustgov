@@ -58,6 +58,7 @@ export default function LeadsPage() {
   const [clientFilter, setClientFilter] = useState('')
   const [sortCol, setSortCol] = useState('')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
   const scrollPositionRef = useRef<number>(0)
 
   // Restore scroll position when returning from lead detail page (browser Back).
@@ -119,6 +120,23 @@ export default function LeadsPage() {
     return () => clearTimeout(timer)
   }, [fetchLeads])
 
+  const TAG_KEYS: { key: string; label: string; bg: string; text: string; border: string }[] = [
+    { key: 'em_execucao', label: 'Em Execução', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+    { key: 'multi_emenda', label: 'Multi-Emenda', bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
+    { key: 'alto_valor', label: 'Alto Valor', bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
+    { key: 'novo', label: 'Novo', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+    { key: 'cliente_existente', label: 'Cliente Existente', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
+  ]
+
+  function toggleTag(key: string) {
+    setActiveTags(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
   // Group leads by CNPJ for display (show total when multiple emendas, cascade shows individual values)
   const displayLeads = useMemo(() => {
     const leadsByCnpj = leads.reduce((acc, lead) => {
@@ -150,6 +168,12 @@ export default function LeadsPage() {
         allFechadoLocked,
         emenda_count: cnpjLeads.length,
         subLeads: cnpjLeads, // all emendas for cascade (including first)
+        // Tags computed client-side
+        tag_em_execucao: (first.executed_count ?? 0) > 0,
+        tag_multi_emenda: cnpjLeads.length >= 2,
+        tag_alto_valor: totalValor >= 500000,
+        tag_novo: isNewLead(first.created_at),
+        tag_cliente_existente: !!first.is_existing_client,
       }
     })
 
@@ -158,6 +182,17 @@ export default function LeadsPage() {
       result = result.filter(l => l.is_existing_client)
     } else if (clientFilter === 'new') {
       result = result.filter(l => !l.is_existing_client)
+    }
+
+    // Tag filter
+    if (activeTags.size > 0) {
+      const tagsArr = Array.from(activeTags)
+      result = result.filter(r =>
+        tagsArr.every(tag => {
+          const field = `tag_${tag}` as keyof typeof r
+          return r[field]
+        })
+      )
     }
 
     // Sorting
@@ -181,7 +216,7 @@ export default function LeadsPage() {
     }
 
     return result
-  }, [leads, clientFilter, sortCol, sortDir])
+  }, [leads, clientFilter, sortCol, sortDir, activeTags])
 
   function isNewLead(createdAt: string | null): boolean {
     if (!createdAt) return false
@@ -353,6 +388,38 @@ export default function LeadsPage() {
               <option value="new">Novos Clientes</option>
             </select>
           </>
+        )}
+      </div>
+
+      {/* Tag filters */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-xs text-gray-500 font-medium mr-1">Tags:</span>
+        {TAG_KEYS.map(tag => {
+          const active = activeTags.has(tag.key)
+          return (
+            <button
+              key={tag.key}
+              onClick={() => toggleTag(tag.key)}
+              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                active
+                  ? `${tag.bg} ${tag.text} ${tag.border} ring-2 ring-offset-1 ring-current`
+                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              {tag.label}
+              {active && (
+                <span className="ml-1 text-[10px]">&times;</span>
+              )}
+            </button>
+          )
+        })}
+        {activeTags.size > 0 && (
+          <button
+            onClick={() => setActiveTags(new Set())}
+            className="text-xs text-gray-400 hover:text-gray-600 underline ml-1"
+          >
+            Limpar
+          </button>
         )}
       </div>
 
