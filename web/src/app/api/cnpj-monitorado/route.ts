@@ -15,7 +15,7 @@ export async function GET() {
        vp.nome, vp.email, vp.telefone, vp.municipio, vp.uf,
        vp.valor_emenda, vp.parlamentar, vp.nr_emenda
      FROM cnpj_monitorado cm
-     LEFT JOIN vendedor_projetos vp ON vp.cnpj = cm.cnpj
+     LEFT JOIN vendedor_projetos vp ON REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = REGEXP_REPLACE(cm.cnpj, '[^0-9]', '', 'g')
      WHERE cm.user_id = $1
      ORDER BY cm.cnpj, vp.valor_emenda DESC NULLS LAST`,
     [session.userId]
@@ -46,9 +46,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'CNPJ deve ter 14 dígitos' }, { status: 400 })
   }
 
-  // Check if CNPJ exists in vendedor_projetos
+  // Check if CNPJ exists in vendedor_projetos (normalize format for comparison)
   const exists = await query(
-    'SELECT 1 FROM vendedor_projetos WHERE cnpj = $1 LIMIT 1',
+    `SELECT 1 FROM vendedor_projetos WHERE REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') = $1 LIMIT 1`,
     [cleanCnpj]
   )
   if (exists.length === 0) {
