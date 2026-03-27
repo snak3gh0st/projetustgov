@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
       kpiTotalsRows,
       kpiNaoContatadoRows,
       kpiTelefonesRows,
+      kpiActivityRows,
       pipelineFunnelRows,
       cnpjsByVendedorRows,
       cnpjsByUfRows,
@@ -98,6 +99,22 @@ export async function GET(request: NextRequest) {
           WHERE vp.cnpj = lc.lead_cnpj
             AND vp.vendedor_id = $1
         )` : ''}
+      `, baseParams),
+
+      // 3b. KPI: Activity last 7 days
+      query(`
+        SELECT
+          COUNT(*)::int as notes_7d,
+          COUNT(DISTINCT cn.lead_cnpj)::int as leads_touched_7d
+        FROM contact_notes cn
+        WHERE cn.created_at >= NOW() - INTERVAL '7 days'
+          AND EXISTS (
+            SELECT 1 FROM projetos_execucao pe
+            WHERE pe.cnpj = REGEXP_REPLACE(cn.lead_cnpj, '[^0-9]', '', 'g')
+          )
+          ${effectiveVendedorId ? `AND EXISTS (
+            SELECT 1 FROM vendedor_projetos vp WHERE vp.cnpj = cn.lead_cnpj AND vp.vendedor_id = $1
+          )` : ''}
       `, baseParams),
 
       // 4. Pipeline funnel: group by status_contato_execucao, only CNPJs in projetos_execucao
@@ -209,11 +226,15 @@ export async function GET(request: NextRequest) {
     const totals = kpiTotalsRows[0] || {}
     const naoContatadoRow = kpiNaoContatadoRows[0] || {}
     const telefonesRow = kpiTelefonesRows[0] || {}
+    const actRow = kpiActivityRows[0] || {}
+    const totalCnpjs = Number(totals.total_cnpjs) || 0
+    const naoContatado = Number(naoContatadoRow.nao_contatado_count) || 0
+    const contactRate = totalCnpjs > 0 ? Number((((totalCnpjs - naoContatado) / totalCnpjs) * 100).toFixed(1)) : 0
 
     return NextResponse.json({
       role: session.role,
       kpis: {
-        total_cnpjs: Number(totals.total_cnpjs) || 0,
+        total_cnpjs: totalCnpjs,
         total_valor_global: Number(totals.total_valor_global) || 0,
         total_saldo: Number(totals.total_saldo) || 0,
         total_desembolsado: Number(totals.total_desembolsado) || 0,
@@ -221,7 +242,10 @@ export async function GET(request: NextRequest) {
           ? Number(totals.pct_execucao_medio)
           : null,
         total_alertas: Number(totals.total_alertas) || 0,
-        nao_contatado_count: Number(naoContatadoRow.nao_contatado_count) || 0,
+        contact_rate: contactRate,
+        nao_contatado_count: naoContatado,
+        notes_7d: Number(actRow.notes_7d) || 0,
+        leads_touched_7d: Number(actRow.leads_touched_7d) || 0,
         telefones_validos: Number(telefonesRow.telefones_validos) || 0,
         telefones_invalidos: Number(telefonesRow.telefones_invalidos) || 0,
       },

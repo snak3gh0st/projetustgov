@@ -23,104 +23,87 @@ export async function GET(request: Request) {
 
     // Run all queries in parallel to avoid sequential connection queuing
     const [
-      kpiConversionRows,
+      kpiMainRows,
       kpiDaysRows,
-      kpiPipelineRows,
-      kpiCommissionRows,
       kpiTicketRows,
-      kpiNaoContatadoRows,
-      kpiTelefonesRows,
+      kpiActivityRows,
+      kpiStaleRows,
       pipelineFunnelRows,
       commissionByVendedorRows,
       leadsByUfRows,
       activityTrendRows,
     ] = await Promise.all([
 
-      // 1. KPI: Conversion Rate
+      // 1. KPI: Main metrics (conversion, pipeline, commission, contact rate) — single query
       query(`
         SELECT
           COUNT(DISTINCT vp.cnpj) FILTER (WHERE vp.status_contato = 'Fechado')::int as fechado_count,
-          COUNT(DISTINCT vp.cnpj) FILTER (WHERE vp.vendedor_id IS NOT NULL)::int as assigned_count
+          COUNT(DISTINCT vp.cnpj) FILTER (WHERE vp.vendedor_id IS NOT NULL)::int as assigned_count,
+          COUNT(DISTINCT vp.cnpj) FILTER (
+            WHERE COALESCE(vp.status_contato, 'Não Contatado') IN ('Não Contatado', 'Nao Contatado')
+              AND vp.vendedor_id IS NOT NULL
+          )::int as nao_contatado_count,
+          COALESCE(SUM(CASE WHEN vp.status_contato != 'Fechado' AND vp.vendedor_id IS NOT NULL THEN vp.valor_emenda::numeric ELSE 0 END), 0) as pipeline_value,
+          COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' THEN vp.valor_venda::numeric ELSE 0 END), 0) as closed_value,
+          COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' AND u.role != 'gestor' THEN vp.comissao_valor::numeric ELSE 0 END), 0) as commission_earned,
+          COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' AND u.role != 'gestor' THEN COALESCE(vp.comissao_bonus, 0)::numeric ELSE 0 END), 0) as commission_bonus
         FROM vendedor_projetos vp
-        ${vendedorFilter}
+        LEFT JOIN users u ON u.id = vp.vendedor_id
+        ${filterByVendedor ? 'WHERE vp.vendedor_id = $1' : ''}
       `, vendedorParams),
 
       // 2. KPI: Avg Days to Close
-      // NOTE: fechado_em column does not exist in vendedor_projetos schema.
-      // Using updated_at as a proxy for close date, filtered to Fechado rows only.
-      // This measures days from lead import to last update — not exact close date.
       query(`
         SELECT
-          COALESCE(
-            AVG(EXTRACT(DAY FROM (vp.updated_at - vp.created_at)))::int,
-            NULL
-          ) as avg_days_to_close
+          COALESCE(AVG(EXTRACT(DAY FROM (vp.updated_at - vp.created_at)))::int, NULL) as avg_days_to_close
         FROM vendedor_projetos vp
         WHERE vp.status_contato = 'Fechado'
-        ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
+        ${filterByVendedor ? 'AND vp.vendedor_id = $1' : ''}
       `, vendedorParams),
 
-      // 3. KPI: Total Pipeline Value (non-Fechado assigned) + Closed Value
+      // 3. KPI: Ticket Medio
       query(`
-        SELECT
-          COALESCE(SUM(CASE WHEN vp.status_contato != 'Fechado' THEN vp.valor_emenda::numeric ELSE 0 END), 0) as pipeline_value,
-          COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' THEN vp.valor_venda::numeric ELSE 0 END), 0) as closed_value
-        FROM vendedor_projetos vp
-        WHERE vp.vendedor_id IS NOT NULL
-        ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
-      `, vendedorParams),
-
-      // 4. KPI: Commission Earned (Fechado only, excluding gestor-role users)
-      query(`
-        SELECT
-          COALESCE(SUM(vp.comissao_valor::numeric) FILTER (
-            WHERE vp.status_contato = 'Fechado' AND u.role != 'gestor'
-          ), 0) as commission_earned,
-          COALESCE(SUM(COALESCE(vp.comissao_bonus, 0)::numeric) FILTER (
-            WHERE vp.status_contato = 'Fechado' AND u.role != 'gestor'
-          ), 0) as commission_bonus
-        FROM vendedor_projetos vp
-        JOIN users u ON u.id = vp.vendedor_id
-        WHERE vp.vendedor_id IS NOT NULL
-        ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
-      `, vendedorParams),
-
-      // 5. KPI: Ticket Medio (avg per-CNPJ first, then avg across CNPJs to avoid multi-emenda inflation)
-      query(`
-        SELECT
-          COALESCE(AVG(cnpj_avg), 0) as ticket_medio,
-          COUNT(*)::int as ticket_count
+        SELECT COALESCE(AVG(cnpj_avg), 0) as ticket_medio
         FROM (
           SELECT vp.cnpj, AVG(vp.valor_venda::numeric) as cnpj_avg
           FROM vendedor_projetos vp
           WHERE vp.vendedor_id IS NOT NULL
             AND vp.status_contato = 'Fechado'
             AND vp.valor_venda > 0
-            ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
+            ${filterByVendedor ? 'AND vp.vendedor_id = $1' : ''}
           GROUP BY vp.cnpj
         ) t
       `, vendedorParams),
 
-      // 6. KPI: Leads sem contato (Não Contatado + Ainda Não)
+      // 4. KPI: Activity last 7 days (contact notes)
       query(`
         SELECT
-          COUNT(DISTINCT vp.cnpj) FILTER (
-            WHERE COALESCE(vp.status_contato, 'Não Contatado') IN ('Não Contatado', 'Nao Contatado')
-              AND vp.vendedor_id IS NOT NULL
-          )::int as nao_contatado_count,
-          COUNT(DISTINCT CASE WHEN vp.status_contato = 'Ainda Não' AND vp.vendedor_id IS NOT NULL THEN vp.cnpj END)::int as ainda_nao_count
-        FROM vendedor_projetos vp
-        ${vendedorFilter}
+          COUNT(*)::int as notes_7d,
+          COUNT(DISTINCT cn.lead_cnpj)::int as leads_touched_7d
+        FROM contact_notes cn
+        WHERE cn.created_at >= NOW() - INTERVAL '7 days'
+        ${filterByVendedor ? `AND EXISTS (
+          SELECT 1 FROM vendedor_projetos vp WHERE vp.cnpj = cn.lead_cnpj AND vp.vendedor_id = $1
+        )` : ''}
       `, vendedorParams),
 
-      // 7. KPI: Taxa de telefones validos
+      // 5. KPI: Stale leads (assigned, not Fechado, no activity in 7+ days)
       query(`
-        SELECT
-          COUNT(DISTINCT lc.lead_cnpj) FILTER (WHERE lc.telefone_status = 'valido')::int as telefones_validos,
-          COUNT(DISTINCT lc.lead_cnpj) FILTER (WHERE lc.telefone_status = 'invalido')::int as telefones_invalidos,
-          COUNT(DISTINCT lc.lead_cnpj)::int as total_com_contato
-        FROM lead_contacts lc
-        ${filterByVendedor ? 'WHERE EXISTS (SELECT 1 FROM vendedor_projetos vp WHERE vp.cnpj = lc.lead_cnpj AND vp.vendedor_id = $1)' : ''}
+        SELECT COUNT(DISTINCT vp.cnpj)::int as stale_count
+        FROM vendedor_projetos vp
+        WHERE vp.vendedor_id IS NOT NULL
+          AND vp.status_contato NOT IN ('Fechado', 'Telefone Invalido')
+          AND NOT EXISTS (
+            SELECT 1 FROM contact_notes cn
+            WHERE cn.lead_cnpj = vp.cnpj AND cn.created_at >= NOW() - INTERVAL '7 days'
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM vendedor_projetos vp2
+            WHERE vp2.cnpj = vp.cnpj
+              AND vp2.status_contato NOT IN ('Não Contatado', 'Nao Contatado')
+              AND vp2.updated_at >= NOW() - INTERVAL '7 days'
+          )
+          ${filterByVendedor ? 'AND vp.vendedor_id = $1' : ''}
       `, vendedorParams),
 
       // 8. Chart: Pipeline Funnel — all 6 statuses in correct funnel order
@@ -215,36 +198,36 @@ export async function GET(request: Request) {
         `, []),
     ])
 
-    const kpi = kpiConversionRows[0] || {}
-    const fechadoCount = Number(kpi.fechado_count) || 0
-    const assignedCount = Number(kpi.assigned_count) || 0
+    const m = kpiMainRows[0] || {}
+    const fechadoCount = Number(m.fechado_count) || 0
+    const assignedCount = Number(m.assigned_count) || 0
+    const naoContatadoCount = Number(m.nao_contatado_count) || 0
+    const contatadoCount = assignedCount - naoContatadoCount
     const conversionRate = assignedCount > 0 ? Number(((fechadoCount / assignedCount) * 100).toFixed(1)) : 0
+    const contactRate = assignedCount > 0 ? Number(((contatadoCount / assignedCount) * 100).toFixed(1)) : 0
 
     const daysRow = kpiDaysRows[0] || {}
-    const avgDaysToClose = daysRow.avg_days_to_close != null ? Number(daysRow.avg_days_to_close) : null
-
-    const pipelineRow = kpiPipelineRows[0] || {}
-    const commissionRow = kpiCommissionRows[0] || {}
     const ticketRow = kpiTicketRows[0] || {}
-    const naoContatadoRow = kpiNaoContatadoRows[0] || {}
-    const telefonesRow = kpiTelefonesRows[0] || {}
+    const actRow = kpiActivityRows[0] || {}
+    const staleRow = kpiStaleRows[0] || {}
 
     return NextResponse.json({
       role: session.role,
       kpis: {
+        closed_value: Number(m.closed_value) || 0,
         conversion_rate: conversionRate,
         fechado_count: fechadoCount,
         assigned_count: assignedCount,
-        avg_days_to_close: avgDaysToClose,
-        pipeline_value: Number(pipelineRow.pipeline_value) || 0,
-        closed_value: Number(pipelineRow.closed_value) || 0,
-        commission_earned: Number(commissionRow.commission_earned) || 0,
-        commission_bonus: Number(commissionRow.commission_bonus) || 0,
+        contact_rate: contactRate,
+        nao_contatado_count: naoContatadoCount,
         ticket_medio: Number(ticketRow.ticket_medio) || 0,
-        nao_contatado_count: Number(naoContatadoRow.nao_contatado_count) || 0,
-        ainda_nao_count: Number(naoContatadoRow.ainda_nao_count) || 0,
-        telefones_validos: Number(telefonesRow.telefones_validos) || 0,
-        telefones_invalidos: Number(telefonesRow.telefones_invalidos) || 0,
+        avg_days_to_close: daysRow.avg_days_to_close != null ? Number(daysRow.avg_days_to_close) : null,
+        pipeline_value: Number(m.pipeline_value) || 0,
+        commission_earned: Number(m.commission_earned) || 0,
+        commission_bonus: Number(m.commission_bonus) || 0,
+        notes_7d: Number(actRow.notes_7d) || 0,
+        leads_touched_7d: Number(actRow.leads_touched_7d) || 0,
+        stale_count: Number(staleRow.stale_count) || 0,
       },
       pipeline_funnel: pipelineFunnelRows.map(r => ({
         status: r.status as string,

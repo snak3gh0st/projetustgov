@@ -9,19 +9,20 @@ import {
 
 // --- Types (Aprovacao) ---
 interface BIKpis {
+  closed_value: number
   conversion_rate: number
   fechado_count: number
   assigned_count: number
+  contact_rate: number
+  nao_contatado_count: number
+  ticket_medio: number
   avg_days_to_close: number | null
   pipeline_value: number
-  closed_value: number
   commission_earned: number
   commission_bonus: number
-  ticket_medio: number
-  nao_contatado_count: number
-  ainda_nao_count: number
-  telefones_validos: number
-  telefones_invalidos: number
+  notes_7d: number
+  leads_touched_7d: number
+  stale_count: number
 }
 
 interface PipelineFunnelItem {
@@ -64,7 +65,10 @@ interface ExecucaoKpis {
   total_desembolsado: number
   pct_execucao_medio: number | null
   total_alertas: number
+  contact_rate: number
   nao_contatado_count: number
+  notes_7d: number
+  leads_touched_7d: number
   telefones_validos: number
   telefones_invalidos: number
 }
@@ -277,8 +281,8 @@ export default function BIDashboard() {
 
       {/* 2. Tab content */}
       {pipeline === 'aprovacao'
-        ? <AprovacaoTab data={data!} isVendedor={isVendedor} />
-        : <ExecucaoTab data={execData!} isVendedor={isVendedor} />
+        ? <AprovacaoTab data={data!} />
+        : <ExecucaoTab data={execData!} />
       }
     </div>
   )
@@ -347,37 +351,13 @@ function HeaderControls({
 // ─────────────────────────────────────────────────────────────
 // APROVACAO TAB — exact same rendering as the original page
 // ─────────────────────────────────────────────────────────────
-function AprovacaoTab({ data, isVendedor }: { data: BIData; isVendedor: boolean }) {
+function AprovacaoTab({ data }: { data: BIData }) {
   const { kpis } = data
 
-  // --- KPI color helpers ---
-  const conversionColor =
-    kpis.conversion_rate > 10 ? 'text-green-600' :
-    kpis.conversion_rate >= 5 ? 'text-amber-600' :
-    'text-red-600'
-
-  const daysColor =
-    kpis.avg_days_to_close == null ? 'text-gray-400' :
-    kpis.avg_days_to_close < 15 ? 'text-green-600' :
-    kpis.avg_days_to_close <= 30 ? 'text-amber-600' :
-    'text-red-600'
-
-  const ticketColor = kpis.ticket_medio === 0 ? 'text-gray-400' : 'text-[#0072F7]'
-
-  const naoContatadoColor =
-    kpis.nao_contatado_count > 20 ? 'text-red-600' :
-    kpis.nao_contatado_count > 10 ? 'text-amber-600' :
-    'text-green-600'
-
-  const totalTelefones = kpis.telefones_validos + kpis.telefones_invalidos
-  const telefonesValidosPct = totalTelefones > 0
-    ? Number(((kpis.telefones_validos / totalTelefones) * 100).toFixed(0))
-    : null
-  const telefonesColor =
-    telefonesValidosPct == null ? 'text-gray-400' :
-    telefonesValidosPct > 70 ? 'text-green-600' :
-    telefonesValidosPct > 40 ? 'text-amber-600' :
-    'text-red-600'
+  const conversionColor = kpis.conversion_rate > 10 ? 'text-green-600' : kpis.conversion_rate >= 5 ? 'text-amber-600' : 'text-red-600'
+  const contactRateColor = kpis.contact_rate >= 80 ? 'text-green-600' : kpis.contact_rate >= 50 ? 'text-amber-600' : 'text-red-600'
+  const daysColor = kpis.avg_days_to_close == null ? 'text-gray-400' : kpis.avg_days_to_close < 15 ? 'text-green-600' : kpis.avg_days_to_close <= 30 ? 'text-amber-600' : 'text-red-600'
+  const staleColor = kpis.stale_count > 50 ? 'text-red-600' : kpis.stale_count > 20 ? 'text-amber-600' : 'text-green-600'
 
   const top10uf = data.leads_by_uf.slice(0, 10)
 
@@ -386,106 +366,87 @@ function AprovacaoTab({ data, isVendedor }: { data: BIData; isVendedor: boolean 
       {/* KPI Cards — 7 cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
 
-        {/* Card 1: Taxa de Conversao */}
+        {/* Card 1: Faturamento Fechado */}
         <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Taxa de Conversao</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Faturamento</p>
+          <p className="text-3xl font-heading font-bold text-green-600 mt-2">
+            {formatCompactCurrency(kpis.closed_value)}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">{kpis.fechado_count} vendas fechadas</p>
+        </div>
+
+        {/* Card 2: Taxa de Conversao */}
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Conversao</p>
           <p className={`text-3xl font-heading font-bold mt-2 ${conversionColor}`}>
             {kpis.conversion_rate.toFixed(1)}%
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {kpis.fechado_count} de {kpis.assigned_count} leads
-          </p>
+          <p className="text-xs text-gray-400 mt-1">{kpis.fechado_count}/{kpis.assigned_count} leads</p>
         </div>
 
-        {/* Card 2: Ticket Medio */}
+        {/* Card 3: Taxa de Contato */}
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Taxa de Contato</p>
+          <p className={`text-3xl font-heading font-bold mt-2 ${contactRateColor}`}>
+            {kpis.contact_rate.toFixed(0)}%
+          </p>
+          <p className="text-xs text-gray-400 mt-1">{kpis.nao_contatado_count} sem abordar</p>
+        </div>
+
+        {/* Card 4: Ticket Medio */}
         <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
           <p className="text-xs text-gray-500 uppercase tracking-wider">Ticket Medio</p>
-          <p className={`text-3xl font-heading font-bold mt-2 ${ticketColor}`}>
-            {kpis.ticket_medio > 0 ? formatCompactCurrency(kpis.ticket_medio) : 'R$ 0'}
+          <p className={`text-3xl font-heading font-bold mt-2 ${kpis.ticket_medio > 0 ? 'text-[#0072F7]' : 'text-gray-400'}`}>
+            {kpis.ticket_medio > 0 ? formatCompactCurrency(kpis.ticket_medio) : '-'}
           </p>
-          <p className="text-xs text-gray-400 mt-1">media por venda fechada</p>
+          <p className="text-xs text-gray-400 mt-1">media por venda</p>
         </div>
 
-        {/* Card 3: Dias p/ Fechar */}
+        {/* Card 5: Velocidade */}
         <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Dias p/ Fechar (media)</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Velocidade</p>
           <p className={`text-3xl font-heading font-bold mt-2 ${daysColor}`}>
-            {kpis.avg_days_to_close != null ? `${kpis.avg_days_to_close} dias` : '-'}
+            {kpis.avg_days_to_close != null ? `${kpis.avg_days_to_close}d` : '-'}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {kpis.avg_days_to_close != null ? 'media de fechamento' : 'sem dados'}
-          </p>
+          <p className="text-xs text-gray-400 mt-1">dias p/ fechar</p>
         </div>
 
-        {/* Card 4: Nao Contatados (gestor) / Faturamento Fechado (vendedor) */}
-        {isVendedor ? (
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Faturamento Fechado</p>
-            <p className="text-3xl font-heading font-bold text-green-600 mt-2">
-              {formatCompactCurrency(kpis.closed_value)}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              {formatCurrency(kpis.closed_value)}
-            </p>
-          </div>
-        ) : (
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Nao Contatados</p>
-            <p className={`text-3xl font-heading font-bold mt-2 ${naoContatadoColor}`}>
-              {kpis.nao_contatado_count}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              sem abordar
-              {kpis.ainda_nao_count > 0 && (
-                <span className="text-rose-400 ml-1">(+ {kpis.ainda_nao_count} Ainda Nao)</span>
-              )}
-            </p>
+        {/* Card 6: Atividade (7d) */}
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Atividade (7d)</p>
+          <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
+            {kpis.notes_7d}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">{kpis.leads_touched_7d} leads tocados</p>
+        </div>
+
+        {/* Card 7: Leads Parados */}
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Leads Parados</p>
+          <p className={`text-3xl font-heading font-bold mt-2 ${staleColor}`}>
+            {kpis.stale_count}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">sem atividade 7d+</p>
+        </div>
+
+      </div>
+
+      {/* Pipeline value + commission summary bar */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex items-center justify-between">
+          <span className="text-xs text-gray-500 uppercase">Pipeline Aberto</span>
+          <span className="text-lg font-heading font-bold text-[#0072F7]">{formatCompactCurrency(kpis.pipeline_value)}</span>
+        </div>
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex items-center justify-between">
+          <span className="text-xs text-gray-500 uppercase">Comissao Acumulada</span>
+          <span className="text-lg font-heading font-bold text-green-600">{formatCompactCurrency(kpis.commission_earned)}</span>
+        </div>
+        {kpis.commission_bonus > 0 && (
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex items-center justify-between">
+            <span className="text-xs text-gray-500 uppercase">Bonus Fechamento</span>
+            <span className="text-lg font-heading font-bold text-green-600">{formatCurrency(kpis.commission_bonus)}</span>
           </div>
         )}
-
-        {/* Card 5: Valor Pipeline */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Valor Pipeline</p>
-          <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
-            {formatCompactCurrency(kpis.pipeline_value)}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {formatCurrency(kpis.pipeline_value)}
-          </p>
-        </div>
-
-        {/* Card 6: Comissao Confirmada */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Comissao Confirmada</p>
-          <p className="text-3xl font-heading font-bold text-green-600 mt-2">
-            {formatCompactCurrency(kpis.commission_earned)}
-          </p>
-          {kpis.commission_bonus > 0 && (
-            <p className="text-xs text-gray-400 mt-1">
-              + {formatCurrency(kpis.commission_bonus)} bonus
-            </p>
-          )}
-          {kpis.commission_bonus === 0 && (
-            <p className="text-xs text-gray-400 mt-1">
-              {formatCurrency(kpis.commission_earned)}
-            </p>
-          )}
-        </div>
-
-        {/* Card 7: Telefones Validos */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Telefones Validos</p>
-          <p className={`text-3xl font-heading font-bold mt-2 ${telefonesColor}`}>
-            {telefonesValidosPct != null ? `${telefonesValidosPct}%` : '-'}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {totalTelefones > 0
-              ? `${kpis.telefones_validos} validos / ${kpis.telefones_invalidos} invalidos`
-              : 'sem dados'
-            }
-          </p>
-        </div>
-
       </div>
 
       {/* Charts Grid */}
@@ -692,38 +653,12 @@ function AprovacaoTab({ data, isVendedor }: { data: BIData; isVendedor: boolean 
 // ─────────────────────────────────────────────────────────────
 // EXECUCAO TAB
 // ─────────────────────────────────────────────────────────────
-function ExecucaoTab({ data, isVendedor }: { data: ExecucaoBIData; isVendedor: boolean }) {
+function ExecucaoTab({ data }: { data: ExecucaoBIData }) {
   const { kpis } = data
 
-  // % Execucao color
-  const pctExecColor =
-    kpis.pct_execucao_medio == null ? 'text-gray-400' :
-    kpis.pct_execucao_medio >= 60 ? 'text-green-600' :
-    kpis.pct_execucao_medio >= 30 ? 'text-amber-600' :
-    'text-red-600'
-
-  // Alertas color
-  const alertasColor =
-    kpis.total_alertas === 0 ? 'text-green-600' :
-    kpis.total_alertas <= 5 ? 'text-amber-600' :
-    'text-red-600'
-
-  // Nao Contatados color
-  const naoContatadoColor =
-    kpis.nao_contatado_count > 20 ? 'text-red-600' :
-    kpis.nao_contatado_count > 10 ? 'text-amber-600' :
-    'text-green-600'
-
-  // Telefones validos percentage
-  const totalTelefones = kpis.telefones_validos + kpis.telefones_invalidos
-  const telefonesValidosPct = totalTelefones > 0
-    ? Number(((kpis.telefones_validos / totalTelefones) * 100).toFixed(0))
-    : null
-  const telefonesColor =
-    telefonesValidosPct == null ? 'text-gray-400' :
-    telefonesValidosPct > 70 ? 'text-green-600' :
-    telefonesValidosPct > 40 ? 'text-amber-600' :
-    'text-red-600'
+  const pctExecColor = kpis.pct_execucao_medio == null ? 'text-gray-400' : kpis.pct_execucao_medio >= 60 ? 'text-green-600' : kpis.pct_execucao_medio >= 30 ? 'text-amber-600' : 'text-red-600'
+  const alertasColor = kpis.total_alertas === 0 ? 'text-green-600' : kpis.total_alertas <= 50 ? 'text-amber-600' : 'text-red-600'
+  const contactRateColor = kpis.contact_rate >= 80 ? 'text-green-600' : kpis.contact_rate >= 50 ? 'text-amber-600' : 'text-red-600'
 
   const top10uf = data.cnpjs_by_uf.slice(0, 10)
 
@@ -734,11 +669,11 @@ function ExecucaoTab({ data, isVendedor }: { data: ExecucaoBIData; isVendedor: b
 
         {/* Card 1: CNPJs em Execucao */}
         <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">CNPJs em Execucao</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wider">CNPJs Execucao</p>
           <p className="text-3xl font-heading font-bold mt-2 text-gray-900">
             {kpis.total_cnpjs.toLocaleString('pt-BR')}
           </p>
-          <p className="text-xs text-gray-400 mt-1">total de projetos</p>
+          <p className="text-xs text-gray-400 mt-1">projetos ativos</p>
         </div>
 
         {/* Card 2: Valor Convenios */}
@@ -747,67 +682,66 @@ function ExecucaoTab({ data, isVendedor }: { data: ExecucaoBIData; isVendedor: b
           <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
             {formatCompactCurrency(kpis.total_valor_global)}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {formatCurrency(kpis.total_valor_global)}
-          </p>
+          <p className="text-xs text-gray-400 mt-1">{formatCurrency(kpis.total_valor_global)}</p>
         </div>
 
-        {/* Card 3: Saldo em Conta */}
+        {/* Card 3: Taxa de Contato */}
         <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Saldo em Conta</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Taxa de Contato</p>
+          <p className={`text-3xl font-heading font-bold mt-2 ${contactRateColor}`}>
+            {kpis.contact_rate.toFixed(0)}%
+          </p>
+          <p className="text-xs text-gray-400 mt-1">{kpis.nao_contatado_count} sem abordar</p>
+        </div>
+
+        {/* Card 4: Saldo Disponivel */}
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Saldo Disponivel</p>
           <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
             {formatCompactCurrency(kpis.total_saldo)}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {formatCurrency(kpis.total_saldo)}
-          </p>
-        </div>
-
-        {/* Card 4: Desembolsado */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Desembolsado</p>
-          <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
-            {formatCompactCurrency(kpis.total_desembolsado)}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {formatCurrency(kpis.total_desembolsado)}
-          </p>
+          <p className="text-xs text-gray-400 mt-1">{formatCurrency(kpis.total_saldo)}</p>
         </div>
 
         {/* Card 5: % Execucao Medio */}
         <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">% Execucao Medio</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wider">% Execucao</p>
           <p className={`text-3xl font-heading font-bold mt-2 ${pctExecColor}`}>
             {kpis.pct_execucao_medio != null ? `${kpis.pct_execucao_medio.toFixed(1)}%` : '-'}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {kpis.pct_execucao_medio != null ? 'media dos convenios' : 'sem dados'}
-          </p>
+          <p className="text-xs text-gray-400 mt-1">media ponderada</p>
         </div>
 
-        {/* Card 6: Alertas */}
+        {/* Card 6: Atividade (7d) */}
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Atividade (7d)</p>
+          <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
+            {kpis.notes_7d}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">{kpis.leads_touched_7d} leads tocados</p>
+        </div>
+
+        {/* Card 7: Alertas */}
         <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
           <p className="text-xs text-gray-500 uppercase tracking-wider">Alertas</p>
           <p className={`text-3xl font-heading font-bold mt-2 ${alertasColor}`}>
             {kpis.total_alertas}
           </p>
-          <p className="text-xs text-gray-400 mt-1">convenios com alerta</p>
+          <p className="text-xs text-gray-400 mt-1">sem desembolso</p>
         </div>
 
-        {/* Card 7: Telefones Validos */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Telefones Validos</p>
-          <p className={`text-3xl font-heading font-bold mt-2 ${telefonesColor}`}>
-            {telefonesValidosPct != null ? `${telefonesValidosPct}%` : '-'}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {totalTelefones > 0
-              ? `${kpis.telefones_validos} validos / ${kpis.telefones_invalidos} invalidos`
-              : 'sem dados'
-            }
-          </p>
-        </div>
+      </div>
 
+      {/* Financial summary bar */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex items-center justify-between">
+          <span className="text-xs text-gray-500 uppercase">Total Desembolsado</span>
+          <span className="text-lg font-heading font-bold text-[#0072F7]">{formatCompactCurrency(kpis.total_desembolsado)}</span>
+        </div>
+        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex items-center justify-between">
+          <span className="text-xs text-gray-500 uppercase">Saldo em Conta</span>
+          <span className="text-lg font-heading font-bold text-[#0072F7]">{formatCompactCurrency(kpis.total_saldo)}</span>
+        </div>
       </div>
 
       {/* Charts Grid */}
