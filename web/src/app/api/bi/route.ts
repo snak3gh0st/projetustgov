@@ -122,7 +122,7 @@ export async function GET(request: Request) {
             COUNT(DISTINCT vp.cnpj)::int as count
           FROM vendedor_projetos vp
           WHERE vp.vendedor_id IS NOT NULL
-          ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
+          ${filterByVendedor ? 'AND vp.vendedor_id = $1' : ''}
           GROUP BY 1
         ) funnel
         ORDER BY
@@ -147,7 +147,7 @@ export async function GET(request: Request) {
         JOIN users u ON u.id = vp.vendedor_id
         WHERE vp.vendedor_id IS NOT NULL
           AND u.role != 'gestor'
-          ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
+          ${filterByVendedor ? 'AND vp.vendedor_id = $1' : ''}
         GROUP BY u.nome
         HAVING COUNT(*) FILTER (WHERE vp.status_contato = 'Fechado') > 0
         ORDER BY total_comissao DESC
@@ -161,7 +161,7 @@ export async function GET(request: Request) {
           COALESCE(SUM(vp.valor_emenda::numeric), 0) as valor_emenda
         FROM vendedor_projetos vp
         WHERE vp.uf IS NOT NULL AND vp.uf != ''
-        ${isVendedor ? 'AND vp.vendedor_id = $1' : ''}
+        ${filterByVendedor ? 'AND vp.vendedor_id = $1' : ''}
         GROUP BY vp.uf
         ORDER BY count DESC
         LIMIT 15
