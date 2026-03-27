@@ -5,17 +5,21 @@ import { getApiSession } from '@/lib/dal'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getApiSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Gestor can filter by vendedor_id param; vendedor always sees own data
+    const { searchParams } = new URL(request.url)
+    const vendedorIdParam = searchParams.get('vendedor_id')
     const isVendedor = session.role === 'vendedor' || session.role === 'coordenador'
-    const vendedorFilter = isVendedor ? ' WHERE vp.vendedor_id = $1' : ''
-    const vendedorParams = isVendedor ? [session.userId] : []
-    const assignedFilter = isVendedor ? ' AND vp.vendedor_id = $1' : ' AND vp.vendedor_id IS NOT NULL'
+    const filterByVendedor = isVendedor ? session.userId : vendedorIdParam
+    const vendedorFilter = filterByVendedor ? ' WHERE vp.vendedor_id = $1' : ''
+    const vendedorParams = filterByVendedor ? [filterByVendedor] : []
+    const assignedFilter = filterByVendedor ? ' AND vp.vendedor_id = $1' : ' AND vp.vendedor_id IS NOT NULL'
 
     // Run all queries in parallel to avoid sequential connection queuing
     const [
@@ -116,7 +120,7 @@ export async function GET() {
           COUNT(DISTINCT lc.lead_cnpj) FILTER (WHERE lc.telefone_status = 'invalido')::int as telefones_invalidos,
           COUNT(DISTINCT lc.lead_cnpj)::int as total_com_contato
         FROM lead_contacts lc
-        ${isVendedor ? 'WHERE EXISTS (SELECT 1 FROM vendedor_projetos vp WHERE vp.cnpj = lc.lead_cnpj AND vp.vendedor_id = $1)' : ''}
+        ${filterByVendedor ? 'WHERE EXISTS (SELECT 1 FROM vendedor_projetos vp WHERE vp.cnpj = lc.lead_cnpj AND vp.vendedor_id = $1)' : ''}
       `, vendedorParams),
 
       // 8. Chart: Pipeline Funnel — all 6 statuses in correct funnel order
@@ -183,7 +187,7 @@ export async function GET() {
       // 11. Chart: Activity Trend (last 6 months from contact_notes)
       // Use EXISTS subquery instead of JOIN to avoid multiplying rows when a CNPJ
       // has multiple entries in vendedor_projetos (one per emenda/programa)
-      isVendedor
+      filterByVendedor
         ? query(`
           SELECT
             DATE_TRUNC('month', cn.created_at)::date as month,
