@@ -457,7 +457,7 @@ Plans:
 
 Plans:
 - [x] 19-01-PLAN.md — Shared TGov contracts (tgov.ts) and DB-backed verification harness
-- [ ] 19-02-PLAN.md — API endpoints: /api/tgov/aprovacao and /api/tgov/execucao with SQL aggregates + pagination
+- [x] 19-02-PLAN.md — API endpoints: /api/tgov/aprovacao and /api/tgov/execucao with SQL aggregates + pagination
 - [ ] 19-03-PLAN.md — UI: /tgov page with tabs, donut chart, KPI card, paginated table, sidebar entry
 
 ## Progress
@@ -493,7 +493,7 @@ Plans:
 | 16. API & Business Logic | 2/2 | Complete   | 2026-03-18 |
 | 17. UI & Navigation | 2/2 | Complete    | 2026-03-18 |
 | **Milestone v5.0** | | | |
-| 19. TGov Dashboard | 1/3 | In Progress | - |
+| 19. TGov Dashboard | 2/3 | In Progress | - |
 
 ---
 *Roadmap created: 2026-02-04*

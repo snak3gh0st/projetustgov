@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — TGov Dashboard
 status: in_progress
-stopped_at: Completed 19-01 (TGov shared contracts and verification harness)
-last_updated: "2026-03-30T19:22:35Z"
+stopped_at: Completed 19-02 (TGov backend API routes — aprovacao and execucao)
+last_updated: "2026-03-30T19:31:00Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 14
   completed_phases: 8
   total_plans: 42
-  completed_plans: 35
+  completed_plans: 36
 ---
 
 # Project State: PROJETUS — v5.0 TGov Dashboard
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 19 of 19 in milestone v5.0 (TGov Dashboard) — IN PROGRESS
-Plan: 1 of 3 in Phase 19 — COMPLETE
-Status: Plan 19-01 complete — shared contracts + verification harness
-Last activity: 2026-03-30 — Plan 19-01 executed (2 tasks, 3 files, 4 min)
+Plan: 2 of 3 in Phase 19 — COMPLETE
+Status: Plan 19-02 complete — /api/tgov/aprovacao and /api/tgov/execucao routes
+Last activity: 2026-03-30 — Plan 19-02 executed (2 tasks, 2 files, 3 min)
 
-Progress (v5.0): [█░░░░░░░░░] 33%
+Progress (v5.0): [██░░░░░░░░] 67%
 
 **Milestone v1.0:** Complete (Phases 1, 2, 4, 5)
 **Milestone v2.0:** Superseded by Next.js migration (Phases 6-8)
@@ -50,6 +50,7 @@ Progress (v5.0): [█░░░░░░░░░] 33%
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 19-tgov-dashboard | 01 | 4 min | 2 | 3 |
+| 19-tgov-dashboard | 02 | 3 min | 2 | 2 |
 
 *Updated after each plan completion*
 
@@ -85,6 +86,9 @@ Progress (v5.0): [█░░░░░░░░░] 33%
 | tipo=meus_proponentes maps to vendedor_projetos EXISTS predicate (Plan 19-01) | Only established ownership meaning in the codebase — no ambiguity between "assigned" and "in CRM" since they use the same table |
 | ano filter uses propostas.data_publicacao for both TGov tabs (Plan 19-01) | Consistent "proposal publication year" prevents cross-tab drift; execucao derives via id_proposta->transfer_gov_id join |
 | Inline table filters isolated from TGov donut/KPI aggregates (Plan 19-01) | Donut/KPI stay stable as analytics lens; inline search is detail-only per CONTEXT.md Claude's discretion |
+| execucao numeroProposta: COALESCE(id_proposta, nr_convenio) (Plan 19-02) | Prefers proposal ID to align with approval tab semantics; nr_convenio only when id_proposta is NULL |
+| execucao Data column: COALESCE(propostas.data_publicacao, data_assinatura, data_inicio_vigencia) (Plan 19-02) | Proposal publication date preferred for cross-tab consistency; assinatura/vigencia as fallbacks for rows without matching proposta |
+| execucao table sort: Data DESC, id_proposta DESC NULLS LAST, nr_convenio DESC (Plan 19-02) | Deterministic newest-first order with two tie-breakers for stable pagination per CONTEXT.md locked table-browsing decision |
 
 ### Quick Tasks Completed
 
@@ -121,13 +125,14 @@ Progress (v5.0): [█░░░░░░░░░] 33%
 
 - **New lib:** web/src/lib/tgov.ts (shared contracts for both tabs)
 - **New script:** web/scripts/verify-tgov-dashboard.mjs (11-check verification harness)
-- **Planned API routes:** web/src/app/api/tgov/aprovacao/route.ts, web/src/app/api/tgov/execucao/route.ts
+- **New API route:** web/src/app/api/tgov/aprovacao/route.ts (GET — gestor-only approval analytics, CREATED Plan 19-02)
+- **New API route:** web/src/app/api/tgov/execucao/route.ts (GET — gestor-only execution analytics, CREATED Plan 19-02)
 - **Planned page:** web/src/app/tgov/page.tsx + TGovDashboardClient.tsx
 - **Data sources:** propostas table (approval), projetos_execucao table (execution)
 - **Filter semantics locked:** ano=data_publicacao, tipo=vendedor_projetos EXISTS, inline search is table-only
 
 ## Session Continuity
 
-Last session: 2026-03-30T19:22:35Z
-Stopped at: Completed 19-01 (TGov shared contracts and verification harness)
-Resume file: .planning/phases/19-tgov-dashboard/19-01-SUMMARY.md
+Last session: 2026-03-30T19:31:00Z
+Stopped at: Completed 19-02 (TGov backend API routes — aprovacao and execucao)
+Resume file: .planning/phases/19-tgov-dashboard/19-02-SUMMARY.md
