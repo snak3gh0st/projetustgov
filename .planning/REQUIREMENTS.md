@@ -28,11 +28,11 @@ Requirements for milestone v4.1 — Distribuicao, Design & Performance.
 
 ### TGov Dashboard
 
-- [ ] **TGOV-01**: Nova pagina /tgov acessivel via sidebar, restrita a role gestor
-- [ ] **TGOV-02**: Tab Aprovacao com donut chart de situacao, KPI card total, e tabela detalhada (ID Proposta, Data, CNPJ, Proponente, Situacao)
-- [ ] **TGOV-03**: Tab Execucao com mesma estrutura (donut + KPI + tabela) usando dados de projetos em execucao
-- [ ] **TGOV-04**: Filtros: Ano, Tipo (Meus Proponentes/Outros), Status, UF do Proponente
-- [ ] **TGOV-05**: Filtros na tabela: Proponente, Numero Proposta
+- [x] **TGOV-01**: Nova pagina /tgov acessivel via sidebar, restrita a role gestor
+- [x] **TGOV-02**: Tab Aprovacao com donut chart de situacao, KPI card total, e tabela detalhada (ID Proposta, Data, CNPJ, Proponente, Situacao)
+- [x] **TGOV-03**: Tab Execucao com mesma estrutura (donut + KPI + tabela) usando dados de projetos em execucao
+- [x] **TGOV-04**: Filtros: Ano, Tipo (Meus Proponentes/Outros), Status, UF do Proponente
+- [x] **TGOV-05**: Filtros na tabela: Proponente, Numero Proposta
 
 ## Future Requirements (v4.2+)
 
@@ -62,11 +62,11 @@ Requirements for milestone v4.1 — Distribuicao, Design & Performance.
 | DIST-02 | Phase 18 | Complete |
 | DIST-03 | Phase 18 | Complete |
 | DIST-04 | Phase 18 | Complete |
-| TGOV-01 | Phase 19 | Pending |
-| TGOV-02 | Phase 19 | Pending |
-| TGOV-03 | Phase 19 | Pending |
-| TGOV-04 | Phase 19 | Pending |
-| TGOV-05 | Phase 19 | Pending |
+| TGOV-01 | Phase 19 | Complete |
+| TGOV-02 | Phase 19 | Complete |
+| TGOV-03 | Phase 19 | Complete |
+| TGOV-04 | Phase 19 | Complete |
+| TGOV-05 | Phase 19 | Complete |
 | PERF-01 | Phase 20 | Pending |
 | PERF-02 | Phase 20 | Pending |
 | DESIGN-01 | Phase 21 | Pending |

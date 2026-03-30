@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — TGov Dashboard
 status: in_progress
-stopped_at: Completed 19-02 (TGov backend API routes — aprovacao and execucao)
-last_updated: "2026-03-30T19:31:00Z"
+stopped_at: Completed 19-03 (TGov dashboard UI, navigation, and middleware 403 guard)
+last_updated: "2026-03-30T19:45:00Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 14
   completed_phases: 8
   total_plans: 42
-  completed_plans: 36
+  completed_plans: 37
 ---
 
 # Project State: PROJETUS — v5.0 TGov Dashboard
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 19 of 19 in milestone v5.0 (TGov Dashboard) — IN PROGRESS
-Plan: 2 of 3 in Phase 19 — COMPLETE
-Status: Plan 19-02 complete — /api/tgov/aprovacao and /api/tgov/execucao routes
-Last activity: 2026-03-30 — Plan 19-02 executed (2 tasks, 2 files, 3 min)
+Plan: 3 of 3 in Phase 19 — COMPLETE
+Status: Plan 19-03 complete — /tgov page, TGovDashboardClient, TGovStatusDonut, sidebar + middleware 403
+Last activity: 2026-03-30 — Plan 19-03 executed (2 tasks, 7 files, ~9 min)
 
-Progress (v5.0): [██░░░░░░░░] 67%
+Progress (v5.0): [███░░░░░░░] 100%
 
 **Milestone v1.0:** Complete (Phases 1, 2, 4, 5)
 **Milestone v2.0:** Superseded by Next.js migration (Phases 6-8)
@@ -51,6 +51,7 @@ Progress (v5.0): [██░░░░░░░░] 67%
 |-------|------|----------|-------|-------|
 | 19-tgov-dashboard | 01 | 4 min | 2 | 3 |
 | 19-tgov-dashboard | 02 | 3 min | 2 | 2 |
+| 19-tgov-dashboard | 03 | 9 min | 2 | 7 |
 
 *Updated after each plan completion*
 
@@ -89,6 +90,9 @@ Progress (v5.0): [██░░░░░░░░] 67%
 | execucao numeroProposta: COALESCE(id_proposta, nr_convenio) (Plan 19-02) | Prefers proposal ID to align with approval tab semantics; nr_convenio only when id_proposta is NULL |
 | execucao Data column: COALESCE(propostas.data_publicacao, data_assinatura, data_inicio_vigencia) (Plan 19-02) | Proposal publication date preferred for cross-tab consistency; assinatura/vigencia as fallbacks for rows without matching proposta |
 | execucao table sort: Data DESC, id_proposta DESC NULLS LAST, nr_convenio DESC (Plan 19-02) | Deterministic newest-first order with two tie-breakers for stable pagination per CONTEXT.md locked table-browsing decision |
+| Redirect non-gestores to /sem-permissao in page.tsx (Plan 19-03) | Second layer after middleware 403; page redirect gives better UX than middleware 403 HTML for SSR-navigated requests |
+| Middleware returns true HTTP 403 Response for /tgov page (Plan 19-03) | `new Response(...)` with status 403 is the only way to return true 403 for page routes in Next 14; `redirect()` returns 302 |
+| eslintrc @typescript-eslint plugin declared as off (Plan 19-03) | Pre-existing disable-comments need known rule — "off" prevents "rule not found" error without changing any lint behavior |
 
 ### Quick Tasks Completed
 
@@ -133,6 +137,6 @@ Progress (v5.0): [██░░░░░░░░] 67%
 
 ## Session Continuity
 
-Last session: 2026-03-30T19:31:00Z
-Stopped at: Completed 19-02 (TGov backend API routes — aprovacao and execucao)
-Resume file: .planning/phases/19-tgov-dashboard/19-02-SUMMARY.md
+Last session: 2026-03-30T19:45:00Z
+Stopped at: Completed 19-03 (TGov dashboard UI, navigation, and middleware 403 guard)
+Resume file: .planning/phases/19-tgov-dashboard/19-03-SUMMARY.md
