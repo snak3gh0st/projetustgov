@@ -138,7 +138,7 @@ Plans:
 | 15. ETL Sync | v4.0 | 2/2 | Complete | 2026-03-18 |
 | 16. API & Logic | v4.0 | 2/2 | Complete | 2026-03-18 |
 | 17. UI & Navigation | v4.0 | 2/2 | Complete | 2026-03-18 |
-| 18. Lead Distribution | 1/2 | 2/2 | Complete   | 2026-03-30 |
+| 18. Lead Distribution | 1/2 | 2/2 | Complete    | 2026-03-30 |
 | 19. TGov Dashboard | v4.1 | 0/TBD | Not started | - |
 | 20. Performance Optimization | v4.1 | 0/TBD | Not started | - |
 | 21. Design Refresh | v4.1 | 0/TBD | Not started | - |
