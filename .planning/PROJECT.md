@@ -25,12 +25,13 @@ Sistema completo de CRM de vendas e inteligencia de dados do Transfer Gov. Extra
 - ✓ Projetos em execucao: ETL, API, UI com metricas financeiras — v4.0
 - ✓ Alert rule (valor_desembolsado = 0) confirmada com cliente — v4.0
 - ✓ Dashboard separado Pipeline Aprovacao vs Pipeline Execucao — v4.0
+- ✓ Distribuicao igualitaria de leads na execucao com client-routing para coordenador — v4.1 Phase 18
 
 ### Active
 
-- [ ] Distribuicao igualitaria de leads na execucao (roleta automatica)
 - [ ] Identidade visual Projete (cores, fontes, logo)
 - [ ] Otimizacao de memoria no sync de propostas (~1300MB → <1GB)
+- [ ] TGov dashboard replicando Power BI oficial (Aprovacao + Execucao)
 
 ### Out of Scope
 
@@ -121,4 +122,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-30 after v4.1 milestone start*
+*Last updated: 2026-03-30 after Phase 18 (Lead Distribution) complete*
