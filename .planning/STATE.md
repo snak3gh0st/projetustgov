@@ -1,43 +1,48 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.0
-milestone_name: — Projetos em Execucao
-status: archived
-stopped_at: Milestone v4.0 archived
-last_updated: "2026-03-30T14:30:00Z"
-last_activity: 2026-03-30 — Milestone v4.0 archived
+milestone: v4.1
+milestone_name: — Distribuicao, Design & Performance
+status: requirements
+stopped_at: Defining requirements
+last_updated: "2026-03-30T14:45:00Z"
+last_activity: 2026-03-30 — Milestone v4.1 started
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
-# Project State: PROJETUS — v4.0 Archived
+# Project State: PROJETUS — v4.1 Distribuicao, Design & Performance
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-03-30)
 
 **Core value:** CRM de vendas com inteligencia automatizada sobre propostas e projetos em execucao do Transfer Gov
-**Current focus:** Planning next milestone
+**Current focus:** Defining requirements
 
 ## Current Position
 
-Milestone v4.0 (Projetos em Execucao) archived. All 4 phases (14-17) complete.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-30 — Milestone v4.1 started
 
-Progress: [██████████] 100%
+## Accumulated Context
 
-**Milestone v1.0:** Complete (Phases 1, 2, 4, 5)
-**Milestone v2.0:** Superseded by Next.js migration (Phases 6-8)
-**Milestone v3.0:** Complete (Phases 10-13 + 74 quick tasks)
-**Milestone v4.0:** ARCHIVED (Phases 14-17 + 8 quick tasks)
+**From v4.0:**
+- Execution pipeline has independent status_contato_execucao field
+- Leads from approval pipeline keep their vendedor when appearing in execution
+- 8,793 OSC execution projects synced
+- Memory peak ~1300MB on proposta sync (1.1M rows CSV)
+- 5 roles with different access levels across both pipelines
 
 ## Next Steps
 
-Run `/gsd:new-milestone` to start next milestone cycle.
+Define requirements, then create roadmap.
 
 ## Session Continuity
 
 Last session: 2026-03-30
-Stopped at: Milestone v4.0 archived
+Stopped at: Defining requirements for v4.1

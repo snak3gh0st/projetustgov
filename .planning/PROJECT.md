@@ -28,7 +28,9 @@ Sistema completo de CRM de vendas e inteligencia de dados do Transfer Gov. Extra
 
 ### Active
 
-(None — next milestone not yet defined)
+- [ ] Distribuicao igualitaria de leads na execucao (roleta automatica)
+- [ ] Identidade visual Projete (cores, fontes, logo)
+- [ ] Otimizacao de memoria no sync de propostas (~1300MB → <1GB)
 
 ### Out of Scope
 
@@ -38,6 +40,15 @@ Sistema completo de CRM de vendas e inteligencia de dados do Transfer Gov. Extra
 - **Alertas push para projetos em execucao** — Depende de regras de negocio com cliente
 - **Mobile app** — Web-first approach
 - **WhatsApp automation** — Projeto separado/futuro
+
+## Current Milestone: v4.1 Distribuicao, Design & Performance
+
+**Goal:** Equilibrar distribuicao de leads na execucao, atualizar identidade visual para marca Projete, e otimizar memoria do sync de propostas.
+
+**Target features:**
+- Distribuicao igualitaria de leads (Execucao) — Roleta automatica para leads novos sem vendedor da aprovacao, priorizando vendedores com menos leads totais na execucao
+- Identidade visual Projete — Atualizar design do app conforme guia de marca da Projete
+- Otimizacao de memoria — Resolver pico de ~1300MB no sync de propostas (limite Vercel Pro: 1GB)
 
 ## Context
 
@@ -92,5 +103,22 @@ Sistema completo de CRM de vendas e inteligencia de dados do Transfer Gov. Extra
 | **Vercel** | Next.js hosting, cron jobs, deploy from master | Active |
 | **Railway** | — | **Deleted 2026-02-12** |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd:transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-03-30 after v4.0 milestone*
+*Last updated: 2026-03-30 after v4.1 milestone start*
