@@ -1,47 +1,55 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.0
-milestone_name: — Projetos em Execucao
-status: completed
-stopped_at: Completed quick task 260323 (pipeline de execucao separado no dashboard)
-last_updated: "2026-03-25T20:18:22Z"
-last_activity: 2026-03-25 — Completed quick task 260323: separate approval vs execution funnels on home dashboard
+milestone: v5.0
+milestone_name: — TGov Dashboard
+status: in_progress
+stopped_at: Completed 19-01 (TGov shared contracts and verification harness)
+last_updated: "2026-03-30T19:22:35Z"
+last_activity: 2026-03-30
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  total_phases: 14
+  completed_phases: 8
+  total_plans: 42
+  completed_plans: 35
 ---
 
-# Project State: PROJETUS — v4.0 Projetos em Execucao
+# Project State: PROJETUS — v5.0 TGov Dashboard
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Inteligencia pos-venda para gestores identificarem clientes qualificados com projetos em execucao no TransferenciaGov.
-**Current focus:** Phase 17 — UI & Navigation
+**Current focus:** Phase 19 — TGov Dashboard
 
 ## Current Position
 
-Phase: 17 of 17 in milestone v4.0 (UI & Navigation) — COMPLETE
-Plan: 2 of 2 in Phase 17
-Status: Plan 17-02 complete — ExecucaoSlideOver, Sidebar execucao nav entry
-Last activity: 2026-03-18 — Plan 17-02 executed (2 tasks, 3 files, 2 min)
+Phase: 19 of 19 in milestone v5.0 (TGov Dashboard) — IN PROGRESS
+Plan: 1 of 3 in Phase 19 — COMPLETE
+Status: Plan 19-01 complete — shared contracts + verification harness
+Last activity: 2026-03-30 — Plan 19-01 executed (2 tasks, 3 files, 4 min)
 
-Progress (v4.0): [██████████] 100%
+Progress (v5.0): [█░░░░░░░░░] 33%
 
 **Milestone v1.0:** Complete (Phases 1, 2, 4, 5)
 **Milestone v2.0:** Superseded by Next.js migration (Phases 6-8)
 **Milestone v3.0:** Complete (Phases 10-13 + 74 quick tasks)
 **Milestone v4.0:** COMPLETE (Phases 14-17)
+**Milestone v5.0:** IN PROGRESS (Phase 19)
 
 ## Performance Metrics
 
 **v4.0 Velocity:**
+
 - Total plans completed: 5
 - Average duration: ~14 min
 - Total execution time: ~69 min
+
+**v5.0 Velocity (Phase 19):**
+
+| Phase | Plan | Duration | Tasks | Files |
+|-------|------|----------|-------|-------|
+| 19-tgov-dashboard | 01 | 4 min | 2 | 3 |
 
 *Updated after each plan completion*
 
@@ -74,6 +82,9 @@ Progress (v4.0): [██████████] 100%
 | execucao nav entry first after BASE_NAV_ITEMS in gestor/coordenador arrays (Plan 17-02) | Natural grouping of data-view links before admin tools (upload, distribuir, monitoramento) |
 | Keep execucao_pipeline inside /api/dashboard-crm (Quick 260323) | Home compares approval vs execution in one fetch; separate route would add sync drift and extra client plumbing |
 | Execution funnel uses distinct projetos_execucao CNPJs with CRM priority ladder (Quick 260323) | Prevents duplicated convenio counts and keeps execution stage semantics aligned with /api/execucao |
+| tipo=meus_proponentes maps to vendedor_projetos EXISTS predicate (Plan 19-01) | Only established ownership meaning in the codebase — no ambiguity between "assigned" and "in CRM" since they use the same table |
+| ano filter uses propostas.data_publicacao for both TGov tabs (Plan 19-01) | Consistent "proposal publication year" prevents cross-tab drift; execucao derives via id_proposta->transfer_gov_id join |
+| Inline table filters isolated from TGov donut/KPI aggregates (Plan 19-01) | Donut/KPI stay stable as analytics lens; inline search is detail-only per CONTEXT.md Claude's discretion |
 
 ### Quick Tasks Completed
 
@@ -106,8 +117,17 @@ Progress (v4.0): [██████████] 100%
 - **Data sources:** siconv_convenio.csv.zip (15MB), siconv_proposta.csv.zip (187MB) from repositorio.dados.gov.br/seges/detru/
 - **Join key:** id_proposta (convenio) -> ID_PROPOSTA (proposta) to derive proponent CNPJ
 
+### Technical Context (v5.0 Stack — Phase 19 TGov Dashboard)
+
+- **New lib:** web/src/lib/tgov.ts (shared contracts for both tabs)
+- **New script:** web/scripts/verify-tgov-dashboard.mjs (11-check verification harness)
+- **Planned API routes:** web/src/app/api/tgov/aprovacao/route.ts, web/src/app/api/tgov/execucao/route.ts
+- **Planned page:** web/src/app/tgov/page.tsx + TGovDashboardClient.tsx
+- **Data sources:** propostas table (approval), projetos_execucao table (execution)
+- **Filter semantics locked:** ano=data_publicacao, tipo=vendedor_projetos EXISTS, inline search is table-only
+
 ## Session Continuity
 
-Last session: 2026-03-25T20:18:22Z
-Stopped at: Completed quick task 260323 (pipeline de execucao separado no dashboard)
-Resume file: .planning/quick/260323-criar-pipeline-de-execucao-podendo-ficar/260323-SUMMARY.md
+Last session: 2026-03-30T19:22:35Z
+Stopped at: Completed 19-01 (TGov shared contracts and verification harness)
+Resume file: .planning/phases/19-tgov-dashboard/19-01-SUMMARY.md

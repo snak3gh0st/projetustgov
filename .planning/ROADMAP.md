@@ -444,6 +444,22 @@ Plans:
 - [ ] 17-01-PLAN.md — API extension ({ rows, last_synced }), /sem-permissao page, /execucao page with server role guard, ExecucaoClient with KPIs, table, filters, alert highlighting
 - [ ] 17-02-PLAN.md — ExecucaoSlideOver with per-convenio detail, progress bar, contact badge, urgency coloring + Sidebar nav entry for gestor/coordenador
 
+### Milestone v5.0 — TGov Dashboard
+
+### Phase 19: TGov Dashboard
+**Goal**: Build a gestor-only `/tgov` analytics page that reproduces the key Power BI approval and execution views inside the app. The page provides `Aprovacao` and `Execucao` tabs, each with a situacao donut chart, a total KPI card, a paginated detail table (25 rows, numbered pagination), and shared filters for Ano, Tipo, Status, and UF. Inline table filters for Proponente and Numero Proposta affect only the table, not the KPI/donut.
+
+**Depends on**: Phase 17 (execucao data layer), Phase 16 (projetos_execucao populated)
+
+**Requirements**: TGOV-01, TGOV-02, TGOV-03, TGOV-04, TGOV-05
+
+**Plans**: 3 plans
+
+Plans:
+- [x] 19-01-PLAN.md — Shared TGov contracts (tgov.ts) and DB-backed verification harness
+- [ ] 19-02-PLAN.md — API endpoints: /api/tgov/aprovacao and /api/tgov/execucao with SQL aggregates + pagination
+- [ ] 19-03-PLAN.md — UI: /tgov page with tabs, donut chart, KPI card, paginated table, sidebar entry
+
 ## Progress
 
 **Execution Order:**
@@ -451,6 +467,7 @@ Plans:
 - **Milestone v2.0**: Phases 6 -> 7 -> 8 (complete), Phase 9 (superseded by Next.js)
 - **Milestone v3.0**: Phases 10 -> 11 -> 12 -> 13
 - **Milestone v4.0**: Phases 14 -> 15 -> 16 -> 17
+- **Milestone v5.0**: Phase 19
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -475,6 +492,8 @@ Plans:
 | 15. ETL Sync & Validation | 2/2 | Complete    | 2026-03-18 |
 | 16. API & Business Logic | 2/2 | Complete   | 2026-03-18 |
 | 17. UI & Navigation | 2/2 | Complete    | 2026-03-18 |
+| **Milestone v5.0** | | | |
+| 19. TGov Dashboard | 1/3 | In Progress | - |
 
 ---
 *Roadmap created: 2026-02-04*
@@ -492,3 +511,7 @@ Plans:
 *Milestone v4.0 added: 2026-03-18*
 *Milestone v4.0 depth: standard (4 phases)*
 *Milestone v4.0 coverage: 21/21 v4.0 requirements mapped*
+
+*Milestone v5.0 added: 2026-03-30*
+*Milestone v5.0 depth: standard (1 phase)*
+*Milestone v5.0 coverage: 5/5 v5.0 requirements mapped*
