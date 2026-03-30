@@ -47,7 +47,7 @@ const YEAR_OPTIONS = buildYearOptions()
 // ---------------------------------------------------------------------------
 
 interface TGovDashboardClientProps {
-  userRole: 'gestor' | 'vendedor' | 'visualizador' | 'coordenador'
+  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador'
 }
 
 // ---------------------------------------------------------------------------

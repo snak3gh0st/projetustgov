@@ -25,30 +25,9 @@ export default auth((req) => {
     return Response.redirect(new URL('/', req.url))
   }
 
-  // ---------------------------------------------------------------------------
-  // TGov: strict gestor-only access boundary
-  // Middleware check is the HTTP-level gate; page.tsx / API routes add a second
-  // layer via verifySession() / getApiSession() for defence in depth.
-  // ---------------------------------------------------------------------------
-  const isTGovPage = pathname === '/tgov' || pathname.startsWith('/tgov/')
-  const isTGovApi = pathname.startsWith('/api/tgov')
-
-  if (isTGovPage || isTGovApi) {
-    const role = (req.auth as { user?: { role?: string } })?.user?.role
-    if (role !== 'gestor') {
-      if (isTGovApi) {
-        return Response.json({ error: 'Forbidden: gestor only' }, { status: 403 })
-      }
-      // Page: return 403 HTML response (not a redirect)
-      return new Response(
-        '<!DOCTYPE html><html><head><title>403 Forbidden</title></head><body><p>Acesso restrito a gestores.</p></body></html>',
-        {
-          status: 403,
-          headers: { 'Content-Type': 'text/html; charset=utf-8' },
-        }
-      )
-    }
-  }
+  // TGov role enforcement is handled in page.tsx (verifySession) and API routes
+  // (getApiSession), which use the full auth session with role. The edge-compatible
+  // auth used here does not expose role, so we only enforce authentication above.
 })
 
 export const config = {

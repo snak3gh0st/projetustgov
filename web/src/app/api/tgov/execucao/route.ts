@@ -9,8 +9,8 @@ export const maxDuration = 30
 export async function GET(request: NextRequest) {
   try {
     const session = await getApiSession()
-    if (!session || session.role !== 'gestor') {
-      return NextResponse.json({ error: 'Forbidden: gestor only' }, { status: 403 })
+    if (!session || (session.role !== 'gestor' && session.role !== 'admin')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)

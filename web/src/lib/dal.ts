@@ -12,7 +12,7 @@ export const verifySession = cache(async () => {
   return {
     isAuth: true,
     userId: session.user.id,
-    role: session.user.role as 'gestor' | 'vendedor' | 'visualizador' | 'coordenador',
+    role: session.user.role as 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador',
     email: session.user.email,
     name: session.user.name
   }
@@ -24,7 +24,7 @@ export async function getApiSession() {
   if (!session?.user?.id) return null
   return {
     userId: session.user.id,
-    role: session.user.role as 'gestor' | 'vendedor' | 'visualizador' | 'coordenador',
+    role: session.user.role as 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador',
     email: session.user.email,
     name: session.user.name
   }

@@ -7,7 +7,7 @@ import { logout } from '@/lib/auth-actions'
 interface SidebarProps {
   user: {
     name?: string | null
-    role: 'gestor' | 'vendedor' | 'visualizador' | 'coordenador'
+    role: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador'
     email?: string | null
   }
 }
@@ -66,7 +66,7 @@ const BASE_WITH_EXECUCAO = [
 export default function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
 
-  const navItems = user.role === 'gestor'
+  const navItems = (user.role === 'gestor' || user.role === 'admin')
     ? [
         ...BASE_WITH_EXECUCAO,
         { href: '/tgov', label: 'TGov Dashboard', icon: 'tgov' },
@@ -125,7 +125,7 @@ export default function Sidebar({ user }: SidebarProps) {
             {user.name || user.email}
           </p>
           <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${
-            user.role === 'gestor'
+            user.role === 'gestor' || user.role === 'admin'
               ? 'bg-blue-50 text-blue-600'
               : user.role === 'coordenador'
               ? 'bg-indigo-50 text-indigo-600'
@@ -133,7 +133,7 @@ export default function Sidebar({ user }: SidebarProps) {
               ? 'bg-purple-50 text-purple-600'
               : 'bg-green-50 text-green-600'
           }`}>
-            {user.role === 'gestor' ? 'Gestor' : user.role === 'coordenador' ? 'Coordenador' : user.role === 'visualizador' ? 'Visualizador' : 'Vendedor'}
+            {user.role === 'gestor' ? 'Gestor' : user.role === 'admin' ? 'Admin' : user.role === 'coordenador' ? 'Coordenador' : user.role === 'visualizador' ? 'Visualizador' : 'Vendedor'}
           </span>
         </div>
         <form action={logout}>
