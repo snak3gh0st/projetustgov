@@ -11,6 +11,9 @@ export async function POST() {
       return NextResponse.json({ error: 'Forbidden: gestor only' }, { status: 403 })
     }
     const result = await distributeUnassignedExecucao()
+    if (result.skipped) {
+      return NextResponse.json(result, { status: 409 })
+    }
     return NextResponse.json(result)
   } catch (error) {
     console.error('[api/execucao/distribute] Error:', error)
