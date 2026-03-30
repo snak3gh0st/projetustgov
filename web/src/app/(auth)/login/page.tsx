@@ -25,10 +25,11 @@ export default function LoginPage() {
       <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="font-heading text-4xl font-bold tracking-tight">
-            <span className="bg-gradient-to-r from-[#FD225C] via-[#7A4BAC] to-[#0072F7] bg-clip-text text-transparent">PROJETUS</span>
-          </h1>
-          <p className="text-gray-400 text-sm mt-1">CRM de Vendas</p>
+          <div className="flex justify-center mb-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Projete" style={{ width: 180, height: 'auto' }} />
+          </div>
+          <p className="text-gray-400 text-sm">CRM de Vendas</p>
           <p className="text-[11px] text-[#0072F7] mt-2">
             powered by <span className="font-semibold">SigmaIntel</span>
           </p>

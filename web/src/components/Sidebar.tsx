@@ -87,10 +87,9 @@ export default function Sidebar({ user }: SidebarProps) {
   return (
     <aside className="fixed left-0 top-0 h-screen w-56 bg-white border-r border-gray-200 flex flex-col z-50">
       <div className="p-5 border-b border-gray-200">
-        <h1 className="font-heading text-xl font-bold tracking-tight">
-          <span className="bg-gradient-to-r from-[#FD225C] via-[#7A4BAC] to-[#0072F7] bg-clip-text text-transparent">PROJETUS</span>
-        </h1>
-        <p className="text-[10px] text-gray-400 mt-0.5 tracking-widest uppercase">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Projete" style={{ width: 120, height: 'auto' }} />
+        <p className="text-[10px] text-gray-400 mt-1.5 tracking-widest uppercase">
           CRM de Vendas
         </p>
       </div>
