@@ -34,6 +34,16 @@ export default function DistribuirPage() {
   const [monitorLoading, setMonitorLoading] = useState(false)
   const [monitorResult, setMonitorResult] = useState<{ type: 'success' | 'error' | 'conflict'; message: string } | null>(null)
   const [pendingForce, setPendingForce] = useState(false)
+  const [distributingExecucao, setDistributingExecucao] = useState(false)
+  const [execucaoResult, setExecucaoResult] = useState<{
+    distributed: number
+    updated: number
+    inserted: number
+    skipped?: boolean
+    vendedores: { nome: string; before: number; assigned: number; after: number }[]
+    coordenador?: { nome: string; assigned: number }
+  } | null>(null)
+  const [showExecucaoModal, setShowExecucaoModal] = useState(false)
 
   const fetchLeads = useCallback(async () => {
     setLoading(true)
@@ -261,6 +271,32 @@ export default function DistribuirPage() {
     }
   }
 
+  async function handleDistribuirExecucao() {
+    setDistributingExecucao(true)
+    setExecucaoResult(null)
+    try {
+      const res = await fetch('/api/execucao/distribute', { method: 'POST' })
+      const data = await res.json()
+      if (res.status === 409) {
+        setToast('Distribuicao ja em andamento. Tente novamente em instantes.')
+        setTimeout(() => setToast(''), 5000)
+        return
+      }
+      if (!res.ok) {
+        setToast(data.error || 'Erro na distribuicao de execucao')
+        setTimeout(() => setToast(''), 3000)
+        return
+      }
+      setExecucaoResult(data)
+      setShowExecucaoModal(true)
+    } catch {
+      setToast('Erro de conexao ao distribuir execucao')
+      setTimeout(() => setToast(''), 3000)
+    } finally {
+      setDistributingExecucao(false)
+    }
+  }
+
   async function handleAssign() {
     if (selectedLeadIds.size === 0 || !selectedVendedorId) return
     setAssigning(true)
@@ -409,6 +445,25 @@ export default function DistribuirPage() {
             className="px-4 py-2 rounded-lg text-sm font-semibold bg-[#0072F7] text-white hover:bg-[#0058C4] disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
           >
             {assigning ? 'Distribuindo...' : '🎲 Distribuir Igualmente'}
+          </button>
+        </div>
+      )}
+
+      {/* Execution pipeline distribution — gestor only */}
+      {userRole === 'gestor' && (
+        <div className="border border-green-200 bg-green-50/50 rounded-xl p-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-green-800">Distribuir Execucao Automaticamente</p>
+            <p className="text-xs text-green-600 mt-0.5">
+              Atribui leads em execucao ao vendedor com menos leads. Clientes existentes vao ao coordenador.
+            </p>
+          </div>
+          <button
+            onClick={handleDistribuirExecucao}
+            disabled={distributingExecucao}
+            className="px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+          >
+            {distributingExecucao ? 'Distribuindo...' : 'Distribuir Automaticamente'}
           </button>
         </div>
       )}
@@ -721,6 +776,82 @@ export default function DistribuirPage() {
       {toast && (
         <div className="fixed bottom-6 right-6 max-w-md bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-lg text-sm backdrop-blur-md">
           {toast}
+        </div>
+      )}
+
+      {/* Execucao distribution result modal */}
+      {showExecucaoModal && execucaoResult && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">Resultado da Distribuicao (Execucao)</h2>
+              <button
+                onClick={() => setShowExecucaoModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="bg-green-50 rounded-xl p-3">
+                <p className="text-2xl font-bold text-green-700">{execucaoResult.distributed}</p>
+                <p className="text-xs text-green-600 mt-0.5">CNPJs distribuidos</p>
+              </div>
+              <div className="bg-blue-50 rounded-xl p-3">
+                <p className="text-2xl font-bold text-blue-700">{execucaoResult.updated}</p>
+                <p className="text-xs text-blue-600 mt-0.5">Atualizados</p>
+              </div>
+              <div className="bg-purple-50 rounded-xl p-3">
+                <p className="text-2xl font-bold text-purple-700">{execucaoResult.inserted}</p>
+                <p className="text-xs text-purple-600 mt-0.5">Inseridos</p>
+              </div>
+            </div>
+
+            {execucaoResult.coordenador && execucaoResult.coordenador.assigned > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <p className="text-sm text-amber-800">
+                  <span className="font-semibold">{execucaoResult.coordenador.assigned}</span> CNPJs de clientes existentes atribuidos ao coordenador <span className="font-semibold">{execucaoResult.coordenador.nome}</span>
+                </p>
+              </div>
+            )}
+
+            {execucaoResult.vendedores.length > 0 && (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b border-gray-100">
+                    <th className="py-2 font-medium">Vendedor</th>
+                    <th className="py-2 font-medium text-center">Antes</th>
+                    <th className="py-2 font-medium text-center">Atribuidos</th>
+                    <th className="py-2 font-medium text-center">Depois</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {execucaoResult.vendedores.map((v, i) => (
+                    <tr key={i} className="border-b border-gray-50">
+                      <td className="py-2 text-gray-900">{v.nome}</td>
+                      <td className="py-2 text-center text-gray-500">{v.before}</td>
+                      <td className="py-2 text-center font-semibold text-green-700">{v.assigned > 0 ? `+${v.assigned}` : '0'}</td>
+                      <td className="py-2 text-center text-gray-900">{v.after}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            {execucaoResult.distributed === 0 && (
+              <p className="text-sm text-gray-500 text-center py-2">
+                Nenhum lead em execucao pendente de distribuicao.
+              </p>
+            )}
+
+            <button
+              onClick={() => setShowExecucaoModal(false)}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            >
+              Fechar
+            </button>
+          </div>
         </div>
       )}
     </div>
