@@ -12,7 +12,7 @@ Requirements for milestone v4.1 — Distribuicao, Design & Performance.
 - [x] **DIST-01**: Leads na execucao com tag "cliente" sao automaticamente atribuidos ao coordenador (Paulo) para monitoramento — nao entram na roleta
 - [x] **DIST-02**: Leads novos na execucao sem tag "cliente" e sem vendedor da aprovacao sao automaticamente atribuidos ao vendedor com menos leads totais na execucao
 - [x] **DIST-03**: Distribuicao usa advisory lock (pg_advisory_lock) para prevenir dupla atribuicao entre cron e trigger manual
-- [ ] **DIST-04**: Gestor pode disparar distribuicao manual via botao na UI
+- [x] **DIST-04**: Gestor pode disparar distribuicao manual via botao na UI
 
 ### Identidade Visual
 
@@ -61,7 +61,7 @@ Requirements for milestone v4.1 — Distribuicao, Design & Performance.
 | DIST-01 | Phase 18 | Complete |
 | DIST-02 | Phase 18 | Complete |
 | DIST-03 | Phase 18 | Complete |
-| DIST-04 | Phase 18 | Pending |
+| DIST-04 | Phase 18 | Complete |
 | TGOV-01 | Phase 19 | Pending |
 | TGOV-02 | Phase 19 | Pending |
 | TGOV-03 | Phase 19 | Pending |

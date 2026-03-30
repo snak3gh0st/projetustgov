@@ -63,7 +63,7 @@ Full details: [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
 
 **Milestone Goal:** Equalize lead distribution in the execution pipeline, add a TGov analytics dashboard for gestores, optimize proposta sync memory usage, and apply the Projete brand identity.
 
-- [ ] **Phase 18: Lead Distribution** — Equalization engine with advisory lock, client-tag routing, and manual trigger UI
+- [x] **Phase 18: Lead Distribution** — Equalization engine with advisory lock, client-tag routing, and manual trigger UI (completed 2026-03-30)
 - [ ] **Phase 19: TGov Dashboard** — New /tgov page with approval/execution analytics, donut charts, KPI cards, and filters
 - [ ] **Phase 20: Performance Optimization** — Instrument heap usage per sync step and reduce proposta sync memory peak
 - [ ] **Phase 21: Design Refresh** — Full Projete brand identity (colors, fonts, logo, favicon, design tokens) *(blocked on client brand guide delivery)*
@@ -79,10 +79,10 @@ Full details: [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
   2. A new lead in execucao without a vendedor from the approval pipeline is assigned to the vendedor with the fewest total leads in execucao
   3. Concurrent cron auto-distribution and manual trigger cannot assign the same lead to two different vendedores
   4. A gestor can press "Distribuir Automaticamente" in the /distribuir page and see a per-vendedor before/after count in the result modal
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
-- [ ] 18-01-PLAN.md — Advisory lock + client-routing in distribute-execucao.ts + API route update
-- [ ] 18-02-PLAN.md — Execution distribution button + result modal on /distribuir page
+- [x] 18-01-PLAN.md — Advisory lock + client-routing in distribute-execucao.ts + API route update
+- [x] 18-02-PLAN.md — Execution distribution button + result modal on /distribuir page
 
 ### Phase 19: TGov Dashboard
 **Goal**: Gestores have a dedicated /tgov analytics page replicating the key Power BI views for approval and execution pipeline intelligence
@@ -138,7 +138,7 @@ Plans:
 | 15. ETL Sync | v4.0 | 2/2 | Complete | 2026-03-18 |
 | 16. API & Logic | v4.0 | 2/2 | Complete | 2026-03-18 |
 | 17. UI & Navigation | v4.0 | 2/2 | Complete | 2026-03-18 |
-| 18. Lead Distribution | 1/2 | In Progress|  | - |
+| 18. Lead Distribution | 1/2 | 2/2 | Complete   | 2026-03-30 |
 | 19. TGov Dashboard | v4.1 | 0/TBD | Not started | - |
 | 20. Performance Optimization | v4.1 | 0/TBD | Not started | - |
 | 21. Design Refresh | v4.1 | 0/TBD | Not started | - |
