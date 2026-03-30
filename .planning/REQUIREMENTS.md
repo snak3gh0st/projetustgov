@@ -58,27 +58,27 @@ Requirements for milestone v4.1 — Distribuicao, Design & Performance.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DIST-01 | — | Pending |
-| DIST-02 | — | Pending |
-| DIST-03 | — | Pending |
-| DIST-04 | — | Pending |
-| DESIGN-01 | — | Pending |
-| DESIGN-02 | — | Pending |
-| DESIGN-03 | — | Pending |
-| DESIGN-04 | — | Pending |
-| PERF-01 | — | Pending |
-| PERF-02 | — | Pending |
-| TGOV-01 | — | Pending |
-| TGOV-02 | — | Pending |
-| TGOV-03 | — | Pending |
-| TGOV-04 | — | Pending |
-| TGOV-05 | — | Pending |
+| DIST-01 | Phase 18 | Pending |
+| DIST-02 | Phase 18 | Pending |
+| DIST-03 | Phase 18 | Pending |
+| DIST-04 | Phase 18 | Pending |
+| TGOV-01 | Phase 19 | Pending |
+| TGOV-02 | Phase 19 | Pending |
+| TGOV-03 | Phase 19 | Pending |
+| TGOV-04 | Phase 19 | Pending |
+| TGOV-05 | Phase 19 | Pending |
+| PERF-01 | Phase 20 | Pending |
+| PERF-02 | Phase 20 | Pending |
+| DESIGN-01 | Phase 21 | Pending |
+| DESIGN-02 | Phase 21 | Pending |
+| DESIGN-03 | Phase 21 | Pending |
+| DESIGN-04 | Phase 21 | Pending |
 
 **Coverage:**
 - v4.1 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 ⚠️
+- Mapped to phases: 15
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-30*
-*Last updated: 2026-03-30 after initial definition*
+*Last updated: 2026-03-30 — traceability mapped after roadmap creation*
