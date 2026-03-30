@@ -1,322 +1,328 @@
-# Stack Research — Projetos em Execução
+# Stack Research — v4.1 Distribution, Design & Performance
 
-**Domain:** Intelligence tab — post-sales project execution view for existing CRM
-**Researched:** 2026-03-18
-**Confidence:** HIGH (conclusions from live codebase inspection + direct verification of repo data sources)
+**Domain:** CRM SaaS — lead distribution, design system refresh, memory optimization
+**Researched:** 2026-03-30
+**Confidence:** HIGH (all conclusions based on direct codebase inspection + official documentation verification)
 
 ---
 
 ## Context
 
-This is a milestone addition to an existing Next.js 14 + PostgreSQL (Supabase) CRM. The core stack is validated and in production. This document covers only what is new or different for the Projetos em Execução feature.
+This is a subsequent-milestone addition to an existing Next.js 14 + PostgreSQL (Supabase) CRM already at v4.0.
+The three new features are:
 
-The feature reads two new CSV sources from `repositorio.dados.gov.br/seges/detru/`:
-- `siconv_convenio.csv.zip` (15MB) — convenio records with financial state and situacao
-- `siconv_proposta.csv.zip` (187MB) — proposal records with CNPJ, nome, objeto, vigencia dates
+1. **Lead distribution with equalization** — round-robin assignment for Execucao pipeline
+2. **Brand refresh (Projete identity)** — swap `sigma.*` colors and Google Fonts CSS import for Projete palette + `next/font`
+3. **Memory optimization** — reduce proposta sync peak from ~1300MB to under 1GB on Vercel Pro
 
-These must be cross-referenced via `id_proposta` to produce project execution cards grouped by CNPJ.
-
----
-
-## Recommended Stack
-
-### Core Technologies — No Changes
-
-The existing stack handles all new requirements. Do not add frameworks.
-
-| Technology | Version in use | Role | New usage |
-|------------|---------------|------|-----------|
-| Next.js 14 App Router | ^14.2.0 | Pages and API routes | New `/execucao` page + `/api/execucao` route |
-| PostgreSQL via `pg` | ^8.13.0 | Database | New `projetos_execucao` table |
-| Tailwind CSS | ^3.4.0 | UI styling | New page layout |
-| Auth.js v5 | ^5.0.0-beta.30 | Session auth | Gestor/coordenador-only guard (pattern already in `dal.ts`) |
-| Recharts | ^2.12.0 | Charts | Reuse for % execucao visualization if desired |
-
-### Supporting Libraries — Nothing New Required
-
-Every capability needed for the new feature already exists in `package.json`:
-
-| Need | Already available | Why it covers this |
-|------|-----------------|-------------------|
-| Download + stream `.csv.zip` from HTTPS | Node stdlib: `Readable`, `createInflateRaw`, `createInterface` | Used in `repo-sync.ts` for siconv_programa/emenda/proponentes — exact same pattern applies to siconv_convenio and siconv_proposta |
-| Semi-colon delimited CSV streaming parser | Custom streaming parser in `repo-sync.ts` (`_parseZipBuffer`) | Handles BOM, handles encoding artifacts (the `fixText()` / `parseBRNumber()` quirks specific to governo CSVs), production-proven |
-| Brazilian number parsing | `parseBRNumber()` exported from `repo-sync.ts` | Handles comma-decimal format ("1.234,56") used in financial fields |
-| CNPJ normalization | `cleanCNPJ()` in `repo-sync.ts` | Handles padding, punctuation stripping, min-length validation |
-| XLSX reading (if manual upload path added) | `xlsx` ^0.18.5 | Already installed, used in `import-spreadsheet/route.ts` |
-| DB upsert (ON CONFLICT) | `pg` pool + parameterized queries | Pattern established in `repo-sync.ts` STEP 6 upsert |
-| Gestor-only access control | `getApiSession()` + `session.role` in `dal.ts` | Pattern: `if (session.role !== 'gestor' && session.role !== 'coordenador') return 403` |
-| Date arithmetic (dias em execucao, vigencia) | PostgreSQL `EXTRACT(DAY FROM NOW() - date)` | Already used in leads query for `days_since_last_contact` |
-| Percentage calculation | SQL arithmetic: `(valor_desembolsado / valor_repasse) * 100` | Pure PostgreSQL, no library needed |
-
-**Install command: none. Zero new dependencies.**
+Current observed memory peak in `repo-sync.ts`:
+- `res.arrayBuffer()` on line 202 buffers the **entire ZIP** in RAM before parsing
+- `leads: LeadData[]` array on line 463 accumulates **all processed rows** before any DB writes
+- Each upsert is a single-row `client.query()` inside a for-loop — N round trips to DB for N leads
 
 ---
 
-## Database Schema — New Table
+## Feature 1: Lead Distribution (Execucao)
 
-### `projetos_execucao`
+### Stack Assessment
 
-This table is populated by a new sync function that downloads siconv_convenio + siconv_proposta, cross-references via `id_proposta`, and stores the filtered+joined result. It is intentionally isolated from `vendedor_projetos` (CRM leads) — different domain, different lifecycle.
+**No new dependencies needed.** The equalization logic already exists.
 
-```sql
-CREATE TABLE IF NOT EXISTS projetos_execucao (
-  id SERIAL PRIMARY KEY,
+`/web/src/lib/distribute-execucao.ts` implements least-loaded round-robin as a pure TypeScript module using the existing `query()` helper from `db.ts`. It is called by `sync-execucao` cron and also has a manual-trigger UI at `/distribuir`.
 
-  -- Convenio identity (from siconv_convenio)
-  nr_convenio          VARCHAR(30)   NOT NULL,  -- e.g. "912345/2023"
-  id_proposta          VARCHAR(30),              -- FK key to siconv_proposta.ID_PROPOSTA
-  situacao             VARCHAR(100),             -- e.g. "Em execucao"
-  modalidade           VARCHAR(100),             -- e.g. "Convenio", "Contrato de Repasse"
+The v4.1 requirement says "roleta automatica para leads novos sem vendedor da aprovacao, priorizando vendedores com menos leads totais na execucao." This is exactly what `distributeUnassignedExecucao()` already does — query active vendedores with their CNPJ count, iterate unassigned CNPJs, assign to minimum-count vendedor.
 
-  -- Proponent identity (from siconv_proposta via id_proposta join)
-  cnpj                 VARCHAR(14)   NOT NULL,   -- 14 digits, no punctuation
-  nome_proponente      VARCHAR(500),
-  objeto               TEXT,
-  uf                   VARCHAR(2),
-  municipio            VARCHAR(200),
+What may be missing is **equalization at sync time** (i.e., triggering distribution automatically after `sync-execucao` completes) rather than only on manual trigger. This is a one-line call addition to `sync-execucao/route.ts`, not a new library.
 
-  -- Financial state (from siconv_convenio)
-  valor_global         NUMERIC(18,2),
-  valor_repasse        NUMERIC(18,2),
-  valor_desembolsado   NUMERIC(18,2),            -- cumulative disbursed to date
-  saldo_conta          NUMERIC(18,2),             -- balance in beneficiary account
-  valor_empenhado      NUMERIC(18,2),
-
-  -- Execution control (from siconv_convenio)
-  data_assinatura      DATE,
-  data_inicio_vigencia DATE,
-  data_fim_vigencia    DATE,
-
-  -- Computed columns (calculated at import time, refreshed daily)
-  pct_execucao         NUMERIC(6,2),             -- (valor_desembolsado / valor_repasse) * 100
-  dias_em_execucao     INTEGER,                   -- days since data_inicio_vigencia
-  dias_ate_vencimento  INTEGER,                   -- days until data_fim_vigencia (negative = expired)
-
-  -- Alert flags (logica de destaque from PROJECT.md)
-  alerta_desembolso    BOOLEAN DEFAULT FALSE,    -- TRUE when valor_desembolsado < 0 (credit reversal)
-  verificar_saldo      BOOLEAN DEFAULT FALSE,    -- TRUE when desembolso > 0 AND saldo_conta > 0
-
-  -- Sync metadata
-  synced_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  sync_run_id          INTEGER,                   -- matches cron_sync_log.id for traceability
-
-  CONSTRAINT uq_projetos_execucao_nr_convenio UNIQUE (nr_convenio)
-);
-
--- Indexes for primary access patterns
-CREATE INDEX IF NOT EXISTS ix_projetos_execucao_cnpj
-  ON projetos_execucao(cnpj);
-
-CREATE INDEX IF NOT EXISTS ix_projetos_execucao_situacao
-  ON projetos_execucao(situacao);
-
-CREATE INDEX IF NOT EXISTS ix_projetos_execucao_data_fim
-  ON projetos_execucao(data_fim_vigencia)
-  WHERE data_fim_vigencia IS NOT NULL;
-
-CREATE INDEX IF NOT EXISTS ix_projetos_execucao_alertas
-  ON projetos_execucao(alerta_desembolso, verificar_saldo)
-  WHERE alerta_desembolso = TRUE OR verificar_saldo = TRUE;
-```
-
-**Why NUMERIC not FLOAT:** All existing financial columns in `schema.sql` use `FLOAT`, which loses precision for currency. Since this is a new table, start correctly with `NUMERIC(18,2)`. Do not alter existing tables.
-
-**Why computed columns stored:** `pct_execucao`, `dias_em_execucao`, and `dias_ate_vencimento` could be computed at query time, but storing them avoids repeated division across potentially thousands of rows during every page load. They are not user-editable state — recompute on every sync (daily).
-
-**Why no FK to `vendedor_projetos`:** These are independent data domains. CNPJ is the join key at the API layer (used to link to `lead_contacts` for phone/email display). A hard FK would couple two unrelated domains and block inserts for CNPJs not yet in the CRM.
+| Component | Status | Action needed |
+|-----------|--------|--------------|
+| Round-robin algorithm | Done in `distribute-execucao.ts` | Verify it is called from `sync-execucao` cron |
+| Manual trigger UI | Done at `/distribuir` | Verify Execucao tab exists alongside Aprovacao tab |
+| Equalization (least-loaded) | Done — `counts.get(v.id)` comparison | No change |
+| Vendedor CNPJ count query | Done — REGEXP_REPLACE join | No change |
 
 ---
 
-## Data Import Pattern — New Sync Function
+## Feature 2: Design System / Brand Refresh
 
-### Source Data (verified 2026-03-18)
+### Stack Assessment
 
-| File | URL | Size | Update cadence |
-|------|-----|------|---------------|
-| `siconv_convenio.csv.zip` | `https://repositorio.dados.gov.br/seges/detru/siconv_convenio.csv.zip` | 15MB | Daily (last seen: 2026-03-18 08:56) |
-| `siconv_proposta.csv.zip` | `https://repositorio.dados.gov.br/seges/detru/siconv_proposta.csv.zip` | 187MB | Daily (last seen: 2026-03-18 08:58) |
+**One change to font loading, zero new packages.**
 
-`siconv_proposta.csv.zip` at 187MB is approximately 12x larger than the largest file currently handled by `repo-sync.ts`. The streaming approach in `_parseZipBuffer` does not buffer the full CSV into memory — it yields rows one at a time. This pattern works for 187MB but will take significantly longer to download (~30-60s on Vercel serverless network).
+#### Current Setup (problematic for production)
 
-**Critical optimization:** Do NOT load all proposta rows into a Map. Instead:
-1. Download siconv_convenio first, collect `id_proposta` values for matching records
-2. Build a `neededPropostaIds: Set<string>` from step 1
-3. Stream siconv_proposta, skip rows where `ID_PROPOSTA` is not in the needed set
-4. This limits memory to the join subset, not 187MB of parsed data
-
-### Recommended Import Algorithm
-
-```
-STEP 1: Download + stream siconv_convenio
-  - Filter: SITUACAO contains 'execu' (case-insensitive)
-  - Filter: MODALIDADE is OSC-relevant (skip pure government-to-government)
-  - Collect: nr_convenio, id_proposta, situacao, modalidade, all financial fields
-  - Build: convenioMap (id_proposta -> ConvenioRecord[])
-  - Build: neededPropostaIds Set<string>
-
-STEP 2: Download + stream siconv_proposta
-  - Skip rows where ID_PROPOSTA not in neededPropostaIds
-  - Collect: cnpj, nome_proponente, objeto, uf, municipio
-  - Build: propostaMap (id_proposta -> PropostaInfo)
-
-STEP 3: Join + compute
-  - For each convenio: look up proposta by id_proposta
-  - Compute pct_execucao, dias_em_execucao, dias_ate_vencimento, alert flags
-
-STEP 4: Upsert into projetos_execucao
-  - ON CONFLICT (nr_convenio) DO UPDATE SET all columns
-  - Log sync stats to cron_sync_log
+`globals.css` imports Google Fonts via CDN:
+```css
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
 ```
 
-### Financial Calculation Implementation
+This causes:
+- External DNS lookup at render time (privacy leak to Google)
+- No build-time font subsetting (larger font payload)
+- Layout shift risk during page load (fonts load after HTML)
 
-All pure arithmetic — no library needed:
+#### Recommended: Replace with `next/font/google`
+
+Next.js 14 includes `next/font/google` which self-hosts fonts at build time, removes the external Google request, and eliminates layout shift via `size-adjust`. This is the Next.js team's explicit recommendation for all Google Font usage.
+
+**Implementation:**
+
+Create `web/src/app/fonts.ts`:
+```typescript
+import { Inter, Space_Grotesk } from 'next/font/google'
+
+export const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+})
+
+export const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-space-grotesk',
+  display: 'swap',
+})
+```
+
+Update `layout.tsx` to attach CSS variables, then reference via Tailwind config's `fontFamily` extension using `var(--font-inter)` and `var(--font-space-grotesk)`. Remove the `@import` line from `globals.css`.
+
+Note: `Space Grotesk` imports as `Space_Grotesk` (underscore for multi-word names per Next.js docs).
+
+#### Color Palette Swap
+
+The current Tailwind config uses `sigma.*` tokens (navy, neon, magenta). The Projete brand refresh replaces these with new token names and values. This is a pure `tailwind.config.ts` edit — no new package.
+
+The pattern: rename `sigma` namespace to `projete` (or update values in-place), update all usages in JSX files from `bg-sigma-navy` to the new class names. Because Tailwind purges unused classes at build time, every color reference must be updated before the old classes are removed.
+
+| Change | File | Action |
+|--------|------|--------|
+| New color tokens | `tailwind.config.ts` | Replace `sigma.*` values/names with Projete palette |
+| Remove CDN font import | `globals.css` | Delete `@import url(https://fonts.googleapis.com...)` |
+| Add next/font setup | `src/app/fonts.ts` (new file) | Create with `Inter` + `Space_Grotesk` exports |
+| Attach font variables to `<html>` | `src/app/layout.tsx` | Add `className={...inter.variable} ${spaceGrotesk.variable}}` |
+| Update Tailwind font references | `tailwind.config.ts` | Point `fontFamily.heading` and `fontFamily.body` to CSS vars |
+| Logo asset | `public/` | Drop new SVG/PNG, reference from Sidebar |
+
+**Install command: none.**
+
+---
+
+## Feature 3: Memory Optimization
+
+### Root Cause Analysis
+
+`repo-sync.ts` uses two memory-intensive patterns:
+
+**Problem A — Full ZIP buffer** (line 202):
+```typescript
+const zipBuffer = Buffer.from(await res.arrayBuffer())
+```
+This buffers the entire downloaded ZIP in Node.js heap before decompression starts. For the proposta sync ZIP (the largest file, basis for the ~1300MB peak), this means the compressed bytes + the decompressed stream + the parsed rows all coexist in heap.
+
+**Problem B — Full leads array** (lines 463–495):
+```typescript
+const leads: LeadData[] = []
+// ... fill array from emendasMap
+for (const lead of leads) {
+  await client.query(UPSERT_SQL, values) // sequential, 1 per row
+}
+```
+All N leads are materialized in RAM before any DB write. On Vercel, this array can hold tens of thousands of objects simultaneously. Combined with the ZIP buffer overhead, this is where ~1300MB accumulates.
+
+**Problem C — Sequential single-row upserts** (lines 706–722):
+Each lead is upserted individually via `client.query()`. This is slow (N round-trips) and extends the time both the leads array and the DB connection are live together, keeping all allocations in scope longer.
+
+### Recommended Stack Additions
+
+#### Option A: Streaming pipeline without new libraries (preferred)
+
+Use `Readable.fromWeb()` (Node.js 18+ built-in, available on Vercel's Node 20 runtime) to convert the fetch response's Web API `ReadableStream` into a Node.js `Readable`, then pipe directly through `zlib.createInflateRaw()` and `readline.createInterface()`. This eliminates the ZIP buffer entirely.
 
 ```typescript
-// Percentage execution (guard against divide by zero)
-const pct_execucao = valor_repasse && valor_repasse > 0
-  ? Math.round((valor_desembolsado / valor_repasse) * 10000) / 100
-  : null
+import { Readable } from 'stream'
+import { pipeline } from 'stream/promises'
 
-// Alert flags (logica de destaque from PROJECT.md)
-const alerta_desembolso = valor_desembolsado < 0   // credit reversal = red alert
-const verificar_saldo = valor_desembolsado > 0 && (saldo_conta ?? 0) > 0
+const res = await fetch(url, { signal: AbortSignal.timeout(120_000) })
+if (!res.ok) throw new Error(...)
 
-// Days computed from current time (will be stale by up to 24h — acceptable for daily sync)
-const now = Date.now()
-const dias_em_execucao = data_inicio_vigencia
-  ? Math.floor((now - data_inicio_vigencia.getTime()) / 86_400_000)
-  : null
-const dias_ate_vencimento = data_fim_vigencia
-  ? Math.floor((data_fim_vigencia.getTime() - now) / 86_400_000)
-  : null
+// Convert Web ReadableStream -> Node.js Readable (no buffer)
+const nodeReadable = Readable.fromWeb(res.body as ReadableStreamDefaultReader)
+const inflateStream = createInflateRaw()
+// pipe nodeReadable -> inflateStream -> readline
 ```
 
-### Cron Route Pattern
+This approach:
+- Eliminates `Buffer.from(await res.arrayBuffer())` — the largest single allocation
+- Works with the existing `readline`-based CSV parser in `_parseZipBuffer`
+- Requires zero new npm packages
+- `Readable.fromWeb` is Node.js 18+ (Vercel Pro uses Node 20 — confirmed available)
 
-Follow the same pattern as `/api/cron/sync-leads/route.ts` exactly:
+**Confidence:** HIGH — `Readable.fromWeb` is in the Node.js 18 release notes and Node.js 20 stream documentation. The `Readable.fromWeb` + `createInflateRaw` + `createInterface` pipeline is a standard Node.js streams composition pattern.
+
+**One caveat:** The current `_parseZipBuffer` manually parses the ZIP local file header to find the compressed offset. Streaming from fetch body skips the buffer, so the ZIP header parsing step must be replaced with a streaming ZIP parser that can handle the ZIP format on-the-fly (the local file header precedes the compressed data, so it is readable as a stream). The built-in approach remains feasible: read the first 30+ bytes as a small header, then pipe the rest to `createInflateRaw`. Alternatively, use `unzipper` (see Option B).
+
+#### Option B: `unzipper` library for streaming ZIP (recommended if Option A proves complex)
+
+`unzipper` (npm) accepts any Node.js Readable stream and emits ZIP entries without buffering the archive. It supports piping from HTTP responses directly.
 
 ```typescript
-// /api/cron/sync-execucao/route.ts
-export const dynamic = 'force-dynamic'
-export const maxDuration = 300  // Vercel Pro max timeout — needed for 187MB download
+import unzipper from 'unzipper'
 
-export async function GET(request: Request) {
-  const authHeader = request.headers.get('authorization')
-  const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`
-  if (!isCron) {
-    const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'coordenador')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+const res = await fetch(url, ...)
+const nodeStream = Readable.fromWeb(res.body)
+nodeStream
+  .pipe(unzipper.Parse())
+  .on('entry', (entry) => {
+    const rl = readline.createInterface({ input: entry })
+    rl.on('line', (line) => { /* parse CSV row */ })
+    entry.autodrain() // required if not consuming all entries
+  })
+```
+
+`unzipper` at ^0.10.x is actively maintained (last release 2024). Weekly downloads: ~3M. It handles large archives designed for streaming without accumulating zip entries in memory. It is the community-standard streaming ZIP library.
+
+**Recommendation:** Use Option B (unzipper) because it eliminates the manual ZIP header parsing code that currently exists in `_parseZipBuffer`, reducing custom code surface area. Option A is viable as a zero-dependency alternative if adding unzipper is undesirable.
+
+#### Batch upsert to eliminate the leads array
+
+Replace the current pattern of: accumulate all leads → sequential single-row upserts.
+
+New pattern: upsert in batches of 500 rows using multi-row `VALUES` clauses.
+
+```typescript
+// Process leads in streaming fashion — no full array accumulation
+const BATCH_SIZE = 500
+const batch: LeadData[] = []
+
+for (const lead of leadsIterable) {
+  batch.push(lead)
+  if (batch.length >= BATCH_SIZE) {
+    await upsertBatch(client, batch)
+    batch.length = 0 // release memory
   }
-  // ... call syncProjetosExecucao()
 }
+if (batch.length > 0) await upsertBatch(client, batch)
 ```
 
-Add to `vercel.json` cron schedule with at least 30-minute offset from existing `sync-leads` cron to avoid concurrent DB load.
+Multi-row upsert reduces N DB round-trips to N/500 round-trips and, more importantly, means only 500 lead objects exist in memory at any time instead of all N.
 
-### CNPJ Aggregation Query (grouped view)
+**Note:** `pg` (node-postgres) supports multi-row parameterized inserts. The `UPSERT_SQL` currently uses `$1..$17` for one row. A batch version uses `($1,$2,...,$17),($18,$19,...,$34),...` with dynamic parameter numbering. This is pure TypeScript — no new library.
 
-The UI shows one row per CNPJ with count of fomentos. This is GROUP BY at query time:
+**`pg-copy-streams` is NOT recommended here.** The UPSERT requires `ON CONFLICT ... DO UPDATE` with column-level COALESCE logic that the PostgreSQL COPY command does not support. COPY is append-only. The batch parameterized INSERT/ON CONFLICT approach is the right tool.
 
-```sql
-SELECT
-  pe.cnpj,
-  pe.nome_proponente,
-  pe.uf,
-  pe.municipio,
-  COUNT(*)                          AS total_projetos,
-  SUM(pe.valor_repasse)             AS total_repasse,
-  SUM(pe.valor_desembolsado)        AS total_desembolsado,
-  SUM(pe.saldo_conta)               AS total_saldo,
-  AVG(pe.pct_execucao)              AS avg_pct_execucao,
-  BOOL_OR(pe.alerta_desembolso)     AS tem_alerta,
-  BOOL_OR(pe.verificar_saldo)       AS tem_verificar,
-  MIN(pe.dias_ate_vencimento)       AS vencimento_mais_proximo,
-  -- Contact from lead_contacts (same JOIN pattern as leads/route.ts)
-  (
-    SELECT lc.telefone
-    FROM lead_contacts lc
-    WHERE lc.lead_cnpj = pe.cnpj
-    ORDER BY lc.principal DESC, lc.created_at ASC
-    LIMIT 1
-  ) AS telefone
-FROM projetos_execucao pe
-GROUP BY pe.cnpj, pe.nome_proponente, pe.uf, pe.municipio
-ORDER BY tem_alerta DESC, total_projetos DESC, pe.cnpj
-```
+### Summary of Memory Changes
+
+| Change | Impact | New Dependency |
+|--------|--------|---------------|
+| Replace `res.arrayBuffer()` with streaming (`Readable.fromWeb` + pipe) | Eliminates ZIP buffer from heap (~biggest allocation) | None (Option A) or `unzipper` (Option B) |
+| Replace full `leads` array with streaming batch upsert | Max N/500 objects in memory at once | None |
+| Batch size = 500 rows per upsert | Reduces DB round-trips by 500x | None |
+
+Expected outcome: peak heap drops from ~1300MB to approximately 200–400MB (the maps for programas/emendas/proponentes still exist, but they are bounded by the filtered dataset size, not the raw CSV size).
+
+### Vercel Memory Configuration (safety net)
+
+Per Vercel documentation (verified 2026-03-30), Vercel Pro functions default to **2 GB / 1 vCPU** and can be upgraded to **4 GB / 2 vCPUs** via the dashboard (Settings → Functions → Advanced Settings → Function CPU). This cannot be set in `vercel.json`.
+
+The optimization above should bring the peak under 1GB, making the 2GB default more than sufficient. The 4GB option exists as a fallback if profiling reveals the estimate is off. Do NOT increase memory as the primary fix — fix the root cause first.
 
 ---
 
-## Access Control Pattern
+## Recommended Stack Changes Summary
 
-Gestor-only access is already implemented in `dal.ts`. Pattern for the API route:
+### New Dependencies
 
-```typescript
-const session = await getApiSession()
-if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-if (session.role !== 'gestor' && session.role !== 'coordenador') {
-  return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-}
+| Package | Version | Purpose | Why |
+|---------|---------|---------|-----|
+| `unzipper` | ^0.10.14 | Streaming ZIP parser for HTTP response body | Eliminates `res.arrayBuffer()` ZIP buffer. Standard streaming ZIP library, 3M weekly downloads, actively maintained 2024. Zero custom ZIP header parsing code needed. |
+
+**Everything else — zero new packages.**
+
+### Removed Dependencies
+
+None. No packages are being removed.
+
+### Configuration Changes
+
+| File | Change | Why |
+|------|--------|-----|
+| `web/tailwind.config.ts` | Replace `sigma.*` color tokens with Projete palette | Brand refresh |
+| `web/src/app/globals.css` | Remove `@import url(https://fonts.googleapis.com/...)` | Replace with next/font self-hosting |
+| `web/src/app/layout.tsx` | Add CSS variable classes from `fonts.ts` to `<html>` element | Wire next/font variables into DOM |
+| `web/vercel.json` | Verify `sync-execucao` cron calls `distributeUnassignedExecucao` | Ensure auto-distribution fires post-sync |
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `web/src/app/fonts.ts` | Font instances for Inter and Space_Grotesk via `next/font/google` |
+
+---
+
+## Installation
+
+```bash
+# Only if using Option B for ZIP streaming (recommended)
+npm install unzipper
+npm install -D @types/unzipper
 ```
 
-The page itself redirects non-gestors via `verifySession()` from `dal.ts` — same pattern as all other protected pages. No new middleware needed.
+No other packages to install.
 
 ---
 
 ## Alternatives Considered
 
-| Recommended | Alternative | Why not |
-|-------------|-------------|---------|
-| Stream siconv_proposta through a filter Set | Load all 187MB into memory as parsed objects | Memory exhaustion on Vercel serverless; streaming approach already proven in `repo-sync.ts` for similar data |
-| Single `projetos_execucao` table (denormalized join) | Separate `convenios_execucao` + `propostas_execucao` tables with join at query time | No need to normalize — this is a read-only intelligence view, not a normalized domain model; join at import time is simpler and faster at query time |
-| `NUMERIC(18,2)` for financial values | `FLOAT` (as used in existing tables) | Float loses precision for currency math; new table should start correctly |
-| Compute alert flags at import time, store as booleans | Compute in frontend JavaScript | Avoids redundant recalculation on every page load; simpler query layer |
-| Re-use `downloadAndStreamCSV` from `repo-sync.ts` | Write a new download utility | Identical problem solved already — export the function or move to `lib/csv-utils.ts` |
-| Vercel cron (existing mechanism) | Supabase Edge Function or separate worker | Existing infrastructure is already proven and covers the 300s window needed |
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| `unzipper` for streaming ZIP | `yauzl` | yauzl has a more complex API requiring manual stream handling; only prefer it if needing fine-grained control over ZIP entry metadata. unzipper's simpler pipe API is better here. |
+| `unzipper` for streaming ZIP | Node.js built-in (`Readable.fromWeb` + manual ZIP header parse + `createInflateRaw`) | Use this zero-dependency path if adding any npm package is prohibited. Requires replacing the manual ZIP header parsing code (30 bytes of local file header) — feasible but more error-prone. |
+| Batch multi-row INSERT | `pg-copy-streams` COPY command | Only viable for append-only inserts. COPY does not support `ON CONFLICT ... DO UPDATE` with COALESCE logic. Not applicable here. |
+| `next/font/google` for fonts | Continue with `@import` CSS CDN | Only acceptable in pure prototype/staging environments. For production, next/font eliminates Google's DNS visibility and improves LCP. |
+| Tailwind `tailwind.config.ts` color tokens | CSS variables in `globals.css` with Tailwind 4 `@theme` | Tailwind 4 is not installed; upgrading to Tailwind 4 for a design refresh is more risk than reward. Stay on Tailwind 3. |
+| Keep existing `pg` + multi-row parameterized upsert | Switch to Supabase JS client bulk upsert | The project uses raw `pg` throughout. Introducing the Supabase JS client for one operation creates two query patterns with no benefit. |
 
 ---
 
 ## What NOT to Add
 
-| Avoid | Why | Use instead |
+| Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| A CSV parsing library (csv-parse, papaparse) | `repo-sync.ts` already has a production-proven streaming ZIP+CSV parser with encoding quirk handling specific to governo CSVs — adding a generic library would lose `fixText()` / `parseBRNumber()` handling and add a dependency | Extract `downloadAndStreamCSV` into `lib/csv-utils.ts` and reuse |
-| An ORM (Prisma, Drizzle) | The project uses raw `pg` queries throughout; introducing an ORM mid-project creates two query patterns, migration friction, and zero benefit for one new table | Raw `pg` queries via the existing `query()` helper in `lib/db.ts` |
-| A background job framework (BullMQ, Inngest) | Vercel cron + `maxDuration = 300` covers the use case; the 187MB download fits within this window | Vercel cron, same as `sync-leads` |
-| React Query / SWR | The existing pages use `useEffect` + `fetch` consistently; introducing a data-fetching library for one new page creates inconsistency | `useEffect` + `fetch` pattern, consistent with rest of app |
-| A new charting library | Recharts is already installed and used for the BI page | Recharts for % execucao bar visualization if needed |
-| `xlsx` dependency for siconv import | These are CSV files inside ZIP, not Excel | The existing streaming CSV parser handles them natively |
+| `adm-zip` | Loads entire archive into memory — this is the same problem we're solving | `unzipper` (streaming) |
+| `csv-parse` or `papaparse` | The existing readline-based parser handles the governo CSV quirks (BOM, encoding artifacts, pipe-delimiter variants). A generic parser would lose `fixText()` / `parseBRNumber()` and add a dependency for no gain | Existing custom parser in `repo-sync.ts` |
+| Tailwind CSS v4 upgrade | Breaking changes in config format; design refresh does not require it; risk outweighs reward | Stay on Tailwind ^3.4.0 |
+| `pg-copy-streams` | Does not support ON CONFLICT upsert — incompatible with the CRM state preservation requirement | Batched multi-row `INSERT ... ON CONFLICT DO UPDATE` via `pg` |
+| React Query / SWR | The app uses `useEffect` + `fetch` consistently; new pages should follow the same pattern | `useEffect` + `fetch` (existing pattern) |
+| BullMQ / Inngest for background jobs | Overkill; Vercel cron + `maxDuration = 300` (800s with fluid compute) covers the use case | Vercel cron (existing mechanism) |
+| `sharp` or image optimization libraries | The design refresh involves color/font tokens, not image transformations | Next.js built-in `<Image>` for logo if needed |
 
 ---
 
 ## Version Compatibility
 
-All existing packages are compatible — zero new packages means zero compatibility risk.
-
-One existing flag: `xlsx` ^0.18.5 refers to SheetJS Community Edition (the last MIT-licensed version). If the Projetos em Execução feature later adds a manual upload path for convenio/proposta data as an alternative to cron, this library handles it. Do not upgrade to SheetJS Pro (paid) unless the Community Edition specifically fails.
+| Package | Compatible With | Notes |
+|---------|-----------------|-------|
+| `unzipper` ^0.10.14 | Node.js 18+, `pg` ^8.13.0, Next.js ^14.2.0 | Uses Node.js streams API; no framework coupling |
+| `next/font/google` (built into Next.js 14) | Tailwind ^3.4.0 via CSS variable bridge | Use `variable` option on font constructor + reference `var(--font-name)` in tailwind.config |
+| `Readable.fromWeb` | Node.js 18+ (Vercel Pro runs Node 20) | Available in Node.js 18 release. Vercel Pro confirmed at Node 20 runtime as of 2025. |
 
 ---
 
 ## Sources
 
-- Live codebase at `/Users/pauloloureiro/Dev/SigmaProjects/projetustgov/web/` — HIGH confidence (direct inspection, 2026-03-18)
-  - `web/package.json` — exact installed versions
-  - `web/src/lib/repo-sync.ts` — streaming ZIP+CSV pattern, `downloadAndStreamCSV`, `_parseZipBuffer`, `parseBRNumber`, `cleanCNPJ`, `fixText`
-  - `web/src/app/api/import-spreadsheet/route.ts` — XLSX handling and header-mapping patterns
-  - `web/src/lib/db.ts` — pool singleton and `query()` helper
-  - `web/src/lib/dal.ts` — `getApiSession()`, `verifySession()`, role helpers
-  - `web/schema.sql` — existing table structure, financial column types
-  - `web/src/app/api/leads/route.ts` — GROUP BY aggregation and `lead_contacts` JOIN pattern
-  - `web/src/app/api/cron/sync-leads/route.ts` — cron auth pattern, `maxDuration`, manual trigger
-- `https://repositorio.dados.gov.br/seges/detru/` — verified 2026-03-18 — HIGH confidence
-  - `siconv_convenio.csv.zip` confirmed present at 15MB, updated 2026-03-18 08:56
-  - `siconv_proposta.csv.zip` confirmed present at 187MB, updated 2026-03-18 08:58
-  - Both update daily alongside existing siconv_programa/emenda/proponentes sources
+- `/Users/pauloloureiro/Dev/SigmaProjects/projetustgov/web/src/lib/repo-sync.ts` — direct inspection of memory allocation patterns (arrayBuffer line 202, leads array line 463, sequential upsert loop lines 706–722)
+- `/Users/pauloloureiro/Dev/SigmaProjects/projetustgov/web/src/lib/distribute-execucao.ts` — direct inspection of existing round-robin algorithm
+- `/Users/pauloloureiro/Dev/SigmaProjects/projetustgov/web/tailwind.config.ts` — current sigma.* color tokens
+- `/Users/pauloloureiro/Dev/SigmaProjects/projetustgov/web/src/app/globals.css` — CDN font import
+- `/Users/pauloloureiro/Dev/SigmaProjects/projetustgov/web/package.json` — exact installed versions
+- `https://vercel.com/docs/functions/limitations` — Vercel Pro memory limits (2GB default, 4GB max) verified 2026-03-30 — HIGH confidence
+- `https://vercel.com/docs/functions/configuring-functions/memory` — memory configuration via dashboard only (not vercel.json) verified 2026-03-30 — HIGH confidence
+- `https://nextjs.org/docs/14/app/building-your-application/optimizing/fonts` — next/font/google API, Space_Grotesk import name, CSS variable approach for Tailwind — HIGH confidence
+- Node.js 18 release notes + `https://nodejs.org/api/stream.html` — `Readable.fromWeb` availability in Node 18+ — HIGH confidence
+- npm-compare.com `unzipper` vs `yauzl` comparison — MEDIUM confidence (secondary source, consistent with GitHub inspection)
 
 ---
 
-*Stack research for: Projetos em Execucao intelligence tab (v4.0 milestone)*
-*Researched: 2026-03-18*
-*Scope: Stack additions only — existing validated stack not re-researched*
+*Stack research for: v4.1 Distribution, Design & Performance milestone*
+*Researched: 2026-03-30*
+*Scope: Stack additions/changes only — existing validated stack not re-researched*

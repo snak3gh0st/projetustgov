@@ -1,17 +1,17 @@
 # Project Research Summary
 
-**Project:** Projetos em Execução — Post-Sale Intelligence Tab (v4.0)
-**Domain:** CRM extension — government grant execution monitoring for Brazilian OSC clients
-**Researched:** 2026-03-18
+**Project:** CRM v4.1 — Distribuicao, Design & Performance
+**Domain:** CRM SaaS — lead distribution equalization, brand identity refresh, memory optimization
+**Researched:** 2026-03-30
 **Confidence:** HIGH
 
 ## Executive Summary
 
-This is a milestone feature addition to an existing, production Next.js 14 + PostgreSQL (Supabase) CRM. The Projetos em Execução tab is a read-only intelligence view for gestores and coordenadores that surfaces post-sale portfolio health by cross-referencing two new government CSV sources (`siconv_convenio.csv.zip` and `siconv_proposta.csv.zip`) from `repositorio.dados.gov.br`. The feature aggregates active grant convênios by proponent CNPJ, computes financial execution metrics, and links them to existing CRM contacts. The stack requires zero new dependencies — every capability (streaming ZIP+CSV parsing, CNPJ normalization, cron ETL, role guards, DB upsert patterns) already exists and is proven in production.
+This is a subsequent milestone added to a fully-shipped Next.js 14 + Supabase CRM (v4.0). All three v4.1 features have significant scaffolding already in place: the round-robin distribution algorithm exists and is wired into the daily cron, the Tailwind v3.4 design token system is in place with a `sigma.*` palette ready to be swapped, and the memory root cause has been precisely identified as a single line in `repo-sync.ts`. This milestone is completion and polish, not greenfield development.
 
-The recommended approach is a purpose-built `projetos_execucao` table populated by a dedicated sync function (`execucao-sync.ts`) on a separate cron schedule from the existing lead sync. The UI follows established patterns from `/leads` and `/monitoramento`: server-component role guard, `useEffect`/`fetch` data loading, CNPJ-grouped rows with expandable detail, reused `KPICard` components, and the same alert badge pattern already in place. The entire feature is read-only — no workflow, no status mutations, no new role types.
+The recommended approach treats the three features as independent work streams that can proceed in parallel, but with strict sequencing within each stream. Distribution must handle a CNPJ normalization audit and advisory lock before any code ships. Design refresh requires the client to deliver the Projete brand guide before any token work begins, and all 229 arbitrary hex color classes must be migrated in the same commit as the config change or production will ship with a visually inconsistent mixed palette. Memory optimization must instrument heap usage per-step first, apply the streaming fix second, and verify both memory and cron timing before merging.
 
-The primary risks are all data-integrity risks that can be neutralized before any code is written: NULL `proposta_id` values in `convenios` causing silent join drops, CNPJ zero-padding inconsistencies between the old Python ETL tables and the CRM, and FLOAT-based financial columns producing rounding artifacts. All three must be audited and resolved in Phase 1 before the API or UI are built. The financial scale risk (187MB proposta CSV) is handled by the existing streaming parser with an early-return filter — no new tooling required.
+The key risk across all three features is invisible partial completion: distribution that silently assigns the wrong vendedor due to CNPJ format mismatch, a brand refresh that updates config but not 229 arbitrary-value classes, or a "streaming fix" that pipes through Node.js streams but still buffers the full ZIP via `res.arrayBuffer()` inside the helper. Each pitfall looks complete from the outside while the core problem remains. Prevention requires explicit pre-deployment verification queries and instrumented metrics for each area.
 
 ---
 
@@ -19,146 +19,120 @@ The primary risks are all data-integrity risks that can be neutralized before an
 
 ### Recommended Stack
 
-The existing stack handles all requirements. Zero new dependencies are needed. Live codebase inspection confirmed that `repo-sync.ts` already implements the exact streaming ZIP+CSV parsing pattern needed for both new source files, `dal.ts` provides all required role guard helpers, and `db.ts` provides the shared pg.Pool. The only new artifacts are one new database table, one new lib file (`execucao-sync.ts`), one new dedicated cron route, one new API route, one new page, and one new slide-over component.
+The existing stack handles all three features without any new required dependencies. The one optional addition is `unzipper` (^0.10.14, MIT, 3M weekly downloads) to replace the hand-written ZIP header parser in `_parseZipBuffer` when implementing streaming ZIP downloads. If adding an npm package is undesirable, Node.js 18+ built-ins (`Readable.fromWeb` + `createInflateRaw`) achieve the same result with more custom code.
+
+The font migration from CDN `@import` to `next/font/google` requires creating `web/src/app/fonts.ts` — a new file but no new package, as `next/font/google` ships with Next.js 14. All other changes are modifications to existing files. No new directories are needed.
 
 **Core technologies:**
-- Next.js 14 App Router — pages and API routes — no change, existing pattern
-- PostgreSQL via `pg` ^8.13.0 — one new `projetos_execucao` table using `NUMERIC(18,2)` for financial columns (correct; existing tables use FLOAT incorrectly)
-- Tailwind CSS ^3.4.0 — reuse existing alert badge classes and progress bar patterns
-- Auth.js v5 ^5.0.0-beta.30 — role guard via `verifySession()` + `getApiSession()` from `dal.ts`; no new middleware
-- Recharts ^2.12.0 — available for % execução visualization; already installed
+- `unzipper` ^0.10.14 (optional): Streaming ZIP parser — eliminates the full-buffer ZIP download and the hand-written header parsing code in `_parseZipBuffer`
+- `next/font/google` (built-in to Next.js 14): Self-hosted font loading — removes the Google Fonts CDN DNS lookup at render time and eliminates layout shift via `size-adjust`
+- `Readable.fromWeb` (Node.js 18+ built-in): Web Streams to Node Streams bridge — required to pipe `fetch` response body through Node.js `createInflateRaw` without buffering
+- `pg` multi-row parameterized INSERT: Batch upsert pattern (500 rows per call) — replaces N individual DB round-trips, caps live memory to 500 lead objects simultaneously
 
-**Critical data sources (verified 2026-03-18):**
-- `siconv_convenio.csv.zip` — 15MB, daily update at `repositorio.dados.gov.br/seges/detru/` — financial state and situacao per convênio
-- `siconv_proposta.csv.zip` — 187MB, daily update — proponent CNPJ, nome, objeto, vigência dates
-- Join key: `id_proposta` (convenio side) → `ID_PROPOSTA` (proposta side) to derive proponent CNPJ per convênio
+**Critical version note:** Vercel Pro default memory is 2 GB / 1 vCPU (not 1 GB as noted in legacy project docs). The 4 GB / 2 vCPU maximum is available via the Vercel dashboard only — it cannot be set in `vercel.json` for Next.js App Router routes. The 1300 MB peak does not currently crash the function but wastes cost and leaves no headroom for CSV file growth.
 
 ### Expected Features
 
-**Must have (table stakes — P1):**
-- Filtered list of active OSC projects (situacao contains "execu" AND modalidade contains "osc")
-- CNPJ-level aggregation showing count of active fomentos per organization as the primary "big number"
-- Financial columns per CNPJ: total desembolso, saldo em conta, % execução, data fim vigência, dias restantes
-- Desembolso alert highlight logic — client must confirm exact business rule before implementation
-- Header KPI cards: clientes qualificados (distinct CNPJs), total fomentos, valor total em execução
-- Contact indicator badge (CNPJ present in `lead_contacts` or `vendedor_projetos`)
-- Access restricted to gestor + coordenador roles (server-component redirect + API 401)
-- Sidebar navigation entry visible only to gestor role
+**Must have (table stakes):**
+- Distribution: Manual "Distribuir Agora" button in `/distribuir` page calling existing API, with post-distribution report modal showing before/after counts per vendedor
+- Distribution: Cron auto-distribution wired into `sync-execucao` (code path exists — verify it fires correctly in Vercel production logs)
+- Distribution: Skip inactive vendedores and skip CNPJs already assigned from the approval pipeline
+- Brand: Replace `sigma.*` color tokens in `tailwind.config.ts` with Projete palette (blocked on client brand guide delivery)
+- Brand: Swap logo, favicon, page title, and font imports in `layout.tsx`; update `Sidebar.tsx` wordmark
+- Memory: Set `memory: 3008` in Vercel config immediately as mitigation while streaming rewrite ships
+- Memory: Replace `Buffer.from(await res.arrayBuffer())` with true streaming pipeline in `repo-sync.ts`
+- Brand: Update `NewsBanner.tsx` with bumped version and brand announcement (required per project memory rules)
 
-**Should have (differentiators — P2):**
-- % execução visual progress bar (reuse `/monitoramento` pattern)
-- Expand/collapse per-CNPJ to show individual convênios
-- Sort controls (by saldo, % exec, vigência)
-- UF/estado filter
-- Text search by org name or CNPJ
-- Data freshness indicator showing last sync timestamp from `cron_sync_log`
+**Should have (differentiators):**
+- Distribution: Equity stats view showing current lead count balance per vendedor before triggering distribution
+- Distribution: Advisory lock (`pg_advisory_lock(42)`) preventing race condition between cron and manual trigger
+- Brand: Full audit and migration of 229 arbitrary `bg-[#...]` / `text-[#...]` Tailwind classes across 24 files
+- Memory: Batch DB upserts (500 rows per call) to reduce DB round-trips and cap in-flight object count
 
 **Defer to v2+:**
-- Historical disbursement trend chart (desembolsos table sparsely populated — insufficient data)
-- Vigência expiration push notifications (requires cron wiring beyond scope)
-- Post-sale assignment workflow (entirely separate feature; new data model + roles)
-- Export to CSV
+- Tailwind v4 migration — separate milestone; v4 requires new config format, Oxide engine, plugin migration
+- Weighted lead distribution by seniority or performance — requires a performance metrics system not yet built
+- Two-pass streaming with Set-based CNPJ filter to reduce `propostaMap` size — only needed if streaming fix leaves peak above 1 GB
 
 ### Architecture Approach
 
-The architecture follows the established CRM pattern precisely: a new top-level route (`/execucao`), a new API route (`/api/execucao`), a new dedicated cron route (`/api/cron/sync-execucao`), a new lib ETL file (`execucao-sync.ts`), and a new isolated database table. The ETL streams `siconv_proposta.csv.zip` with an OSC-only filter to build an in-memory Map keyed by `id_proposta`, then streams `siconv_convenio.csv.zip` with an "em execução" filter and joins to the Map, then upserts into `projetos_execucao`. The cron runs on a separate schedule to avoid competing for the pg.Pool's 5 connections. Contact data is surfaced via SQL LEFT JOIN on CNPJ to `lead_contacts` (with `vendedor_projetos` as fallback) — the same pattern used in `/api/leads`.
+All changes modify existing files. No new directories are needed. The design token system follows the CSS custom properties pattern: define brand colors in `globals.css` `:root {}`, map them via `tailwind.config.ts` to Tailwind utility classes — a future brand color change becomes a one-line edit in one file with zero component changes. The streaming memory fix changes only the internals of `downloadAndStreamCSV()` without altering its public signature, leaving all callers (`syncLeadsFromRepo`, `syncProjetosExecucao`) untouched. The distribution UI exposes one new tiny `/api/execucao/distribute` route that is a direct call into the existing `distributeUnassignedExecucao()` function.
 
-**Major components:**
-1. `projetos_execucao` (DB table) — isolated from CRM tables; UNIQUE constraint on `nr_convenio`; all financial fields in `NUMERIC(18,2)`
-2. `execucao-sync.ts` — ETL: stream-filter proposta (OSC only), stream-filter convenio ("em execução" only), in-memory join, upsert; entirely separate from `repo-sync.ts`
-3. `/api/cron/sync-execucao/route.ts` — dedicated cron with `maxDuration = 300` and its own `vercel.json` entry offset from the lead sync
-4. `/api/execucao/route.ts` — role-guarded GET; GROUP BY CNPJ query with LEFT JOINs for contact data and configurable filter parameters
-5. `/execucao/page.tsx` + `ExecucaoSlideOver.tsx` — client page with CNPJ grouping (`useMemo` same as `/leads`), alert highlighting, slide-over financial detail
-
-**Confirmed build order:**
-DB migration → `execucao-sync.ts` (validated with one-off test script) → `/api/execucao/route.ts` → cron endpoint wired and tested → `/execucao/page.tsx` + slide-over → Sidebar update.
+**Major components and their changes:**
+1. `repo-sync.ts` / `downloadAndStreamCSV` — MODIFY: replace full-buffer ZIP download with streaming pipeline; highest technical risk in the milestone
+2. `tailwind.config.ts` + `globals.css` — MODIFY: replace `sigma.*` with Projete CSS custom properties and token mapping
+3. `/distribuir/page.tsx` + `/api/execucao/distribute` — MODIFY/ADD: manual distribution trigger with result modal
+4. `distribute-execucao.ts` — MODIFY: add advisory lock; verify equalization count targets execution context only
+5. `src/app/fonts.ts` (NEW) + `layout.tsx` — ADD/MODIFY: self-hosted font loading via `next/font/google`
+6. `Sidebar.tsx` — MODIFY: swap wordmark, active and hover colors to Projete brand
+7. `NewsBanner.tsx` — MODIFY: bump version, add brand announcement item
 
 ### Critical Pitfalls
 
-1. **Sync contamination via imprecise UPSERT key** — Use `ON CONFLICT (nr_convenio) DO UPDATE`; never `ON CONFLICT (cnpj)` alone (causes duplicates). Document which fields the sync must never overwrite. Never truncate `projetos_execucao`. This mirrors the STEP 7c production bug (commit `9e20d04`) caused by a missing grouping scope.
+1. **CNPJ format mismatch silently re-distributes already-owned leads** — Before deploying any distribution code, run `SELECT COUNT(*) FROM vendedor_projetos WHERE cnpj != REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g')` and clean any non-zero result. This is a one-way door: distribution running first against mismatched data permanently assigns CNPJs to the wrong vendedor.
 
-2. **Cross-source join silently drops projects (NULL proposta_id)** — Run `SELECT COUNT(*) FROM convenios WHERE proposta_id IS NULL AND situacao ILIKE '%execu%'` before writing any API code. If count > 0, use LEFT JOIN with a logged `join_miss_count` in sync stats. An INNER JOIN silently loses legitimate projects with no error signal.
+2. **Race condition between cron auto-distribution and manual trigger** — Wrap `distributeUnassignedExecucao()` with `SELECT pg_try_advisory_lock(42)` at entry and `SELECT pg_advisory_unlock(42)` on exit. Both the cron path and the manual API path call this function; without a lock, concurrent calls read the same unassigned list and assign different vendedores to the same CNPJ.
 
-3. **FLOAT financial columns causing precision errors** — Old ETL tables (`convenios`, `propostas`) use `FLOAT`. Cast all financial fields to `NUMERIC(15,2)` at the query layer: `CAST(c.valor_desembolsado AS NUMERIC(15,2))`. New `projetos_execucao` stores everything as `NUMERIC(18,2)`. Never compute percentages in JavaScript.
+3. **Brand refresh deploys with 229 arbitrary color classes unchanged** — The `tailwind.config.ts` token change has zero effect on `bg-[#050B1F]` / `text-[#FD225C]` style classes. Config update and all 24-file migrations must ship in the same commit. Run `grep -r "bg-\[#\|text-\[#\|border-\[#" src/ | wc -l` after migration — target is 0.
 
-4. **CNPJ zero-padding mismatch between old ETL tables and the CRM** — Run `SELECT COUNT(*) FROM proponentes WHERE LENGTH(cnpj) < 14` before building any cross-table join. If > 0, apply `UPDATE ... SET cnpj = LPAD(cnpj, 14, '0')`. All join conditions must normalize via `LPAD(REGEXP_REPLACE(cnpj, '\D', '', 'g'), 14, '0')` on both sides.
+4. **Streaming fix still materializes the full ZIP buffer inside the helper** — A streaming refactor that changes the outer `res.body` call but leaves `_parseZipBuffer` intact still accumulates ~200 MB in heap. Instrument `process.memoryUsage().heapUsed` before and after the download step specifically. If peak is unchanged after the fix, the buffer is still materializing inside the helper.
 
-5. **Cron timeout cascade from appending execution sync to the existing lead sync** — The existing lead sync consumes up to ~250s of the 300s Vercel Pro budget. Adding execution sync to the same handler causes 504 failures that corrupt both syncs. Mandatory: a dedicated `/api/cron/sync-execucao` endpoint with its own `vercel.json` entry at an offset time.
-
-6. **Role gate omitted on the new API route** — NextAuth middleware only verifies session existence, not role. Both the server component (`verifySession()` + redirect) and the API route (`getApiSession()` + 401) must independently enforce the gestor/coordenador restriction. A vendedor can call the API directly regardless of UI redirection.
-
-7. **Alert business rule implemented as a guess** — Government `valor_desembolsado` is always positive. "Desembolso negativo" is a business signal, not a mathematical negative number. Confirm the exact condition with the client by inspecting known-problematic convênios in the DB before writing alert logic.
+5. **Streaming ZIP fix adds 30-60 seconds to cron runtime, exhausting the BrasilAPI enrichment budget** — After deploying the streaming change, check `duration_ms` in `cron_sync_log`. If it increases by more than 30 seconds, the enrichment time-budget guard (`elapsed > 200000ms`) must be adjusted downward. Never deploy a memory optimization without a full end-to-end timing run.
 
 ---
 
 ## Implications for Roadmap
 
-Based on combined research, 4 phases are recommended. The ordering is driven by data-integrity dependencies: audits must complete before any query code is written; the ETL must be validated before the UI consumes it; the UI is the last artifact to build.
+Based on combined research, the three features map to two implementation phases. The distribution feature ships first (zero external dependencies, lowest risk). The design and memory features share a second phase with a hard external dependency gate (brand guide from client) and a required instrumentation step before any memory code changes.
 
-### Phase 1: Data Audit and Foundation
+### Phase 1: Lead Distribution — Manual Trigger and Race Condition Safety
 
-**Rationale:** Three of the eight critical pitfalls are data-quality issues that must be resolved before a single line of API code is written. Building the join first and discovering NULL `proposta_id` or CNPJ mismatches in production means some execution records will silently be missing — a defect that is hard to scope after the fact. This phase produces zero UI but eliminates the highest-risk unknowns.
+**Rationale:** All required code already exists (`distribute-execucao.ts`, cron wiring, auth pattern). This phase adds only the UI surface and the safety guard. It has zero external dependencies, making it the ideal first ship. The advisory lock and CNPJ normalization audit must be part of the initial implementation — both are one-way doors if skipped.
 
-**Delivers:** DB migration (`projetos_execucao` table + indexes), CNPJ normalization audit with one-time fix migration if needed, NULL `proposta_id` count documented with gap-handling strategy confirmed in writing, UPSERT key and never-overwrite field list documented before any sync code is written.
+**Delivers:** A "Distribuir Automaticamente" button in `/distribuir` with a result modal showing per-vendedor before/after lead counts. Advisory lock in `distributeUnassignedExecucao()` preventing double-assignment from concurrent cron and manual trigger. Verification that cron auto-distribution fires correctly in production.
 
-**Addresses:** Pitfall 1 (sync contamination), Pitfall 2 (join gaps), Pitfall 5 (CNPJ normalization)
+**Addresses:** Distribution table-stakes features (manual trigger, result modal, skip inactive vendedores, skip approval-pipeline leads)
 
-**Avoids:** Silent data loss discovered only when gestores report missing clients in production
+**Avoids:** Pitfall 1 (CNPJ normalization audit runs before any distribution code deploys), Pitfall 2 (advisory lock is part of initial implementation, not a follow-up), Pitfall 3 (equalization count must target execution context only — definition pinned before the count query is written)
 
-**Research flag:** Standard patterns — SQL diagnostic queries and LPAD migrations are straightforward; no additional research needed.
+**Pre-deployment gate:** Run `SELECT COUNT(*) FROM vendedor_projetos WHERE cnpj != REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g')`. Result must be 0. If not, run CNPJ cleanup migration before continuing.
 
-### Phase 2: ETL Sync and Data Validation
+### Phase 2: Design Refresh and Memory Optimization
 
-**Rationale:** The entire intelligence view rests on ETL data quality. The 187MB proposta CSV is the largest file this system has ever processed. Validating the streaming filter-and-join algorithm against real data before building the UI eliminates the risk of an architecture pivot after the UI is complete.
+**Rationale:** Design refresh is blocked on the Projete brand guide from the client — an external dependency that cannot be accelerated. Memory optimization requires a measured baseline before the fix can be verified. Both sub-tracks can start in parallel once the brand guide arrives and the instrumentation deployment is live. The immediate memory mitigation (`memory: 3008`) ships independently of both.
 
-**Delivers:** `execucao-sync.ts` with streaming OSC filter on proposta, "em execução" filter on convenio, in-memory id_proposta join, upsert with `ON CONFLICT (nr_convenio)`; a one-off test script that populates `projetos_execucao` against the live DB; sync stats including `join_miss_count`; validated row counts matching the expected "em execução + OSC" universe.
+**Delivers:** Full Projete visual identity (colors, fonts, logo, favicon, page title, NewsBanner brand announcement) plus memory peak reduced from ~1300 MB to target below 600 MB for the proposta sync cron function.
 
-**Uses:** `downloadAndStreamCSV`, `cleanCNPJ`, `parseBRNumber`, `fixText` from `repo-sync.ts`; `getPool()` from `db.ts`
+**Uses:** `next/font/google` (built-in), optional `unzipper` package, CSS custom properties pattern in `globals.css`, `Readable.fromWeb` + `createInflateRaw` streaming pipeline for ZIP downloads
 
-**Avoids:** Pitfall 1 (UPSERT discipline), Pitfall 6 (separate cron endpoint planned and created here), Pitfall 8 (enrichment queue uses `ON CONFLICT DO NOTHING` — no duplicate BrasilAPI calls)
+**Avoids:** Pitfall 5 on design (arbitrary colors not migrated — config change and all file migrations ship in one commit), Pitfall 6 (font update touches both `globals.css` import and `tailwind.config.ts` fontFamily atomically), Pitfall 7 (NewsBanner version bump is the final step of design refresh deployment), Pitfall 4 (instrument first to confirm ZIP buffer is the actual allocation before fixing), Pitfall 8 (verify streaming fix eliminates buffer inside `_parseZipBuffer`, not just at the call site), Pitfall 9 (verify end-to-end cron timing does not regress after streaming change)
 
-**Research flag:** Approach fully specified in STACK.md and ARCHITECTURE.md. If OSC-filtered Map exceeds Vercel memory limits, the documented fallback is a two-pass approach (Set of needed IDs → second stream pass). No additional research needed.
+**Sub-ordering within Phase 2:**
 
-### Phase 3: API Route and Business Logic
-
-**Rationale:** With validated data in `projetos_execucao`, the API can be built against real rows. The alert business rule (Pitfall 7) must be confirmed with the client at the start of this phase before the query is written. CAST-to-NUMERIC for financial precision (Pitfall 3) is established here as a code-review requirement for all queries.
-
-**Delivers:** `/api/execucao/route.ts` with role guard, GROUP BY CNPJ query with all financial columns cast to `NUMERIC(15,2)`, LEFT JOIN `lead_contacts`/`vendedor_projetos` for contact data, filter parameters (search, uf, alert_only), client-confirmed alert logic with named constants and mutually exclusive alert states, cron endpoint wired and verified within 300s budget.
-
-**Implements:** Pattern 3 (gestor-only route guard), Pattern 4 (CNPJ as cross-table integration key), dedicated cron entry in `vercel.json`
-
-**Avoids:** Pitfall 3 (financial precision via CAST), Pitfall 4 (role gate on both page and API), Pitfall 7 (alert logic confirmed with client before implementation)
-
-**Research flag:** Alert business rule requires client clarification — this is a domain question, not a research question. All other patterns are established.
-
-### Phase 4: UI and Navigation
-
-**Rationale:** Build the UI last — after the data layer is validated — to avoid UX iterations on a broken foundation. All UI patterns have direct analogs in existing pages. Risk here is low and execution is straightforward.
-
-**Delivers:** `/execucao/page.tsx` (server component with role guard + client component with `useEffect`/`fetch`), CNPJ-grouped list with expandable per-convênio rows, alert badge highlighting for problematic projects, header KPI cards (clientes qualificados, total fomentos, valor total em execução), `ExecucaoSlideOver.tsx` with full financial detail per CNPJ, % execução progress bar, data freshness timestamp from `cron_sync_log`, Sidebar.tsx update with gestor-only `/execucao` nav entry.
-
-**Reuses:** `KPICard` component, priority badge pattern from `/monitoramento`, CNPJ grouping `useMemo` from `/leads`, progress bar from `/monitoramento`, slide-over pattern from `/leads`, debounced filter pattern from `/monitoramento`
-
-**Avoids UX pitfalls:** Show `dias_em_execucao` alongside % execução to avoid misleading "0% = stalled" signal for new projects; mutually exclusive alert/verificar-saldo states with defined priority; freshness indicator visible in tab header; redirect vendedores to a "sem permissão" page (not `/login`)
-
-**Research flag:** All patterns are direct copies of existing pages. Skip research-phase.
+- Step 2a: Deploy `memory: 3008` to Vercel function config — 1-line change, no dependencies, ships immediately
+- Step 2b: Add per-step heap instrumentation to `syncLeadsFromRepo` — deploy and wait for one cron run to establish the baseline before any fix is written
+- Step 2c (parallel with 2b): Receive brand guide from client; add CSS custom properties to `globals.css`, Projete tokens to `tailwind.config.ts`, update `Sidebar.tsx`
+- Step 2d: Full arbitrary-color audit and file-by-file migration; remove `sigma.*` namespace — all in one commit with the config change
+- Step 2e: Font migration (`fonts.ts` creation, `layout.tsx` update, remove `@import` from `globals.css`)
+- Step 2f: `NewsBanner.tsx` version bump and brand announcement item — last step before design refresh deployment
+- Step 2g: Implement streaming ZIP fix in `downloadAndStreamCSV` — after baseline from Step 2b is established and the fix can be compared to it
+- Step 2h: Implement batch DB upserts — after Step 2g is verified stable, as an additional cost optimization
 
 ### Phase Ordering Rationale
 
-- Data audit before ETL: CNPJ normalization and NULL `proposta_id` are one-way doors — building the join before auditing bakes the bug into the architecture, not just the query.
-- ETL before API: The API needs real rows to validate correctness of GROUP BY logic and contact joins. An empty table hides correctness issues.
-- API before UI: The UI is a consumer of the API contract. Changing the API shape after the UI is built requires two coordinated changes.
-- Separate cron endpoint decided in Phase 2, wired in Phase 3: The existing lead sync's ~250s runtime leaves no safe budget for an appended execution sync.
+- Distribution ships first because it has zero external dependencies and existing code handles 90% of the work. The client sees immediate value.
+- Design refresh is gated on client brand guide delivery. Starting it before the guide arrives produces rework. The memory mitigation (Step 2a) can ship the moment Phase 1 is complete regardless of brand guide status.
+- Memory optimization is last within Phase 2 because it carries the highest technical risk (rewriting the custom ZIP header parser), requires a measured baseline to be credible, and is independent of both distribution and design refresh.
 
 ### Research Flags
 
-Phases with standard patterns (skip `/gsd:research-phase`):
-- **Phase 1 (Data Audit):** PostgreSQL diagnostic queries and LPAD migrations are well-understood. No ambiguity.
-- **Phase 2 (ETL):** Algorithm fully specified. Fallback (two-pass approach for memory) is documented. No research gap.
-- **Phase 4 (UI):** All component patterns are direct copies of `/leads` and `/monitoramento`. No novel patterns.
+Phases likely needing deeper investigation during planning:
+- **Phase 2 / Memory optimization — ZIP streaming:** The `_parseZipBuffer` function uses custom byte-offset parsing of the ZIP local file header, tightly coupled to the `Buffer` approach. Before writing the streaming implementation, confirm the compression method used in the actual `siconv_proposta.csv.zip` file (Deflate vs Store, i.e., bytes 8-9 of the local file header). This is a 5-second check (`xxd proposta.zip | head`) that eliminates a class of implementation risk.
+- **Phase 2 / Design refresh — arbitrary color surface area:** Before the brand guide arrives, run the full grep audit (`grep -r "bg-\[#\|text-\[#\|border-\[#" src/`) and document every file and hex value that needs migration. 229 classes across 24 files is a large surface — the audit output becomes the migration checklist and prevents surprise scope expansion mid-phase.
 
-Phases needing targeted clarification (not research, but client input):
-- **Phase 3 (Alert Logic):** The desembolso alert business rule requires client confirmation before implementation. This is one meeting/query, not a research task.
+Phases with well-documented patterns (skip additional research):
+- **Phase 1 / Distribution UI and API:** The `distributeUnassignedExecucao()` function signature, auth pattern (`getApiSession` + role check), and page structure are fully documented from codebase inspection. No new patterns needed.
+- **Phase 2 / Font migration:** `next/font/google` with CSS variable bridge to Tailwind is the canonical Next.js 14 pattern. Import name (`Space_Grotesk` with underscore) and variable option are verified from official docs. No research gap.
 
 ---
 
@@ -166,55 +140,55 @@ Phases needing targeted clarification (not research, but client input):
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Direct codebase inspection of all relevant files on 2026-03-18; zero new dependencies; existing patterns verified as directly applicable |
-| Features | HIGH | Schema.sql analysis confirmed all required columns exist in `convenios` and `propostas`; client spec (PROJECT.md v4.0) provides explicit KPI and aggregation requirements |
-| Architecture | HIGH | All patterns drawn from direct inspection of `repo-sync.ts`, `dal.ts`, `db.ts`, `leads/page.tsx`, `monitoramento/page.tsx`, `vercel.json`; build order confirmed by dependency analysis |
-| Pitfalls | HIGH | Primary evidence from documented production incidents (commits `9e20d04`, `f81fe04`, `63328eb`) and direct schema inspection confirming FLOAT columns, NULL constraints, and missing indexes |
+| Stack | HIGH | All conclusions from direct codebase inspection plus official Vercel, Next.js, and Node.js docs verified 2026-03-30. One optional dependency (`unzipper`) assessed from npm registry data and GitHub. No assumptions about unread files. |
+| Features | HIGH | Root causes and existing code confirmed by direct inspection of live codebase. Vercel memory limits verified against official docs (2 GB default, not the 1 GB figure in legacy PROJECT.md). Only the Projete brand guide content is unknown — that is an external input, not a research question. |
+| Architecture | HIGH | All component responsibilities confirmed from live code. `distribute-execucao.ts` confirmed wired into `sync-execucao` cron at lines 32-33. ZIP buffer allocation confirmed at `repo-sync.ts` line 202. No architectural assumptions. |
+| Pitfalls | HIGH | CNPJ mismatch, race condition, and ZIP buffer pitfalls verified against actual code patterns. Arbitrary color count of 229 across 24 files is from a real grep audit of the codebase. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Desembolso alert business rule:** The client has not confirmed what "desembolso negativo" means as a database condition. Before Phase 3 begins, the client must identify at least 3 convênios that should show the alert and 3 that are healthy. The developer then inspects those records to derive the exact condition. Do not ship alert logic as a guess.
-- **NULL proposta_id scope:** The diagnostic query has not been run yet. The count could be 0 (no problem) or significant (requires a LEFT JOIN fallback path). Run in Phase 1 before any architecture decisions for the ETL are locked.
-- **Proposta CSV OSC subset size in memory:** It is estimated that OSC propostas are a small fraction of the 187MB file, but this has not been measured. Instrument memory usage in the Phase 2 test script. If the OSC Map exceeds Vercel's 1GB serverless limit, switch to the documented two-pass approach.
-- **Total cron duration with both syncs active:** The execution sync is projected at 30-60s additional runtime. Since it runs on a separate endpoint, the 300s budget is not shared, but DB connection pool saturation during overlapping windows has not been measured. Monitor on the first combined run.
+- **Projete brand guide content:** Colors, font families, logo files, and favicon assets are unknown until the client delivers the brand guide. No brand work beyond CSS custom property scaffolding can proceed before delivery. The roadmap must include an explicit "receive brand guide" gate between Phase 1 completion and Phase 2 design work.
+
+- **Government ZIP compression method:** The streaming rewrite must handle both Deflate (method 8) and Store (method 0) ZIP entries. Research confirms the government uses Deflate, but this must be re-verified against the actual `siconv_proposta.csv.zip` file header before writing the streaming implementation. One `xxd` command resolves this immediately.
+
+- **`gestor_vendedor` role in distribution:** The distribution query filters for `u.active = true` and the `vendedor` role. If any active users have the `gestor_vendedor` role and also handle execution leads, they are excluded from equalization. The production DB was not audited for this edge case. Confirm in the production database before deploying Phase 1.
+
+- **Current production cron behavior:** Whether the existing `sync-execucao` cron is successfully calling `distributeUnassignedExecucao()` post-sync can only be confirmed from Vercel function logs. The code path exists and was verified at lines 32-33 of the cron route. Production behavior should be confirmed from logs before Phase 1 begins, to avoid building a feature that is already working.
 
 ---
 
 ## Sources
 
-### Primary (HIGH confidence — direct codebase inspection, 2026-03-18)
+### Primary (HIGH confidence — direct codebase inspection, 2026-03-30)
 
-- `web/src/lib/repo-sync.ts` — ETL pattern, streaming ZIP+CSV, `downloadAndStreamCSV`, `_parseZipBuffer`, `parseBRNumber`, `cleanCNPJ`, `fixText`, UPSERT discipline, enrichment queue (`ON CONFLICT DO NOTHING`)
-- `web/src/lib/dal.ts` — `getApiSession()`, `verifySession()`, `isAdmin()`, role guard patterns
-- `web/src/lib/db.ts` — `pg.Pool` singleton, `max: 5`, `statement_timeout: 30000`, `query()` helper
-- `web/schema.sql` — `convenios`, `propostas`, `proponentes` table structure; FLOAT vs NUMERIC mismatch; NULL constraints; existing indexes
-- `web/src/app/api/leads/route.ts` — GROUP BY aggregation, `lead_contacts` correlated subquery pattern
-- `web/src/app/api/leads/[cnpj]/instruments/route.ts` — existing INNER JOIN on `proposta_id` (the silent-drop risk pattern)
-- `web/src/app/api/cron/sync-leads/route.ts` — cron auth, `maxDuration = 300`, manual trigger, sequential structure
-- `web/src/app/leads/page.tsx` — CNPJ grouping `useMemo`, slide-over invocation, alert border styling
-- `web/src/app/monitoramento/page.tsx` — priority badge pattern (`PRIORITY_COLORS`), progress bar, debounced filter
-- `web/src/components/Sidebar.tsx` — gestor nav block (lines 53-59), role-conditional nav items
-- `web/vercel.json` — cron schedule (12:30 UTC + 18:00 UTC), `maxDuration: 300`
-- `web/package.json` — confirmed installed packages and exact versions
+- `web/src/lib/repo-sync.ts` — ZIP buffer allocation at line 202, `_parseZipBuffer` structure, sequential upsert loop at lines 706-722
+- `web/src/lib/distribute-execucao.ts` — full round-robin implementation, CNPJ normalization in query, N-loop INSERT/UPDATE pattern
+- `web/src/app/api/cron/sync-execucao/route.ts` — `distributeUnassignedExecucao()` called at lines 32-33 (confirmed wired into cron)
+- `web/src/lib/execucao-sync.ts` — `memory_peak_mb` instrumentation, 900 MB guard at line 220
+- `web/tailwind.config.ts` — `sigma.*` color namespace, `fontFamily.heading` and `fontFamily.body` keys
+- `web/src/app/globals.css` — CDN font `@import` URL, confirmed no CSS custom properties today
+- `web/src/app/distribuir/page.tsx` — manual assignment UI, confirmed no auto-distribute button present
+- `web/src/components/Sidebar.tsx` — PROJETUS gradient wordmark, `sigma.neon` / `sigma.magenta` active and hover state usage
+- `web/vercel.json` — confirmed dual `sync-leads` cron entries (12:30 and 18:00 UTC); `sync-execucao` must be audited to confirm it appears exactly once
+- Grep audit — 229 arbitrary color classes in 24 files; 424 standard Tailwind color references across codebase
 
-### Primary (HIGH confidence — external sources, verified 2026-03-18)
+### Primary (HIGH confidence — official external documentation, verified 2026-03-30)
 
-- `https://repositorio.dados.gov.br/seges/detru/` — `siconv_convenio.csv.zip` (15MB, 2026-03-18 08:56) and `siconv_proposta.csv.zip` (187MB, 2026-03-18 08:58) confirmed present and daily-updated
-
-### Primary (HIGH confidence — production incidents)
-
-- `.planning/debug/contacted-status-regression.md` — STEP 7c vendedor_id filter bug (commit `9e20d04`); canonical example of sync contamination via missing grouping scope in UPSERT
-- `.planning/debug/commission-sales-flow.md` — FLOAT precision issues in financial calculations
-- `.planning/debug/duplicate-lead-cnpj.md` — CNPJ deduplication failure from a weak UPSERT conflict key
+- `https://vercel.com/docs/functions/limitations` — Pro default 2 GB / 1 vCPU, max 4 GB / 2 vCPU
+- `https://vercel.com/docs/functions/configuring-functions/memory` — memory not settable per-route in `vercel.json` for Next.js App Router; must use Vercel dashboard
+- `https://nextjs.org/docs/14/app/building-your-application/optimizing/fonts` — `next/font/google`, `Space_Grotesk` import name (underscore), CSS variable approach for Tailwind
+- Node.js 18 release notes + `https://nodejs.org/api/stream.html` — `Readable.fromWeb` available in Node.js 18+
 
 ### Secondary (MEDIUM confidence)
 
-- `.planning/PROJECT.md` v4.0 section — client milestone spec: data flow, KPI requirements, column references, alert logic intent (alert business rule not yet confirmed as exact DB conditions)
-- `web/src/components/KPICard.tsx` — confirmed reusable component for header KPI cards
+- `https://tailwindcss.com/blog/tailwindcss-v4` — confirmed v3 vs v4 scope difference, migration complexity
+- `https://tailwindcss.com/docs/theme` — Tailwind v3 arbitrary value class behavior (not affected by `theme.extend.colors` changes)
+- npm `unzipper` ^0.10.14 — 3M weekly downloads, last release 2024, MIT license
+- LeanData / LeadAngel round-robin distribution blog posts — fewest-first vs strict round-robin tradeoffs (consistent with implemented code behavior)
 
 ---
 
-*Research completed: 2026-03-18*
+*Research completed: 2026-03-30*
 *Ready for roadmap: yes*

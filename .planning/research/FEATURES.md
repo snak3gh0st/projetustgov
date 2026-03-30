@@ -1,150 +1,234 @@
 # Feature Research
 
-**Domain:** Post-sales intelligence tab — government project execution monitoring (Projetos em Execução)
-**Researched:** 2026-03-18
-**Confidence:** HIGH (based on direct codebase analysis + domain knowledge of TransferênciaGov data structures)
+**Domain:** CRM v4.1 — Lead distribution equalization, Design system brand refresh, Memory optimization
+**Researched:** 2026-03-30
+**Confidence:** HIGH (all three areas verified against official sources and existing codebase inspection)
 
 ---
 
-## Context
+## Context: Subsequent Milestone on Existing System
 
-This is a **subsequent milestone** on an existing CRM. The new `/execucao` tab is a read-only intelligence view
-for gestores and coordenadores. It surfaces post-sale project health by cross-referencing convenio and proposta
-tables (already in Supabase) and is explicitly **not** a workflow feature — no handoff buttons, no status updates.
+This research covers **only the new features** for v4.1. The baseline system (v4.0) is fully shipped:
 
-The primary consumer is a gestor scanning for organizations whose grants are in financial trouble (negative
-desembolso, poor execution rate) or whose grants are finishing soon (vigência expiring). The key data
-cross-reference is:
+- Manual lead assignment: `web/src/app/distribuir/page.tsx` + `/api/leads/assign`
+- Automatic distribution logic: `web/src/lib/distribute-execucao.ts` — fewest-leads-first algorithm exists
+- Cron already calls distribution: `sync-execucao` cron invokes `distributeUnassignedExecucao()` post-sync
+- Tailwind v3.4 with `sigma.*` custom color palette: `web/tailwind.config.ts`
+- CSV sync root cause: `web/src/lib/repo-sync.ts` line 202 — `await res.arrayBuffer()` loads full ZIP into heap
 
-```
-convenio (situacao = "em execução") → proposta (modalidade = "OSC") → convenio (financials)
-convenio.proposta_id → proposta.transfer_gov_id → proposta.proponente_cnpj → aggregate per CNPJ
-```
-
-Existing schema columns confirmed in `schema.sql`:
-- `convenios.valor_desembolsado` — total disbursed
-- `convenios.saldo_conta` — account balance
-- `convenios.valor_global` — total approved amount
-- `convenios.data_fim_vigencia` — end of validity
-- `convenios.data_inicio_vigencia` — start of validity
-- `convenios.situacao` — status ("em execução" is the target filter)
-- `propostas.modalidade` — instrument type ("OSC" is the target filter)
-- `propostas.proponente_cnpj` — CNPJ for aggregation back to CRM contacts
+All three features have significant existing scaffolding. This milestone is completion + polish, not greenfield.
 
 ---
 
-## Feature Landscape
+## Feature 1: Automatic Round-Robin Lead Distribution (Execucao)
 
-### Table Stakes (Users Expect These)
+### How This Works in Industry CRMs
 
-Features the gestor assumes exist. Missing these = the tab is useless.
+Industry CRMs (Salesforce, HubSpot, LeanData) implement two variants of lead distribution:
+
+- **Strict round-robin:** Cycle through reps in fixed order. Simple but drifts when reps are added/removed mid-cycle.
+- **Load-balancing / fewest-first:** Assign each new lead to whichever rep currently has the fewest active leads. Self-corrects imbalances over time, handles team size changes gracefully.
+
+The fewest-first variant is the recommended pattern for this use case because the team is small and new members may be added between cron runs.
+
+### What Already Exists in This Codebase (Do Not Rebuild)
+
+The core algorithm is fully implemented in `lib/distribute-execucao.ts`:
+
+1. Query active vendedores + their current execucao lead counts
+2. For each unassigned CNPJ: pick vendedor with lowest count, increment counter
+3. UPSERT into `vendedor_projetos`
+
+The `sync-execucao` cron already calls this automatically. The `distribuir/page.tsx` page exists for manual gestor assignment.
+
+### Table Stakes
+
+Features the gestor assumes exist when told "we added auto-distribution."
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Filtered list of projects "em execução" | Core purpose of the tab. Gestor cannot use raw data without this filter. | LOW | SQL WHERE convenio.situacao ILIKE '%em execução%' AND proposta.modalidade ILIKE '%osc%' |
-| % execução per project | Standard metric for any grant management view. Tells gestor how much of the grant has been spent. | LOW | (valor_desembolsado / valor_global) * 100. Column already exists in schema. |
-| Saldo em conta per project | Critical: low saldo = client needs action. Missing this is the core gap the feature fills. | LOW | saldo_conta column already in convenios table |
-| Data fim vigência + days remaining | Gestor needs to know urgency. Expiring grants = upsell opportunity. | LOW | data_fim_vigencia - CURRENT_DATE = dias_restantes |
-| CNPJ-level aggregation | Client spec explicitly requires "quantidade de fomentos" per CNPJ as big number. Aggregating multiple convenios under one org is the key innovation. | MEDIUM | GROUP BY proposta.proponente_cnpj; COUNT convenios per CNPJ |
-| Desembolso highlight logic | Client defined: negative desembolso = alert (red), positive desembolso = show saldo (green/amber). This is the primary decision signal. | LOW | Conditional row styling. desembolso negative = valor_desembolsado < 0 |
-| Link to existing CRM contacts | Gestor must know if the org is already a client or has a contact in the CRM. This connects post-sale to pre-sale data. | MEDIUM | JOIN lead_contacts via CNPJ. Show contact name/phone if exists. |
-| Access restricted to gestor + coordenador | Explicitly required. Vendedores must not see this view. | LOW | Same pattern as /monitoramento: role check in page server component + API route |
+| Manual "Distribuir Agora" button in distribuir/page.tsx | Gestor must run distribution outside cron schedule (e.g., when new vendedor joins) | LOW | Calls existing cron API endpoint with gestor auth |
+| Post-distribution report modal | Confirmation of who got how many leads before and after | LOW | `distributeUnassignedExecucao()` already returns stats object with before/after counts |
+| Skip inactive vendedores | Prevent leads going to reps on leave | LOW | Already filtered by `u.active = true` in query — verify this flag is maintained when gestor deactivates user |
+| Leads from Aprovacao pipeline inherit vendedor | Execucao leads that came from Aprovacao must keep their original vendedor, not be re-distributed | MEDIUM | Distribution must skip CNPJs where `vendedor_projetos.vendedor_id IS NOT NULL` — query already includes this WHERE clause |
 
-### Differentiators (Competitive Advantage)
-
-Features that would make this tab significantly more useful than a plain table.
+### Differentiators
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| "Clientes qualificados" big number KPI | Client explicitly requested this as a top-level KPI. One number showing how many active OSC clients PROJETUS has in execution. | LOW | COUNT DISTINCT cnpj WHERE situacao = em execução AND modalidade = OSC |
-| "OSC" big number KPI | Second explicit KPI requested. Shows total OSC orgs in portfolio. | LOW | COUNT DISTINCT cnpj WHERE modalidade = OSC (regardless of status) |
-| "Quantidade de fomentos" per CNPJ | Shows depth of relationship. A CNPJ with 5 active grants is far more valuable than one with 1. | LOW | COUNT(convenios.id) per CNPJ in the filtered set |
-| Valor total em execução KPI | Sum of valor_global for all active projects. Shows the financial weight of the post-sale portfolio. | LOW | SUM(valor_global) WHERE situacao = em execução |
-| Alert badge for negative desembolso | Visual priority signal so gestor can triage without reading every row. Red badge = action needed. | LOW | Inline badge component, reuse existing PRIORITY_COLORS pattern from /monitoramento |
-| Sort by "risco" (expiring soonest + lowest saldo) | Gestor needs to see the most urgent cases first. Sorting by dias_restantes ASC surfaces imminent deadlines. | LOW | ORDER BY data_fim_vigencia ASC NULLS LAST as default sort |
-| CNPJ expand/collapse for multiple grants | When one CNPJ has 3+ active grants, show them in an expandable sub-row. Reduces noise while preserving detail. | MEDIUM | Accordion row pattern. Already used in /leads with LeadSlideOver. |
-| % execução visual progress bar | Progress bar (0-100%) communicates execution health faster than a raw number. Low % = possible execution delay risk. | LOW | Tailwind width-based bar. Already implemented in /monitoramento for perc_execucao. |
+| Distribution equity summary per vendedor | Gestor sees current lead count imbalance before running distribution | MEDIUM | Simple COUNT query per vendedor, display as table |
+| Real-time count update in distribuir/page.tsx | Page reflects actual counts after distribution completes | LOW | Re-fetch vendedores after distribution API call |
 
-### Anti-Features (Commonly Requested, Often Problematic)
+### Anti-Features
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| Handoff / pós-venda workflow | "Now that we see a client in trouble, we should assign a post-sale rep" | Requires new data model (post_sale_assignments), new role, new notification system. Out of stated scope. Adds 3+ weeks. | Keep as read-only intelligence. Gestor identifies manually and communicates to team via existing channels. |
-| Email/WhatsApp alerts for expiring grants | "Notify us when vigência is 30 days away" | Requires background scheduler, push notification setup. Push subscribe already exists but not wired to cron logic for this. | Export as list or build as v2 after validating which signals matter most. |
-| Historical execution trend chart | "Show how fast this org is spending" | Requires desembolsos table join with time series — that table exists but is sparsely populated (proposta_emendas 0% populated per PROJECT.md). | Show current snapshot only. Add trend in v2 if data is available. |
-| Editable notes on execution projects | "I want to add notes to post-sale projects" | Creates confusion between CRM lead notes and execution notes. Two note systems for same CNPJ = data fragmentation. | Gestor writes notes in existing lead/contact notes in CRM (same CNPJ exists in vendedor_projetos table). |
-| Separate "post-sale status" pipeline | "Track each org through post-sale stages like we do with leads" | Duplicates the CRM pipeline for a different purpose. Would require a new kanban, new statuses, new assignment logic. | Build this as a separate milestone only after validating the read-only tab delivers value. |
-| Real-time data (websockets/polling) | "I want to see changes instantly" | Data source is TransferênciaGov repo, updated once daily via cron. Real-time adds complexity with no benefit. | Daily refresh via existing cron sync is sufficient. |
+| Fully automatic distribution without confirmation | "Less work for gestor" | Silent failures are unauditable; gestor loses oversight of who has which leads | Keep manual trigger with preview; cron auto-distribution for new CNPJs only |
+| Weighted round-robin by seniority or performance | "Better leads to better reps" | Requires performance metrics system not yet built; demotivates junior reps; client has not requested this | Equal distribution first; add weights only if client explicitly requests |
+| Re-distribute already-assigned leads | "Rebalance the whole team" | Destroys existing vendor relationships for leads already in contact | Distribute only unassigned CNPJs; manual reassignment for edge cases |
+
+---
+
+## Feature 2: Design System / Brand Refresh (Projete Visual Identity)
+
+### How Tailwind v3 Brand Refreshes Work
+
+**Current state (confirmed from codebase):** The app uses Tailwind v3.4 (devDependency `"tailwindcss": "^3.4.0"`) with a `sigma.*` custom color palette and `Space Grotesk` / `Inter` fonts defined in `tailwind.config.ts`.
+
+The correct approach for a brand refresh on a Tailwind v3 app:
+
+1. Replace token values in `tailwind.config.ts` — all components using `sigma.*` classes update automatically with zero code changes
+2. Replace font families in `theme.extend.fontFamily`
+3. Swap logo asset in `public/`, update `<img>` references
+4. Audit and replace any hardcoded hex values (bypassed the token system) in TSX files
+5. Update favicon, OG image, page title in `app/layout.tsx`
+
+**Tailwind v4 is out of scope for this milestone.** v4 (released early 2026) requires migrating from `tailwind.config.ts` to a CSS `@theme` directive, uses a new Rust-based Oxide engine, and breaks plugins. It is a separate milestone. CONFIDENCE: HIGH — verified against official Tailwind v4 docs and migration guide.
+
+### Table Stakes
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Replace `sigma.*` color tokens with `projete.*` colors | All UI surfaces update to brand-accurate palette | LOW | Single file change in `tailwind.config.ts`; all 33+ component files using `sigma-*` classes update automatically |
+| Replace fonts (Space Grotesk + Inter → Projete brand fonts) | Typography is a primary brand signal | LOW | Update `fontFamily` in `tailwind.config.ts` + `<link>` tags in `app/layout.tsx` |
+| Replace logo / wordmark | Visual identity anchors on the logo | LOW | Swap asset in `public/`, update `<img src>` references (grep for `sigma` in image filenames) |
+| Update favicon + OG image | Browser tab and link preview identity | LOW | Replace `favicon.ico`, `apple-touch-icon.png`, OG image in `public/` |
+| Update page title and metadata | Tab title, SEO, brand consistency | LOW | `metadata` export in `app/layout.tsx` |
+| Audit hardcoded hex values | Color tokens only work if used consistently — hardcoded values bypass the system | LOW | `grep -r '#[0-9A-Fa-f]\{3,6\}' web/src/` surfaces bypasses; spot-replace with token references |
+
+### Differentiators
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| CSS variable approach for runtime theming | Enables future per-client branding without rebuild | MEDIUM | Requires moving token values to CSS custom properties; worthwhile only if multi-tenant branding is planned |
+
+### Anti-Features
+
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Migrate to Tailwind v4 as part of this refresh | "Modernize the entire stack" | v4 migration needs dedicated milestone — Oxide engine, new config format, plugin breaks, 20% of migration is manual | Stay on v3.4, change token values only |
+| Full component rebuild | "Make it look completely new" | Breaks working UI, risks regressions across all pages | Targeted token swap + spot-fix non-token usages |
+| Custom Tailwind plugin for brand components | "Reusable brand system" | Over-engineering for a single-tenant internal tool | Token values in config + component extraction via React components is sufficient |
+
+---
+
+## Feature 3: Memory Optimization for Proposta CSV Sync
+
+### Root Cause (Confirmed from Codebase)
+
+The ~1300MB memory spike is caused by this pattern in `lib/repo-sync.ts` at line 202:
+
+```typescript
+const zipBuffer = Buffer.from(await res.arrayBuffer())
+// Loads the ENTIRE downloaded ZIP into a single Buffer before any parsing
+```
+
+The `siconv_proposta.csv.zip` source file is 187MB compressed. The uncompressed 1.1M-row CSV expands to ~600MB-1.2GB. Loading it fully into a Buffer before decompressing means peak heap simultaneously holds: the ZIP buffer + the inflated readline interface + the `propostaMap` being built.
+
+**Critical finding from official Vercel docs:** Vercel Pro memory limit is **4GB maximum** with **2GB default**. CONFIDENCE: HIGH — source: [vercel.com/docs/functions/limitations](https://vercel.com/docs/functions/limitations). The previous belief that the limit was 1GB was incorrect. The 1300MB peak exceeds the 2GB default only if no explicit memory configuration is set. The function is not crashing — it is near but likely within the default 2GB provisioning.
+
+**Immediate mitigation available:** Set `"memory": 3008` in `vercel.json` function config to provision 3GB for the sync function. This is a one-line change that buys headroom while the streaming rewrite is prepared.
+
+### Industry-Standard Fix: Streaming Without Full Buffer
+
+Node.js Streams API (and the modern WHATWG Streams `ReadableStream`) allows processing HTTP response bodies chunk-by-chunk. The pattern to eliminate the ZIP buffer:
+
+```
+fetch() → res.body (ReadableStream) → pipeThrough(DecompressionStream) → TextDecoder → readline → onRow
+```
+
+This avoids `await res.arrayBuffer()` entirely. Memory stays flat regardless of file size. The trade-off: retries must re-issue the HTTP request from scratch rather than re-parsing a buffered response — acceptable since government CSV downloads are idempotent.
+
+**DecompressionStream** is available natively in Node.js 18+ and in the Vercel edge runtime. No new npm dependency required.
+
+### Table Stakes
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Set `memory: 3008` in vercel.json for sync function | Immediate stability while streaming rewrite ships | LOW | One config line; 3008MB = ~3GB, within Vercel Pro 4GB max |
+| Replace `await res.arrayBuffer()` with streaming pipeline | Eliminates ZIP buffer allocation (estimated saving: 200-400MB peak) | MEDIUM | Rewrite `downloadAndStreamCSV` to use `res.body` + `DecompressionStream` native API |
+| Batch DB inserts in execucao-sync | Currently calls `query()` per row in a loop — accumulates open DB connections and unbounded Promise arrays | MEDIUM | Collect rows into batches of 500, UPSERT with UNNEST array syntax |
+| Verify memory telemetry works | `memory_peak_mb` field already in `ExecucaoSyncStats` — confirm it is being logged and reported | LOW | Check cron response JSON for `memory_peak_mb` in production logs |
+
+### Differentiators
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Separate sync into two sequential cron jobs (proposta-only + execucao join) | Smaller peak per invocation; each function stays within 2GB default | HIGH | Requires second cron slot + coordination logic; only worth it if streaming is insufficient |
+
+### Anti-Features
+
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Pre-download CSVs to Supabase Storage | "Don't process in the function" | Government CSVs update daily — adds an ETL staging step, a new failure mode, storage costs, and a second cron job | Stream directly; cut in-memory footprint |
+| Paginated CSV chunking | "Process 100K rows at a time" | Government CSVs are single monolithic files — you must download all of it to page through it; streaming achieves the same memory profile more simply | True streaming (chunk by chunk) is the correct abstraction |
+| Worker threads for CSV parsing | "Offload CPU to secondary thread" | Complex in serverless — workers have separate heaps but the main thread still owns the network I/O; does not solve the buffering problem | Fix the buffering root cause first; worker threads are premature optimization |
 
 ---
 
 ## Feature Dependencies
 
 ```
-[DB: SQL query joining convenios + propostas]
-    └──required by──> [Filtered list em execução]
-                          └──required by──> [Financial columns (desembolso, saldo, % exec)]
-                          └──required by──> [CNPJ aggregation + fomentos count]
-                          └──required by──> [Vigência days remaining]
-                          └──required by──> [Header KPI cards]
+[Distribution: Manual Trigger UI]
+    └──requires──> [/api/cron/sync-execucao endpoint with gestor auth]  (already exists)
+                       └──requires──> [distributeUnassignedExecucao()]  (already exists)
 
-[CNPJ aggregation]
-    └──required by──> [Link to CRM contacts]
-    └──required by──> [Clientes qualificados KPI]
-    └──required by──> [CNPJ expand/collapse]
+[Distribution: Post-distribution report modal]
+    └──requires──> [distributeUnassignedExecucao() return stats]  (already returned)
 
-[Desembolso highlight logic]
-    └──enhances──> [Filtered list em execução] (visual triage)
+[Brand Refresh: Color token swap]
+    └──requires──> [Projete brand guide from client]  (external dependency)
+    └──enhances──> [all components using sigma.* classes]  (zero code changes in components)
 
-[Access control (gestor/coordenador only)]
-    └──required by──> [All features on this tab]
+[Brand Refresh: Font swap]
+    └──requires──> [Projete brand guide specifying font families]  (external dependency)
+    └──requires──> [Google Fonts or self-hosted font files]
 
-[% execução progress bar]
-    └──enhances──> [Filtered list em execução]
+[Memory: configureMemory = 3008]
+    └──independent of──> [streaming rewrite]
+    └──enables──> [immediate stability while streaming ships]
 
-[Sort by risco]
-    └──enhances──> [Filtered list em execução]
+[Memory: Streaming download rewrite]
+    └──requires──> [Node.js 18+ DecompressionStream API]  (available on Vercel)
+    └──conflicts with──> [current retry-via-reparse pattern]  (retries must re-download)
+    └──reduces──> [peak heap by ~200-400MB estimated]
+
+[Memory: Batch DB inserts]
+    └──independent of──> [streaming rewrite]
+    └──reduces──> [DB connection churn and Promise queue pressure]
 ```
 
 ### Dependency Notes
 
-- **Filtered list requires the convenio → proposta join:** The cross-reference `convenio.proposta_id → proposta.transfer_gov_id → proposta.proponente_cnpj` is the foundation. If proposta_id is sparsely populated in convenios, few rows will match. This is the highest-risk dependency and must be validated against actual data before committing to the approach.
-- **CNPJ aggregation requires the join:** Cannot count fomentos-per-org without establishing which CNPJ each convenio belongs to. The join produces this.
-- **CRM contact link requires CNPJ aggregation:** Cannot show "this org has a contact" without first knowing which CNPJ each project belongs to.
-- **Access control has no dependencies:** Can be implemented independently as the route-level guard. Reuses existing `isAdmin(role)` and `verifySession` pattern from `dal.ts`.
-- **Highlight logic has no dependency on contacts:** Pure presentation logic on desembolso value. Can be done entirely in the frontend once the data row includes valor_desembolsado.
-- **KPI cards depend on the same query:** The gestor header metrics (clientes qualificados, quantidade de fomentos, valor total) are aggregates of the same filtered query. No separate data source needed.
+- **Brand refresh requires client brand guide:** Projete brand colors, fonts, and logo must be provided by the client before any design work starts. This is the only external blocking dependency across the three features.
+- **Memory streaming conflicts with current retry logic:** Existing code retries by re-parsing the already-downloaded `zipBuffer`. With streaming, the buffer is gone — retries must re-issue the `fetch()` call. This is safe because government CSV downloads are idempotent.
+- **`configureMemory` is a mitigation, not the fix:** Raising provisioned memory from 2GB to 3GB buys stability immediately. The streaming rewrite reduces actual heap usage so the function costs less on Vercel Pro billing (provisioned memory-time is billable).
+- **Distribution manual trigger does not depend on brand refresh:** All three features are independent of each other and can be built in parallel by different developers.
 
 ---
 
-## MVP Definition
+## MVP Definition for v4.1
 
-### Launch With (v1 — this milestone)
+### Launch With
 
-Read-only intelligence view that gives the gestor actionable awareness of post-sale portfolio health.
+- [ ] **Distribution: Manual "Distribuir Agora" button** in `distribuir/page.tsx` — calls existing API, shows result modal
+- [ ] **Distribution: Post-distribution report modal** — who got how many, before vs after counts
+- [ ] **Brand: Color token swap** — replace `sigma.*` with `projete.*` in `tailwind.config.ts` (requires brand guide)
+- [ ] **Brand: Font swap + logo + favicon** — update `layout.tsx` font imports, swap logo asset in `public/`
+- [ ] **Memory: `memory: 3008` in vercel.json** — immediate mitigation for sync-execucao function
+- [ ] **Memory: Replace `await res.arrayBuffer()` with streaming pipeline** — primary fix in `repo-sync.ts`
 
-- [ ] Route `/execucao` restricted to gestor + coordenador roles — uses existing `verifySession` + role check pattern from dal.ts
-- [ ] SQL query joining convenios + propostas filtered to situacao=em execução AND modalidade=OSC — no new table required if query is performant
-- [ ] CNPJ-level aggregated list: nome, CNPJ, count of active grants (fomentos), total valor_global — the core table
-- [ ] Per-row financial columns: desembolso total, saldo em conta, % execução, data fim vigência, dias restantes
-- [ ] Desembolso highlight: red row/badge if any convenio for this CNPJ has negative desembolso
-- [ ] Header KPI cards: clientes qualificados (distinct CNPJs), quantidade de fomentos total, valor total em execução — reuse KPICard component
-- [ ] Contact indicator: small badge if CNPJ exists in lead_contacts or vendedor_projetos table — no full contact details needed at launch
-- [ ] Sidebar navigation entry for gestor/coordenador — add to existing Sidebar.tsx conditional navItems
+### Add After Validation
 
-### Add After Validation (v1.x)
+- [ ] **Memory: Batch DB inserts** in `execucao-sync.ts` — validate streaming was sufficient first, then optimize DB writes
+- [ ] **Distribution: Equity stats view** — show lead-count balance per vendedor in distribuir/page.tsx header
+- [ ] **Brand: Audit hardcoded hex values** — grep, fix any `#xxxxxx` literals that bypass token system
 
-- [ ] Expand/collapse per-CNPJ to show individual convenios — trigger: gestor feedback that single-row view loses too much detail
-- [ ] Sort controls (by saldo, by % exec, by vigência) — trigger: gestor says default sort doesn't surface right cases
-- [ ] UF / estado filter — trigger: gestor has regional focus and needs to segment
-- [ ] Text search by org name or CNPJ — trigger: gestor has a specific client they want to find
+### Future Consideration
 
-### Future Consideration (v2+)
-
-- [ ] Historical disbursement trend chart per CNPJ — defer: desembolsos table sparsely populated, needs data quality validation first
-- [ ] Vigência expiration alerts via push notification — defer: requires cron wiring beyond current scope
-- [ ] Post-sale assignment workflow — defer: entirely separate feature set, needs user research on process
-- [ ] Export to CSV of orgs in execution — defer: useful but not critical for intelligence-only view
+- [ ] **Tailwind v4 migration** — separate milestone; no v4 features needed for this brand refresh
+- [ ] **Weighted lead distribution** — only if client explicitly requests it; performance metrics system must exist first
+- [ ] **Worker thread CSV parsing** — only if streaming rewrite is proven insufficient by memory telemetry
 
 ---
 
@@ -152,109 +236,39 @@ Read-only intelligence view that gives the gestor actionable awareness of post-s
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Filtered list (em execução + OSC) | HIGH | LOW | P1 |
-| CNPJ aggregation with fomentos count | HIGH | MEDIUM | P1 |
-| Financial columns (desembolso, saldo, % exec) | HIGH | LOW | P1 |
-| Vigência + dias restantes | HIGH | LOW | P1 |
-| Desembolso alert highlight | HIGH | LOW | P1 |
-| Header KPI cards | MEDIUM | LOW | P1 |
-| Access control (gestor/coordenador) | HIGH | LOW | P1 |
-| CRM contact link/badge | MEDIUM | LOW | P1 |
-| Sidebar navigation entry | HIGH | LOW | P1 |
-| % execução progress bar | MEDIUM | LOW | P2 |
-| Expand/collapse per-CNPJ | MEDIUM | MEDIUM | P2 |
-| Sort controls | MEDIUM | LOW | P2 |
-| UF filter | LOW | LOW | P2 |
-| Text search | MEDIUM | LOW | P2 |
-| Historical trend chart | LOW | HIGH | P3 |
-| Push alerts for expiring grants | LOW | HIGH | P3 |
-| Post-sale workflow | LOW | HIGH | P3 |
+| Distribution: Manual trigger + report modal | HIGH | LOW | P1 |
+| Brand: Color token swap | HIGH | LOW | P1 — blocked by client brand guide |
+| Brand: Font + logo + favicon | HIGH | LOW | P1 — blocked by client brand guide |
+| Memory: configureMemory = 3008 | HIGH | LOW | P1 — 1-line mitigation |
+| Memory: Streaming download rewrite | HIGH | MEDIUM | P1 |
+| Brand: Audit hardcoded hex values | MEDIUM | LOW | P2 |
+| Distribution: Equity stats view | MEDIUM | MEDIUM | P2 |
+| Memory: Batch DB inserts | MEDIUM | MEDIUM | P2 |
+| Distribution: Weighted distribution | LOW | HIGH | P3 |
+| Tailwind v4 migration | LOW | HIGH | P3 |
 
 **Priority key:**
-- P1: Must have for launch
-- P2: Should have, add when possible
-- P3: Nice to have, future consideration
-
----
-
-## Implementation Notes for Roadmap
-
-### Query Design (Informs Phase Structure)
-
-The entire tab rests on one query. Phase 1 must validate the join produces usable data.
-
-```sql
--- Core query pattern (validate before building UI)
-SELECT
-  prop.proponente_cnpj,
-  COUNT(c.id)                           AS total_fomentos,
-  SUM(c.valor_global)                   AS valor_total,
-  SUM(c.valor_desembolsado)             AS total_desembolsado,
-  SUM(c.saldo_conta)                    AS total_saldo_conta,
-  CASE WHEN SUM(c.valor_global) > 0
-    THEN (SUM(c.valor_desembolsado) / SUM(c.valor_global)) * 100
-    ELSE 0 END                          AS perc_execucao,
-  MIN(c.data_fim_vigencia)              AS proxima_vigencia_fim,
-  (MIN(c.data_fim_vigencia) - CURRENT_DATE) AS dias_restantes,
-  BOOL_OR(c.valor_desembolsado < 0)     AS has_negative_desembolso
-FROM convenios c
-INNER JOIN propostas prop ON c.proposta_id = prop.transfer_gov_id
-WHERE
-  c.situacao ILIKE '%em execução%'
-  AND prop.modalidade ILIKE '%osc%'
-GROUP BY prop.proponente_cnpj
-ORDER BY dias_restantes ASC NULLS LAST
-```
-
-Indexes needed on `convenios.situacao` and `propostas.modalidade` for performance. Verify these are absent in current schema.sql (they are — no index exists on these columns today).
-
-### Data Quality Risk (Critical to Validate Early)
-
-The join `convenios.proposta_id = propostas.transfer_gov_id` is the highest-risk dependency. If `proposta_id` is sparsely populated in the convenios table, the filtered set will be much smaller than expected. This should be the first thing validated in Phase 1 of the roadmap, before any UI work begins.
-
-### Reuse Opportunities from Existing Code
-
-These existing pieces should be reused directly, not reimplemented:
-
-| Existing Component | Location | Reuse For |
-|-------------------|----------|-----------|
-| `KPICard` component | `/components/KPICard.tsx` | Header KPI cards (clientes qualificados, fomentos, valor total) |
-| Priority badge pattern | `/monitoramento/page.tsx` PRIORITY_COLORS | Desembolso alert badge |
-| Progress bar for % exec | `/monitoramento/page.tsx` | % execução visual bar |
-| Role guard pattern | `verifySession` + role check in page.tsx | Restrict to gestor/coordenador |
-| Sidebar conditional | `Sidebar.tsx` navItems array | Add /execucao entry for gestor + coordenador |
-| Debounced filter pattern | `/monitoramento/page.tsx` searchTimeout | Search/filter if added |
-
----
-
-## Competitor Feature Analysis
-
-This is an internal tool with no direct competitors. Reference points:
-
-| Feature | TransferênciaGov public portal | Existing /monitoramento tab | Our /execucao approach |
-|---------|-------------------------------|---------------------------|------------------------|
-| Status filter | Yes, per-project only | By priority (value-based), no status filter | Filter by situacao=em execução at query level |
-| Financial metrics | Desembolsado, saldo, global | Uses valor_emenda as proxy (sparse real data) | Uses actual convenios columns: valor_desembolsado, saldo_conta, valor_global |
-| CNPJ aggregation | No — project by project only | No — one row per project | Yes — aggregate by CNPJ, show fomentos count |
-| Alert logic | None | Priority based on R$ value threshold | Alert based on desembolso sign (negative = problem) |
-| Vigência tracking | Date shown in project detail | Not present | Computed dias_restantes column |
-| CRM contact link | None | None | Badge if CNPJ in lead_contacts |
-| Access control | Public | All authenticated users | Gestor + coordenador only |
+- P1: Must ship in v4.1
+- P2: Should ship when P1 is stable
+- P3: Defer to future milestone
 
 ---
 
 ## Sources
 
-- Direct schema analysis: `/Users/pauloloureiro/Dev/SigmaProjects/projetustgov/web/schema.sql` — confirmed convenios, propostas table columns
-- Direct code analysis: `web/src/app/api/leads/[cnpj]/instruments/route.ts` — confirmed valor_desembolsado, saldo_conta, data_fim_vigencia in active use
-- Direct code analysis: `web/src/app/monitoramento/page.tsx` and `route.ts` — confirmed perc_execucao and priority badge patterns
-- Direct code analysis: `web/src/lib/dal.ts` — confirmed role guard patterns (isAdmin, verifySession)
-- Direct code analysis: `web/src/components/Sidebar.tsx` — confirmed conditional navItems pattern
-- Client milestone spec: `.planning/PROJECT.md` v4.0 section — data flow, column references, KPI requirements
-- [TransfereGov SICONV](https://siconv.com.br/) — confirms desembolso/saldo terminology in Brazilian federal grant context
-- [Project Portfolio Dashboard patterns](https://birdviewpsa.com/blog/project-portfolio-dashboards/) — standard table stakes for financial execution monitoring dashboards
+- [Vercel Functions Limits (official docs)](https://vercel.com/docs/functions/limitations) — confirmed 4GB max / 2GB default for Pro plan (HIGH confidence)
+- [LeanData: Round Robin Lead Distribution Best Practices](https://www.leandata.com/blog/round-robin-lead-distribution-best-practices/) — fewest-leads-first mechanism description (MEDIUM confidence)
+- [LeadAngel: Round Robin Distribution](https://www.leadangel.com/blog/operations/round-robin-distribution-enhancing-lead-distribution-strategies/) — load-balancing vs round-robin distinction (MEDIUM confidence)
+- [Tailwind CSS v4.0 announcement](https://tailwindcss.com/blog/tailwindcss-v4) — confirmed v3 vs v4 scope difference (HIGH confidence)
+- [Tailwind CSS Theme Variables docs](https://tailwindcss.com/docs/theme) — token system behavior (HIGH confidence)
+- [Tailwind CSS v4 Migration Guide](https://www.digitalapplied.com/blog/tailwind-css-v4-2026-migration-best-practices) — migration scope complexity (MEDIUM confidence)
+- [How to Load Very Large CSV Files in Node.js](https://www.codegenes.net/blog/how-to-load-very-large-csv-files-in-nodejs/) — streaming approach (MEDIUM confidence)
+- Codebase: `web/src/lib/repo-sync.ts` line 202 — confirmed root cause of memory spike (`await res.arrayBuffer()`) (HIGH confidence)
+- Codebase: `web/src/lib/distribute-execucao.ts` — confirmed algorithm already exists and is wired to cron (HIGH confidence)
+- Codebase: `web/tailwind.config.ts` — confirmed Tailwind v3.4 with `sigma.*` palette (HIGH confidence)
+- Codebase: `web/package.json` — confirmed `"tailwindcss": "^3.4.0"` (HIGH confidence)
 
 ---
 
-*Feature research for: Projetos em Execução intelligence tab (v4.0 milestone)*
-*Researched: 2026-03-18*
+*Feature research for: v4.1 Distribuição, Design & Performance milestone*
+*Researched: 2026-03-30*
