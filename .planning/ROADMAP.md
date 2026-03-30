@@ -79,7 +79,10 @@ Full details: [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
   2. A new lead in execucao without a vendedor from the approval pipeline is assigned to the vendedor with the fewest total leads in execucao
   3. Concurrent cron auto-distribution and manual trigger cannot assign the same lead to two different vendedores
   4. A gestor can press "Distribuir Automaticamente" in the /distribuir page and see a per-vendedor before/after count in the result modal
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 18-01-PLAN.md — Advisory lock + client-routing in distribute-execucao.ts + API route update
+- [ ] 18-02-PLAN.md — Execution distribution button + result modal on /distribuir page
 
 ### Phase 19: TGov Dashboard
 **Goal**: Gestores have a dedicated /tgov analytics page replicating the key Power BI views for approval and execution pipeline intelligence
@@ -135,7 +138,7 @@ Full details: [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
 | 15. ETL Sync | v4.0 | 2/2 | Complete | 2026-03-18 |
 | 16. API & Logic | v4.0 | 2/2 | Complete | 2026-03-18 |
 | 17. UI & Navigation | v4.0 | 2/2 | Complete | 2026-03-18 |
-| 18. Lead Distribution | v4.1 | 0/TBD | Not started | - |
+| 18. Lead Distribution | v4.1 | 0/2 | Planning | - |
 | 19. TGov Dashboard | v4.1 | 0/TBD | Not started | - |
 | 20. Performance Optimization | v4.1 | 0/TBD | Not started | - |
 | 21. Design Refresh | v4.1 | 0/TBD | Not started | - |
