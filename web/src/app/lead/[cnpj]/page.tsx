@@ -50,27 +50,26 @@ export default function LeadDetailPage() {
   }[] | null>(null)
 
   useEffect(() => {
-    fetch(`/api/leads?search=${encodeURIComponent(cnpj)}&limit=100`)
-      .then(r => r.json())
-      .then(async data => {
-        const filtered = (Array.isArray(data) ? data : []).filter(
+    // Fetch both sources in parallel — vendedor_projetos AND projetos_execucao
+    Promise.all([
+      fetch(`/api/leads?search=${encodeURIComponent(cnpj)}&limit=100`)
+        .then(r => r.ok ? r.json() : [])
+        .catch(() => []),
+      fetch(`/api/execucao/${encodeURIComponent(cnpjClean)}`)
+        .then(r => r.ok ? r.json() : [])
+        .catch(() => []),
+    ]).then(([leadsData, execData]) => {
+        const filtered = (Array.isArray(leadsData) ? leadsData : []).filter(
           (p: VendedorProjeto) => p.cnpj?.replace(/\D/g, '') === cnpjClean
         )
         setProjetos(filtered)
         if (filtered.length > 0) {
           setIsPriority(filtered[0].is_max_priority || false)
           setIsExistingClient(filtered[0].is_existing_client || false)
-        } else {
-          // Fallback: check if this CNPJ is an execution project
-          try {
-            const execRes = await fetch(`/api/execucao/${encodeURIComponent(cnpj)}`)
-            if (execRes.ok) {
-              const execData = await execRes.json()
-              if (Array.isArray(execData) && execData.length > 0) {
-                setExecucaoFallback(execData)
-              }
-            }
-          } catch {}
+        }
+        // Always set execucao data if available (shown alongside CRM data)
+        if (Array.isArray(execData) && execData.length > 0) {
+          setExecucaoFallback(execData)
         }
         setLoading(false)
       })

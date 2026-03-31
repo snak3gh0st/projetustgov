@@ -3,21 +3,21 @@
 // ============================================================================
 //
 // Populates projetos_execucao from two government CSV ZIPs:
-//   Source 1: siconv_proposta.csv.zip (187MB) — filtered to OSC only
-//   Source 2: siconv_convenio.csv.zip (15MB)  — filtered to "em execucao"
+//   Source 1: siconv_proposta.csv.zip (187MB) — filtered to Projetus clients
+//   Source 2: siconv_convenio.csv.zip (15MB)  — joined with matched propostas
 //
 // Algorithm: Two-step in-memory join
-//   STEP A: Stream proposta, build Map<id_proposta, {cnpj, nome, ...}>
-//   STEP B: Stream convenio, look up proposta Map, build records
-//   STEP C: UPSERT ON CONFLICT (nr_convenio) DO UPDATE
-//   STEP D: Log to cron_sync_log with join_miss_count
+//   STEP A: Load existing_clients CNPJs from DB as Projetus client filter
+//   STEP B: Stream proposta, filter by CNPJ match, build Map<id_proposta, info>
+//   STEP C: Stream convenio, look up proposta Map, build records
+//   STEP D: UPSERT ON CONFLICT (nr_convenio) DO UPDATE
+//   STEP E: Log to cron_sync_log with join_miss_count
 //
 // UPSERT: ON CONFLICT (nr_convenio) — NEVER cnpj alone
 // NEVER overwrite fields: (none currently — projetos_execucao has no CRM state)
 // ALWAYS update: all data columns + synced_at
 //
 // Called by: /api/cron/sync-execucao (Phase 15 Plan 02)
-// Tested by: web/scripts/test-execucao-sync.mjs (Phase 15 Plan 02)
 // ============================================================================
 
 import { getPool } from '@/lib/db'
@@ -129,11 +129,26 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
   }
 
   // -------------------------------------------------------------------------
-  // STEP A: Stream siconv_proposta.csv.zip — build OSC-only propostaMap
+  // STEP A: Load Projetus client CNPJs from existing_clients + vendedor_projetos
+  // This replaces the hardcoded whitelist — uses the DB as source of truth
+  // -------------------------------------------------------------------------
+  const pool = getPool()
+  const clientCnpjResult = await pool.query<{ cnpj: string }>(`
+    SELECT DISTINCT cnpj FROM (
+      SELECT cnpj FROM existing_clients
+      UNION
+      SELECT REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') AS cnpj FROM vendedor_projetos
+    ) all_cnpjs
+    WHERE cnpj IS NOT NULL AND cnpj != ''
+  `)
+  const projetusCnpjSet = new Set(clientCnpjResult.rows.map(r => r.cnpj))
+  console.log(`[execucao-sync] STEP A: loaded ${projetusCnpjSet.size} unique Projetus client CNPJs from DB`)
+
+  // -------------------------------------------------------------------------
+  // STEP B: Stream siconv_proposta.csv.zip — build propostaMap filtered
+  //         by Projetus client CNPJs (from existing_clients + vendedor_projetos)
   // -------------------------------------------------------------------------
   const propostaMap = new Map<string, PropostaInfo>()
-  let oscFilterColumn: string | null = null
-  let oscFilterType: 'natureza' | 'tipo_instrumento' | 'fallback' | 'none' = 'none'
   let propostaHeadersLogged = false
 
   await downloadAndStreamCSV(PROPOSTA_URL, (row) => {
@@ -142,64 +157,16 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     // Debug: log headers on first row so CSV column mapping can be verified
     if (stats.proposta_rows_scanned === 1) {
       console.log('[execucao-sync] Proposta CSV headers:', Object.keys(row))
-    }
-
-    // Determine OSC filter column on first row
-    if (stats.proposta_rows_scanned === 1) {
       propostaHeadersLogged = true
-      const keys = Object.keys(row)
-
-      // Try columns that directly encode natureza juridica
-      if (keys.includes('NATUREZA_JURIDICA')) {
-        oscFilterColumn = 'NATUREZA_JURIDICA'
-        oscFilterType = 'natureza'
-      } else if (keys.includes('NATUREZA_JURIDICA_PROPONENTE')) {
-        oscFilterColumn = 'NATUREZA_JURIDICA_PROPONENTE'
-        oscFilterType = 'natureza'
-      } else if (keys.includes('NAT_JUR')) {
-        oscFilterColumn = 'NAT_JUR'
-        oscFilterType = 'natureza'
-      } else if (keys.includes('TIPO_INSTRUMENTO')) {
-        oscFilterColumn = 'TIPO_INSTRUMENTO'
-        oscFilterType = 'tipo_instrumento'
-      } else {
-        // Fallback: check TIPO_INSTRUMENTO
-        if (keys.includes('TIPO_INSTRUMENTO')) {
-          oscFilterColumn = 'TIPO_INSTRUMENTO'
-          oscFilterType = 'fallback'
-        } else {
-          oscFilterType = 'none'
-          console.error('[execucao-sync] ERROR: OSC filter column not found in proposta CSV. Available columns:', keys)
-        }
-      }
-
-      console.log(`[execucao-sync] OSC filter strategy: column="${oscFilterColumn}", type="${oscFilterType}"`)
     }
-
-    // If we could not determine a filter column, skip all rows (early return)
-    if (oscFilterType === 'none') return
-
-    // Apply OSC filter
-    let isOsc = false
-    if (oscFilterType === 'natureza' && oscFilterColumn) {
-      const nat = (row[oscFilterColumn] || '').toLowerCase()
-      isOsc = nat.includes('associa') ||
-              nat.includes('fundacao') ||
-              nat.includes('fundação') ||
-              nat.includes('organiza') ||
-              nat.includes('coopera') ||
-              nat.includes('instituto')
-    } else if ((oscFilterType === 'tipo_instrumento' || oscFilterType === 'fallback') && oscFilterColumn) {
-      const tipo = (row[oscFilterColumn] || '').toLowerCase()
-      isOsc = tipo.includes('osc')
-    }
-
-    if (!isOsc) return
 
     // Extract CNPJ (try multiple column names)
     const rawCnpj = row['CNPJ_PROPONENTE'] || row['IDENTIF_PROPONENTE'] || null
     const cnpj = cleanCNPJ(rawCnpj)
     if (!cnpj) return
+
+    // Filter by Projetus client CNPJs — only keep proposals from known clients
+    if (!projetusCnpjSet.has(cnpj)) return
 
     stats.osc_rows_kept++
     propostaMap.set(row['ID_PROPOSTA'], {
@@ -211,23 +178,21 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     })
   })
 
-  console.log(`[execucao-sync] STEP A complete: propostaMap.size=${propostaMap.size}, osc_rows_kept=${stats.osc_rows_kept}`)
+  console.log(`[execucao-sync] STEP B complete: propostaMap.size=${propostaMap.size}, cnpj_matched=${stats.osc_rows_kept}`)
 
-  // Memory guard after STEP A
-  const memAfterA = process.memoryUsage().heapUsed / 1024 / 1024
-  stats.memory_peak_mb = Math.round(memAfterA)
-  console.log(`[execucao-sync] Memory after STEP A: ${memAfterA.toFixed(1)}MB`)
-  if (process.memoryUsage().heapUsed > 900 * 1024 * 1024) {
-    console.warn('[execucao-sync] CRITICAL: Heap usage exceeds 900MB after STEP A. Consider implementing two-pass approach.')
-  }
+  // Memory guard after STEP B
+  const memAfterB = process.memoryUsage().heapUsed / 1024 / 1024
+  stats.memory_peak_mb = Math.round(memAfterB)
+  console.log(`[execucao-sync] Memory after STEP B: ${memAfterB.toFixed(1)}MB`)
 
-  // If propostaMap is empty and headers were logged, log an error but continue
+  // If propostaMap is empty and headers were logged, log a warning
   if (propostaMap.size === 0 && propostaHeadersLogged) {
-    console.warn('[execucao-sync] WARNING: propostaMap is empty after streaming proposta CSV. OSC filter may have wrong column name.')
+    console.warn('[execucao-sync] WARNING: propostaMap is empty — no siconv proposals matched Projetus client CNPJs.')
   }
 
   // -------------------------------------------------------------------------
-  // STEP B: Stream siconv_convenio.csv.zip — filter "em execucao", join, build records
+  // STEP C: Stream siconv_convenio.csv.zip — join with matched propostas
+  //         (no status filter — we want ALL statuses for Projetus clients)
   // -------------------------------------------------------------------------
   const records: ExecucaoRecord[] = []
 
@@ -239,42 +204,32 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
       console.log('[execucao-sync] Convenio CSV headers:', Object.keys(row))
     }
 
-    // Filter: "em execucao"
-    const situacaoRaw = row['SITUACAO_CONVENIO'] || row['SIT_CONVENIO'] || ''
-    if (!situacaoRaw.toLowerCase().includes('execu')) return
-
-    stats.em_execucao_rows++
-
-    // Join with propostaMap
+    // Join with propostaMap (CNPJ-filtered — only Projetus clients)
     const proposta = propostaMap.get(row['ID_PROPOSTA'])
     if (!proposta) {
-      stats.join_miss_count++
+      if (row['ID_PROPOSTA']) stats.join_miss_count++
       return
     }
+
+    const situacaoRaw = row['SITUACAO_CONVENIO'] || row['SIT_CONVENIO'] || ''
+    stats.em_execucao_rows++
 
     // Parse financial values
     const valor_global = parseBRNumber(row['VL_GLOBAL_CONV'] || row['VL_GLOBAL'] || null)
     const valor_repasse = parseBRNumber(row['VL_REPASSE_CONV'] || row['VL_REPASSE'] || null)
     const valor_desembolsado = parseBRNumber(row['VL_DESEMBOLSADO_CONV'] || row['VL_DESEMBOLSADO'] || null)
     // VL_SALDO_CONTA = actual bank account balance (US decimal format with dot).
-    // VL_SALDO_REMAN_TESOURO = treasury remainder (repasse − desembolsado) — different concept, do NOT mix.
     const saldo_conta = parseFloat(row['VL_SALDO_CONTA'] || '0') || 0
     const valor_empenhado = parseBRNumber(row['VL_EMPENHADO_CONV'] || row['VL_EMPENHADO'] || null)
     const rendimento_aplicacao = parseFloat(row['VL_RENDIMENTO_APLICACAO'] || '0') || 0
     const ingresso_contrapartida = parseFloat(row['VL_INGRESSO_CONTRAPARTIDA'] || '0') || 0
 
     // Parse date values
-    // Actual CSV column names (verified from siconv_convenio.csv.zip headers 2026-03-18):
-    //   DIA_ASSIN_CONV, DIA_INIC_VIGENC_CONV, DIA_FIM_VIGENC_CONV
-    // Fallback names kept for forward compatibility if CSV schema changes
     const data_assinatura = parseBRDate(row['DIA_ASSIN_CONV'] || row['DT_ASSINATURA_CONV'] || row['DT_ASSINATURA'] || null)
     const data_inicio_vigencia = parseBRDate(row['DIA_INIC_VIGENC_CONV'] || row['DT_INICIO_VIGENCIA'] || row['DT_INI_VIG'] || null)
     const data_fim_vigencia = parseBRDate(row['DIA_FIM_VIGENC_CONV'] || row['DT_FIM_VIGENCIA'] || row['DT_FIM_VIG'] || null)
 
     // Computed fields
-    // % Execucao = gasto_efetivo / valor_global
-    // gasto_efetivo = (desembolsado + contrapartida + rendimento) - saldo_conta
-    // The bank account receives desembolso + contrapartida + rendimento; what remains is saldo_conta.
     const total_entradas = valor_desembolsado + ingresso_contrapartida + rendimento_aplicacao
     const gasto_efetivo = Math.max(0, total_entradas - saldo_conta)
     const pct_execucao = total_entradas > 0 && valor_global > 0
@@ -289,8 +244,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
       ? Math.floor((new Date(data_fim_vigencia).getTime() - Date.now()) / 86_400_000)
       : null
 
-    // Alert flags (business rules — to be refined in Phase 16 after client confirmation)
-    const alerta_desembolso = valor_desembolsado < 0  // Pitfall 7: may never be true; Phase 16 will refine
+    const alerta_desembolso = valor_desembolsado < 0
     const verificar_saldo = valor_desembolsado > 0 && saldo_conta <= 0
 
     records.push({
@@ -322,12 +276,12 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
   })
 
   stats.joined_rows = records.length
-  console.log(`[execucao-sync] STEP B complete: convenio_rows_scanned=${stats.convenio_rows_scanned}, em_execucao_rows=${stats.em_execucao_rows}, joined_rows=${stats.joined_rows}, join_miss_count=${stats.join_miss_count}`)
+  console.log(`[execucao-sync] STEP C complete: convenio_rows_scanned=${stats.convenio_rows_scanned}, matched_rows=${stats.em_execucao_rows}, joined_rows=${stats.joined_rows}, join_miss_count=${stats.join_miss_count}`)
 
   // -------------------------------------------------------------------------
-  // STEP C: Bulk UPSERT into projetos_execucao
+  // STEP D: Bulk UPSERT into projetos_execucao
   // -------------------------------------------------------------------------
-  const client = await getPool().connect()
+  const client = await pool.connect()
   try {
     // Count rows before UPSERT to determine inserted vs updated
     const beforeResult = await client.query<{ n: string }>('SELECT COUNT(*) AS n FROM projetos_execucao')
@@ -420,12 +374,10 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     stats.inserted = rowsAfter - rowsBefore
     stats.updated = records.length - stats.errors - stats.inserted
 
-    console.log(`[execucao-sync] STEP C complete: inserted=${stats.inserted}, updated=${stats.updated}, errors=${stats.errors}`)
+    console.log(`[execucao-sync] STEP D complete: inserted=${stats.inserted}, updated=${stats.updated}, errors=${stats.errors}`)
 
     // -------------------------------------------------------------------------
-    // STEP C2: Purge stale rows — convenios no longer "em execucao"
-    // Records not touched by this sync run have synced_at < startTime.
-    // They were "em execucao" in a prior sync but are no longer in the CSV.
+    // STEP D2: Purge stale rows — convenios no longer matching Projetus clients
     // -------------------------------------------------------------------------
     const syncStartTimestamp = new Date(startTime).toISOString()
     const purgeResult = await client.query<{ n: string }>(
@@ -436,13 +388,11 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     )
     const purged = parseInt(purgeResult.rows[0].n, 10)
     if (purged > 0) {
-      console.log(`[execucao-sync] STEP C2: purged ${purged} stale rows (no longer em execucao)`)
+      console.log(`[execucao-sync] STEP D2: purged ${purged} stale rows`)
     }
 
     // -------------------------------------------------------------------------
-    // STEP C3: BrasilAPI contact enrichment for projetos_execucao CNPJs
-    // Enriches CNPJs in projetos_execucao that have NO lead_contacts yet.
-    // Only INSERTs — never modifies existing contacts.
+    // STEP D3: BrasilAPI contact enrichment for projetos_execucao CNPJs
     // -------------------------------------------------------------------------
     const c3Res = await client.query<{ cnpj: string }>(`
       SELECT DISTINCT pe.cnpj FROM projetos_execucao pe
@@ -450,15 +400,14 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
       WHERE lc.lead_cnpj IS NULL
       LIMIT 100
     `)
-    console.log(`[execucao-sync] STEP C3: ${c3Res.rows.length} CNPJs in projetos_execucao need contacts`)
+    console.log(`[execucao-sync] STEP D3: ${c3Res.rows.length} CNPJs in projetos_execucao need contacts`)
 
     if (Date.now() - startTime > 200000) {
-      console.log('[execucao-sync] STEP C3: Skipped — elapsed time exceeds 200s, too close to Vercel timeout')
+      console.log('[execucao-sync] STEP D3: Skipped — elapsed time exceeds 200s, too close to Vercel timeout')
     } else {
       for (const { cnpj } of c3Res.rows) {
-        // Check per-CNPJ timeout
         if (Date.now() - startTime > 260000) {
-          console.log('[execucao-sync] STEP C3: Approaching 260s timeout, stopping enrichment loop')
+          console.log('[execucao-sync] STEP D3: Approaching 260s timeout, stopping enrichment loop')
           break
         }
 
@@ -469,12 +418,12 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
           })
 
           if (apiRes.status === 403 || apiRes.status === 429) {
-            console.log(`[execucao-sync] STEP C3: Rate limited (HTTP ${apiRes.status}) for ${cnpj}, stopping loop`)
+            console.log(`[execucao-sync] STEP D3: Rate limited (HTTP ${apiRes.status}) for ${cnpj}, stopping loop`)
             break
           }
 
           if (!apiRes.ok) {
-            console.log(`[execucao-sync] STEP C3: Non-ok response (HTTP ${apiRes.status}) for ${cnpj}, skipping`)
+            console.log(`[execucao-sync] STEP D3: Non-ok response (HTTP ${apiRes.status}) for ${cnpj}, skipping`)
             await delay(300)
             continue
           }
@@ -494,7 +443,6 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
             stats.enriched_contacts++
           }
 
-          // Insert phone2 as separate row if it differs from phone1 (digits-only comparison)
           if (phone2) {
             const phone1Digits = (phone1 || '').replace(/\D/g, '')
             const phone2Digits = phone2.replace(/\D/g, '')
@@ -508,30 +456,30 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
             }
           }
         } catch (err) {
-          console.error(`[execucao-sync] STEP C3: Error for CNPJ ${cnpj}:`, err)
+          console.error(`[execucao-sync] STEP D3: Error for CNPJ ${cnpj}:`, err)
         }
 
         await delay(300)
       }
-      console.log(`[execucao-sync] STEP C3 complete: enriched_contacts=${stats.enriched_contacts}`)
+      console.log(`[execucao-sync] STEP D3 complete: enriched_contacts=${stats.enriched_contacts}`)
     }
 
     // -------------------------------------------------------------------------
-    // STEP D: Log to cron_sync_log
+    // STEP E: Log to cron_sync_log
     // -------------------------------------------------------------------------
     await client.query(
       `INSERT INTO cron_sync_log (inserted, updated, errors, duration_ms, join_miss_count, source)
        VALUES ($1, $2, $3, $4, $5, 'sync-execucao')`,
       [stats.inserted, stats.updated, stats.errors, Date.now() - startTime, stats.join_miss_count]
     )
-    console.log('[execucao-sync] STEP D complete: logged to cron_sync_log')
+    console.log('[execucao-sync] STEP E complete: logged to cron_sync_log')
 
   } finally {
     client.release()
   }
 
   // -------------------------------------------------------------------------
-  // STEP E: Return stats
+  // STEP F: Return stats
   // -------------------------------------------------------------------------
   stats.duration_ms = Date.now() - startTime
   stats.memory_peak_mb = Math.round(process.memoryUsage().heapUsed / 1024 / 1024)

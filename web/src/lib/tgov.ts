@@ -99,6 +99,41 @@ export interface TGovTableRow {
   situacao: string
 }
 
+/** Extended row for the Aprovacao tab with proposal details. */
+export interface TGovAprovacaoTableRow extends TGovTableRow {
+  titulo: string | null
+  valorGlobal: number | null
+  valorRepasse: number | null
+  valorContrapartida: number | null
+  uf: string | null
+  municipio: string | null
+  modalidade: string | null
+  orgaoSuperior: string | null
+  orgaoVinculado: string | null
+  dataInicioVigencia: string | null
+  dataFimVigencia: string | null
+}
+
+/** Extended row for the Execucao tab with financial and detail columns. */
+export interface TGovExecucaoTableRow extends TGovTableRow {
+  nrConvenio: string
+  anoInstrumento: number | null
+  valorGlobal: number | null
+  valorRepasse: number | null
+  valorDesembolsado: number | null
+  saldoConta: number | null
+  rendimentoAplicacao: number | null
+  ingressoContrapartida: number | null
+  valorEmpenhado: number | null
+  pctExecucao: number | null
+  uf: string | null
+  municipio: string | null
+  dataInicioVigencia: string | null
+  dataFimVigencia: string | null
+  diasEmExecucao: number | null
+  diasAteVencimento: number | null
+}
+
 export interface TGovTabResponse {
   /** Absolute total matching the main filters (no table filters applied). */
   total: number
@@ -125,6 +160,14 @@ export const DEFAULT_MAIN_FILTERS: TGovMainFilters = {
   uf: '',
 }
 
+/** Execucao tab defaults to all years since it shows only Projetus clients. */
+export const DEFAULT_EXECUCAO_MAIN_FILTERS: TGovMainFilters = {
+  ano: '',
+  tipo: 'todos',
+  status: '',
+  uf: '',
+}
+
 export const DEFAULT_TABLE_FILTERS: TGovTableFilters = {
   proponente: '',
   numeroProposta: '',
@@ -144,14 +187,23 @@ export const DEFAULT_TABLE_FILTERS: TGovTableFilters = {
 export const TGOV_STATUS_ORDER: Record<string, number> = {
   'Em Execução': 1,
   'Em execução': 1,
-  'Aprovado': 2,
-  'Aguardando Análise': 3,
-  'Aguardando Envio do Plano de Trabalho': 4,
-  'Em Análise': 5,
-  'Reprovado': 6,
-  'Cancelado': 7,
-  'Concluído': 8,
-  'Prestação de Contas em Análise': 9,
+  'Prestação de Contas enviada para Análise': 2,
+  'Prestação de contas enviada para análise': 2,
+  'Aguardando Prestação de Contas': 3,
+  'Prestação de Contas Concluída': 4,
+  'Prestação de Contas em Complementação': 5,
+  'Prestação de Contas em Análise': 6,
+  'Prestação de Contas Comprovada': 7,
+  'Prestação de Contas Aprovada': 8,
+  'Prestação de Contas Rejeitada': 9,
+  'Aprovado': 10,
+  'Aguardando Análise': 11,
+  'Aguardando Envio do Plano de Trabalho': 12,
+  'Em Análise': 13,
+  'Reprovado': 14,
+  'Cancelado': 15,
+  'Concluído': 16,
+  'Inadimplente': 17,
 }
 
 /**

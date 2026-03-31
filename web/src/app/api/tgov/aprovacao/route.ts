@@ -15,49 +15,35 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
 
-    // ---------------------------------------------------------------------------
-    // Main filters — affect both aggregates (total, byStatus) and table
-    // ---------------------------------------------------------------------------
     const ano = searchParams.get('ano') ?? ''
-    const tipo = searchParams.get('tipo') ?? 'todos' // 'todos' | 'meus_proponentes' | 'outros'
+    const tipo = searchParams.get('tipo') ?? 'todos'
     const status = searchParams.get('status') ?? ''
     const uf = searchParams.get('uf') ?? ''
 
-    // ---------------------------------------------------------------------------
-    // Inline table-only filters — do NOT affect total / byStatus
-    // ---------------------------------------------------------------------------
     const proponenteFilter = searchParams.get('proponente') ?? ''
     const numeroPropostaFilter = searchParams.get('numero_proposta') ?? ''
 
-    // Pagination
     const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
     const offset = (page - 1) * TGOV_PAGE_SIZE
 
-    // ---------------------------------------------------------------------------
-    // Build parameterized main filter clauses
-    // ---------------------------------------------------------------------------
     const mainParams: unknown[] = []
     const mainConditions: string[] = []
 
-    // ano filter: EXTRACT(YEAR FROM data_publicacao) = $n
     if (ano) {
       mainParams.push(parseInt(ano, 10))
       mainConditions.push(`EXTRACT(YEAR FROM p.data_publicacao) = $${mainParams.length}`)
     }
 
-    // status filter: exact match on situacao (DB stores accented form)
     if (status) {
       mainParams.push(status)
       mainConditions.push(`p.situacao = $${mainParams.length}`)
     }
 
-    // uf filter: p.estado
     if (uf) {
       mainParams.push(uf)
       mainConditions.push(`p.estado = $${mainParams.length}`)
     }
 
-    // tipo filter: EXISTS / NOT EXISTS against vendedor_projetos using normalised CNPJ
     if (tipo === 'meus_proponentes') {
       mainConditions.push(`EXISTS (
         SELECT 1 FROM vendedor_projetos vp
@@ -74,10 +60,6 @@ export async function GET(request: NextRequest) {
       ? `WHERE ${mainConditions.join(' AND ')}`
       : ''
 
-    // ---------------------------------------------------------------------------
-    // Build table-only filter clauses (extend main params)
-    // ---------------------------------------------------------------------------
-    // We must snapshot mainParams length before adding table-only params
     const tableParams = [...mainParams]
     const tableConditions = [...mainConditions]
 
@@ -95,17 +77,12 @@ export async function GET(request: NextRequest) {
       ? `WHERE ${tableConditions.join(' AND ')}`
       : ''
 
-    // ---------------------------------------------------------------------------
-    // Run queries in parallel: aggregate (total + byStatus) and table
-    // ---------------------------------------------------------------------------
     const [totalRows, byStatusRows, tableCountRows, tableDataRows] = await Promise.all([
-      // 1. Total matching main filters
       query<{ total: number }>(
         `SELECT COUNT(*)::int AS total FROM propostas p ${mainWhereClause}`,
         mainParams
       ),
 
-      // 2. Status buckets for donut chart (main filters only)
       query<{ situacao: string; cnt: number }>(
         `SELECT
           COALESCE(p.situacao, 'Sem Situação') AS situacao,
@@ -117,26 +94,47 @@ export async function GET(request: NextRequest) {
         mainParams
       ),
 
-      // 3. Total rows matching main + table filters (for pagination metadata)
       query<{ total: number }>(
         `SELECT COUNT(*)::int AS total FROM propostas p ${tableWhereClause}`,
         tableParams
       ),
 
-      // 4. Paginated table rows (main + table filters, sorted newest first)
+      // Expanded columns for sidecard
       query<{
         transfer_gov_id: string
         data_publicacao: string | null
         proponente_cnpj: string
         proponente: string | null
         situacao: string | null
+        titulo: string | null
+        valor_global: string | null
+        valor_repasse: string | null
+        valor_contrapartida: string | null
+        estado: string | null
+        municipio: string | null
+        modalidade: string | null
+        orgao_superior: string | null
+        orgao_vinculado: string | null
+        data_inicio_vigencia: string | null
+        data_fim_vigencia: string | null
       }>(
         `SELECT
           p.transfer_gov_id,
-          p.data_publicacao,
+          p.data_publicacao::text,
           COALESCE(p.proponente_cnpj, '') AS proponente_cnpj,
           COALESCE(p.proponente, '') AS proponente,
-          COALESCE(p.situacao, 'Sem Situação') AS situacao
+          COALESCE(p.situacao, 'Sem Situação') AS situacao,
+          p.titulo,
+          p.valor_global::text,
+          p.valor_repasse::text,
+          p.valor_contrapartida::text,
+          p.estado,
+          p.municipio,
+          p.modalidade,
+          p.orgao_superior,
+          p.orgao_vinculado,
+          p.data_inicio_vigencia::text,
+          p.data_fim_vigencia::text
         FROM propostas p
         ${tableWhereClause}
         ORDER BY p.data_publicacao DESC NULLS LAST, p.transfer_gov_id DESC
@@ -149,7 +147,6 @@ export async function GET(request: NextRequest) {
     const totalTableRows = Number(tableCountRows[0]?.total) || 0
     const totalPages = Math.max(1, Math.ceil(totalTableRows / TGOV_PAGE_SIZE))
 
-    // Build byStatus with percent, sorted by count desc (UI can re-sort by TGOV_STATUS_ORDER)
     const byStatus = byStatusRows.map((r) => {
       const count = Number(r.cnt)
       return {
@@ -169,6 +166,18 @@ export async function GET(request: NextRequest) {
           cnpj: r.proponente_cnpj,
           proponente: r.proponente ?? '',
           situacao: r.situacao ?? 'Sem Situação',
+          // Extended fields for sidecard
+          titulo: r.titulo,
+          valorGlobal: r.valor_global ? parseFloat(r.valor_global) : null,
+          valorRepasse: r.valor_repasse ? parseFloat(r.valor_repasse) : null,
+          valorContrapartida: r.valor_contrapartida ? parseFloat(r.valor_contrapartida) : null,
+          uf: r.estado,
+          municipio: r.municipio,
+          modalidade: r.modalidade,
+          orgaoSuperior: r.orgao_superior,
+          orgaoVinculado: r.orgao_vinculado,
+          dataInicioVigencia: r.data_inicio_vigencia ? String(r.data_inicio_vigencia) : null,
+          dataFimVigencia: r.data_fim_vigencia ? String(r.data_fim_vigencia) : null,
         })),
         page,
         pageSize: TGOV_PAGE_SIZE,

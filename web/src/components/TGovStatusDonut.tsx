@@ -9,17 +9,34 @@ import { type TGovStatusBucket } from '@/lib/tgov'
 // UI PRO MAX: professional blue + high contrast, Minimalism style
 // ---------------------------------------------------------------------------
 const STATUS_COLORS: Record<string, string> = {
-  'Em Execução':                           '#16a34a',  // green-600  — active
-  'Em execução':                           '#16a34a',
-  'Aprovado':                              '#2563eb',  // blue-600   — approved
-  'Concluído':                             '#0891b2',  // cyan-600   — completed
-  'Em Análise':                            '#7c3aed',  // violet-600 — in review
-  'Aguardando Análise':                    '#d97706',  // amber-600  — waiting
-  'Aguardando Envio do Plano de Trabalho': '#ea580c',  // orange-600 — pending submission
-  'Prestação de Contas em Análise':        '#db2777',  // pink-600   — accounting review
-  'Reprovado':                             '#dc2626',  // red-600    — rejected
-  'Cancelado':                             '#6b7280',  // gray-500   — cancelled
-  'Sem Situação':                          '#d1d5db',  // gray-300   — unknown
+  // Status labels
+  'Em Execução':                               '#16a34a',  // green-600
+  'Em execução':                               '#16a34a',
+  'Aprovado':                                  '#2563eb',  // blue-600
+  'Concluído':                                 '#0891b2',  // cyan-600
+  'Em Análise':                                '#7c3aed',  // violet-600
+  'Aguardando Análise':                        '#d97706',  // amber-600
+  'Aguardando Prestação de Contas':            '#f59e0b',  // amber-500
+  'Aguardando Envio do Plano de Trabalho':     '#ea580c',  // orange-600
+  'Prestação de Contas em Análise':            '#db2777',  // pink-600
+  'Prestação de Contas enviada para Análise':  '#6366f1',  // indigo-500
+  'Prestação de contas enviada para análise':  '#6366f1',
+  'Prestação de Contas em Complementação':     '#a855f7',  // purple-500
+  'Prestação de Contas Concluída':             '#14b8a6',  // teal-500
+  'Prestação de Contas Comprovada':            '#06b6d4',  // cyan-500
+  'Prestação de Contas Aprovada':              '#10b981',  // emerald-500
+  'Prestação de Contas Rejeitada':             '#ef4444',  // red-500
+  'Reprovado':                                 '#dc2626',  // red-600
+  'Cancelado':                                 '#6b7280',  // gray-500
+  'Inadimplente':                              '#b91c1c',  // red-700
+  'Sem Situação':                              '#d1d5db',  // gray-300
+  // % Execução range labels
+  '0–25%':     '#ef4444',  // red-500 — low execution
+  '25–50%':    '#f97316',  // orange-500
+  '50–75%':    '#eab308',  // yellow-500
+  '75–99%':    '#22c55e',  // green-500
+  '100%+':     '#16a34a',  // green-600 — fully executed
+  'Sem dados': '#d1d5db',  // gray-300
 }
 
 const FALLBACK_COLORS = [
