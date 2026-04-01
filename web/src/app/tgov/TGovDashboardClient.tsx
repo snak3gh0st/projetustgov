@@ -243,13 +243,15 @@ interface CnpjSearchResult {
 
 interface TGovDashboardClientProps {
   userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto'
+  view?: 'pipeline' | 'dashboard'
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboardClientProps) {
+export default function TGovDashboardClient({ userRole: _userRole, view = 'pipeline' }: TGovDashboardClientProps) {
+  const isDashboardView = view === 'dashboard'
   const [activeTab, setActiveTab] = useState<TGovTab>(DEFAULT_TGOV_TAB)
   const [mainFilters, setMainFilters] = useState<TGovMainFilters>(DEFAULT_MAIN_FILTERS)
   const [tableFilters, setTableFilters] = useState<TGovTableFilters>(DEFAULT_TABLE_FILTERS)
@@ -410,9 +412,13 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
       <div className="bg-white border-b border-gray-200 px-8 py-5">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">TGov Dashboard</h1>
+            <h1 className="text-xl font-bold text-gray-900">
+              {isDashboardView ? 'TGOV Dashboard' : 'Pipeline TGOV'}
+            </h1>
             <p className="text-sm text-gray-500 mt-0.5">
-              Painel gerencial de propostas e projetos em execução
+              {isDashboardView
+                ? 'Resumo analítico de propostas e execuções'
+                : 'Painel gerencial de propostas e projetos em execução'}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -425,26 +431,27 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
               </svg>
               Adicionar CNPJ / Proposta
             </button>
-            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
-              {(['aprovacao', 'execucao'] as TGovTab[]).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => handleTabSwitch(tab)}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                    activeTab === tab
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {tab === 'aprovacao' ? 'Aprovação' : 'Execução'}
-                </button>
-              ))}
-            </div>
+            {!isDashboardView && (
+              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+                {(['aprovacao', 'execucao'] as TGovTab[]).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => handleTabSwitch(tab)}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      activeTab === tab
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {tab === 'aprovacao' ? 'Aprovação' : 'Execução'}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Main shared filters */}
-        <div className="mt-4 flex flex-wrap items-end gap-3">
+        <div className={`mt-4 flex flex-wrap items-end gap-3${isDashboardView ? ' hidden' : ''}`}>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Ano</label>
             <select
@@ -501,7 +508,7 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
       </div>
 
       {/* Main content */}
-      <div className="px-8 py-6 space-y-6">
+      <div className={`px-8 py-6 space-y-6${isDashboardView ? ' hidden' : ''}`}>
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
