@@ -383,6 +383,11 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
             </div>
           )}
         </div>
+
+        {/* BI Summary — Execução only */}
+        {activeTab === 'execucao' && !loading && data && (data.table.rows as TGovExecucaoTableRow[])?.length > 0 && (
+          <ExecucaoBISummary rows={data.table.rows as TGovExecucaoTableRow[]} total={data.total} />
+        )}
       </div>
 
       {/* Sidecard slide-over */}
@@ -493,74 +498,80 @@ function ExecucaoTable({
           <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">CNPJ</th>
           <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Proponente</th>
           <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">UF</th>
+          <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Situação</th>
           <th className="text-right px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Valor Global</th>
           <th className="text-right px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Saldo Conta</th>
-          <th className="text-right px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Desembolsado</th>
-          <th className="text-right px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">% Exec.</th>
-          <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Situação</th>
+          <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Desembolso</th>
+          <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Fim Vigência</th>
+          <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Término</th>
           <th className="px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide w-8"></th>
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-50">
         {loading ? (
-          <SkeletonRows cols={11} />
+          <SkeletonRows cols={12} />
         ) : rows && rows.length > 0 ? (
-          rows.map((row, idx) => (
-            <tr
-              key={`${row.nrConvenio}-${idx}`}
-              className="hover:bg-blue-50/50 transition-colors cursor-pointer"
-              onClick={() => onRowClick(row)}
-            >
-              <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">
-                <a
-                  href={buildTGovLink(row.nrConvenio)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                  title="Abrir no TransfereGov"
-                >
-                  {row.nrConvenio || '—'}
-                </a>
-              </td>
-              <td className="px-3 py-2.5 text-gray-500 text-xs tabular-nums">{row.anoInstrumento || '—'}</td>
-              <td className="px-3 py-2.5 text-gray-500 font-mono text-xs whitespace-nowrap">{formatCnpj(row.cnpj) || '—'}</td>
-              <td className="px-3 py-2.5 text-gray-700 max-w-[200px]">
-                <span className="truncate block text-xs" title={row.proponente}>
-                  {row.proponente || '—'}
-                </span>
-              </td>
-              <td className="px-3 py-2.5 text-gray-500 text-xs">{row.uf || '—'}</td>
-              <td className="px-3 py-2.5 text-right text-xs tabular-nums whitespace-nowrap text-gray-700 font-medium">
-                {formatCurrency(row.valorGlobal)}
-              </td>
-              <td className="px-3 py-2.5 text-right text-xs tabular-nums whitespace-nowrap text-gray-600">
-                {formatCurrency(row.saldoConta)}
-              </td>
-              <td className="px-3 py-2.5 text-right text-xs tabular-nums whitespace-nowrap text-gray-600">
-                {formatCurrency(row.valorDesembolsado)}
-              </td>
-              <td className="px-3 py-2.5 text-right text-xs tabular-nums whitespace-nowrap">
-                <span className={
-                  row.pctExecucao !== null && row.pctExecucao >= 80
-                    ? 'text-green-600 font-medium'
-                    : row.pctExecucao !== null && row.pctExecucao >= 50
-                      ? 'text-amber-600'
-                      : 'text-gray-500'
-                }>
-                  {formatPercent(row.pctExecucao)}
-                </span>
-              </td>
-              <td className="px-3 py-2.5"><SituacaoBadge situacao={row.situacao} /></td>
-              <td className="px-3 py-2.5 text-gray-300">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </td>
-            </tr>
-          ))
+          rows.map((row, idx) => {
+            const hasDesembolso = row.valorDesembolsado !== null && row.valorDesembolsado > 0
+            return (
+              <tr
+                key={`${row.nrConvenio}-${idx}`}
+                className="hover:bg-blue-50/50 transition-colors cursor-pointer"
+                onClick={() => onRowClick(row)}
+              >
+                <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">
+                  <a
+                    href={buildTGovLink(row.nrConvenio)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                    title="Abrir no TransfereGov"
+                  >
+                    {row.nrConvenio || '—'}
+                  </a>
+                </td>
+                <td className="px-3 py-2.5 text-gray-500 text-xs tabular-nums">{row.anoInstrumento || '—'}</td>
+                <td className="px-3 py-2.5 text-gray-500 font-mono text-xs whitespace-nowrap">{formatCnpj(row.cnpj) || '—'}</td>
+                <td className="px-3 py-2.5 text-gray-700 max-w-[200px]">
+                  <span className="truncate block text-xs" title={row.proponente}>
+                    {row.proponente || '—'}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 text-gray-500 text-xs">{row.uf || '—'}</td>
+                <td className="px-3 py-2.5"><SituacaoBadge situacao={row.situacao} /></td>
+                <td className="px-3 py-2.5 text-right text-xs tabular-nums whitespace-nowrap text-gray-700 font-medium">
+                  {formatCurrency(row.valorGlobal)}
+                </td>
+                <td className="px-3 py-2.5 text-right text-xs tabular-nums whitespace-nowrap text-gray-600">
+                  {formatCurrency(row.saldoConta)}
+                </td>
+                <td className="px-3 py-2.5 text-center">
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                    hasDesembolso
+                      ? 'bg-green-50 text-green-700'
+                      : 'bg-red-50 text-red-600'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${hasDesembolso ? 'bg-green-500' : 'bg-red-400'}`} />
+                    {hasDesembolso ? 'Sim' : 'Não'}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 text-xs tabular-nums whitespace-nowrap text-gray-600">
+                  {formatDate(row.dataFimVigencia)}
+                </td>
+                <td className="px-3 py-2.5 text-xs tabular-nums whitespace-nowrap text-gray-600">
+                  {formatDate(row.dataInicioVigencia)}
+                </td>
+                <td className="px-3 py-2.5 text-gray-300">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </td>
+              </tr>
+            )
+          })
         ) : (
-          <EmptyRow cols={11} />
+          <EmptyRow cols={12} />
         )}
       </tbody>
     </table>
@@ -669,6 +680,27 @@ function ExecucaoSidecard({
             )}
           </SidecardSection>
 
+          {/* Desembolso highlight */}
+          <div className={`rounded-lg px-4 py-3 flex items-center gap-3 ${
+            row.valorDesembolsado !== null && row.valorDesembolsado > 0
+              ? 'bg-green-50 border border-green-200'
+              : 'bg-red-50 border border-red-200'
+          }`}>
+            <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+              row.valorDesembolsado !== null && row.valorDesembolsado > 0 ? 'bg-green-500' : 'bg-red-400'
+            }`} />
+            <div>
+              <p className={`text-sm font-semibold ${
+                row.valorDesembolsado !== null && row.valorDesembolsado > 0 ? 'text-green-800' : 'text-red-700'
+              }`}>
+                {row.valorDesembolsado !== null && row.valorDesembolsado > 0 ? 'Com Desembolso' : 'Sem Desembolso'}
+              </p>
+              {row.valorDesembolsado !== null && row.valorDesembolsado > 0 && (
+                <p className="text-xs text-green-600 font-mono">{formatCurrency(row.valorDesembolsado)}</p>
+              )}
+            </div>
+          </div>
+
           {/* Valores financeiros */}
           <SidecardSection title="Valores Financeiros">
             <SidecardCurrency label="Valor Global" value={row.valorGlobal} bold />
@@ -677,7 +709,7 @@ function ExecucaoSidecard({
             <SidecardCurrency label="Valor Desembolsado" value={row.valorDesembolsado} />
             <div className="border-t border-gray-100 pt-2 mt-2" />
             <SidecardCurrency label="Saldo em Conta" value={row.saldoConta} />
-            <SidecardCurrency label="Rendimento Aplicação" value={row.rendimentoAplicacao} />
+            <SidecardCurrency label="Saldo Rendimento" value={row.rendimentoAplicacao} />
             <SidecardCurrency label="Ingresso Contrapartida" value={row.ingressoContrapartida} />
           </SidecardSection>
         </div>
@@ -855,6 +887,45 @@ function SidecardCurrency({
       <span className={`text-sm tabular-nums text-right ${bold ? 'font-bold text-gray-900' : 'text-gray-700'}`}>
         {formatCurrency(value ?? null)}
       </span>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// BI Summary — Execução macro data
+// ---------------------------------------------------------------------------
+
+function ExecucaoBISummary({ rows, total }: { rows: TGovExecucaoTableRow[]; total: number }) {
+  const valorGlobalTotal = rows.reduce((sum, r) => sum + (r.valorGlobal ?? 0), 0)
+  const valorDesembolsadoTotal = rows.reduce((sum, r) => sum + (r.valorDesembolsado ?? 0), 0)
+  const saldoContaTotal = rows.reduce((sum, r) => sum + (r.saldoConta ?? 0), 0)
+  const rendimentoTotal = rows.reduce((sum, r) => sum + (r.rendimentoAplicacao ?? 0), 0)
+  const comDesembolso = rows.filter(r => r.valorDesembolsado !== null && r.valorDesembolsado > 0).length
+  const semDesembolso = rows.length - comDesembolso
+
+  const cards = [
+    { label: 'Total Projetos', value: String(total), sub: `${rows.length} nesta página` },
+    { label: 'Valor Global (página)', value: formatCurrency(valorGlobalTotal) },
+    { label: 'Total Desembolsado', value: formatCurrency(valorDesembolsadoTotal) },
+    { label: 'Saldo em Conta', value: formatCurrency(saldoContaTotal) },
+    { label: 'Rendimento Total', value: formatCurrency(rendimentoTotal) },
+    { label: 'Com Desembolso', value: `${comDesembolso}`, sub: `${semDesembolso} sem desembolso`, highlight: true },
+  ]
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Resumo BI — Execução</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {cards.map((c) => (
+          <div key={c.label} className="text-center">
+            <p className="text-xs text-gray-500 mb-1">{c.label}</p>
+            <p className={`text-lg font-bold tabular-nums ${c.highlight ? 'text-green-700' : 'text-gray-900'}`}>
+              {c.value}
+            </p>
+            {c.sub && <p className="text-xs text-gray-400 mt-0.5">{c.sub}</p>}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
