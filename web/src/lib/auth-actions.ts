@@ -5,6 +5,7 @@ import { LoginSchema, CreateVendedorSchema, CreateUsuarioSchema, type LoginInput
 import { query } from './db'
 import * as bcrypt from 'bcryptjs'
 import { redirect } from 'next/navigation'
+import { isRedirectError } from 'next/dist/client/components/redirect'
 import { AuthError } from 'next-auth'
 import { ZodError } from 'zod'
 
@@ -48,18 +49,14 @@ export async function login(
     // If successful, redirect to home
     redirect('/')
   } catch (error) {
-    console.log('[LOGIN] Exception caught:', error)
+    if (isRedirectError(error)) throw error
     if (error instanceof ZodError) {
-      console.log('[LOGIN] Validation error detected')
-      // Return the first validation error message
-      const firstError = error.issues[0]
-      return { error: firstError.message }
+      return { error: error.issues[0].message }
     }
     if (error instanceof AuthError) {
-      console.log('[LOGIN] AuthError detected')
       return { error: 'Email ou senha invalidos' }
     }
-    // If it's a redirect, re-throw it
+    console.error('[LOGIN] Unexpected error:', error)
     throw error
   }
 }
