@@ -250,6 +250,7 @@ export async function GET(request: NextRequest) {
         data_fim_vigencia: string | null
         dias_em_execucao: number | null
         dias_ate_vencimento: number | null
+        internal_status: string | null
       }>(
         `WITH ${ALL_EXEC_CTE}
         SELECT
@@ -274,8 +275,10 @@ export async function GET(request: NextRequest) {
           pe.data_inicio_vigencia::text,
           pe.data_fim_vigencia::text,
           pe.dias_em_execucao,
-          pe.dias_ate_vencimento
+          pe.dias_ate_vencimento,
+          ti.status AS internal_status
         FROM all_exec pe
+        LEFT JOIN tgov_interactions ti ON ti.item_key = pe.nr_convenio AND ti.tab = 'execucao'
         ${tableWhereClause}
         ORDER BY
           pe.valor_global DESC NULLS LAST,
@@ -329,6 +332,7 @@ export async function GET(request: NextRequest) {
       dataFimVigencia: r.data_fim_vigencia ? String(r.data_fim_vigencia) : null,
       diasEmExecucao: r.dias_em_execucao,
       diasAteVencimento: r.dias_ate_vencimento,
+      internalStatus: r.internal_status ?? null,
     }))
 
     const byYear = byYearRows.map(r => ({

@@ -97,6 +97,8 @@ export interface TGovTableRow {
   cnpj: string
   proponente: string
   situacao: string
+  /** Internal CRM status (from tgov_interactions, not from TransferênciaGov). */
+  internalStatus?: string | null
 }
 
 /** Extended row for the Aprovacao tab with proposal details. */

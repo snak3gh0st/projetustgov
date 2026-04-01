@@ -74,6 +74,141 @@ function buildYearOptions(): string[] {
 const YEAR_OPTIONS = buildYearOptions()
 
 // ---------------------------------------------------------------------------
+// Internal CRM status constants
+// ---------------------------------------------------------------------------
+
+const TGOV_INTERACTION_STATUSES = [
+  'Sem Contato', 'Em Contato', 'Proposta Enviada', 'Em Negociação', 'Fechado', 'Sem Interesse',
+] as const
+type TGovInteractionStatus = typeof TGOV_INTERACTION_STATUSES[number]
+
+function InternalStatusBadge({ status }: { status: string | null | undefined }) {
+  if (!status || status === 'Sem Contato') return <span className="text-xs text-gray-400">—</span>
+  const colors: Record<string, string> = {
+    'Em Contato': 'bg-blue-50 text-blue-700',
+    'Proposta Enviada': 'bg-purple-50 text-purple-700',
+    'Em Negociação': 'bg-amber-50 text-amber-700',
+    'Fechado': 'bg-green-50 text-green-700',
+    'Sem Interesse': 'bg-red-50 text-red-600',
+  }
+  const cls = colors[status] ?? 'bg-gray-100 text-gray-600'
+  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{status}</span>
+}
+
+// ---------------------------------------------------------------------------
+// TGovInteractionPanel — CRM status + obs editor inside sidecards
+// ---------------------------------------------------------------------------
+
+function TGovInteractionPanel({
+  itemKey,
+  tab,
+  onStatusChange,
+}: {
+  itemKey: string
+  tab: 'aprovacao' | 'execucao'
+  onStatusChange: (s: string) => void
+}) {
+  const [status, setStatus] = useState<TGovInteractionStatus | ''>('')
+  const [obs, setObs] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const res = await fetch(`/api/tgov/interaction/${encodeURIComponent(itemKey)}?tab=${tab}`)
+        if (!res.ok) return
+        const data = await res.json()
+        if (!cancelled) {
+          setStatus((data.status as TGovInteractionStatus) ?? '')
+          setObs(data.obs ?? '')
+        }
+      } catch {
+        if (!cancelled) setLoadError('Erro ao carregar')
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [itemKey, tab])
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/tgov/interaction/${encodeURIComponent(itemKey)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: status || null, obs, tab }),
+      })
+      if (!res.ok) throw new Error('Save failed')
+      const data = await res.json()
+      setSaved(true)
+      onStatusChange(data.status ?? '')
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      // ignore for now
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">CRM Interno</p>
+
+      {loadError && <p className="text-xs text-red-500">{loadError}</p>}
+
+      {/* Status selector */}
+      <div>
+        <p className="text-xs text-gray-500 mb-1.5">Status</p>
+        <div className="flex flex-wrap gap-1.5">
+          {TGOV_INTERACTION_STATUSES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setStatus(s)}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                status === s
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Obs textarea */}
+      <div>
+        <p className="text-xs text-gray-500 mb-1">Observações</p>
+        <textarea
+          value={obs}
+          onChange={(e) => setObs(e.target.value)}
+          rows={3}
+          placeholder="Notas internas..."
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+        />
+      </div>
+
+      {/* Save button */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        >
+          {saving ? 'Salvando...' : 'Salvar'}
+        </button>
+        {saved && <span className="text-xs text-green-600 font-medium">Salvo!</span>}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Extended response type for execucao (includes byExecRange)
 // ---------------------------------------------------------------------------
 interface ExecucaoResponse extends TGovTabResponse {
@@ -804,12 +939,13 @@ function AprovacaoTable({
           <SortableTh label="CNPJ" col="cnpj" className="text-left px-4" {...thProps} />
           <SortableTh label="Proponente" col="proponente" className="text-left px-4" {...thProps} />
           <SortableTh label="Situação" col="situacao" className="text-left px-4" {...thProps} />
+          <SortableTh label="Status" col="internalStatus" className="text-left px-4 whitespace-nowrap" {...thProps} />
           <th className="px-3 py-2.5 w-8"></th>
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-50">
         {loading ? (
-          <SkeletonRows cols={6} />
+          <SkeletonRows cols={7} />
         ) : sorted && sorted.length > 0 ? (
           sorted.map((row, idx) => (
             <tr
@@ -826,6 +962,7 @@ function AprovacaoTable({
                 </span>
               </td>
               <td className="px-4 py-2.5"><SituacaoBadge situacao={row.situacao} /></td>
+              <td className="px-4 py-2.5"><InternalStatusBadge status={row.internalStatus} /></td>
               <td className="px-3 py-2.5 text-gray-300">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -834,7 +971,7 @@ function AprovacaoTable({
             </tr>
           ))
         ) : (
-          <EmptyRow cols={6} />
+          <EmptyRow cols={7} />
         )}
       </tbody>
     </table>
@@ -880,6 +1017,7 @@ function ExecucaoTable({
           <SortableTh label="Proponente" col="proponente" className="text-left px-3" {...thProps} />
           <SortableTh label="UF" col="uf" className="text-left px-3" {...thProps} />
           <SortableTh label="Situação" col="situacao" className="text-left px-3" {...thProps} />
+          <SortableTh label="Status" col="internalStatus" className="text-left px-3 whitespace-nowrap" {...thProps} />
           <SortableTh label="Valor Global" col="valorGlobal" className="text-right px-3 whitespace-nowrap" {...thProps} />
           <SortableTh label="Saldo Conta" col="saldoConta" className="text-right px-3 whitespace-nowrap" {...thProps} />
           <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Desembolso</th>
@@ -890,7 +1028,7 @@ function ExecucaoTable({
       </thead>
       <tbody className="divide-y divide-gray-50">
         {loading ? (
-          <SkeletonRows cols={12} />
+          <SkeletonRows cols={13} />
         ) : sorted && sorted.length > 0 ? (
           sorted.map((row, idx) => {
             const hasDesembolso = row.valorDesembolsado !== null && row.valorDesembolsado > 0
@@ -921,6 +1059,7 @@ function ExecucaoTable({
                 </td>
                 <td className="px-3 py-2.5 text-gray-500 text-xs">{row.uf || '—'}</td>
                 <td className="px-3 py-2.5"><SituacaoBadge situacao={row.situacao} /></td>
+                <td className="px-3 py-2.5"><InternalStatusBadge status={row.internalStatus} /></td>
                 <td className="px-3 py-2.5 text-right text-xs tabular-nums whitespace-nowrap text-gray-700 font-medium">
                   {formatCurrency(row.valorGlobal)}
                 </td>
@@ -952,7 +1091,7 @@ function ExecucaoTable({
             )
           })
         ) : (
-          <EmptyRow cols={12} />
+          <EmptyRow cols={13} />
         )}
       </tbody>
     </table>
@@ -1093,6 +1232,8 @@ function ExecucaoSidecard({
             <SidecardCurrency label="Saldo Rendimento" value={row.rendimentoAplicacao} />
             <SidecardCurrency label="Ingresso Contrapartida" value={row.ingressoContrapartida} />
           </SidecardSection>
+
+          <TGovInteractionPanel itemKey={row.nrConvenio} tab="execucao" onStatusChange={() => {}} />
         </div>
       </div>
 
@@ -1199,6 +1340,8 @@ function AprovacaoSidecard({
             <SidecardCurrency label="Valor Repasse" value={row.valorRepasse} />
             <SidecardCurrency label="Valor Contrapartida" value={row.valorContrapartida} />
           </SidecardSection>
+
+          <TGovInteractionPanel itemKey={row.numeroProposta} tab="aprovacao" onStatusChange={() => {}} />
         </div>
       </div>
       <style jsx>{`

@@ -144,6 +144,7 @@ export async function GET(request: NextRequest) {
         orgao_vinculado: string | null
         data_inicio_vigencia: string | null
         data_fim_vigencia: string | null
+        internal_status: string | null
       }>(
         `SELECT
           p.transfer_gov_id,
@@ -162,8 +163,10 @@ export async function GET(request: NextRequest) {
           p.orgao_superior,
           p.orgao_vinculado,
           p.data_inicio_vigencia::text,
-          p.data_fim_vigencia::text
+          p.data_fim_vigencia::text,
+          ti.status AS internal_status
         FROM propostas p
+        LEFT JOIN tgov_interactions ti ON ti.item_key = p.nr_proposta AND ti.tab = 'aprovacao'
         ${tableWhereClause}
         ORDER BY p.data_publicacao DESC NULLS LAST, p.transfer_gov_id DESC
         LIMIT ${TGOV_PAGE_SIZE} OFFSET ${offset}`,
@@ -219,6 +222,7 @@ export async function GET(request: NextRequest) {
           orgaoVinculado: r.orgao_vinculado,
           dataInicioVigencia: r.data_inicio_vigencia ? String(r.data_inicio_vigencia) : null,
           dataFimVigencia: r.data_fim_vigencia ? String(r.data_fim_vigencia) : null,
+          internalStatus: r.internal_status ?? null,
         })),
         page,
         pageSize: TGOV_PAGE_SIZE,
