@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { buildStructuredLeadScopeSql } from '@/lib/crm-scope'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
 
@@ -17,9 +18,23 @@ export async function GET(request: Request) {
     const vendedorIdParam = searchParams.get('vendedor_id')
     const isVendedor = session.role === 'vendedor' || session.role === 'coordenador'
     const filterByVendedor = isVendedor ? session.userId : vendedorIdParam
-    const vendedorFilter = filterByVendedor ? ' WHERE vp.vendedor_id = $1' : ''
     const vendedorParams = filterByVendedor ? [filterByVendedor] : []
-    const assignedFilter = filterByVendedor ? ' AND vp.vendedor_id = $1' : ' AND vp.vendedor_id IS NOT NULL'
+    const approvalScopeSql = buildStructuredLeadScopeSql('vp')
+    const approvalFilter = filterByVendedor
+      ? `WHERE ${approvalScopeSql} AND vp.vendedor_id = $1`
+      : `WHERE ${approvalScopeSql}`
+    const approvalExistsForNotes = filterByVendedor
+      ? `AND EXISTS (
+          SELECT 1 FROM vendedor_projetos vp
+          WHERE vp.cnpj = cn.lead_cnpj
+            AND ${approvalScopeSql}
+            AND vp.vendedor_id = $1
+        )`
+      : `AND EXISTS (
+          SELECT 1 FROM vendedor_projetos vp
+          WHERE vp.cnpj = cn.lead_cnpj
+            AND ${approvalScopeSql}
+        )`
 
     // Run all queries in parallel to avoid sequential connection queuing
     const [
@@ -49,7 +64,7 @@ export async function GET(request: Request) {
           COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' AND u.role != 'gestor' THEN COALESCE(vp.comissao_bonus, 0)::numeric ELSE 0 END), 0) as commission_bonus
         FROM vendedor_projetos vp
         LEFT JOIN users u ON u.id = vp.vendedor_id
-        ${filterByVendedor ? 'WHERE vp.vendedor_id = $1' : ''}
+        ${approvalFilter}
       `, vendedorParams),
 
       // 2. KPI: Avg Days to Close
@@ -57,8 +72,8 @@ export async function GET(request: Request) {
         SELECT
           COALESCE(AVG(EXTRACT(DAY FROM (vp.updated_at - vp.created_at)))::int, NULL) as avg_days_to_close
         FROM vendedor_projetos vp
-        WHERE vp.status_contato = 'Fechado'
-        ${filterByVendedor ? 'AND vp.vendedor_id = $1' : ''}
+        ${approvalFilter}
+          AND vp.status_contato = 'Fechado'
       `, vendedorParams),
 
       // 3. KPI: Ticket Medio
@@ -67,10 +82,10 @@ export async function GET(request: Request) {
         FROM (
           SELECT vp.cnpj, AVG(vp.valor_venda::numeric) as cnpj_avg
           FROM vendedor_projetos vp
-          WHERE vp.vendedor_id IS NOT NULL
+          ${approvalFilter}
+            AND vp.vendedor_id IS NOT NULL
             AND vp.status_contato = 'Fechado'
             AND vp.valor_venda > 0
-            ${filterByVendedor ? 'AND vp.vendedor_id = $1' : ''}
           GROUP BY vp.cnpj
         ) t
       `, vendedorParams),
@@ -82,16 +97,15 @@ export async function GET(request: Request) {
           COUNT(DISTINCT cn.lead_cnpj)::int as leads_touched_7d
         FROM contact_notes cn
         WHERE cn.created_at >= NOW() - INTERVAL '7 days'
-        ${filterByVendedor ? `AND EXISTS (
-          SELECT 1 FROM vendedor_projetos vp WHERE vp.cnpj = cn.lead_cnpj AND vp.vendedor_id = $1
-        )` : ''}
+        ${approvalExistsForNotes}
       `, vendedorParams),
 
       // 5. KPI: Stale leads (assigned, not Fechado, no activity in 7+ days)
       query(`
         SELECT COUNT(DISTINCT vp.cnpj)::int as stale_count
         FROM vendedor_projetos vp
-        WHERE vp.vendedor_id IS NOT NULL
+        ${approvalFilter}
+          AND vp.vendedor_id IS NOT NULL
           AND vp.status_contato NOT IN ('Fechado', 'Telefone Invalido')
           AND NOT EXISTS (
             SELECT 1 FROM contact_notes cn
@@ -100,10 +114,10 @@ export async function GET(request: Request) {
           AND NOT EXISTS (
             SELECT 1 FROM vendedor_projetos vp2
             WHERE vp2.cnpj = vp.cnpj
+              AND ${buildStructuredLeadScopeSql('vp2')}
               AND vp2.status_contato NOT IN ('Não Contatado', 'Nao Contatado')
               AND vp2.updated_at >= NOW() - INTERVAL '7 days'
           )
-          ${filterByVendedor ? 'AND vp.vendedor_id = $1' : ''}
       `, vendedorParams),
 
       // 8. Chart: Pipeline Funnel — all 6 statuses in correct funnel order
@@ -121,8 +135,8 @@ export async function GET(request: Request) {
             END as status,
             COUNT(DISTINCT vp.cnpj)::int as count
           FROM vendedor_projetos vp
-          WHERE vp.vendedor_id IS NOT NULL
-          ${filterByVendedor ? 'AND vp.vendedor_id = $1' : ''}
+          ${approvalFilter}
+            AND vp.vendedor_id IS NOT NULL
           GROUP BY 1
         ) funnel
         ORDER BY
@@ -145,9 +159,9 @@ export async function GET(request: Request) {
           COALESCE(SUM(COALESCE(vp.comissao_bonus, 0)::numeric) FILTER (WHERE vp.status_contato = 'Fechado'), 0) as total_bonus
         FROM vendedor_projetos vp
         JOIN users u ON u.id = vp.vendedor_id
-        WHERE vp.vendedor_id IS NOT NULL
+        ${approvalFilter}
+          AND vp.vendedor_id IS NOT NULL
           AND u.role != 'gestor'
-          ${filterByVendedor ? 'AND vp.vendedor_id = $1' : ''}
         GROUP BY u.nome
         HAVING COUNT(*) FILTER (WHERE vp.status_contato = 'Fechado') > 0
         ORDER BY total_comissao DESC
@@ -160,8 +174,8 @@ export async function GET(request: Request) {
           COUNT(DISTINCT vp.cnpj)::int as count,
           COALESCE(SUM(vp.valor_emenda::numeric), 0) as valor_emenda
         FROM vendedor_projetos vp
-        WHERE vp.uf IS NOT NULL AND vp.uf != ''
-        ${filterByVendedor ? 'AND vp.vendedor_id = $1' : ''}
+        ${approvalFilter}
+          AND vp.uf IS NOT NULL AND vp.uf != ''
         GROUP BY vp.uf
         ORDER BY count DESC
         LIMIT 15
@@ -178,11 +192,7 @@ export async function GET(request: Request) {
             COUNT(DISTINCT cn.lead_cnpj)::int as unique_leads
           FROM contact_notes cn
           WHERE cn.created_at >= NOW() - INTERVAL '6 months'
-            AND EXISTS (
-              SELECT 1 FROM vendedor_projetos vp
-              WHERE vp.cnpj = cn.lead_cnpj
-                AND vp.vendedor_id = $1
-            )
+            ${approvalExistsForNotes}
           GROUP BY 1
           ORDER BY 1 ASC
         `, vendedorParams)

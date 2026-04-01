@@ -21,6 +21,7 @@
 // ============================================================================
 
 import { getPool } from '@/lib/db'
+import { buildStructuredLeadScopeSql } from '@/lib/crm-scope'
 import { cleanCNPJ, parseBRNumber, fixText, downloadAndStreamCSV, formatPhone } from '@/lib/repo-sync'
 
 // ---------------------------------------------------------------------------
@@ -135,11 +136,14 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
   // This replaces the hardcoded whitelist — uses the DB as source of truth
   // -------------------------------------------------------------------------
   const pool = getPool()
+  const structuredLeadScopeSql = buildStructuredLeadScopeSql('vp')
   const clientCnpjResult = await pool.query<{ cnpj: string }>(`
     SELECT DISTINCT cnpj FROM (
       SELECT cnpj FROM existing_clients
       UNION
-      SELECT REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') AS cnpj FROM vendedor_projetos
+      SELECT REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AS cnpj
+      FROM vendedor_projetos vp
+      WHERE ${structuredLeadScopeSql}
     ) all_cnpjs
     WHERE cnpj IS NOT NULL AND cnpj != ''
   `)

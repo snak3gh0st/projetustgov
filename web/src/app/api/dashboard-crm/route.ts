@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { buildStructuredLeadScopeSql } from '@/lib/crm-scope'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
 
@@ -49,12 +50,27 @@ export async function GET() {
     const isCoordenador = session.role === 'coordenador'
     const isFiltered = isVendedor || isCoordenador
     // gestor sees all leads; coordenador sees leads where vendedor_id = id OR closer_id = id
-    const vendedorFilter = isVendedor
-      ? ' WHERE vendedor_id = $1'
-      : isCoordenador
-      ? ' WHERE (vendedor_id = $1 OR closer_id = $1)'
-      : ''
     const vendedorParams = isFiltered ? [session.userId] : []
+    const approvalScopeSql = buildStructuredLeadScopeSql('vp')
+    const approvalFilter = isVendedor
+      ? `WHERE ${approvalScopeSql} AND vp.vendedor_id = $1`
+      : isCoordenador
+      ? `WHERE ${approvalScopeSql} AND (vp.vendedor_id = $1 OR vp.closer_id = $1)`
+      : `WHERE ${approvalScopeSql}`
+    const approvalExistsFilter = isFiltered
+      ? `AND EXISTS (
+          SELECT 1
+          FROM vendedor_projetos vp_scope
+          WHERE vp_scope.cnpj = cn.lead_cnpj
+            AND ${buildStructuredLeadScopeSql('vp_scope')}
+            AND (vp_scope.vendedor_id = $1 OR vp_scope.closer_id = $1)
+        )`
+      : `AND EXISTS (
+          SELECT 1
+          FROM vendedor_projetos vp_scope
+          WHERE vp_scope.cnpj = cn.lead_cnpj
+            AND ${buildStructuredLeadScopeSql('vp_scope')}
+        )`
 
     // Run all queries in parallel to avoid sequential connection queuing
     const [globalRows, vendedorRows, todayRows, recentRows, commissionRows, contactHealthRows, staleLeadsRows, execucaoPipelineRows, execVendedorRows, execAlertRows] = await Promise.all([
@@ -71,7 +87,8 @@ export async function GET() {
           COUNT(DISTINCT CASE WHEN status_contato = 'Proposta' THEN cnpj END)::int as status_proposta,
           COUNT(DISTINCT CASE WHEN status_contato = 'Aguardando Closer' THEN cnpj END)::int as status_aguardando_closer,
           COUNT(DISTINCT CASE WHEN status_contato = 'Fechado' THEN cnpj END)::int as status_fechado
-        FROM vendedor_projetos${vendedorFilter}
+        FROM vendedor_projetos vp
+        ${approvalFilter}
       `, vendedorParams),
 
       // 2. Per-vendedor aggregations
@@ -90,7 +107,8 @@ export async function GET() {
           MAX(vp.updated_at) as last_activity
         FROM vendedor_projetos vp
         JOIN users u ON u.id = vp.vendedor_id
-        WHERE vp.vendedor_id IS NOT NULL${isFiltered ? ' AND (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
+        ${approvalFilter}
+          AND vp.vendedor_id IS NOT NULL
         GROUP BY vp.vendedor_id, u.nome
         ORDER BY total_leads DESC
       `, vendedorParams),
@@ -103,9 +121,10 @@ export async function GET() {
           SUM(CASE WHEN vp.status_contato = 'Proposta' THEN 1 ELSE 0 END)::int as propostas_hoje,
           SUM(CASE WHEN vp.status_contato = 'Fechado' THEN 1 ELSE 0 END)::int as fechados_hoje
         FROM vendedor_projetos vp
-        WHERE vp.vendedor_id IS NOT NULL
+        ${approvalFilter}
+          AND vp.vendedor_id IS NOT NULL
           AND vp.updated_at >= CURRENT_DATE
-          AND vp.status_contato IN ('Retorno', 'Proposta', 'Fechado')${isFiltered ? ' AND (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
+          AND vp.status_contato IN ('Retorno', 'Proposta', 'Fechado')
         GROUP BY vp.vendedor_id
       `, vendedorParams),
 
@@ -119,7 +138,8 @@ export async function GET() {
           vp.updated_at
         FROM vendedor_projetos vp
         LEFT JOIN users u ON u.id = vp.vendedor_id
-        WHERE vp.updated_at IS NOT NULL${isFiltered ? ' AND (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
+        ${approvalFilter}
+          AND vp.updated_at IS NOT NULL
         ORDER BY vp.updated_at DESC
         LIMIT 10
       `, vendedorParams),
@@ -134,11 +154,11 @@ export async function GET() {
           SUM(CASE WHEN vp.comissao_locked = true THEN 1 ELSE 0 END)::int as locked_count
         FROM vendedor_projetos vp
         JOIN users u ON u.id = vp.vendedor_id
-        WHERE vp.vendedor_id IS NOT NULL
+        ${approvalFilter}
+          AND vp.vendedor_id IS NOT NULL
           AND vp.comissao_valor IS NOT NULL
           AND vp.comissao_valor > 0
           AND vp.status_contato = 'Fechado'
-          ${isFiltered ? ' AND (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
       `, vendedorParams),
 
       // 6. Contact health: stale leads (no contact_notes in >7d or never), invalid phones
@@ -152,6 +172,7 @@ export async function GET() {
             AND NOT EXISTS (
               SELECT 1 FROM vendedor_projetos vp2
               WHERE vp2.cnpj = vp.cnpj
+              AND ${buildStructuredLeadScopeSql('vp2')}
               AND vp2.status_contato NOT IN ('Não Contatado')
               AND vp2.updated_at >= NOW() - INTERVAL '7 days'
             )
@@ -171,7 +192,8 @@ export async function GET() {
             )
           )::int as invalid_phone_count
         FROM vendedor_projetos vp
-        WHERE vp.vendedor_id IS NOT NULL${isFiltered ? ' AND (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
+        ${approvalFilter}
+          AND vp.vendedor_id IS NOT NULL
       `, vendedorParams),
 
       // 7. Top stale leads needing follow-up (oldest contact or never contacted)
@@ -204,12 +226,16 @@ export async function GET() {
           ) as principal_telefone_status
         FROM vendedor_projetos vp
         LEFT JOIN users u ON u.id = vp.vendedor_id
-        WHERE vp.vendedor_id IS NOT NULL
+        ${approvalFilter}
+          AND vp.vendedor_id IS NOT NULL
           AND vp.status_contato NOT IN ('Fechado')
-          ${isFiltered ? ' AND (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
         GROUP BY vp.cnpj, vp.nome, u.nome, vp.status_contato, vp.updated_at
         ORDER BY
-          CASE WHEN NOT EXISTS (SELECT 1 FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj)
+          CASE WHEN NOT EXISTS (
+            SELECT 1 FROM contact_notes cn
+            WHERE cn.lead_cnpj = vp.cnpj
+            ${approvalExistsFilter}
+          )
             THEN 0 ELSE 1 END,
           (SELECT MAX(cn.created_at) FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj) ASC NULLS FIRST
         LIMIT 8
