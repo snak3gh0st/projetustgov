@@ -5,7 +5,7 @@ milestone_name: — TGov Dashboard
 status: in_progress
 stopped_at: Completed quick/260401-e9r (TGov Projetus proposals whitelist filter)
 last_updated: "2026-04-01T00:00:00Z"
-last_activity: 2026-04-01
+last_activity: 2026-04-01 - Completed quick task 260401-e9r: Filter TGov views to Projetus proposals whitelist
 progress:
   total_phases: 14
   completed_phases: 8
@@ -106,7 +106,7 @@ Progress (v5.0): [███░░░░░░░] 100%
 | 260321 | Add CRM status column to /execucao from vendedor_projetos | 2026-03-25 | 1ad08b2 | [260321-coluna-de-status-no-lead-execucao-com-os](./quick/260321-coluna-de-status-no-lead-execucao-com-os/) |
 | 260322 | Tighten Rendimento tag eligibility and 5-proposal maturity boundary in /execucao | 2026-03-25 | fd21fa2 | [260322-atualizar-o-vinculo-da-tag-rendimento-pa](./quick/260322-atualizar-o-vinculo-da-tag-rendimento-pa/) |
 | 260323 | Separate Pipeline Aprovação vs Pipeline Execução on home dashboard | 2026-03-25 | 0377b2c | [260323-criar-pipeline-de-execucao-podendo-ficar](./quick/260323-criar-pipeline-de-execucao-podendo-ficar/) |
-| 260401-e9r | Filter TGov aprovacao and execucao tabs to Projetus proposals whitelist (246 IDs) | 2026-04-01 | c1e1243 | [260401-e9r-tgov-execucao-projetus-proposals-filter](./quick/260401-e9r-tgov-execucao-projetus-proposals-filter/) |
+| 260401-e9r | Filter TGov aprovacao and execucao tabs to Projetus proposals whitelist (246 IDs) | 2026-04-01 | e3c7025 | [260401-e9r-tgov-execucao-projetus-proposals-filter](./quick/260401-e9r-tgov-execucao-projetus-proposals-filter/) |
 
 ### Blockers / Concerns
 
