@@ -4,7 +4,7 @@ import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
 
-export const TGOV_INTERACTION_STATUSES = [
+const TGOV_INTERACTION_STATUSES = [
   'Sem Contato',
   'Em Contato',
   'Proposta Enviada',
@@ -13,7 +13,7 @@ export const TGOV_INTERACTION_STATUSES = [
   'Sem Interesse',
 ] as const
 
-export type TGovInteractionStatus = (typeof TGOV_INTERACTION_STATUSES)[number]
+type TGovInteractionStatus = (typeof TGOV_INTERACTION_STATUSES)[number]
 
 export async function GET(
   request: NextRequest,

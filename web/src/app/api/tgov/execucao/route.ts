@@ -8,11 +8,15 @@ export const maxDuration = 30
 
 /**
  * CTE that unions projetos_execucao (with financial data) and propostas
- * (without convenio yet). This ensures ALL 244 whitelist proposals appear,
+ * (without convenio yet). This ensures ALL whitelist proposals appear,
  * even if they don't have a signed convenio in projetos_execucao.
+ *
+ * MATERIALIZED forces Postgres to compute this once and reuse it across
+ * all downstream CTEs, avoiding the expensive UNION ALL + NOT EXISTS
+ * being re-evaluated for each aggregation.
  */
 const ALL_EXEC_CTE = `
-  all_exec AS (
+  all_exec AS MATERIALIZED (
     SELECT
       pe.nr_convenio,
       pe.id_proposta,
@@ -80,48 +84,39 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
 
-    // ---------------------------------------------------------------------------
-    // Main filters — affect both aggregates (total, byStatus) and table
-    // ---------------------------------------------------------------------------
     const ano = searchParams.get('ano') ?? ''
     const tipo = searchParams.get('tipo') ?? 'todos'
     const status = searchParams.get('status') ?? ''
     const uf = searchParams.get('uf') ?? ''
-
-    // ---------------------------------------------------------------------------
-    // Inline table-only filters — do NOT affect total / byStatus
-    // ---------------------------------------------------------------------------
     const proponenteFilter = searchParams.get('proponente') ?? ''
     const numeroPropostaFilter = searchParams.get('numero_proposta') ?? ''
 
-    // Pagination
     const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
     const offset = (page - 1) * TGOV_PAGE_SIZE
 
     // ---------------------------------------------------------------------------
-    // Build parameterized main filter clauses (pe = all_exec CTE alias)
+    // Build main filter conditions (affect totals + table)
     // ---------------------------------------------------------------------------
-    const mainParams: unknown[] = []
+    const params: unknown[] = []
     const mainConditions: string[] = []
 
-    // Projetus whitelist (hardcoded) + dynamic whitelist from tgov_whitelist table
-    const staticClause = buildNrPropostaWhereClause('pe.nr_proposta', mainParams, EXECUCAO_NR_PROPOSTAS)
+    const staticClause = buildNrPropostaWhereClause('pe.nr_proposta', params, EXECUCAO_NR_PROPOSTAS)
     mainConditions.push(`(${staticClause} OR EXISTS (SELECT 1 FROM tgov_whitelist tw WHERE (tw.cnpj = pe.cnpj OR tw.nr_proposta = pe.nr_proposta) AND tw.tab IN ('ambos','execucao')))`)
 
     if (ano) {
-      mainParams.push(`${ano}-01-01`)
-      mainParams.push(`${parseInt(ano, 10) + 1}-01-01`)
-      mainConditions.push(`pe.data_assinatura >= $${mainParams.length - 1}::date AND pe.data_assinatura < $${mainParams.length}::date`)
+      params.push(`${ano}-01-01`)
+      params.push(`${parseInt(ano, 10) + 1}-01-01`)
+      mainConditions.push(`pe.data_assinatura >= $${params.length - 1}::date AND pe.data_assinatura < $${params.length}::date`)
     }
 
     if (status) {
-      mainParams.push(status)
-      mainConditions.push(`pe.situacao = $${mainParams.length}`)
+      params.push(status)
+      mainConditions.push(`pe.situacao = $${params.length}`)
     }
 
     if (uf) {
-      mainParams.push(uf)
-      mainConditions.push(`pe.uf = $${mainParams.length}`)
+      params.push(uf)
+      mainConditions.push(`pe.uf = $${params.length}`)
     }
 
     if (tipo === 'meus_proponentes') {
@@ -136,98 +131,42 @@ export async function GET(request: NextRequest) {
       )`)
     }
 
-    const mainWhereClause = mainConditions.length > 0
-      ? `WHERE ${mainConditions.join(' AND ')}`
-      : ''
+    const mainWhere = mainConditions.length > 0 ? `WHERE ${mainConditions.join(' AND ')}` : ''
 
     // ---------------------------------------------------------------------------
-    // Build table-only filter clauses
+    // Table-only additional conditions (only affect table count + data)
     // ---------------------------------------------------------------------------
-    const tableParams = [...mainParams]
-    const tableConditions = [...mainConditions]
+    const tableAdditionalConditions: string[] = []
 
     if (proponenteFilter) {
-      tableParams.push(`%${proponenteFilter}%`)
-      tableConditions.push(`LOWER(pe.nome_proponente) LIKE LOWER($${tableParams.length})`)
+      params.push(`%${proponenteFilter}%`)
+      tableAdditionalConditions.push(`LOWER(pe.nome_proponente) LIKE LOWER($${params.length})`)
     }
 
     if (numeroPropostaFilter) {
-      tableParams.push(`%${numeroPropostaFilter}%`)
-      tableConditions.push(`(
-        pe.nr_convenio LIKE $${tableParams.length}
-        OR (pe.id_proposta IS NOT NULL AND pe.id_proposta LIKE $${tableParams.length})
-        OR (pe.nr_proposta IS NOT NULL AND pe.nr_proposta LIKE $${tableParams.length})
+      params.push(`%${numeroPropostaFilter}%`)
+      tableAdditionalConditions.push(`(
+        pe.nr_convenio LIKE $${params.length}
+        OR (pe.id_proposta IS NOT NULL AND pe.id_proposta LIKE $${params.length})
+        OR (pe.nr_proposta IS NOT NULL AND pe.nr_proposta LIKE $${params.length})
       )`)
     }
 
-    const tableWhereClause = tableConditions.length > 0
-      ? `WHERE ${tableConditions.join(' AND ')}`
+    const tableExtraWhere = tableAdditionalConditions.length > 0
+      ? `WHERE ${tableAdditionalConditions.join(' AND ')}`
       : ''
 
     // ---------------------------------------------------------------------------
-    // Run queries — all use WITH all_exec CTE
+    // Single query — all_exec materialized once, all aggregations share it
     // ---------------------------------------------------------------------------
-    const [totalRows, byStatusRows, byExecRangeRows, byYearRows, byDesembolsoYearRows, tableCountRows, tableDataRows] = await Promise.all([
-      query<{ total: number }>(
-        `WITH ${ALL_EXEC_CTE} SELECT COUNT(*)::int AS total FROM all_exec pe ${mainWhereClause}`,
-        mainParams
-      ),
-
-      query<{ situacao: string; cnt: number }>(
-        `WITH ${ALL_EXEC_CTE}
-        SELECT COALESCE(pe.situacao, 'Sem Situação') AS situacao, COUNT(*)::int AS cnt
-        FROM all_exec pe ${mainWhereClause}
-        GROUP BY pe.situacao ORDER BY COUNT(*) DESC`,
-        mainParams
-      ),
-
-      query<{ faixa: string; cnt: number }>(
-        `WITH ${ALL_EXEC_CTE}
-        SELECT
-          CASE
-            WHEN pe.pct_execucao IS NULL THEN 'Sem dados'
-            WHEN pe.pct_execucao < 25 THEN '0–25%'
-            WHEN pe.pct_execucao < 50 THEN '25–50%'
-            WHEN pe.pct_execucao < 75 THEN '50–75%'
-            WHEN pe.pct_execucao < 100 THEN '75–99%'
-            ELSE '100%+'
-          END AS faixa,
-          COUNT(*)::int AS cnt
-        FROM all_exec pe ${mainWhereClause}
-        GROUP BY 1 ORDER BY MIN(COALESCE(pe.pct_execucao, 999))`,
-        mainParams
-      ),
-
-      // BI: valor global by year (from nr_proposta year suffix)
-      query<{ ano: string; valor_global: string; cnt: number }>(
-        `WITH ${ALL_EXEC_CTE}
-        SELECT
-          COALESCE(SPLIT_PART(pe.nr_proposta, '/', 2), 'N/A') AS ano,
-          COALESCE(SUM(pe.valor_global), 0)::text AS valor_global,
-          COUNT(*)::int AS cnt
-        FROM all_exec pe ${mainWhereClause}
-        GROUP BY 1 ORDER BY 1`,
-        mainParams
-      ),
-
-      // BI: com/sem desembolso by year
-      query<{ ano: string; com_desembolso: number; sem_desembolso: number }>(
-        `WITH ${ALL_EXEC_CTE}
-        SELECT
-          COALESCE(SPLIT_PART(pe.nr_proposta, '/', 2), 'N/A') AS ano,
-          COUNT(*) FILTER (WHERE pe.valor_desembolsado > 0)::int AS com_desembolso,
-          COUNT(*) FILTER (WHERE pe.valor_desembolsado IS NULL OR pe.valor_desembolsado <= 0)::int AS sem_desembolso
-        FROM all_exec pe ${mainWhereClause}
-        GROUP BY 1 ORDER BY 1`,
-        mainParams
-      ),
-
-      query<{ total: number }>(
-        `WITH ${ALL_EXEC_CTE} SELECT COUNT(*)::int AS total FROM all_exec pe ${tableWhereClause}`,
-        tableParams
-      ),
-
-      query<{
+    type AggResult = {
+      total: number
+      by_status: { situacao: string; cnt: number }[] | null
+      by_exec_range: { faixa: string; cnt: number }[] | null
+      by_year: { ano: string; valor_global: string; cnt: number }[] | null
+      by_desembolso_year: { ano: string; com_desembolso: number; sem_desembolso: number }[] | null
+      table_total: number
+      table_data: {
         nr_convenio: string | null
         id_proposta: string | null
         nr_proposta: string | null
@@ -251,100 +190,167 @@ export async function GET(request: NextRequest) {
         dias_em_execucao: number | null
         dias_ate_vencimento: number | null
         internal_status: string | null
-      }>(
-        `WITH ${ALL_EXEC_CTE}
-        SELECT
-          pe.nr_convenio,
-          pe.id_proposta,
-          pe.nr_proposta,
-          EXTRACT(YEAR FROM pe.data_assinatura)::int AS ano_instrumento,
-          pe.cnpj,
-          COALESCE(pe.nome_proponente, '') AS nome_proponente,
-          COALESCE(pe.situacao, 'Sem Situação') AS situacao,
-          pe.valor_global::text,
-          pe.valor_repasse::text,
-          pe.valor_desembolsado::text,
-          pe.saldo_conta::text,
-          pe.rendimento_aplicacao::text,
-          pe.ingresso_contrapartida::text,
-          pe.valor_empenhado::text,
-          pe.pct_execucao::text,
-          pe.uf,
-          pe.municipio,
-          pe.data_assinatura::text,
-          pe.data_inicio_vigencia::text,
-          pe.data_fim_vigencia::text,
-          pe.dias_em_execucao,
-          pe.dias_ate_vencimento,
-          ti.status AS internal_status
-        FROM all_exec pe
-        LEFT JOIN tgov_interactions ti ON ti.item_key = pe.nr_convenio AND ti.tab = 'execucao'
-        ${tableWhereClause}
-        ORDER BY
-          pe.valor_global DESC NULLS LAST,
-          pe.nr_convenio DESC NULLS LAST
-        LIMIT ${TGOV_PAGE_SIZE} OFFSET ${offset}`,
-        tableParams
-      ),
-    ])
+      }[] | null
+    }
 
-    const total = Number(totalRows[0]?.total) || 0
-    const totalTableRows = Number(tableCountRows[0]?.total) || 0
+    const result = await query<AggResult>(
+      `WITH
+      ${ALL_EXEC_CTE},
+      filtered_main AS (
+        SELECT pe.* FROM all_exec pe ${mainWhere}
+      ),
+      filtered_table AS (
+        SELECT pe.* FROM filtered_main pe ${tableExtraWhere}
+      ),
+      agg_total AS (
+        SELECT COUNT(*)::int AS v FROM filtered_main
+      ),
+      agg_status AS (
+        SELECT json_agg(s ORDER BY s.cnt DESC) AS v FROM (
+          SELECT COALESCE(situacao, 'Sem Situação') AS situacao, COUNT(*)::int AS cnt
+          FROM filtered_main GROUP BY 1
+        ) s
+      ),
+      agg_exec_range AS (
+        SELECT json_agg(r ORDER BY r.ord) AS v FROM (
+          SELECT
+            CASE
+              WHEN pct_execucao IS NULL THEN 'Sem dados'
+              WHEN pct_execucao < 25 THEN '0–25%'
+              WHEN pct_execucao < 50 THEN '25–50%'
+              WHEN pct_execucao < 75 THEN '50–75%'
+              WHEN pct_execucao < 100 THEN '75–99%'
+              ELSE '100%+'
+            END AS faixa,
+            COUNT(*)::int AS cnt,
+            MIN(COALESCE(pct_execucao, 999)) AS ord
+          FROM filtered_main GROUP BY 1
+        ) r
+      ),
+      agg_year AS (
+        SELECT json_agg(y ORDER BY y.ano) AS v FROM (
+          SELECT
+            COALESCE(SPLIT_PART(nr_proposta, '/', 2), 'N/A') AS ano,
+            COALESCE(SUM(valor_global), 0)::text AS valor_global,
+            COUNT(*)::int AS cnt
+          FROM filtered_main GROUP BY 1
+        ) y
+      ),
+      agg_desembolso_year AS (
+        SELECT json_agg(d ORDER BY d.ano) AS v FROM (
+          SELECT
+            COALESCE(SPLIT_PART(nr_proposta, '/', 2), 'N/A') AS ano,
+            COUNT(*) FILTER (WHERE valor_desembolsado > 0)::int AS com_desembolso,
+            COUNT(*) FILTER (WHERE valor_desembolsado IS NULL OR valor_desembolsado <= 0)::int AS sem_desembolso
+          FROM filtered_main GROUP BY 1
+        ) d
+      ),
+      agg_table_count AS (
+        SELECT COUNT(*)::int AS v FROM filtered_table
+      ),
+      agg_table_data AS (
+        SELECT json_agg(t) AS v FROM (
+          SELECT
+            pe.nr_convenio,
+            pe.id_proposta,
+            pe.nr_proposta,
+            EXTRACT(YEAR FROM pe.data_assinatura)::int AS ano_instrumento,
+            pe.cnpj,
+            COALESCE(pe.nome_proponente, '') AS nome_proponente,
+            COALESCE(pe.situacao, 'Sem Situação') AS situacao,
+            pe.valor_global::text,
+            pe.valor_repasse::text,
+            pe.valor_desembolsado::text,
+            pe.saldo_conta::text,
+            pe.rendimento_aplicacao::text,
+            pe.ingresso_contrapartida::text,
+            pe.valor_empenhado::text,
+            pe.pct_execucao::text,
+            pe.uf,
+            pe.municipio,
+            pe.data_assinatura::text,
+            pe.data_inicio_vigencia::text,
+            pe.data_fim_vigencia::text,
+            pe.dias_em_execucao,
+            pe.dias_ate_vencimento,
+            ti.status AS internal_status
+          FROM filtered_table pe
+          LEFT JOIN tgov_interactions ti ON ti.item_key = pe.nr_convenio AND ti.tab = 'execucao'
+          ORDER BY pe.valor_global DESC NULLS LAST, pe.nr_convenio DESC NULLS LAST
+          LIMIT ${TGOV_PAGE_SIZE} OFFSET ${offset}
+        ) t
+      )
+      SELECT
+        (SELECT v FROM agg_total)                      AS total,
+        (SELECT v FROM agg_status)                     AS by_status,
+        (SELECT v FROM agg_exec_range)                 AS by_exec_range,
+        (SELECT v FROM agg_year)                       AS by_year,
+        (SELECT v FROM agg_desembolso_year)            AS by_desembolso_year,
+        (SELECT v FROM agg_table_count)                AS table_total,
+        (SELECT v FROM agg_table_data)                 AS table_data`,
+      params
+    )
+
+    const r = result[0]
+    const total = Number(r?.total) || 0
+    const totalTableRows = Number(r?.table_total) || 0
     const totalPages = Math.max(1, Math.ceil(totalTableRows / TGOV_PAGE_SIZE))
 
-    const byStatus = byStatusRows.map((r) => {
-      const count = Number(r.cnt)
+    const byStatusRaw = r?.by_status ?? []
+    const byStatus = byStatusRaw.map((s) => {
+      const count = Number(s.cnt)
       return {
-        status: r.situacao ?? 'Sem Situação',
+        status: s.situacao ?? 'Sem Situação',
         count,
         percent: total > 0 ? Number(((count / total) * 100).toFixed(1)) : 0,
       }
     })
 
-    const byExecRange = byExecRangeRows.map((r) => {
-      const count = Number(r.cnt)
+    const byExecRangeRaw = r?.by_exec_range ?? []
+    const byExecRange = byExecRangeRaw.map((s) => {
+      const count = Number(s.cnt)
       return {
-        status: r.faixa,
+        status: s.faixa,
         count,
         percent: total > 0 ? Number(((count / total) * 100).toFixed(1)) : 0,
       }
     })
 
-    const rows: TGovExecucaoTableRow[] = tableDataRows.map((r) => ({
-      numeroProposta: r.nr_proposta || r.id_proposta || r.nr_convenio || '—',
-      nrConvenio: r.nr_convenio || '',
-      anoInstrumento: r.ano_instrumento,
-      data: r.data_assinatura ? String(r.data_assinatura) : null,
-      cnpj: r.cnpj,
-      proponente: r.nome_proponente ?? '',
-      situacao: r.situacao ?? 'Sem Situação',
-      valorGlobal: r.valor_global ? parseFloat(r.valor_global) : null,
-      valorRepasse: r.valor_repasse ? parseFloat(r.valor_repasse) : null,
-      valorDesembolsado: r.valor_desembolsado ? parseFloat(r.valor_desembolsado) : null,
-      saldoConta: r.saldo_conta ? parseFloat(r.saldo_conta) : null,
-      rendimentoAplicacao: r.rendimento_aplicacao ? parseFloat(r.rendimento_aplicacao) : null,
-      ingressoContrapartida: r.ingresso_contrapartida ? parseFloat(r.ingresso_contrapartida) : null,
-      valorEmpenhado: r.valor_empenhado ? parseFloat(r.valor_empenhado) : null,
-      pctExecucao: r.pct_execucao ? parseFloat(r.pct_execucao) : null,
-      uf: r.uf,
-      municipio: r.municipio,
-      dataInicioVigencia: r.data_inicio_vigencia ? String(r.data_inicio_vigencia) : null,
-      dataFimVigencia: r.data_fim_vigencia ? String(r.data_fim_vigencia) : null,
-      diasEmExecucao: r.dias_em_execucao,
-      diasAteVencimento: r.dias_ate_vencimento,
-      internalStatus: r.internal_status ?? null,
+    const byYear = (r?.by_year ?? []).map((y) => ({
+      ano: y.ano,
+      valorGlobal: parseFloat(y.valor_global) || 0,
+      count: y.cnt,
     }))
 
-    const byYear = byYearRows.map(r => ({
-      ano: r.ano,
-      valorGlobal: parseFloat(r.valor_global) || 0,
-      count: r.cnt,
+    const byDesembolsoYear = (r?.by_desembolso_year ?? []).map((d) => ({
+      ano: d.ano,
+      comDesembolso: d.com_desembolso,
+      semDesembolso: d.sem_desembolso,
     }))
 
-    const byDesembolsoYear = byDesembolsoYearRows.map(r => ({
-      ano: r.ano,
-      comDesembolso: r.com_desembolso,
-      semDesembolso: r.sem_desembolso,
+    const rows: TGovExecucaoTableRow[] = (r?.table_data ?? []).map((row) => ({
+      numeroProposta: row.nr_proposta || row.id_proposta || row.nr_convenio || '—',
+      nrConvenio: row.nr_convenio || '',
+      anoInstrumento: row.ano_instrumento,
+      data: row.data_assinatura ? String(row.data_assinatura) : null,
+      cnpj: row.cnpj,
+      proponente: row.nome_proponente ?? '',
+      situacao: row.situacao ?? 'Sem Situação',
+      valorGlobal: row.valor_global ? parseFloat(row.valor_global) : null,
+      valorRepasse: row.valor_repasse ? parseFloat(row.valor_repasse) : null,
+      valorDesembolsado: row.valor_desembolsado ? parseFloat(row.valor_desembolsado) : null,
+      saldoConta: row.saldo_conta ? parseFloat(row.saldo_conta) : null,
+      rendimentoAplicacao: row.rendimento_aplicacao ? parseFloat(row.rendimento_aplicacao) : null,
+      ingressoContrapartida: row.ingresso_contrapartida ? parseFloat(row.ingresso_contrapartida) : null,
+      valorEmpenhado: row.valor_empenhado ? parseFloat(row.valor_empenhado) : null,
+      pctExecucao: row.pct_execucao ? parseFloat(row.pct_execucao) : null,
+      uf: row.uf,
+      municipio: row.municipio,
+      dataInicioVigencia: row.data_inicio_vigencia ? String(row.data_inicio_vigencia) : null,
+      dataFimVigencia: row.data_fim_vigencia ? String(row.data_fim_vigencia) : null,
+      diasEmExecucao: row.dias_em_execucao,
+      diasAteVencimento: row.dias_ate_vencimento,
+      internalStatus: row.internal_status ?? null,
     }))
 
     const response: TGovTabResponse & { byExecRange: typeof byExecRange; byYear: typeof byYear; byDesembolsoYear: typeof byDesembolsoYear } = {
