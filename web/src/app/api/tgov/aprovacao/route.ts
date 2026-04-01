@@ -34,8 +34,9 @@ export async function GET(request: NextRequest) {
     mainConditions.push(`(${staticClause} OR EXISTS (SELECT 1 FROM tgov_whitelist tw WHERE (tw.cnpj = p.proponente_cnpj OR tw.nr_proposta = p.nr_proposta) AND tw.tab IN ('ambos','aprovacao')))`)
 
     if (ano) {
-      mainParams.push(parseInt(ano, 10))
-      mainConditions.push(`EXTRACT(YEAR FROM p.data_publicacao) = $${mainParams.length}`)
+      mainParams.push(`${ano}-01-01`)
+      mainParams.push(`${parseInt(ano, 10) + 1}-01-01`)
+      mainConditions.push(`p.data_publicacao >= $${mainParams.length - 1}::date AND p.data_publicacao < $${mainParams.length}::date`)
     }
 
     if (status) {
