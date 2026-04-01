@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
-import { TGOV_PAGE_SIZE, TGovTabResponse } from '@/lib/tgov'
+import { TGOV_PAGE_SIZE, TGovTabResponse, buildProjetusProposalWhereClause } from '@/lib/tgov'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -28,6 +28,9 @@ export async function GET(request: NextRequest) {
 
     const mainParams: unknown[] = []
     const mainConditions: string[] = []
+
+    // Projetus whitelist: always applied as the first condition
+    mainConditions.push(buildProjetusProposalWhereClause('p.transfer_gov_id', mainParams))
 
     if (ano) {
       mainParams.push(parseInt(ano, 10))

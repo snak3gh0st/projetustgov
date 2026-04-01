@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
-import { TGOV_PAGE_SIZE, TGovTabResponse, TGovExecucaoTableRow } from '@/lib/tgov'
+import { TGOV_PAGE_SIZE, TGovTabResponse, TGovExecucaoTableRow, buildProjetusProposalWhereClause } from '@/lib/tgov'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -38,6 +38,10 @@ export async function GET(request: NextRequest) {
     // ---------------------------------------------------------------------------
     const mainParams: unknown[] = []
     const mainConditions: string[] = []
+
+    // Projetus whitelist: always applied as the first condition
+    // Rows with NULL id_proposta are intentionally excluded (no matching proposal = not Projetus)
+    mainConditions.push(buildProjetusProposalWhereClause('pe.id_proposta', mainParams))
 
     // ano filter: use data_assinatura year directly from projetos_execucao
     if (ano) {
