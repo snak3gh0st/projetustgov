@@ -66,8 +66,7 @@ const ALL_EXEC_CTE = `
     WHERE p.nr_proposta IS NOT NULL
       AND NOT EXISTS (
         SELECT 1 FROM projetos_execucao pe2
-        WHERE pe2.nr_proposta IS NOT NULL
-          AND REGEXP_REPLACE(pe2.nr_proposta, '^0+', '') = REGEXP_REPLACE(p.nr_proposta, '^0+', '')
+        WHERE pe2.nr_proposta = p.nr_proposta
       )
   )
 `

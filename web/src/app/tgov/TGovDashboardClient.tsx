@@ -199,23 +199,32 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
   }
 
   async function handleCnpjSearch() {
-    const cleaned = cnpjInput.replace(/\D/g, '')
-    if (cleaned.length < 11) {
+    const input = cnpjInput.trim()
+    if (!input) return
+
+    // Detect: NR Proposta format (contains "/") vs CNPJ (digits only)
+    const isNrProposta = input.includes('/')
+    const param = isNrProposta
+      ? `nr_proposta=${encodeURIComponent(input)}`
+      : `cnpj=${input.replace(/\D/g, '')}`
+
+    if (!isNrProposta && input.replace(/\D/g, '').length < 11) {
       setCnpjError('CNPJ deve ter pelo menos 11 dígitos')
       return
     }
+
     setCnpjLoading(true)
     setCnpjError(null)
     setCnpjResult(null)
     try {
-      const res = await fetch(`/api/tgov/busca-cnpj?cnpj=${cleaned}`)
+      const res = await fetch(`/api/tgov/busca-cnpj?${param}`)
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body?.error ?? `HTTP ${res.status}`)
       }
       const json: CnpjSearchResult = await res.json()
       if (json.propostas.length === 0 && json.execucao.length === 0) {
-        setCnpjError('Nenhuma proposta ou convênio encontrado para este CNPJ no SICONV.')
+        setCnpjError(`Nenhuma proposta ou convênio encontrado para "${input}" no SICONV.`)
       } else {
         setCnpjResult(json)
       }
@@ -261,7 +270,7 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              Buscar CNPJ
+              Adicionar CNPJ / Proposta
             </button>
             <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
               {(['aprovacao', 'execucao'] as TGovTab[]).map((tab) => (
@@ -488,7 +497,7 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
             <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
               {/* Header */}
               <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="text-lg font-bold text-gray-900">Buscar CNPJ no SICONV</h3>
+                <h3 className="text-lg font-bold text-gray-900">Buscar no SICONV</h3>
                 <button onClick={() => setCnpjModalOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -496,24 +505,27 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
                 </button>
               </div>
 
-              {/* Search input */}
-              <div className="px-6 py-4 flex gap-2">
-                <input
-                  type="text"
-                  value={cnpjInput}
-                  onChange={(e) => setCnpjInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleCnpjSearch()}
-                  placeholder="Digite o CNPJ (ex: 12.345.678/0001-90)"
-                  className="flex-1 h-10 rounded-lg border border-gray-200 px-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  autoFocus
-                />
-                <button
-                  onClick={handleCnpjSearch}
-                  disabled={cnpjLoading}
-                  className="h-10 px-5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {cnpjLoading ? 'Buscando...' : 'Buscar'}
-                </button>
+              {/* Search inputs */}
+              <div className="px-6 py-4 space-y-3">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={cnpjInput}
+                    onChange={(e) => setCnpjInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCnpjSearch()}
+                    placeholder="CNPJ (ex: 12.345.678/0001-90) ou NR Proposta (ex: 4822/2020)"
+                    className="flex-1 h-10 rounded-lg border border-gray-200 px-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleCnpjSearch}
+                    disabled={cnpjLoading}
+                    className="h-10 px-5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {cnpjLoading ? 'Buscando...' : 'Buscar'}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400">Busque por CNPJ para ver todas as propostas/convênios ou por NR Proposta (ex: 4822/2020) para encontrar um instrumento específico.</p>
               </div>
 
               {/* Results */}

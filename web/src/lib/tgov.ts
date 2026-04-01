@@ -318,10 +318,10 @@ export function buildNrPropostaWhereClause(
 ): string {
   const startIndex = params.length + 1
   const ids = Array.from(whitelist)
-  // Normalize: strip leading zeros from BOTH sides so "003677/2026" matches "3677/2026"
+  // Strip leading zeros to match DB format (DB stores "3677/2026" not "003677/2026")
   ids.forEach((id) => params.push(id.replace(/^0+/, '')))
   const placeholders = ids.map((_, i) => `$${startIndex + i}`).join(', ')
-  return `REGEXP_REPLACE(${columnName}, '^0+', '') IN (${placeholders})`
+  return `${columnName} IN (${placeholders})`
 }
 
 // ---------------------------------------------------------------------------

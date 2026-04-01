@@ -16,10 +16,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const cnpj = (request.nextUrl.searchParams.get('cnpj') ?? '').replace(/\D/g, '')
-    if (!cnpj || cnpj.length < 11) {
+    const cnpjParam = (request.nextUrl.searchParams.get('cnpj') ?? '').replace(/\D/g, '')
+    const nrPropostaParam = request.nextUrl.searchParams.get('nr_proposta') ?? ''
+
+    if (!cnpjParam && !nrPropostaParam) {
+      return NextResponse.json({ error: 'Informe CNPJ ou NR Proposta' }, { status: 400 })
+    }
+    if (cnpjParam && cnpjParam.length < 11) {
       return NextResponse.json({ error: 'CNPJ inválido' }, { status: 400 })
     }
+
+    // Build WHERE clause based on search type
+    const isCnpjSearch = !!cnpjParam
+    const propostaWhere = isCnpjSearch ? 'proponente_cnpj = $1' : 'nr_proposta = $1'
+    const execWhere = isCnpjSearch ? 'cnpj = $1' : 'nr_proposta = $1'
+    const searchValue = isCnpjSearch ? cnpjParam : nrPropostaParam.replace(/^0+/, '')
 
     const [propostas, execucao] = await Promise.all([
       query<{
@@ -48,9 +59,9 @@ export async function GET(request: NextRequest) {
           municipio,
           data_publicacao::text
         FROM propostas
-        WHERE proponente_cnpj = $1
+        WHERE ${propostaWhere}
         ORDER BY data_publicacao DESC NULLS LAST`,
-        [cnpj]
+        [searchValue]
       ),
 
       query<{
@@ -89,12 +100,13 @@ export async function GET(request: NextRequest) {
           data_inicio_vigencia::text,
           data_fim_vigencia::text
         FROM projetos_execucao
-        WHERE cnpj = $1
+        WHERE ${execWhere}
         ORDER BY valor_global DESC NULLS LAST`,
-        [cnpj]
+        [searchValue]
       ),
     ])
 
+    const cnpj = cnpjParam || propostas[0]?.proponente_cnpj || execucao[0]?.cnpj || ''
     const proponente = propostas[0]?.proponente || execucao[0]?.nome_proponente || null
 
     return NextResponse.json({
