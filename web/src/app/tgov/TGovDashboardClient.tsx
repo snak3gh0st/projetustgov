@@ -82,6 +82,11 @@ interface ExecucaoResponse extends TGovTabResponse {
   byDesembolsoYear?: { ano: string; comDesembolso: number; semDesembolso: number }[]
 }
 
+interface AprovacaoResponse extends TGovTabResponse {
+  byUf?: { uf: string; valorGlobal: number; count: number }[]
+  byValorStatus?: { situacao: string; valorGlobal: number }[]
+}
+
 interface CnpjSearchResult {
   cnpj: string
   proponente: string | null
@@ -469,7 +474,7 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
           )}
         </div>
 
-        {/* BI Summary — Execução only */}
+        {/* BI Summary */}
         {activeTab === 'execucao' && !loading && data && data.total > 0 && (
           <ExecucaoBISummary
             rows={data.table.rows as TGovExecucaoTableRow[]}
@@ -477,6 +482,14 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
             byStatus={data.byStatus}
             byYear={(data as ExecucaoResponse).byYear ?? []}
             byDesembolsoYear={(data as ExecucaoResponse).byDesembolsoYear ?? []}
+          />
+        )}
+        {activeTab === 'aprovacao' && !loading && data && data.total > 0 && (
+          <AprovacaoBISummary
+            total={data.total}
+            byStatus={data.byStatus}
+            byUf={(data as AprovacaoResponse).byUf ?? []}
+            byValorStatus={(data as AprovacaoResponse).byValorStatus ?? []}
           />
         )}
       </div>
@@ -1104,6 +1117,125 @@ function SidecardCurrency({
       <span className={`text-sm tabular-nums text-right ${bold ? 'font-bold text-gray-900' : 'text-gray-700'}`}>
         {formatCurrency(value ?? null)}
       </span>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// BI Summary — Aprovação
+// ---------------------------------------------------------------------------
+
+function AprovacaoBISummary({
+  total, byStatus, byUf, byValorStatus,
+}: {
+  total: number
+  byStatus: TGovStatusBucket[]
+  byUf: { uf: string; valorGlobal: number; count: number }[]
+  byValorStatus: { situacao: string; valorGlobal: number }[]
+}) {
+  const valorGlobalTotal = byValorStatus.reduce((s, r) => s + r.valorGlobal, 0)
+
+  function shortCurrency(v: number): string {
+    if (v >= 1_000_000_000) return `R$ ${(v / 1_000_000_000).toFixed(1)}B`
+    if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1)}M`
+    if (v >= 1_000) return `R$ ${(v / 1_000).toFixed(0)}K`
+    return formatCurrency(v)
+  }
+
+  const sortedStatus = [...byStatus].sort((a, b) => b.count - a.count)
+  const TOP_N = 6
+  const topStatuses = sortedStatus.slice(0, TOP_N)
+  const otherCount = sortedStatus.slice(TOP_N).reduce((s, r) => s + r.count, 0)
+  const donutData = otherCount > 0
+    ? [...topStatuses, { status: 'Outros', count: otherCount, percent: total > 0 ? Number(((otherCount / total) * 100).toFixed(1)) : 0 }]
+    : topStatuses
+
+  const COLORS = ['#2563eb','#16a34a','#d97706','#7c3aed','#dc2626','#0891b2','#9ca3af']
+
+  return (
+    <div className="space-y-4">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {[
+          { label: 'Total Propostas', value: total.toLocaleString('pt-BR'), color: 'text-gray-900' },
+          { label: 'Valor Global Total', value: shortCurrency(valorGlobalTotal), color: 'text-blue-700' },
+          { label: 'UFs Representadas', value: String(byUf.length), color: 'text-gray-900' },
+        ].map(c => (
+          <div key={c.label} className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-xs text-gray-500 mb-1">{c.label}</p>
+            <p className={`text-xl font-bold tabular-nums ${c.color}`}>{c.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Charts row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* 1. Barras — Valor Global por UF */}
+        {byUf.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Valor Global por UF</p>
+            <div className="h-52">
+              <BIResponsiveContainer>
+                <BIBarChart data={byUf} layout="vertical">
+                  <BICartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                  <BIXAxis type="number" tickFormatter={(v: number) => shortCurrency(v)} tick={{ fontSize: 10 }} />
+                  <BIYAxis dataKey="uf" type="category" tick={{ fontSize: 11 }} width={35} />
+                  <BITooltipChart formatter={(v: number) => [formatCurrency(v), 'Valor Global']} />
+                  <BIBar dataKey="valorGlobal" fill="#2563eb" radius={[0, 4, 4, 0]} />
+                </BIBarChart>
+              </BIResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* 2. Donut — Distribuição por Situação */}
+        {donutData.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Distribuição por Situação</p>
+            <div className="h-52 flex items-center gap-4">
+              <div className="w-36 h-36 shrink-0">
+                <BIResponsiveContainer>
+                  <BIPieChart>
+                    <BIPie data={donutData} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={35} outerRadius={55} paddingAngle={2} stroke="none">
+                      {donutData.map((entry, i) => (
+                        <BICell key={entry.status} fill={COLORS[i % COLORS.length]} />
+                      ))}
+                    </BIPie>
+                    <BITooltipChart formatter={(v: number) => [String(v), 'Quantidade']} />
+                  </BIPieChart>
+                </BIResponsiveContainer>
+              </div>
+              <div className="flex-1 space-y-1 min-w-0 overflow-y-auto max-h-48">
+                {donutData.map((entry, i) => (
+                  <div key={entry.status} className="flex items-center gap-2">
+                    <span className="shrink-0 w-2 h-2 rounded-sm" style={{ background: COLORS[i % COLORS.length] }} />
+                    <span className="text-xs text-gray-600 truncate flex-1" title={entry.status}>{entry.status}</span>
+                    <span className="text-xs font-bold text-gray-800 tabular-nums">{entry.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 3. Barras — Valor Global por Situação */}
+        {byValorStatus.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Valor por Situação</p>
+            <div className="h-52">
+              <BIResponsiveContainer>
+                <BIBarChart data={byValorStatus.slice(0, 8)} layout="vertical">
+                  <BICartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                  <BIXAxis type="number" tickFormatter={(v: number) => shortCurrency(v)} tick={{ fontSize: 10 }} />
+                  <BIYAxis dataKey="situacao" type="category" tick={{ fontSize: 9 }} width={120} />
+                  <BITooltipChart formatter={(v: number) => [formatCurrency(v), 'Valor Global']} />
+                  <BIBar dataKey="valorGlobal" fill="#7c3aed" radius={[0, 4, 4, 0]} />
+                </BIBarChart>
+              </BIResponsiveContainer>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

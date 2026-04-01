@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       ? `WHERE ${tableConditions.join(' AND ')}`
       : ''
 
-    const [totalRows, byStatusRows, tableCountRows, tableDataRows] = await Promise.all([
+    const [totalRows, byStatusRows, byUfRows, byValorStatusRows, tableCountRows, tableDataRows] = await Promise.all([
       query<{ total: number }>(
         `SELECT COUNT(*)::int AS total FROM propostas p ${mainWhereClause}`,
         mainParams
@@ -94,6 +94,27 @@ export async function GET(request: NextRequest) {
         ${mainWhereClause}
         GROUP BY p.situacao
         ORDER BY COUNT(*) DESC`,
+        mainParams
+      ),
+
+      // BI: valor global by UF
+      query<{ uf: string; valor_global: string; cnt: number }>(
+        `SELECT
+          COALESCE(p.estado, 'N/A') AS uf,
+          COALESCE(SUM(p.valor_global), 0)::text AS valor_global,
+          COUNT(*)::int AS cnt
+        FROM propostas p ${mainWhereClause}
+        GROUP BY 1 ORDER BY SUM(p.valor_global) DESC NULLS LAST LIMIT 10`,
+        mainParams
+      ),
+
+      // BI: valor global by situacao
+      query<{ situacao: string; valor_global: string }>(
+        `SELECT
+          COALESCE(p.situacao, 'Sem Situação') AS situacao,
+          COALESCE(SUM(p.valor_global), 0)::text AS valor_global
+        FROM propostas p ${mainWhereClause}
+        GROUP BY 1 ORDER BY SUM(p.valor_global) DESC NULLS LAST`,
         mainParams
       ),
 
@@ -161,9 +182,22 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    const response: TGovTabResponse = {
+    const byUf = byUfRows.map(r => ({
+      uf: r.uf,
+      valorGlobal: parseFloat(r.valor_global) || 0,
+      count: r.cnt,
+    }))
+
+    const byValorStatus = byValorStatusRows.map(r => ({
+      situacao: r.situacao,
+      valorGlobal: parseFloat(r.valor_global) || 0,
+    }))
+
+    const response: TGovTabResponse & { byUf: typeof byUf; byValorStatus: typeof byValorStatus } = {
       total,
       byStatus,
+      byUf,
+      byValorStatus,
       table: {
         rows: tableDataRows.map((r) => ({
           numeroProposta: r.nr_proposta || r.transfer_gov_id,
