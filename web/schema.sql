@@ -50,6 +50,7 @@ CREATE INDEX IF NOT EXISTS ix_proponentes_is_existing_client ON proponentes(is_e
 CREATE TABLE IF NOT EXISTS propostas (
   id SERIAL PRIMARY KEY,
   transfer_gov_id VARCHAR NOT NULL UNIQUE,
+  nr_proposta VARCHAR,
   titulo VARCHAR,
   valor_global FLOAT,
   valor_repasse FLOAT,
@@ -243,6 +244,7 @@ CREATE TABLE IF NOT EXISTS projetos_execucao (
   id SERIAL PRIMARY KEY,
   nr_convenio          VARCHAR(30)    NOT NULL,
   id_proposta          VARCHAR(30),
+  nr_proposta          VARCHAR(30),
   situacao             VARCHAR(100),
   modalidade           VARCHAR(100),
   cnpj                 VARCHAR(14)    NOT NULL,

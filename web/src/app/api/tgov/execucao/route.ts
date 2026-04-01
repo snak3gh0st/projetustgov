@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
-import { TGOV_PAGE_SIZE, TGovTabResponse, TGovExecucaoTableRow, buildProjetusProposalWhereClause } from '@/lib/tgov'
+import { TGOV_PAGE_SIZE, TGovTabResponse, TGovExecucaoTableRow, EXECUCAO_NR_PROPOSTAS, buildNrPropostaWhereClause } from '@/lib/tgov'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -39,9 +39,9 @@ export async function GET(request: NextRequest) {
     const mainParams: unknown[] = []
     const mainConditions: string[] = []
 
-    // Projetus whitelist: always applied as the first condition
-    // Rows with NULL id_proposta are intentionally excluded (no matching proposal = not Projetus)
-    mainConditions.push(buildProjetusProposalWhereClause('pe.id_proposta', mainParams))
+    // Projetus whitelist: only show pre-2026 proposals from the client list
+    // Rows with NULL nr_proposta are excluded (no matching proposal = not Projetus)
+    mainConditions.push(buildNrPropostaWhereClause('pe.nr_proposta', mainParams, EXECUCAO_NR_PROPOSTAS))
 
     // ano filter: use data_assinatura year directly from projetos_execucao
     if (ano) {
@@ -153,6 +153,7 @@ export async function GET(request: NextRequest) {
       query<{
         nr_convenio: string
         id_proposta: string | null
+        nr_proposta: string | null
         ano_instrumento: number | null
         cnpj: string
         nome_proponente: string | null
@@ -176,6 +177,7 @@ export async function GET(request: NextRequest) {
         `SELECT
           pe.nr_convenio,
           pe.id_proposta,
+          pe.nr_proposta,
           EXTRACT(YEAR FROM pe.data_assinatura)::int AS ano_instrumento,
           pe.cnpj,
           COALESCE(pe.nome_proponente, '') AS nome_proponente,
@@ -230,7 +232,7 @@ export async function GET(request: NextRequest) {
     })
 
     const rows: TGovExecucaoTableRow[] = tableDataRows.map((r) => ({
-      numeroProposta: r.id_proposta || r.nr_convenio,
+      numeroProposta: r.nr_proposta || r.id_proposta || r.nr_convenio,
       nrConvenio: r.nr_convenio,
       anoInstrumento: r.ano_instrumento,
       data: r.data_assinatura ? String(r.data_assinatura) : null,

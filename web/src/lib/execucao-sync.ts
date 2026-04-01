@@ -62,11 +62,13 @@ interface PropostaInfo {
   objeto: string | null
   uf: string | null
   municipio: string | null
+  nr_proposta: string | null
 }
 
 interface ExecucaoRecord {
   nr_convenio: string
   id_proposta: string
+  nr_proposta: string | null
   situacao: string | null
   modalidade: string | null
   cnpj: string
@@ -175,6 +177,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
       objeto: fixText(row['OBJETO_PROPOSTA'] || row['DESC_OBJETO'] || null) || null,
       uf: row['UF_PROPONENTE'] || row['UF'] || null,
       municipio: fixText(row['MUNICIPIO_PROPONENTE'] || row['MUNIC_PROPONENTE'] || null) || null,
+      nr_proposta: row['NR_PROPOSTA'] || null,
     })
   })
 
@@ -250,6 +253,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     records.push({
       nr_convenio: row['NR_CONVENIO'],
       id_proposta: row['ID_PROPOSTA'],
+      nr_proposta: proposta.nr_proposta,
       situacao: fixText(situacaoRaw) || null,
       modalidade: fixText(row['MODALIDADE'] || row['MOD_CONV'] || null) || null,
       cnpj: proposta.cnpj,
@@ -298,7 +302,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
 
     const UPSERT_SQL = `
       INSERT INTO projetos_execucao (
-        nr_convenio, id_proposta, situacao, modalidade,
+        nr_convenio, id_proposta, nr_proposta, situacao, modalidade,
         cnpj, nome_proponente, objeto, uf, municipio,
         valor_global, valor_repasse, valor_desembolsado, saldo_conta, valor_empenhado,
         rendimento_aplicacao, ingresso_contrapartida,
@@ -306,9 +310,10 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
         pct_execucao, dias_em_execucao, dias_ate_vencimento,
         alerta_desembolso, verificar_saldo,
         synced_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,NOW())
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,NOW())
       ON CONFLICT (nr_convenio) DO UPDATE SET
         id_proposta            = EXCLUDED.id_proposta,
+        nr_proposta            = EXCLUDED.nr_proposta,
         situacao               = EXCLUDED.situacao,
         modalidade             = EXCLUDED.modalidade,
         cnpj                   = EXCLUDED.cnpj,
@@ -339,6 +344,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
         await client.query(UPSERT_SQL, [
           rec.nr_convenio,
           rec.id_proposta,
+          rec.nr_proposta,
           rec.situacao,
           rec.modalidade,
           rec.cnpj,

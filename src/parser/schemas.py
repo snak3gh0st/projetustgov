@@ -21,6 +21,7 @@ class EmptyFileError(Exception):
 EXPECTED_COLUMNS = {
     "propostas": [
         "transfer_gov_id",
+        "nr_proposta",
         "titulo",
         "valor_global",
         "valor_repasse",
@@ -125,6 +126,7 @@ REQUIRED_COLUMNS = {
 COLUMN_ALIASES = {
     "propostas": {
         "transfer_gov_id": ["id_proposta"],
+        "nr_proposta": ["nr_proposta"],
         "titulo": ["objeto_proposta"],
         "valor_global": ["vl_global_prop"],
         "valor_repasse": ["vl_repasse_prop"],

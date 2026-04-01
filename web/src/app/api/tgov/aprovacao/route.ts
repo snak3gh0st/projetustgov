@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
-import { TGOV_PAGE_SIZE, TGovTabResponse, buildProjetusProposalWhereClause } from '@/lib/tgov'
+import { TGOV_PAGE_SIZE, TGovTabResponse, APROVACAO_NR_PROPOSTAS, buildNrPropostaWhereClause } from '@/lib/tgov'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -29,8 +29,8 @@ export async function GET(request: NextRequest) {
     const mainParams: unknown[] = []
     const mainConditions: string[] = []
 
-    // Projetus whitelist: always applied as the first condition
-    mainConditions.push(buildProjetusProposalWhereClause('p.transfer_gov_id', mainParams))
+    // Projetus whitelist: only show approved 2026 proposals from the client list
+    mainConditions.push(buildNrPropostaWhereClause('p.nr_proposta', mainParams, APROVACAO_NR_PROPOSTAS))
 
     if (ano) {
       mainParams.push(parseInt(ano, 10))
@@ -105,6 +105,7 @@ export async function GET(request: NextRequest) {
       // Expanded columns for sidecard
       query<{
         transfer_gov_id: string
+        nr_proposta: string | null
         data_publicacao: string | null
         proponente_cnpj: string
         proponente: string | null
@@ -123,6 +124,7 @@ export async function GET(request: NextRequest) {
       }>(
         `SELECT
           p.transfer_gov_id,
+          p.nr_proposta,
           p.data_publicacao::text,
           COALESCE(p.proponente_cnpj, '') AS proponente_cnpj,
           COALESCE(p.proponente, '') AS proponente,
@@ -164,7 +166,7 @@ export async function GET(request: NextRequest) {
       byStatus,
       table: {
         rows: tableDataRows.map((r) => ({
-          numeroProposta: r.transfer_gov_id,
+          numeroProposta: r.nr_proposta || r.transfer_gov_id,
           data: r.data_publicacao ? String(r.data_publicacao) : null,
           cnpj: r.proponente_cnpj,
           proponente: r.proponente ?? '',

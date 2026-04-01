@@ -82,6 +82,7 @@ def main():
     # Manual column mapping
     column_mapping = {
         "ID_PROPOSTA": "transfer_gov_id",
+        "NR_PROPOSTA": "nr_proposta",
         "OBJETO_PROPOSTA": "titulo",
         "VL_GLOBAL_PROP": "valor_global",
         "VL_REPASSE_PROP": "valor_repasse",
@@ -112,6 +113,7 @@ def main():
     # Select only the columns that exist in Proposta model
     expected_columns = [
         "transfer_gov_id",
+        "nr_proposta",
         "titulo",
         "valor_global",
         "valor_repasse",
