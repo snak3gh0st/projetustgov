@@ -5,7 +5,7 @@ milestone_name: — TGov Dashboard
 status: in_progress
 stopped_at: Completed quick/260401-e9r (TGov Projetus proposals whitelist filter)
 last_updated: "2026-04-01T00:00:00Z"
-last_activity: 2026-04-01 - Completed quick task 260401-e9r: Filter TGov views to Projetus proposals whitelist
+last_activity: 2026-04-01 - Completed quick task 260401-kvp: Restringir visoes do ADM Produto: apenas Pipeline TGOV, Usuarios TGOV e TGOV Dashboard
 progress:
   total_phases: 14
   completed_phases: 8
@@ -107,6 +107,7 @@ Progress (v5.0): [███░░░░░░░] 100%
 | 260322 | Tighten Rendimento tag eligibility and 5-proposal maturity boundary in /execucao | 2026-03-25 | fd21fa2 | [260322-atualizar-o-vinculo-da-tag-rendimento-pa](./quick/260322-atualizar-o-vinculo-da-tag-rendimento-pa/) |
 | 260323 | Separate Pipeline Aprovação vs Pipeline Execução on home dashboard | 2026-03-25 | 0377b2c | [260323-criar-pipeline-de-execucao-podendo-ficar](./quick/260323-criar-pipeline-de-execucao-podendo-ficar/) |
 | 260401-e9r | Filter TGov aprovacao and execucao tabs to Projetus proposals whitelist (246 IDs) | 2026-04-01 | e3c7025 | [260401-e9r-tgov-execucao-projetus-proposals-filter](./quick/260401-e9r-tgov-execucao-projetus-proposals-filter/) |
+| 260401-kvp | Restringir visoes do ADM Produto: apenas Pipeline TGOV, Usuarios TGOV e TGOV Dashboard | 2026-04-01 | 07eeeab | [260401-kvp-restringir-visoes-do-adm-produto-apenas-](./quick/260401-kvp-restringir-visoes-do-adm-produto-apenas-/) |
 
 ### Blockers / Concerns
 
