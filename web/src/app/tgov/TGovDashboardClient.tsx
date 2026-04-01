@@ -67,6 +67,21 @@ interface ExecucaoResponse extends TGovTabResponse {
   byExecRange?: TGovStatusBucket[]
 }
 
+interface CnpjSearchResult {
+  cnpj: string
+  proponente: string | null
+  propostas: {
+    numeroProposta: string; titulo: string | null; proponente: string; situacao: string
+    valorGlobal: number | null; valorRepasse: number | null; uf: string | null; municipio: string | null; data: string | null
+  }[]
+  execucao: {
+    nrConvenio: string; numeroProposta: string; proponente: string; situacao: string
+    valorGlobal: number | null; valorRepasse: number | null; valorDesembolsado: number | null
+    saldoConta: number | null; pctExecucao: number | null; uf: string | null; municipio: string | null
+    data: string | null; dataFimVigencia: string | null
+  }[]
+}
+
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
@@ -91,6 +106,13 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
   // Sidecard state
   const [selectedExecRow, setSelectedExecRow] = useState<TGovExecucaoTableRow | null>(null)
   const [selectedAprovRow, setSelectedAprovRow] = useState<TGovAprovacaoTableRow | null>(null)
+
+  // CNPJ search state
+  const [cnpjModalOpen, setCnpjModalOpen] = useState(false)
+  const [cnpjInput, setCnpjInput] = useState('')
+  const [cnpjLoading, setCnpjLoading] = useState(false)
+  const [cnpjResult, setCnpjResult] = useState<CnpjSearchResult | null>(null)
+  const [cnpjError, setCnpjError] = useState<string | null>(null)
 
   // ---------------------------------------------------------------------------
   // Fetch
@@ -161,6 +183,34 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
     setPage(1)
   }
 
+  async function handleCnpjSearch() {
+    const cleaned = cnpjInput.replace(/\D/g, '')
+    if (cleaned.length < 11) {
+      setCnpjError('CNPJ deve ter pelo menos 11 dígitos')
+      return
+    }
+    setCnpjLoading(true)
+    setCnpjError(null)
+    setCnpjResult(null)
+    try {
+      const res = await fetch(`/api/tgov/busca-cnpj?cnpj=${cleaned}`)
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body?.error ?? `HTTP ${res.status}`)
+      }
+      const json: CnpjSearchResult = await res.json()
+      if (json.propostas.length === 0 && json.execucao.length === 0) {
+        setCnpjError('Nenhuma proposta ou convênio encontrado para este CNPJ no SICONV.')
+      } else {
+        setCnpjResult(json)
+      }
+    } catch (err) {
+      setCnpjError(err instanceof Error ? err.message : 'Erro ao buscar')
+    } finally {
+      setCnpjLoading(false)
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -188,20 +238,31 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
               Painel gerencial de propostas e projetos em execução
             </p>
           </div>
-          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
-            {(['aprovacao', 'execucao'] as TGovTab[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => handleTabSwitch(tab)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === tab
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab === 'aprovacao' ? 'Aprovação' : 'Execução'}
-              </button>
-            ))}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => { setCnpjModalOpen(true); setCnpjResult(null); setCnpjError(null); setCnpjInput('') }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              Buscar CNPJ
+            </button>
+            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+              {(['aprovacao', 'execucao'] as TGovTab[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => handleTabSwitch(tab)}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    activeTab === tab
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {tab === 'aprovacao' ? 'Aprovação' : 'Execução'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -396,6 +457,129 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
       )}
       {selectedAprovRow && (
         <AprovacaoSidecard row={selectedAprovRow} onClose={() => setSelectedAprovRow(null)} />
+      )}
+
+      {/* CNPJ Search Modal */}
+      {cnpjModalOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setCnpjModalOpen(false)} />
+          <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
+            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900">Buscar CNPJ no SICONV</h3>
+                <button onClick={() => setCnpjModalOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Search input */}
+              <div className="px-6 py-4 flex gap-2">
+                <input
+                  type="text"
+                  value={cnpjInput}
+                  onChange={(e) => setCnpjInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCnpjSearch()}
+                  placeholder="Digite o CNPJ (ex: 12.345.678/0001-90)"
+                  className="flex-1 h-10 rounded-lg border border-gray-200 px-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoFocus
+                />
+                <button
+                  onClick={handleCnpjSearch}
+                  disabled={cnpjLoading}
+                  className="h-10 px-5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {cnpjLoading ? 'Buscando...' : 'Buscar'}
+                </button>
+              </div>
+
+              {/* Results */}
+              <div className="px-6 pb-6 overflow-y-auto flex-1">
+                {cnpjError && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{cnpjError}</div>
+                )}
+
+                {cnpjResult && (
+                  <div className="space-y-4">
+                    <div className="rounded-lg bg-gray-50 px-4 py-3">
+                      <p className="text-sm font-semibold text-gray-900">{cnpjResult.proponente || 'Proponente'}</p>
+                      <p className="text-xs text-gray-500 font-mono mt-0.5">{formatCnpj(cnpjResult.cnpj)}</p>
+                    </div>
+
+                    {/* Propostas */}
+                    {cnpjResult.propostas.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                          Propostas ({cnpjResult.propostas.length})
+                        </p>
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="bg-gray-50 border-b border-gray-100">
+                                <th className="text-left px-3 py-2 font-medium text-gray-500">Nr Proposta</th>
+                                <th className="text-left px-3 py-2 font-medium text-gray-500">Situação</th>
+                                <th className="text-right px-3 py-2 font-medium text-gray-500">Valor Global</th>
+                                <th className="text-left px-3 py-2 font-medium text-gray-500">UF</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                              {cnpjResult.propostas.map((p, i) => (
+                                <tr key={i} className="hover:bg-blue-50/30">
+                                  <td className="px-3 py-2 font-mono">{p.numeroProposta}</td>
+                                  <td className="px-3 py-2"><SituacaoBadge situacao={p.situacao} /></td>
+                                  <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(p.valorGlobal)}</td>
+                                  <td className="px-3 py-2 text-gray-500">{p.uf || '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Execução */}
+                    {cnpjResult.execucao.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                          Em Execução ({cnpjResult.execucao.length})
+                        </p>
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="bg-gray-50 border-b border-gray-100">
+                                <th className="text-left px-3 py-2 font-medium text-gray-500">Nr Convênio</th>
+                                <th className="text-left px-3 py-2 font-medium text-gray-500">Situação</th>
+                                <th className="text-right px-3 py-2 font-medium text-gray-500">Valor Global</th>
+                                <th className="text-right px-3 py-2 font-medium text-gray-500">Desembolsado</th>
+                                <th className="text-left px-3 py-2 font-medium text-gray-500">Fim Vigência</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                              {cnpjResult.execucao.map((e, i) => (
+                                <tr key={i} className="hover:bg-blue-50/30">
+                                  <td className="px-3 py-2 font-mono">
+                                    <a href={buildTGovLink(e.nrConvenio)} target="_blank" rel="noopener noreferrer"
+                                       className="text-blue-600 hover:underline">{e.nrConvenio}</a>
+                                  </td>
+                                  <td className="px-3 py-2"><SituacaoBadge situacao={e.situacao} /></td>
+                                  <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(e.valorGlobal)}</td>
+                                  <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(e.valorDesembolsado)}</td>
+                                  <td className="px-3 py-2 text-gray-500">{formatDate(e.dataFimVigencia)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )
