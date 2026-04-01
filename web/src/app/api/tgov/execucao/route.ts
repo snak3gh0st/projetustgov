@@ -6,6 +6,72 @@ import { TGOV_PAGE_SIZE, TGovTabResponse, TGovExecucaoTableRow, EXECUCAO_NR_PROP
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
+/**
+ * CTE that unions projetos_execucao (with financial data) and propostas
+ * (without convenio yet). This ensures ALL 244 whitelist proposals appear,
+ * even if they don't have a signed convenio in projetos_execucao.
+ */
+const ALL_EXEC_CTE = `
+  all_exec AS (
+    SELECT
+      pe.nr_convenio,
+      pe.id_proposta,
+      pe.nr_proposta,
+      pe.situacao,
+      pe.cnpj,
+      pe.nome_proponente,
+      pe.valor_global,
+      pe.valor_repasse,
+      pe.valor_desembolsado,
+      pe.saldo_conta,
+      pe.valor_empenhado,
+      pe.rendimento_aplicacao,
+      pe.ingresso_contrapartida,
+      pe.pct_execucao,
+      pe.uf,
+      pe.municipio,
+      pe.data_assinatura,
+      pe.data_inicio_vigencia,
+      pe.data_fim_vigencia,
+      pe.dias_em_execucao,
+      pe.dias_ate_vencimento
+    FROM projetos_execucao pe
+    WHERE pe.nr_proposta IS NOT NULL
+
+    UNION ALL
+
+    SELECT
+      NULL AS nr_convenio,
+      p.transfer_gov_id AS id_proposta,
+      p.nr_proposta,
+      p.situacao,
+      p.proponente_cnpj AS cnpj,
+      p.proponente AS nome_proponente,
+      p.valor_global::numeric AS valor_global,
+      p.valor_repasse::numeric AS valor_repasse,
+      NULL AS valor_desembolsado,
+      NULL AS saldo_conta,
+      NULL AS valor_empenhado,
+      NULL AS rendimento_aplicacao,
+      NULL AS ingresso_contrapartida,
+      NULL AS pct_execucao,
+      p.estado AS uf,
+      p.municipio,
+      NULL AS data_assinatura,
+      p.data_inicio_vigencia,
+      p.data_fim_vigencia,
+      NULL AS dias_em_execucao,
+      NULL AS dias_ate_vencimento
+    FROM propostas p
+    WHERE p.nr_proposta IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM projetos_execucao pe2
+        WHERE pe2.nr_proposta IS NOT NULL
+          AND REGEXP_REPLACE(pe2.nr_proposta, '^0+', '') = REGEXP_REPLACE(p.nr_proposta, '^0+', '')
+      )
+  )
+`
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getApiSession()
@@ -19,7 +85,7 @@ export async function GET(request: NextRequest) {
     // Main filters — affect both aggregates (total, byStatus) and table
     // ---------------------------------------------------------------------------
     const ano = searchParams.get('ano') ?? ''
-    const tipo = searchParams.get('tipo') ?? 'todos' // 'todos' | 'meus_proponentes' | 'outros'
+    const tipo = searchParams.get('tipo') ?? 'todos'
     const status = searchParams.get('status') ?? ''
     const uf = searchParams.get('uf') ?? ''
 
@@ -34,34 +100,29 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * TGOV_PAGE_SIZE
 
     // ---------------------------------------------------------------------------
-    // Build parameterized main filter clauses
+    // Build parameterized main filter clauses (pe = all_exec CTE alias)
     // ---------------------------------------------------------------------------
     const mainParams: unknown[] = []
     const mainConditions: string[] = []
 
-    // Projetus whitelist: only show pre-2026 proposals from the client list
-    // Rows with NULL nr_proposta are excluded (no matching proposal = not Projetus)
+    // Projetus whitelist
     mainConditions.push(buildNrPropostaWhereClause('pe.nr_proposta', mainParams, EXECUCAO_NR_PROPOSTAS))
 
-    // ano filter: use data_assinatura year directly from projetos_execucao
     if (ano) {
       mainParams.push(parseInt(ano, 10))
       mainConditions.push(`EXTRACT(YEAR FROM pe.data_assinatura) = $${mainParams.length}`)
     }
 
-    // status filter: pe.situacao exact match
     if (status) {
       mainParams.push(status)
       mainConditions.push(`pe.situacao = $${mainParams.length}`)
     }
 
-    // uf filter: pe.uf
     if (uf) {
       mainParams.push(uf)
       mainConditions.push(`pe.uf = $${mainParams.length}`)
     }
 
-    // tipo filter: EXISTS / NOT EXISTS against vendedor_projetos using CNPJ normalisation
     if (tipo === 'meus_proponentes') {
       mainConditions.push(`EXISTS (
         SELECT 1 FROM vendedor_projetos vp
@@ -79,7 +140,7 @@ export async function GET(request: NextRequest) {
       : ''
 
     // ---------------------------------------------------------------------------
-    // Build table-only filter clauses (extend main params)
+    // Build table-only filter clauses
     // ---------------------------------------------------------------------------
     const tableParams = [...mainParams]
     const tableConditions = [...mainConditions]
@@ -94,6 +155,7 @@ export async function GET(request: NextRequest) {
       tableConditions.push(`(
         pe.nr_convenio LIKE $${tableParams.length}
         OR (pe.id_proposta IS NOT NULL AND pe.id_proposta LIKE $${tableParams.length})
+        OR (pe.nr_proposta IS NOT NULL AND pe.nr_proposta LIKE $${tableParams.length})
       )`)
     }
 
@@ -102,30 +164,25 @@ export async function GET(request: NextRequest) {
       : ''
 
     // ---------------------------------------------------------------------------
-    // Run queries in parallel
+    // Run queries — all use WITH all_exec CTE
     // ---------------------------------------------------------------------------
     const [totalRows, byStatusRows, byExecRangeRows, tableCountRows, tableDataRows] = await Promise.all([
-      // 1. Total matching main filters
       query<{ total: number }>(
-        `SELECT COUNT(*)::int AS total FROM projetos_execucao pe ${mainWhereClause}`,
+        `WITH ${ALL_EXEC_CTE} SELECT COUNT(*)::int AS total FROM all_exec pe ${mainWhereClause}`,
         mainParams
       ),
 
-      // 2. Status buckets (kept for reference / filtering)
       query<{ situacao: string; cnt: number }>(
-        `SELECT
-          COALESCE(pe.situacao, 'Sem Situação') AS situacao,
-          COUNT(*)::int AS cnt
-        FROM projetos_execucao pe
-        ${mainWhereClause}
-        GROUP BY pe.situacao
-        ORDER BY COUNT(*) DESC`,
+        `WITH ${ALL_EXEC_CTE}
+        SELECT COALESCE(pe.situacao, 'Sem Situação') AS situacao, COUNT(*)::int AS cnt
+        FROM all_exec pe ${mainWhereClause}
+        GROUP BY pe.situacao ORDER BY COUNT(*) DESC`,
         mainParams
       ),
 
-      // 2b. % Execução range buckets for donut chart
       query<{ faixa: string; cnt: number }>(
-        `SELECT
+        `WITH ${ALL_EXEC_CTE}
+        SELECT
           CASE
             WHEN pe.pct_execucao IS NULL THEN 'Sem dados'
             WHEN pe.pct_execucao < 25 THEN '0–25%'
@@ -135,23 +192,18 @@ export async function GET(request: NextRequest) {
             ELSE '100%+'
           END AS faixa,
           COUNT(*)::int AS cnt
-        FROM projetos_execucao pe
-        ${mainWhereClause}
-        GROUP BY 1
-        ORDER BY
-          MIN(COALESCE(pe.pct_execucao, 999))`,
+        FROM all_exec pe ${mainWhereClause}
+        GROUP BY 1 ORDER BY MIN(COALESCE(pe.pct_execucao, 999))`,
         mainParams
       ),
 
-      // 3. Total rows matching main + table filters (for pagination metadata)
       query<{ total: number }>(
-        `SELECT COUNT(*)::int AS total FROM projetos_execucao pe ${tableWhereClause}`,
+        `WITH ${ALL_EXEC_CTE} SELECT COUNT(*)::int AS total FROM all_exec pe ${tableWhereClause}`,
         tableParams
       ),
 
-      // 4. Paginated table rows with expanded columns
       query<{
-        nr_convenio: string
+        nr_convenio: string | null
         id_proposta: string | null
         nr_proposta: string | null
         ano_instrumento: number | null
@@ -174,7 +226,8 @@ export async function GET(request: NextRequest) {
         dias_em_execucao: number | null
         dias_ate_vencimento: number | null
       }>(
-        `SELECT
+        `WITH ${ALL_EXEC_CTE}
+        SELECT
           pe.nr_convenio,
           pe.id_proposta,
           pe.nr_proposta,
@@ -197,11 +250,11 @@ export async function GET(request: NextRequest) {
           pe.data_fim_vigencia::text,
           pe.dias_em_execucao,
           pe.dias_ate_vencimento
-        FROM projetos_execucao pe
+        FROM all_exec pe
         ${tableWhereClause}
         ORDER BY
           pe.valor_global DESC NULLS LAST,
-          pe.nr_convenio DESC
+          pe.nr_convenio DESC NULLS LAST
         LIMIT ${TGOV_PAGE_SIZE} OFFSET ${offset}`,
         tableParams
       ),
@@ -211,7 +264,6 @@ export async function GET(request: NextRequest) {
     const totalTableRows = Number(tableCountRows[0]?.total) || 0
     const totalPages = Math.max(1, Math.ceil(totalTableRows / TGOV_PAGE_SIZE))
 
-    // Build byStatus with percent
     const byStatus = byStatusRows.map((r) => {
       const count = Number(r.cnt)
       return {
@@ -221,7 +273,6 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Build byExecRange with percent (for execucao donut chart)
     const byExecRange = byExecRangeRows.map((r) => {
       const count = Number(r.cnt)
       return {
@@ -232,8 +283,8 @@ export async function GET(request: NextRequest) {
     })
 
     const rows: TGovExecucaoTableRow[] = tableDataRows.map((r) => ({
-      numeroProposta: r.nr_proposta || r.id_proposta || r.nr_convenio,
-      nrConvenio: r.nr_convenio,
+      numeroProposta: r.nr_proposta || r.id_proposta || r.nr_convenio || '—',
+      nrConvenio: r.nr_convenio || '',
       anoInstrumento: r.ano_instrumento,
       data: r.data_assinatura ? String(r.data_assinatura) : null,
       cnpj: r.cnpj,
