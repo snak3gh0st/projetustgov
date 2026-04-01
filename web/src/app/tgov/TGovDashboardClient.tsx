@@ -663,6 +663,7 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
             byStatus={data.byStatus}
             byYear={(data as ExecucaoResponse).byYear ?? []}
             byDesembolsoYear={(data as ExecucaoResponse).byDesembolsoYear ?? []}
+            onStatusClick={(s) => handleMainFilterChange('status', mainFilters.status === s ? '' : s)}
           />
         )}
         {activeTab === 'aprovacao' && !loading && data && data.total > 0 && (
@@ -671,6 +672,7 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
             byStatus={data.byStatus}
             byUf={(data as AprovacaoResponse).byUf ?? []}
             byValorStatus={(data as AprovacaoResponse).byValorStatus ?? []}
+            onStatusClick={(s) => handleMainFilterChange('status', mainFilters.status === s ? '' : s)}
           />
         )}
       </div>
@@ -956,10 +958,8 @@ function AprovacaoTable({
               <td className="px-5 py-2.5 text-gray-700 font-mono text-xs">{row.numeroProposta || '—'}</td>
               <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">{formatDate(row.data)}</td>
               <td className="px-4 py-2.5 text-gray-500 font-mono text-xs whitespace-nowrap">{formatCnpj(row.cnpj) || '—'}</td>
-              <td className="px-4 py-2.5 text-gray-700 max-w-[240px]">
-                <span className="truncate block" title={row.proponente}>
-                  {row.proponente || '—'}
-                </span>
+              <td className="px-4 py-2.5 text-gray-700">
+                {row.proponente || '—'}
               </td>
               <td className="px-4 py-2.5"><SituacaoBadge situacao={row.situacao} /></td>
               <td className="px-4 py-2.5"><InternalStatusBadge status={row.internalStatus} /></td>
@@ -1052,10 +1052,8 @@ function ExecucaoTable({
                 </td>
                 <td className="px-3 py-2.5 text-gray-500 text-xs tabular-nums">{row.anoInstrumento || '—'}</td>
                 <td className="px-3 py-2.5 text-gray-500 font-mono text-xs whitespace-nowrap">{formatCnpj(row.cnpj) || '—'}</td>
-                <td className="px-3 py-2.5 text-gray-700 max-w-[200px]">
-                  <span className="truncate block text-xs" title={row.proponente}>
-                    {row.proponente || '—'}
-                  </span>
+                <td className="px-3 py-2.5 text-gray-700 text-xs">
+                  {row.proponente || '—'}
                 </td>
                 <td className="px-3 py-2.5 text-gray-500 text-xs">{row.uf || '—'}</td>
                 <td className="px-3 py-2.5"><SituacaoBadge situacao={row.situacao} /></td>
@@ -1420,12 +1418,13 @@ function SidecardCurrency({
 // ---------------------------------------------------------------------------
 
 function AprovacaoBISummary({
-  total, byStatus, byUf, byValorStatus,
+  total, byStatus, byUf, byValorStatus, onStatusClick,
 }: {
   total: number
   byStatus: TGovStatusBucket[]
   byUf: { uf: string; valorGlobal: number; count: number }[]
   byValorStatus: { situacao: string; valorGlobal: number }[]
+  onStatusClick?: (status: string) => void
 }) {
   const valorGlobalTotal = byValorStatus.reduce((s, r) => s + r.valorGlobal, 0)
 
@@ -1490,7 +1489,10 @@ function AprovacaoBISummary({
               <div className="w-36 h-36 shrink-0">
                 <BIResponsiveContainer>
                   <BIPieChart>
-                    <BIPie data={donutData} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={35} outerRadius={55} paddingAngle={2} stroke="none">
+                    <BIPie data={donutData} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={35} outerRadius={55} paddingAngle={2} stroke="none"
+                      onClick={(d: { status: string }) => onStatusClick?.(d.status)}
+                      style={{ cursor: onStatusClick ? 'pointer' : undefined }}
+                    >
                       {donutData.map((entry, i) => (
                         <BICell key={entry.status} fill={COLORS[i % COLORS.length]} />
                       ))}
@@ -1501,7 +1503,7 @@ function AprovacaoBISummary({
               </div>
               <div className="flex-1 space-y-1 min-w-0 overflow-y-auto max-h-48">
                 {donutData.map((entry, i) => (
-                  <div key={entry.status} className="flex items-center gap-2">
+                  <div key={entry.status} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1 transition-colors" onClick={() => onStatusClick?.(entry.status)}>
                     <span className="shrink-0 w-2 h-2 rounded-sm" style={{ background: COLORS[i % COLORS.length] }} />
                     <span className="text-xs text-gray-600 truncate flex-1" title={entry.status}>{entry.status}</span>
                     <span className="text-xs font-bold text-gray-800 tabular-nums">{entry.count}</span>
@@ -1539,13 +1541,14 @@ function AprovacaoBISummary({
 // ---------------------------------------------------------------------------
 
 function ExecucaoBISummary({
-  rows, total, byStatus, byYear, byDesembolsoYear,
+  rows, total, byStatus, byYear, byDesembolsoYear, onStatusClick,
 }: {
   rows: TGovExecucaoTableRow[]
   total: number
   byStatus: TGovStatusBucket[]
   byYear: { ano: string; valorGlobal: number; count: number }[]
   byDesembolsoYear: { ano: string; comDesembolso: number; semDesembolso: number }[]
+  onStatusClick?: (status: string) => void
 }) {
   const valorGlobalTotal = rows.reduce((sum, r) => sum + (r.valorGlobal ?? 0), 0)
   const valorDesembolsadoTotal = rows.reduce((sum, r) => sum + (r.valorDesembolsado ?? 0), 0)
@@ -1624,7 +1627,10 @@ function ExecucaoBISummary({
               <div className="w-36 h-36 shrink-0">
                 <BIResponsiveContainer>
                   <BIPieChart>
-                    <BIPie data={donutData} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={35} outerRadius={55} paddingAngle={2} stroke="none">
+                    <BIPie data={donutData} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={35} outerRadius={55} paddingAngle={2} stroke="none"
+                      onClick={(d: { status: string }) => onStatusClick?.(d.status)}
+                      style={{ cursor: onStatusClick ? 'pointer' : undefined }}
+                    >
                       {donutData.map((entry, i) => (
                         <BICell key={entry.status} fill={STATUS_COLORS[entry.status] ?? FALLBACK[i % FALLBACK.length]} />
                       ))}
@@ -1635,7 +1641,7 @@ function ExecucaoBISummary({
               </div>
               <div className="flex-1 space-y-1 min-w-0 overflow-y-auto max-h-48">
                 {donutData.map((entry, i) => (
-                  <div key={entry.status} className="flex items-center gap-2">
+                  <div key={entry.status} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1 transition-colors" onClick={() => onStatusClick?.(entry.status)}>
                     <span className="shrink-0 w-2 h-2 rounded-sm" style={{ background: STATUS_COLORS[entry.status] ?? FALLBACK[i % FALLBACK.length] }} />
                     <span className="text-xs text-gray-600 truncate flex-1" title={entry.status}>{entry.status}</span>
                     <span className="text-xs font-bold text-gray-800 tabular-nums">{entry.count}</span>
