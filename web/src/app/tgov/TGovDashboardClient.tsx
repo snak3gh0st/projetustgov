@@ -549,9 +549,36 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
 
                 {cnpjResult && (
                   <div className="space-y-4">
-                    <div className="rounded-lg bg-gray-50 px-4 py-3">
-                      <p className="text-sm font-semibold text-gray-900">{cnpjResult.proponente || 'Proponente'}</p>
-                      <p className="text-xs text-gray-500 font-mono mt-0.5">{formatCnpj(cnpjResult.cnpj)}</p>
+                    <div className="rounded-lg bg-gray-50 px-4 py-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{cnpjResult.proponente || 'Proponente'}</p>
+                        <p className="text-xs text-gray-500 font-mono mt-0.5">{formatCnpj(cnpjResult.cnpj)}</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          const isNr = cnpjInput.includes('/')
+                          const body = isNr
+                            ? { nr_proposta: cnpjInput.trim(), tab: 'ambos' }
+                            : { cnpj: cnpjInput.replace(/\D/g, ''), tab: 'ambos' }
+                          const res = await fetch('/api/tgov/whitelist', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(body),
+                          })
+                          const json = await res.json()
+                          alert(json.message || json.error || 'Erro')
+                          if (res.ok) {
+                            // Refresh main data
+                            fetchData(activeTab, mainFilters, tableFilters, page)
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors shrink-0"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Adicionar ao TGov
+                      </button>
                     </div>
 
                     {/* Propostas */}

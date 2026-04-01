@@ -104,8 +104,9 @@ export async function GET(request: NextRequest) {
     const mainParams: unknown[] = []
     const mainConditions: string[] = []
 
-    // Projetus whitelist
-    mainConditions.push(buildNrPropostaWhereClause('pe.nr_proposta', mainParams, EXECUCAO_NR_PROPOSTAS))
+    // Projetus whitelist (hardcoded) + dynamic whitelist from tgov_whitelist table
+    const staticClause = buildNrPropostaWhereClause('pe.nr_proposta', mainParams, EXECUCAO_NR_PROPOSTAS)
+    mainConditions.push(`(${staticClause} OR EXISTS (SELECT 1 FROM tgov_whitelist tw WHERE (tw.cnpj = pe.cnpj OR tw.nr_proposta = pe.nr_proposta) AND tw.tab IN ('ambos','execucao')))`)
 
     if (ano) {
       mainParams.push(parseInt(ano, 10))

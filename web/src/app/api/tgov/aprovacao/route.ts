@@ -29,8 +29,9 @@ export async function GET(request: NextRequest) {
     const mainParams: unknown[] = []
     const mainConditions: string[] = []
 
-    // Projetus whitelist: only show approved 2026 proposals from the client list
-    mainConditions.push(buildNrPropostaWhereClause('p.nr_proposta', mainParams, APROVACAO_NR_PROPOSTAS))
+    // Projetus whitelist (hardcoded) + dynamic whitelist from tgov_whitelist table
+    const staticClause = buildNrPropostaWhereClause('p.nr_proposta', mainParams, APROVACAO_NR_PROPOSTAS)
+    mainConditions.push(`(${staticClause} OR EXISTS (SELECT 1 FROM tgov_whitelist tw WHERE (tw.cnpj = p.proponente_cnpj OR tw.nr_proposta = p.nr_proposta) AND tw.tab IN ('ambos','aprovacao')))`)
 
     if (ano) {
       mainParams.push(parseInt(ano, 10))
