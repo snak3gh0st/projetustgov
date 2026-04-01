@@ -318,9 +318,9 @@ export function buildNrPropostaWhereClause(
 ): string {
   const startIndex = params.length + 1
   const ids = Array.from(whitelist)
-  ids.forEach((id) => params.push(id))
+  // Normalize: strip leading zeros from BOTH sides so "003677/2026" matches "3677/2026"
+  ids.forEach((id) => params.push(id.replace(/^0+/, '')))
   const placeholders = ids.map((_, i) => `$${startIndex + i}`).join(', ')
-  // Strip leading zeros from the stored nr_proposta to match the user-provided format
   return `REGEXP_REPLACE(${columnName}, '^0+', '') IN (${placeholders})`
 }
 
