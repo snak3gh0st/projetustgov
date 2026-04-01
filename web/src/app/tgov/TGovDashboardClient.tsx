@@ -400,32 +400,78 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
 
         {/* Table section */}
         <div className="bg-white rounded-xl border border-gray-200">
-          <div className="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center gap-3">
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-900">Detalhamento — {tabLabel}</p>
-              {!loading && data && (
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {totalRows.toLocaleString('pt-BR')} registro{totalRows !== 1 ? 's' : ''}
-                  {tableFilters.proponente || tableFilters.numeroProposta ? ' (filtrado)' : ''}
-                </p>
-              )}
+          <div className="px-5 py-4 border-b border-gray-100">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-900">Detalhamento — {tabLabel}</p>
+                {!loading && data && (
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {totalRows.toLocaleString('pt-BR')} registro{totalRows !== 1 ? 's' : ''}
+                    {tableFilters.proponente || tableFilters.numeroProposta ? ' (filtrado)' : ''}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  type="text"
+                  value={tableFilters.proponente}
+                  onChange={(e) => handleTableFilterChange('proponente', e.target.value)}
+                  placeholder="Proponente"
+                  className="h-8 w-44 rounded-lg border border-gray-200 px-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="text"
+                  value={tableFilters.numeroProposta}
+                  onChange={(e) => handleTableFilterChange('numeroProposta', e.target.value)}
+                  placeholder={activeTab === 'aprovacao' ? 'Numero Proposta' : 'Nr Convênio / Proposta'}
+                  className="h-8 w-52 rounded-lg border border-gray-200 px-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <input
-                type="text"
-                value={tableFilters.proponente}
-                onChange={(e) => handleTableFilterChange('proponente', e.target.value)}
-                placeholder="Proponente"
-                className="h-8 w-44 rounded-lg border border-gray-200 px-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                value={tableFilters.numeroProposta}
-                onChange={(e) => handleTableFilterChange('numeroProposta', e.target.value)}
-                placeholder={activeTab === 'aprovacao' ? 'Numero Proposta' : 'Nr Convênio / Proposta'}
-                className="h-8 w-52 rounded-lg border border-gray-200 px-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            {/* Situação + UF filter chips */}
+            {data && (data.byStatus.length > 0 || (data.table.rows as (TGovAprovacaoTableRow | TGovExecucaoTableRow)[]).some(r => r.uf)) && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {data.byStatus.map((bucket) => {
+                  const active = mainFilters.status === bucket.status
+                  return (
+                    <button
+                      key={bucket.status}
+                      onClick={() => handleMainFilterChange('status', active ? '' : bucket.status)}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                        active
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {bucket.status}
+                      <span className={`rounded-full px-1 py-0.5 text-[10px] font-semibold ${active ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                        {bucket.count.toLocaleString('pt-BR')}
+                      </span>
+                    </button>
+                  )
+                })}
+                {Array.from(new Set(
+                  (data.table.rows as (TGovAprovacaoTableRow | TGovExecucaoTableRow)[])
+                    .map(r => r.uf)
+                    .filter((uf): uf is string => !!uf)
+                )).sort().map((uf) => {
+                  const active = mainFilters.uf === uf
+                  return (
+                    <button
+                      key={uf}
+                      onClick={() => handleMainFilterChange('uf', active ? '' : uf)}
+                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                        active
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {uf}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           <div className="overflow-x-auto">
@@ -675,6 +721,52 @@ function PaginationButton({ label, onClick, disabled }: { label: string; onClick
 }
 
 // ---------------------------------------------------------------------------
+// Sortable column header
+// ---------------------------------------------------------------------------
+
+type SortDir = 'asc' | 'desc'
+
+function SortableTh({
+  label,
+  col,
+  sortCol,
+  sortDir,
+  onSort,
+  className,
+}: {
+  label: string
+  col: string
+  sortCol: string
+  sortDir: SortDir
+  onSort: (col: string) => void
+  className?: string
+}) {
+  const active = sortCol === col
+  return (
+    <th
+      className={`cursor-pointer select-none text-xs font-medium uppercase tracking-wide py-2.5 ${className ?? ''}`}
+      onClick={() => onSort(col)}
+    >
+      <span className="inline-flex items-center gap-1">
+        <span className={active ? 'text-blue-600' : 'text-gray-500'}>{label}</span>
+        <span className="text-gray-300 text-[10px]">
+          {active ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+        </span>
+      </span>
+    </th>
+  )
+}
+
+function sortRows<T extends Record<string, unknown>>(rows: T[], col: string, dir: SortDir): T[] {
+  return [...rows].sort((a, b) => {
+    const av = a[col] ?? ''
+    const bv = b[col] ?? ''
+    const cmp = String(av).localeCompare(String(bv), 'pt-BR', { numeric: true, sensitivity: 'base' })
+    return dir === 'asc' ? cmp : -cmp
+  })
+}
+
+// ---------------------------------------------------------------------------
 // Aprovacao Table
 // ---------------------------------------------------------------------------
 
@@ -687,23 +779,39 @@ function AprovacaoTable({
   loading: boolean
   onRowClick: (row: TGovAprovacaoTableRow) => void
 }) {
+  const [sortCol, setSortCol] = useState('numeroProposta')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+
+  function handleSort(col: string) {
+    if (sortCol === col) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
+  }
+
+  const sorted = rows ? (sortRows(rows as unknown as Record<string, unknown>[], sortCol, sortDir) as unknown as TGovAprovacaoTableRow[]) : rows
+
+  const thProps = { sortCol, sortDir, onSort: handleSort }
+
   return (
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-gray-100 bg-gray-50">
-          <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">ID Proposta</th>
-          <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Data</th>
-          <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">CNPJ</th>
-          <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Proponente</th>
-          <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Situação</th>
+          <SortableTh label="ID Proposta" col="numeroProposta" className="text-left px-5" {...thProps} />
+          <SortableTh label="Data" col="data" className="text-left px-4" {...thProps} />
+          <SortableTh label="CNPJ" col="cnpj" className="text-left px-4" {...thProps} />
+          <SortableTh label="Proponente" col="proponente" className="text-left px-4" {...thProps} />
+          <SortableTh label="Situação" col="situacao" className="text-left px-4" {...thProps} />
           <th className="px-3 py-2.5 w-8"></th>
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-50">
         {loading ? (
           <SkeletonRows cols={6} />
-        ) : rows && rows.length > 0 ? (
-          rows.map((row, idx) => (
+        ) : sorted && sorted.length > 0 ? (
+          sorted.map((row, idx) => (
             <tr
               key={`${row.numeroProposta}-${idx}`}
               className="hover:bg-blue-50/50 transition-colors cursor-pointer"
@@ -746,29 +854,45 @@ function ExecucaoTable({
   loading: boolean
   onRowClick: (row: TGovExecucaoTableRow) => void
 }) {
+  const [sortCol, setSortCol] = useState('nrConvenio')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+
+  function handleSort(col: string) {
+    if (sortCol === col) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
+  }
+
+  const sorted = rows ? (sortRows(rows as unknown as Record<string, unknown>[], sortCol, sortDir) as unknown as TGovExecucaoTableRow[]) : rows
+
+  const thProps = { sortCol, sortDir, onSort: handleSort }
+
   return (
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-gray-100 bg-gray-50">
-          <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Nr Convênio</th>
-          <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Ano</th>
-          <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">CNPJ</th>
-          <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Proponente</th>
-          <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">UF</th>
-          <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Situação</th>
-          <th className="text-right px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Valor Global</th>
-          <th className="text-right px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Saldo Conta</th>
+          <SortableTh label="Nr Convênio" col="nrConvenio" className="text-left px-4 whitespace-nowrap" {...thProps} />
+          <SortableTh label="Ano" col="anoInstrumento" className="text-left px-3" {...thProps} />
+          <SortableTh label="CNPJ" col="cnpj" className="text-left px-3" {...thProps} />
+          <SortableTh label="Proponente" col="proponente" className="text-left px-3" {...thProps} />
+          <SortableTh label="UF" col="uf" className="text-left px-3" {...thProps} />
+          <SortableTh label="Situação" col="situacao" className="text-left px-3" {...thProps} />
+          <SortableTh label="Valor Global" col="valorGlobal" className="text-right px-3 whitespace-nowrap" {...thProps} />
+          <SortableTh label="Saldo Conta" col="saldoConta" className="text-right px-3 whitespace-nowrap" {...thProps} />
           <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Desembolso</th>
-          <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Fim Vigência</th>
-          <th className="text-left px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Término</th>
+          <SortableTh label="Fim Vigência" col="dataFimVigencia" className="text-left px-3 whitespace-nowrap" {...thProps} />
+          <SortableTh label="Término" col="dataInicioVigencia" className="text-left px-3 whitespace-nowrap" {...thProps} />
           <th className="px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide w-8"></th>
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-50">
         {loading ? (
           <SkeletonRows cols={12} />
-        ) : rows && rows.length > 0 ? (
-          rows.map((row, idx) => {
+        ) : sorted && sorted.length > 0 ? (
+          sorted.map((row, idx) => {
             const hasDesembolso = row.valorDesembolsado !== null && row.valorDesembolsado > 0
             return (
               <tr
