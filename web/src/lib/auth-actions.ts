@@ -124,16 +124,19 @@ export async function createUsuario(
     // Verify session and check if user is gestor
     const session = await auth()
 
-    if (!session?.user || !('role' in session.user) || session.user.role !== 'gestor') {
-      return { error: 'Apenas gestores podem criar usuarios' }
+    if (!session?.user || !('role' in session.user) || (session.user.role !== 'gestor' && session.user.role !== 'adm_produto')) {
+      return { error: 'Sem permissao para criar usuarios' }
     }
+
+    // adm_produto can only create adm_produto users
+    const assignedRole = session.user.role === 'adm_produto' ? 'adm_produto' : (formData.get('role') ?? 'vendedor')
 
     // Extract and validate form data
     const rawData = {
       nome: formData.get('nome'),
       email: formData.get('email'),
       password: formData.get('password'),
-      role: formData.get('role') ?? 'vendedor',
+      role: assignedRole,
     }
 
     const validatedData = CreateUsuarioSchema.parse(rawData) as CreateUsuarioInput

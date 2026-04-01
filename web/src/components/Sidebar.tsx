@@ -84,6 +84,7 @@ export default function Sidebar({ user }: SidebarProps) {
     ? BASE_NAV_ITEMS.filter((item) => item.href !== '/monitorar')
     : user.role === 'adm_produto'
     ? [
+        { href: '/', label: 'Pipeline', icon: 'pipeline' },
         { href: '/tgov', label: 'TGov Dashboard', icon: 'tgov' },
         { href: '/cadastro-vendedor', label: 'Usuarios TGOV', icon: 'vendedores' },
       ]

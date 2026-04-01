@@ -10,24 +10,42 @@ export async function GET() {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    if (session.role !== 'gestor') {
+    if (session.role !== 'gestor' && session.role !== 'adm_produto') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const rows = await query(`
-      SELECT
-        u.id,
-        u.nome,
-        u.email,
-        u.role,
-        u.active,
-        u.created_at,
-        COUNT(vp.id)::int AS lead_count
-      FROM users u
-      LEFT JOIN vendedor_projetos vp ON u.id = vp.vendedor_id
-      GROUP BY u.id, u.nome, u.email, u.role, u.active, u.created_at
-      ORDER BY u.nome
-    `)
+    const rows = await query(
+      session.role === 'adm_produto'
+        ? `
+          SELECT
+            u.id,
+            u.nome,
+            u.email,
+            u.role,
+            u.active,
+            u.created_at,
+            COUNT(vp.id)::int AS lead_count
+          FROM users u
+          LEFT JOIN vendedor_projetos vp ON u.id = vp.vendedor_id
+          WHERE u.role = 'adm_produto'
+          GROUP BY u.id, u.nome, u.email, u.role, u.active, u.created_at
+          ORDER BY u.nome
+        `
+        : `
+          SELECT
+            u.id,
+            u.nome,
+            u.email,
+            u.role,
+            u.active,
+            u.created_at,
+            COUNT(vp.id)::int AS lead_count
+          FROM users u
+          LEFT JOIN vendedor_projetos vp ON u.id = vp.vendedor_id
+          GROUP BY u.id, u.nome, u.email, u.role, u.active, u.created_at
+          ORDER BY u.nome
+        `
+    )
 
     const result = rows.map((row: Record<string, unknown>) => ({
       ...row,
