@@ -125,6 +125,7 @@ export default function LeadDetailPage() {
       ))
     } catch (err) {
       console.error('Update error:', err)
+      alert('Erro de conexão ao salvar. Recarregue a página e tente novamente.')
     }
   }
 

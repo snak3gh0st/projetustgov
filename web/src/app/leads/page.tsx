@@ -295,6 +295,7 @@ export default function LeadsPage() {
       ))
     } catch (err) {
       console.error('Failed to update lead:', err)
+      alert('Erro de conexão ao salvar. Recarregue a página e tente novamente.')
     }
   }
 

@@ -90,11 +90,16 @@ export async function PATCH(
       }
     }
 
-    await query(`
+    const updateResult = await query<{ id: number }>(`
       UPDATE vendedor_projetos
       SET ${updates.join(', ')}
       WHERE id = $${paramIndex} ${vendedorCondition}
+      RETURNING id
     `, values)
+
+    if (updateResult.length === 0) {
+      return NextResponse.json({ error: 'Lead not found or permission denied' }, { status: 404 })
+    }
 
     // Commission lock/unlock logic (COM-01: vendedor vinculado ao lead quando marca Fechado)
     if (body.status_contato === 'Aguardando Closer') {
