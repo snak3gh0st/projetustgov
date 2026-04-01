@@ -242,7 +242,7 @@ interface CnpjSearchResult {
 // ---------------------------------------------------------------------------
 
 interface TGovDashboardClientProps {
-  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador'
+  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto'
 }
 
 // ---------------------------------------------------------------------------
@@ -294,7 +294,19 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
           throw new Error(body?.error ?? `HTTP ${res.status}`)
         }
         const json: ExecucaoResponse = await res.json()
-        setData(json)
+        // On page > 1 the API skips expensive stats aggregations (charts don't
+        // change with pagination). Preserve existing chart data in that case.
+        if (pg > 1) {
+          setData((prev) => ({
+            ...json,
+            byStatus: json.byStatus?.length ? json.byStatus : (prev?.byStatus ?? []),
+            byExecRange: json.byExecRange?.length ? json.byExecRange : (prev as ExecucaoResponse)?.byExecRange,
+            byYear: json.byYear?.length ? json.byYear : (prev as ExecucaoResponse)?.byYear,
+            byDesembolsoYear: json.byDesembolsoYear?.length ? json.byDesembolsoYear : (prev as ExecucaoResponse)?.byDesembolsoYear,
+          }))
+        } else {
+          setData(json)
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erro ao carregar dados')
         setData(null)
@@ -342,13 +354,14 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
     const input = cnpjInput.trim()
     if (!input) return
 
-    // Detect: NR Proposta format (contains "/") vs CNPJ (digits only)
-    const isNrProposta = input.includes('/')
+    // Detect: CNPJ (14 digits after stripping formatting) vs NR Proposta (contains "/")
+    const digitsOnly = input.replace(/\D/g, '')
+    const isNrProposta = input.includes('/') && digitsOnly.length !== 14
     const param = isNrProposta
       ? `nr_proposta=${encodeURIComponent(input)}`
-      : `cnpj=${input.replace(/\D/g, '')}`
+      : `cnpj=${digitsOnly}`
 
-    if (!isNrProposta && input.replace(/\D/g, '').length < 11) {
+    if (!isNrProposta && digitsOnly.length < 11) {
       setCnpjError('CNPJ deve ter pelo menos 11 dígitos')
       return
     }
@@ -524,7 +537,7 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
                 <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
               </div>
             ) : data ? (
-              <TGovStatusDonut data={donutData} total={data.total} />
+              <TGovStatusDonut data={donutData} total={data.total} onStatusClick={(s) => handleMainFilterChange('status', mainFilters.status === s ? '' : s)} />
             ) : (
               <div className="flex items-center justify-center h-40 text-sm text-gray-400">
                 Nenhum dado disponível
@@ -739,10 +752,11 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
                       </div>
                       <button
                         onClick={async () => {
-                          const isNr = cnpjInput.includes('/')
+                          const inputDigits = cnpjInput.replace(/\D/g, '')
+                          const isNr = cnpjInput.includes('/') && inputDigits.length !== 14
                           const body = isNr
                             ? { nr_proposta: cnpjInput.trim(), tab: 'ambos' }
-                            : { cnpj: cnpjInput.replace(/\D/g, ''), tab: 'ambos' }
+                            : { cnpj: inputDigits, tab: 'ambos' }
                           const res = await fetch('/api/tgov/whitelist', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -1022,7 +1036,7 @@ function ExecucaoTable({
           <SortableTh label="Saldo Conta" col="saldoConta" className="text-right px-3 whitespace-nowrap" {...thProps} />
           <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Desembolso</th>
           <SortableTh label="Fim Vigência" col="dataFimVigencia" className="text-left px-3 whitespace-nowrap" {...thProps} />
-          <SortableTh label="Término" col="dataInicioVigencia" className="text-left px-3 whitespace-nowrap" {...thProps} />
+          <SortableTh label="Limite PC" col="dataInicioVigencia" className="text-left px-3 whitespace-nowrap" {...thProps} />
           <th className="px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide w-8"></th>
         </tr>
       </thead>
