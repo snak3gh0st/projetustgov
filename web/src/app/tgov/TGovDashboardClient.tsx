@@ -431,23 +431,21 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
               </svg>
               Adicionar CNPJ / Proposta
             </button>
-            {!isDashboardView && (
-              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
-                {(['aprovacao', 'execucao'] as TGovTab[]).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => handleTabSwitch(tab)}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      activeTab === tab
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    {tab === 'aprovacao' ? 'Aprovação' : 'Execução'}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+              {(['aprovacao', 'execucao'] as TGovTab[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => handleTabSwitch(tab)}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    activeTab === tab
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {tab === 'aprovacao' ? 'Aprovação' : 'Execução'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -674,28 +672,28 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
             </div>
           )}
         </div>
-
-        {/* BI Summary */}
-        {activeTab === 'execucao' && !loading && data && data.total > 0 && (
-          <ExecucaoBISummary
-            rows={data.table.rows as TGovExecucaoTableRow[]}
-            total={data.total}
-            byStatus={data.byStatus}
-            byYear={(data as ExecucaoResponse).byYear ?? []}
-            byDesembolsoYear={(data as ExecucaoResponse).byDesembolsoYear ?? []}
-            onStatusClick={(s) => handleMainFilterChange('status', mainFilters.status === s ? '' : s)}
-          />
-        )}
-        {activeTab === 'aprovacao' && !loading && data && data.total > 0 && (
-          <AprovacaoBISummary
-            total={data.total}
-            byStatus={data.byStatus}
-            byUf={(data as AprovacaoResponse).byUf ?? []}
-            byValorStatus={(data as AprovacaoResponse).byValorStatus ?? []}
-            onStatusClick={(s) => handleMainFilterChange('status', mainFilters.status === s ? '' : s)}
-          />
-        )}
       </div>
+
+      {/* BI Summary */}
+      {activeTab === 'execucao' && !loading && data && data.total > 0 && (
+        <ExecucaoBISummary
+          rows={data.table.rows as TGovExecucaoTableRow[]}
+          total={data.total}
+          byStatus={data.byStatus}
+          byYear={(data as ExecucaoResponse).byYear ?? []}
+          byDesembolsoYear={(data as ExecucaoResponse).byDesembolsoYear ?? []}
+          onStatusClick={(s) => handleMainFilterChange('status', mainFilters.status === s ? '' : s)}
+        />
+      )}
+      {activeTab === 'aprovacao' && !loading && data && data.total > 0 && (
+        <AprovacaoBISummary
+          total={data.total}
+          byStatus={data.byStatus}
+          byUf={(data as AprovacaoResponse).byUf ?? []}
+          byValorStatus={(data as AprovacaoResponse).byValorStatus ?? []}
+          onStatusClick={(s) => handleMainFilterChange('status', mainFilters.status === s ? '' : s)}
+        />
+      )}
 
       {/* Sidecard slide-over */}
       {selectedExecRow && (
