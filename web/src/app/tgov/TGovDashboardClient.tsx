@@ -3,6 +3,19 @@
 import { useCallback, useEffect, useState } from 'react'
 import TGovStatusDonut from '@/components/TGovStatusDonut'
 import {
+  BarChart as BIBarChart,
+  Bar as BIBar,
+  XAxis as BIXAxis,
+  YAxis as BIYAxis,
+  CartesianGrid as BICartesianGrid,
+  Tooltip as BITooltipChart,
+  Legend as BILegend,
+  ResponsiveContainer as BIResponsiveContainer,
+  PieChart as BIPieChart,
+  Pie as BIPie,
+  Cell as BICell,
+} from 'recharts'
+import {
   DEFAULT_MAIN_FILTERS,
   DEFAULT_EXECUCAO_MAIN_FILTERS,
   DEFAULT_TABLE_FILTERS,
@@ -65,6 +78,8 @@ const YEAR_OPTIONS = buildYearOptions()
 // ---------------------------------------------------------------------------
 interface ExecucaoResponse extends TGovTabResponse {
   byExecRange?: TGovStatusBucket[]
+  byYear?: { ano: string; valorGlobal: number; count: number }[]
+  byDesembolsoYear?: { ano: string; comDesembolso: number; semDesembolso: number }[]
 }
 
 interface CnpjSearchResult {
@@ -446,8 +461,14 @@ export default function TGovDashboardClient({ userRole: _userRole }: TGovDashboa
         </div>
 
         {/* BI Summary — Execução only */}
-        {activeTab === 'execucao' && !loading && data && (data.table.rows as TGovExecucaoTableRow[])?.length > 0 && (
-          <ExecucaoBISummary rows={data.table.rows as TGovExecucaoTableRow[]} total={data.total} />
+        {activeTab === 'execucao' && !loading && data && data.total > 0 && (
+          <ExecucaoBISummary
+            rows={data.table.rows as TGovExecucaoTableRow[]}
+            total={data.total}
+            byStatus={data.byStatus}
+            byYear={(data as ExecucaoResponse).byYear ?? []}
+            byDesembolsoYear={(data as ExecucaoResponse).byDesembolsoYear ?? []}
+          />
         )}
       </div>
 
@@ -1079,36 +1100,133 @@ function SidecardCurrency({
 // BI Summary — Execução macro data
 // ---------------------------------------------------------------------------
 
-function ExecucaoBISummary({ rows, total }: { rows: TGovExecucaoTableRow[]; total: number }) {
+function ExecucaoBISummary({
+  rows, total, byStatus, byYear, byDesembolsoYear,
+}: {
+  rows: TGovExecucaoTableRow[]
+  total: number
+  byStatus: TGovStatusBucket[]
+  byYear: { ano: string; valorGlobal: number; count: number }[]
+  byDesembolsoYear: { ano: string; comDesembolso: number; semDesembolso: number }[]
+}) {
   const valorGlobalTotal = rows.reduce((sum, r) => sum + (r.valorGlobal ?? 0), 0)
   const valorDesembolsadoTotal = rows.reduce((sum, r) => sum + (r.valorDesembolsado ?? 0), 0)
-  const saldoContaTotal = rows.reduce((sum, r) => sum + (r.saldoConta ?? 0), 0)
-  const rendimentoTotal = rows.reduce((sum, r) => sum + (r.rendimentoAplicacao ?? 0), 0)
   const comDesembolso = rows.filter(r => r.valorDesembolsado !== null && r.valorDesembolsado > 0).length
   const semDesembolso = rows.length - comDesembolso
 
-  const cards = [
-    { label: 'Total Projetos', value: String(total), sub: `${rows.length} nesta página` },
-    { label: 'Valor Global (página)', value: formatCurrency(valorGlobalTotal) },
-    { label: 'Total Desembolsado', value: formatCurrency(valorDesembolsadoTotal) },
-    { label: 'Saldo em Conta', value: formatCurrency(saldoContaTotal) },
-    { label: 'Rendimento Total', value: formatCurrency(rendimentoTotal) },
-    { label: 'Com Desembolso', value: `${comDesembolso}`, sub: `${semDesembolso} sem desembolso`, highlight: true },
-  ]
+  // Donut: top statuses + "Outros" bucket
+  const sortedStatus = [...byStatus].sort((a, b) => b.count - a.count)
+  const TOP_N = 6
+  const topStatuses = sortedStatus.slice(0, TOP_N)
+  const otherCount = sortedStatus.slice(TOP_N).reduce((s, r) => s + r.count, 0)
+  const donutData = otherCount > 0
+    ? [...topStatuses, { status: 'Outros', count: otherCount, percent: total > 0 ? Number(((otherCount / total) * 100).toFixed(1)) : 0 }]
+    : topStatuses
+
+  const STATUS_COLORS: Record<string, string> = {
+    'Em Execução': '#16a34a', 'Em execução': '#16a34a',
+    'Proposta/Plano de Trabalho Aprovados': '#2563eb',
+    'Concluído': '#0891b2', 'Inadimplente': '#b91c1c',
+    'Prestação de Contas em Análise': '#db2777',
+    'Prestação de Contas Aprovada': '#10b981',
+    'Outros': '#9ca3af',
+  }
+  const FALLBACK = ['#2563eb','#16a34a','#d97706','#7c3aed','#dc2626','#0891b2','#ea580c','#9ca3af']
+
+  // Format large currency to "R$ 1,2M"
+  function shortCurrency(v: number): string {
+    if (v >= 1_000_000_000) return `R$ ${(v / 1_000_000_000).toFixed(1)}B`
+    if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1)}M`
+    if (v >= 1_000) return `R$ ${(v / 1_000).toFixed(0)}K`
+    return formatCurrency(v)
+  }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Resumo BI — Execução</p>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {cards.map((c) => (
-          <div key={c.label} className="text-center">
+    <div className="space-y-4">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Projetos', value: total.toLocaleString('pt-BR'), color: 'text-gray-900' },
+          { label: 'Valor Global (página)', value: shortCurrency(valorGlobalTotal), color: 'text-gray-900' },
+          { label: 'Total Desembolsado (página)', value: shortCurrency(valorDesembolsadoTotal), color: 'text-blue-700' },
+          { label: 'Com Desembolso', value: `${comDesembolso} / ${comDesembolso + semDesembolso}`, color: 'text-green-700' },
+        ].map(c => (
+          <div key={c.label} className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs text-gray-500 mb-1">{c.label}</p>
-            <p className={`text-lg font-bold tabular-nums ${c.highlight ? 'text-green-700' : 'text-gray-900'}`}>
-              {c.value}
-            </p>
-            {c.sub && <p className="text-xs text-gray-400 mt-0.5">{c.sub}</p>}
+            <p className={`text-xl font-bold tabular-nums ${c.color}`}>{c.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Charts row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* 1. Barras — Valor Global por Ano */}
+        {byYear.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Valor Global por Ano</p>
+            <div className="h-52">
+              <BIResponsiveContainer>
+                <BIBarChart data={byYear}>
+                  <BICartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                  <BIXAxis dataKey="ano" tick={{ fontSize: 11 }} />
+                  <BIYAxis tickFormatter={(v: number) => shortCurrency(v)} tick={{ fontSize: 10 }} width={70} />
+                  <BITooltipChart formatter={(v: number) => [formatCurrency(v), 'Valor Global']} labelFormatter={(l: string) => `Ano: ${l}`} />
+                  <BIBar dataKey="valorGlobal" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                </BIBarChart>
+              </BIResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* 2. Donut — Distribuição por Situação */}
+        {donutData.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Distribuição por Situação</p>
+            <div className="h-52 flex items-center gap-4">
+              <div className="w-36 h-36 shrink-0">
+                <BIResponsiveContainer>
+                  <BIPieChart>
+                    <BIPie data={donutData} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={35} outerRadius={55} paddingAngle={2} stroke="none">
+                      {donutData.map((entry, i) => (
+                        <BICell key={entry.status} fill={STATUS_COLORS[entry.status] ?? FALLBACK[i % FALLBACK.length]} />
+                      ))}
+                    </BIPie>
+                    <BITooltipChart formatter={(v: number) => [String(v), 'Quantidade']} />
+                  </BIPieChart>
+                </BIResponsiveContainer>
+              </div>
+              <div className="flex-1 space-y-1 min-w-0 overflow-y-auto max-h-48">
+                {donutData.map((entry, i) => (
+                  <div key={entry.status} className="flex items-center gap-2">
+                    <span className="shrink-0 w-2 h-2 rounded-sm" style={{ background: STATUS_COLORS[entry.status] ?? FALLBACK[i % FALLBACK.length] }} />
+                    <span className="text-xs text-gray-600 truncate flex-1" title={entry.status}>{entry.status}</span>
+                    <span className="text-xs font-bold text-gray-800 tabular-nums">{entry.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 4. Barra empilhada — Com/Sem Desembolso por Ano */}
+        {byDesembolsoYear.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Desembolso por Ano</p>
+            <div className="h-52">
+              <BIResponsiveContainer>
+                <BIBarChart data={byDesembolsoYear}>
+                  <BICartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                  <BIXAxis dataKey="ano" tick={{ fontSize: 11 }} />
+                  <BIYAxis tick={{ fontSize: 10 }} />
+                  <BITooltipChart />
+                  <BIBar dataKey="comDesembolso" name="Com Desembolso" stackId="a" fill="#16a34a" radius={[0, 0, 0, 0]} />
+                  <BIBar dataKey="semDesembolso" name="Sem Desembolso" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <BILegend wrapperStyle={{ fontSize: '11px' }} />
+                </BIBarChart>
+              </BIResponsiveContainer>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

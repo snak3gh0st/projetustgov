@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
     // ---------------------------------------------------------------------------
     // Run queries — all use WITH all_exec CTE
     // ---------------------------------------------------------------------------
-    const [totalRows, byStatusRows, byExecRangeRows, tableCountRows, tableDataRows] = await Promise.all([
+    const [totalRows, byStatusRows, byExecRangeRows, byYearRows, byDesembolsoYearRows, tableCountRows, tableDataRows] = await Promise.all([
       query<{ total: number }>(
         `WITH ${ALL_EXEC_CTE} SELECT COUNT(*)::int AS total FROM all_exec pe ${mainWhereClause}`,
         mainParams
@@ -194,6 +194,30 @@ export async function GET(request: NextRequest) {
           COUNT(*)::int AS cnt
         FROM all_exec pe ${mainWhereClause}
         GROUP BY 1 ORDER BY MIN(COALESCE(pe.pct_execucao, 999))`,
+        mainParams
+      ),
+
+      // BI: valor global by year (from nr_proposta year suffix)
+      query<{ ano: string; valor_global: string; cnt: number }>(
+        `WITH ${ALL_EXEC_CTE}
+        SELECT
+          COALESCE(SPLIT_PART(pe.nr_proposta, '/', 2), 'N/A') AS ano,
+          COALESCE(SUM(pe.valor_global), 0)::text AS valor_global,
+          COUNT(*)::int AS cnt
+        FROM all_exec pe ${mainWhereClause}
+        GROUP BY 1 ORDER BY 1`,
+        mainParams
+      ),
+
+      // BI: com/sem desembolso by year
+      query<{ ano: string; com_desembolso: number; sem_desembolso: number }>(
+        `WITH ${ALL_EXEC_CTE}
+        SELECT
+          COALESCE(SPLIT_PART(pe.nr_proposta, '/', 2), 'N/A') AS ano,
+          COUNT(*) FILTER (WHERE pe.valor_desembolsado > 0)::int AS com_desembolso,
+          COUNT(*) FILTER (WHERE pe.valor_desembolsado IS NULL OR pe.valor_desembolsado <= 0)::int AS sem_desembolso
+        FROM all_exec pe ${mainWhereClause}
+        GROUP BY 1 ORDER BY 1`,
         mainParams
       ),
 
@@ -306,10 +330,24 @@ export async function GET(request: NextRequest) {
       diasAteVencimento: r.dias_ate_vencimento,
     }))
 
-    const response: TGovTabResponse & { byExecRange: typeof byExecRange } = {
+    const byYear = byYearRows.map(r => ({
+      ano: r.ano,
+      valorGlobal: parseFloat(r.valor_global) || 0,
+      count: r.cnt,
+    }))
+
+    const byDesembolsoYear = byDesembolsoYearRows.map(r => ({
+      ano: r.ano,
+      comDesembolso: r.com_desembolso,
+      semDesembolso: r.sem_desembolso,
+    }))
+
+    const response: TGovTabResponse & { byExecRange: typeof byExecRange; byYear: typeof byYear; byDesembolsoYear: typeof byDesembolsoYear } = {
       total,
       byStatus,
       byExecRange,
+      byYear,
+      byDesembolsoYear,
       table: {
         rows,
         page,
