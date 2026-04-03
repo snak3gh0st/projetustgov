@@ -21,7 +21,7 @@ export async function GET(
 ) {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'admin')) {
+    if (!session || (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -64,7 +64,7 @@ export async function PATCH(
 ) {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'admin')) {
+    if (!session || (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -85,7 +85,7 @@ export async function PATCH(
     }>(
       `INSERT INTO tgov_interactions (item_key, tab, status, obs, updated_at, updated_by)
        VALUES ($1, $2, $3, $4, NOW(), $5)
-       ON CONFLICT (item_key) DO UPDATE SET
+       ON CONFLICT (item_key, tab) DO UPDATE SET
          status = EXCLUDED.status,
          obs = EXCLUDED.obs,
          updated_at = NOW(),

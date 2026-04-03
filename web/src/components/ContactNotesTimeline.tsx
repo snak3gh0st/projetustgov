@@ -25,6 +25,7 @@ export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTi
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ tipo: 'ligacao', observacao: '' })
   const [editSubmitting, setEditSubmitting] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   async function fetchNotes() {
     try {
@@ -73,11 +74,13 @@ export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTi
 
   function cancelEdit() {
     setEditingNoteId(null)
+    setEditError(null)
     setEditForm({ tipo: 'ligacao', observacao: '' })
   }
 
   async function handleEditSubmit(noteId: string) {
     setEditSubmitting(true)
+    setEditError(null)
     try {
       const res = await fetch(`/api/leads/${encodeURIComponent(cnpj)}/notes`, {
         method: 'PATCH',
@@ -87,10 +90,15 @@ export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTi
 
       if (res.ok) {
         setEditingNoteId(null)
+        setEditError(null)
         fetchNotes()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        setEditError(data.error ?? 'Erro ao salvar. Tente novamente.')
       }
     } catch (err) {
       console.error('Failed to update note:', err)
+      setEditError('Erro de conexão. Tente novamente.')
     } finally {
       setEditSubmitting(false)
     }
@@ -212,7 +220,10 @@ export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTi
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-sm font-medium text-gray-900">{note.vendedor_nome}</span>
                       <span className="text-xs text-gray-500">{formatDate(note.created_at)}</span>
-                      <span className="text-xs text-amber-600 ml-auto">Editando...</span>
+                      {editError
+                        ? <span className="text-xs text-red-500 ml-auto">{editError}</span>
+                        : <span className="text-xs text-amber-600 ml-auto">Editando...</span>
+                      }
                     </div>
                     <label className="block">
                       <span className="text-xs text-gray-400 block mb-1">Tipo de Contato</span>
