@@ -56,6 +56,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden: read-only role' }, { status: 403 })
     }
 
+    const cnpj = decodeURIComponent(params.cnpj)
     const body = await request.json()
     const { note_id, tipo, observacao } = body
 
@@ -63,17 +64,18 @@ export async function PATCH(
       return NextResponse.json({ error: 'note_id is required' }, { status: 400 })
     }
 
-    // Check author ownership
+    // Verify user has access to this lead
+    const hasAccess = await verifyLeadAccess(cnpj, session.userId, session.role)
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const noteRows = await query(
-      `SELECT vendedor_id FROM contact_notes WHERE id = $1`,
+      `SELECT id FROM contact_notes WHERE id = $1`,
       [note_id]
     )
     if (noteRows.length === 0) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 })
-    }
-    const note = noteRows[0]
-    if (note.vendedor_id !== session.userId && session.role !== 'gestor') {
-      return NextResponse.json({ error: 'Forbidden: not note author' }, { status: 403 })
     }
 
     if (tipo) {
@@ -114,6 +116,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden: read-only role' }, { status: 403 })
     }
 
+    const cnpj = decodeURIComponent(params.cnpj)
     const body = await request.json()
     const { note_id } = body
 
@@ -121,17 +124,18 @@ export async function DELETE(
       return NextResponse.json({ error: 'note_id is required' }, { status: 400 })
     }
 
-    // Check author ownership
+    // Verify user has access to this lead
+    const hasAccess = await verifyLeadAccess(cnpj, session.userId, session.role)
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const noteRows = await query(
-      `SELECT vendedor_id FROM contact_notes WHERE id = $1`,
+      `SELECT id FROM contact_notes WHERE id = $1`,
       [note_id]
     )
     if (noteRows.length === 0) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 })
-    }
-    const note = noteRows[0]
-    if (note.vendedor_id !== session.userId && session.role !== 'gestor') {
-      return NextResponse.json({ error: 'Forbidden: not note author' }, { status: 403 })
     }
 
     await query(`DELETE FROM contact_notes WHERE id = $1`, [note_id])
