@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "backup": "node scripts/backup.mjs"
+    "backup": "node scripts/backup-db.mjs"
   },
   "dependencies": {
     "@auth/pg-adapter": "^1.11.1",
