@@ -15,6 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 
 const TABLES = [
+  // Core data tables
   'programas',
   'proponentes',
   'propostas',
@@ -29,6 +30,18 @@ const TABLES = [
   'data_lineage',
   'cron_sync_log',
   'projetos_execucao',
+  // CRM tables
+  'users',
+  'vendedor_projetos',
+  'existing_clients',
+  'contact_notes',
+  'commission_config',
+  'commission_overrides',
+  'lead_contacts',
+  'cnpj_monitorado',
+  'push_subscriptions',
+  'enrichment_queue',
+  'tgov_interactions',
 ];
 
 const connStr = process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL;
