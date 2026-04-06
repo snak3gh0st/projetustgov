@@ -267,6 +267,9 @@ CREATE TABLE IF NOT EXISTS projetos_execucao (
   dias_ate_vencimento  INTEGER,
   alerta_desembolso    BOOLEAN DEFAULT FALSE,
   verificar_saldo      BOOLEAN DEFAULT FALSE,
+  ano_referencia           INTEGER,
+  dia_limite_prest_contas  DATE,
+  dias_prest_contas        INTEGER          DEFAULT 0,
   synced_at            TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
   sync_run_id          INTEGER,
   CONSTRAINT uq_projetos_execucao_nr_convenio UNIQUE (nr_convenio)
