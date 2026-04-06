@@ -11,11 +11,15 @@ export const maxDuration = 30
  * (without convenio yet). This ensures ALL whitelist proposals appear,
  * even if they don't have a signed convenio in projetos_execucao.
  *
- * MATERIALIZED forces Postgres to compute this once and reuse it across
- * all downstream CTEs, avoiding the expensive UNION ALL + NOT EXISTS
- * being re-evaluated for each aggregation.
+ * The whitelist filter is applied INSIDE this CTE so Postgres only
+ * materializes the relevant rows (~200 proposals) instead of all rows
+ * from both tables. The wl CTE pre-computes all allowed cnpjs/nr_propostas
+ * so the EXISTS check is efficient via hash join.
  */
 const ALL_EXEC_CTE = `
+  wl AS MATERIALIZED (
+    SELECT nr_proposta, cnpj FROM tgov_whitelist WHERE tab IN ('ambos', 'execucao')
+  ),
   all_exec AS MATERIALIZED (
     SELECT
       pe.nr_convenio,
@@ -38,9 +42,16 @@ const ALL_EXEC_CTE = `
       pe.data_inicio_vigencia,
       pe.data_fim_vigencia,
       pe.dias_em_execucao,
-      pe.dias_ate_vencimento
+      pe.dias_ate_vencimento,
+      pe.ano_referencia,
+      pe.dia_limite_prest_contas,
+      pe.dias_prest_contas
     FROM projetos_execucao pe
     WHERE pe.nr_proposta IS NOT NULL
+      AND (
+        {NR_PROPOSTA_CLAUSE}
+        OR EXISTS (SELECT 1 FROM wl WHERE wl.cnpj = pe.cnpj OR wl.nr_proposta = pe.nr_proposta)
+      )
 
     UNION ALL
 
@@ -65,9 +76,16 @@ const ALL_EXEC_CTE = `
       p.data_inicio_vigencia,
       p.data_fim_vigencia,
       NULL AS dias_em_execucao,
-      NULL AS dias_ate_vencimento
+      NULL AS dias_ate_vencimento,
+      NULL::int AS ano_referencia,
+      NULL::date AS dia_limite_prest_contas,
+      NULL::int AS dias_prest_contas
     FROM propostas p
     WHERE p.nr_proposta IS NOT NULL
+      AND (
+        {NR_PROPOSTA_CLAUSE_PROPOSTAS}
+        OR EXISTS (SELECT 1 FROM wl WHERE wl.cnpj = p.proponente_cnpj OR wl.nr_proposta = p.nr_proposta)
+      )
       AND NOT EXISTS (
         SELECT 1 FROM projetos_execucao pe2
         WHERE pe2.nr_proposta = p.nr_proposta
@@ -78,7 +96,7 @@ const ALL_EXEC_CTE = `
 export async function GET(request: NextRequest) {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'admin')) {
+    if (!session || (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -100,13 +118,14 @@ export async function GET(request: NextRequest) {
     const params: unknown[] = []
     const mainConditions: string[] = []
 
-    const staticClause = buildNrPropostaWhereClause('pe.nr_proposta', params, EXECUCAO_NR_PROPOSTAS)
-    mainConditions.push(`(${staticClause} OR EXISTS (SELECT 1 FROM tgov_whitelist tw WHERE (tw.cnpj = pe.cnpj OR tw.nr_proposta = pe.nr_proposta) AND tw.tab IN ('ambos','execucao')))`)
+    // Build nr_proposta IN clause for both branches of all_exec CTE
+    const nrPropostaClausePe = buildNrPropostaWhereClause('pe.nr_proposta', params, EXECUCAO_NR_PROPOSTAS)
+    // For propostas branch, same params already pushed — build clause referencing same $N params
+    const nrPropostaClauseP = nrPropostaClausePe.replace(/^pe\.nr_proposta/, 'p.nr_proposta')
 
     if (ano) {
-      params.push(`${ano}-01-01`)
-      params.push(`${parseInt(ano, 10) + 1}-01-01`)
-      mainConditions.push(`pe.data_assinatura >= $${params.length - 1}::date AND pe.data_assinatura < $${params.length}::date`)
+      params.push(parseInt(ano, 10))
+      mainConditions.push(`pe.ano_referencia = $${params.length}`)
     }
 
     if (status) {
@@ -189,22 +208,24 @@ export async function GET(request: NextRequest) {
         data_fim_vigencia: string | null
         dias_em_execucao: number | null
         dias_ate_vencimento: number | null
+        ano_referencia: number | null
+        dia_limite_prest_contas: string | null
+        dias_prest_contas: number | null
         internal_status: string | null
       }[] | null
     }
 
-    const result = await query<AggResult>(
-      `WITH
-      ${ALL_EXEC_CTE},
-      filtered_main AS (
-        SELECT pe.* FROM all_exec pe ${mainWhere}
-      ),
-      filtered_table AS (
-        SELECT pe.* FROM filtered_main pe ${tableExtraWhere}
-      ),
-      agg_total AS (
-        SELECT COUNT(*)::int AS v FROM filtered_main
-      ),
+    // Inject nr_proposta IN clauses into the CTE template
+    const resolvedCte = ALL_EXEC_CTE
+      .replace('{NR_PROPOSTA_CLAUSE}', nrPropostaClausePe)
+      .replace('{NR_PROPOSTA_CLAUSE_PROPOSTAS}', nrPropostaClauseP)
+
+    // Stats (charts) are expensive GROUP BYs — only compute on page 1.
+    // On subsequent pages the charts don't change, so skip them entirely.
+    const includeStats = page === 1
+
+    const statsCtesAndSelect = includeStats
+      ? `
       agg_status AS (
         SELECT json_agg(s ORDER BY s.cnt DESC) AS v FROM (
           SELECT COALESCE(situacao, 'Sem Situação') AS situacao, COUNT(*)::int AS cnt
@@ -230,7 +251,7 @@ export async function GET(request: NextRequest) {
       agg_year AS (
         SELECT json_agg(y ORDER BY y.ano) AS v FROM (
           SELECT
-            COALESCE(SPLIT_PART(nr_proposta, '/', 2), 'N/A') AS ano,
+            COALESCE(ano_referencia::text, 'N/A') AS ano,
             COALESCE(SUM(valor_global), 0)::text AS valor_global,
             COUNT(*)::int AS cnt
           FROM filtered_main GROUP BY 1
@@ -239,12 +260,37 @@ export async function GET(request: NextRequest) {
       agg_desembolso_year AS (
         SELECT json_agg(d ORDER BY d.ano) AS v FROM (
           SELECT
-            COALESCE(SPLIT_PART(nr_proposta, '/', 2), 'N/A') AS ano,
+            COALESCE(ano_referencia::text, 'N/A') AS ano,
             COUNT(*) FILTER (WHERE valor_desembolsado > 0)::int AS com_desembolso,
             COUNT(*) FILTER (WHERE valor_desembolsado IS NULL OR valor_desembolsado <= 0)::int AS sem_desembolso
           FROM filtered_main GROUP BY 1
         ) d
+      ),`
+      : ''
+
+    const statsSelect = includeStats
+      ? `(SELECT v FROM agg_status)         AS by_status,
+        (SELECT v FROM agg_exec_range)      AS by_exec_range,
+        (SELECT v FROM agg_year)            AS by_year,
+        (SELECT v FROM agg_desembolso_year) AS by_desembolso_year,`
+      : `NULL::json AS by_status,
+        NULL::json AS by_exec_range,
+        NULL::json AS by_year,
+        NULL::json AS by_desembolso_year,`
+
+    const result = await query<AggResult>(
+      `WITH
+      ${resolvedCte},
+      filtered_main AS MATERIALIZED (
+        SELECT pe.* FROM all_exec pe ${mainWhere}
       ),
+      filtered_table AS (
+        SELECT pe.* FROM filtered_main pe ${tableExtraWhere}
+      ),
+      agg_total AS (
+        SELECT COUNT(*)::int AS v FROM filtered_main
+      ),
+      ${statsCtesAndSelect}
       agg_table_count AS (
         SELECT COUNT(*)::int AS v FROM filtered_table
       ),
@@ -254,7 +300,7 @@ export async function GET(request: NextRequest) {
             pe.nr_convenio,
             pe.id_proposta,
             pe.nr_proposta,
-            EXTRACT(YEAR FROM pe.data_assinatura)::int AS ano_instrumento,
+            COALESCE(pe.ano_referencia, EXTRACT(YEAR FROM pe.data_assinatura)::int) AS ano_instrumento,
             pe.cnpj,
             COALESCE(pe.nome_proponente, '') AS nome_proponente,
             COALESCE(pe.situacao, 'Sem Situação') AS situacao,
@@ -273,6 +319,9 @@ export async function GET(request: NextRequest) {
             pe.data_fim_vigencia::text,
             pe.dias_em_execucao,
             pe.dias_ate_vencimento,
+            pe.ano_referencia,
+            pe.dia_limite_prest_contas::text,
+            pe.dias_prest_contas,
             ti.status AS internal_status
           FROM filtered_table pe
           LEFT JOIN tgov_interactions ti ON ti.item_key = pe.nr_convenio AND ti.tab = 'execucao'
@@ -281,13 +330,10 @@ export async function GET(request: NextRequest) {
         ) t
       )
       SELECT
-        (SELECT v FROM agg_total)                      AS total,
-        (SELECT v FROM agg_status)                     AS by_status,
-        (SELECT v FROM agg_exec_range)                 AS by_exec_range,
-        (SELECT v FROM agg_year)                       AS by_year,
-        (SELECT v FROM agg_desembolso_year)            AS by_desembolso_year,
-        (SELECT v FROM agg_table_count)                AS table_total,
-        (SELECT v FROM agg_table_data)                 AS table_data`,
+        (SELECT v FROM agg_total)  AS total,
+        ${statsSelect}
+        (SELECT v FROM agg_table_count) AS table_total,
+        (SELECT v FROM agg_table_data)  AS table_data`,
       params
     )
 
@@ -350,6 +396,9 @@ export async function GET(request: NextRequest) {
       dataFimVigencia: row.data_fim_vigencia ? String(row.data_fim_vigencia) : null,
       diasEmExecucao: row.dias_em_execucao,
       diasAteVencimento: row.dias_ate_vencimento,
+      anoReferencia: row.ano_referencia,
+      diaLimitePrestContas: row.dia_limite_prest_contas ? String(row.dia_limite_prest_contas) : null,
+      diasPrestContas: row.dias_prest_contas,
       internalStatus: row.internal_status ?? null,
     }))
 
