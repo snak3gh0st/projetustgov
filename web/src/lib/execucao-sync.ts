@@ -87,6 +87,9 @@ interface ExecucaoRecord {
   data_assinatura: string | null
   data_inicio_vigencia: string | null
   data_fim_vigencia: string | null
+  dia_limite_prest_contas: string | null
+  dias_prest_contas: number
+  ano_referencia: number | null
   pct_execucao: number | null
   dias_em_execucao: number | null
   dias_ate_vencimento: number | null
@@ -225,16 +228,21 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     const valor_global = parseBRNumber(row['VL_GLOBAL_CONV'] || row['VL_GLOBAL'] || null)
     const valor_repasse = parseBRNumber(row['VL_REPASSE_CONV'] || row['VL_REPASSE'] || null)
     const valor_desembolsado = parseBRNumber(row['VL_DESEMBOLSADO_CONV'] || row['VL_DESEMBOLSADO'] || null)
-    // VL_SALDO_CONTA = actual bank account balance (US decimal format with dot).
-    const saldo_conta = parseFloat(row['VL_SALDO_CONTA'] || '0') || 0
+    const saldo_conta = parseBRNumber(row['VL_SALDO_CONTA'] || null)
     const valor_empenhado = parseBRNumber(row['VL_EMPENHADO_CONV'] || row['VL_EMPENHADO'] || null)
-    const rendimento_aplicacao = parseFloat(row['VL_RENDIMENTO_APLICACAO'] || '0') || 0
-    const ingresso_contrapartida = parseFloat(row['VL_INGRESSO_CONTRAPARTIDA'] || '0') || 0
+    const rendimento_aplicacao = parseBRNumber(row['VL_RENDIMENTO_APLICACAO'] || null)
+    const ingresso_contrapartida = parseBRNumber(row['VL_INGRESSO_CONTRAPARTIDA'] || null)
 
     // Parse date values
     const data_assinatura = parseBRDate(row['DIA_ASSIN_CONV'] || row['DT_ASSINATURA_CONV'] || row['DT_ASSINATURA'] || null)
     const data_inicio_vigencia = parseBRDate(row['DIA_INIC_VIGENC_CONV'] || row['DT_INICIO_VIGENCIA'] || row['DT_INI_VIG'] || null)
     const data_fim_vigencia = parseBRDate(row['DIA_FIM_VIGENC_CONV'] || row['DT_FIM_VIGENCIA'] || row['DT_FIM_VIG'] || null)
+    const dia_limite_prest_contas = parseBRDate(row['DIA_LIMITE_PREST_CONTAS'] || null)
+
+    // New columns from CSV
+    const dias_prest_contas = parseInt(row['DIAS_PREST_CONTAS'] || '0', 10) || 0
+    const ano_raw = row['ANO']?.trim()
+    const ano_referencia = ano_raw ? (parseInt(ano_raw, 10) || null) : null
 
     // Computed fields
     const total_entradas = valor_desembolsado + ingresso_contrapartida + rendimento_aplicacao
@@ -275,6 +283,9 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
       data_assinatura,
       data_inicio_vigencia,
       data_fim_vigencia,
+      dia_limite_prest_contas,
+      dias_prest_contas,
+      ano_referencia,
       pct_execucao,
       dias_em_execucao,
       dias_ate_vencimento,
@@ -311,10 +322,11 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
         valor_global, valor_repasse, valor_desembolsado, saldo_conta, valor_empenhado,
         rendimento_aplicacao, ingresso_contrapartida,
         data_assinatura, data_inicio_vigencia, data_fim_vigencia,
+        dia_limite_prest_contas, dias_prest_contas, ano_referencia,
         pct_execucao, dias_em_execucao, dias_ate_vencimento,
         alerta_desembolso, verificar_saldo,
         synced_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,NOW())
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,NOW())
       ON CONFLICT (nr_convenio) DO UPDATE SET
         id_proposta            = EXCLUDED.id_proposta,
         nr_proposta            = EXCLUDED.nr_proposta,
@@ -335,6 +347,9 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
         data_assinatura        = EXCLUDED.data_assinatura,
         data_inicio_vigencia   = EXCLUDED.data_inicio_vigencia,
         data_fim_vigencia      = EXCLUDED.data_fim_vigencia,
+        dia_limite_prest_contas = EXCLUDED.dia_limite_prest_contas,
+        dias_prest_contas       = EXCLUDED.dias_prest_contas,
+        ano_referencia          = EXCLUDED.ano_referencia,
         pct_execucao           = EXCLUDED.pct_execucao,
         dias_em_execucao       = EXCLUDED.dias_em_execucao,
         dias_ate_vencimento    = EXCLUDED.dias_ate_vencimento,
@@ -366,6 +381,9 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
           rec.data_assinatura,
           rec.data_inicio_vigencia,
           rec.data_fim_vigencia,
+          rec.dia_limite_prest_contas,
+          rec.dias_prest_contas,
+          rec.ano_referencia,
           rec.pct_execucao,
           rec.dias_em_execucao,
           rec.dias_ate_vencimento,
