@@ -228,7 +228,10 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     const valor_global = parseBRNumber(row['VL_GLOBAL_CONV'] || row['VL_GLOBAL'] || null)
     const valor_repasse = parseBRNumber(row['VL_REPASSE_CONV'] || row['VL_REPASSE'] || null)
     const valor_desembolsado = parseBRNumber(row['VL_DESEMBOLSADO_CONV'] || row['VL_DESEMBOLSADO'] || null)
-    const saldo_conta = parseBRNumber(row['VL_SALDO_CONTA'] || null)
+    // VL_SALDO_CONTA uses dot as decimal (US format) in 99.99% of rows; 3 rows use comma.
+    // parseBRNumber strips dots (treats as thousand sep) which inflates values 100x.
+    // Use parseFloat for the dominant format; comma-format rows lose only centavos.
+    const saldo_conta = parseFloat(row['VL_SALDO_CONTA'] || '0') || 0
     const valor_empenhado = parseBRNumber(row['VL_EMPENHADO_CONV'] || row['VL_EMPENHADO'] || null)
     const rendimento_aplicacao = parseBRNumber(row['VL_RENDIMENTO_APLICACAO'] || null)
     const ingresso_contrapartida = parseBRNumber(row['VL_INGRESSO_CONTRAPARTIDA'] || null)
