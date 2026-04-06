@@ -134,6 +134,9 @@ export interface TGovExecucaoTableRow extends TGovTableRow {
   dataFimVigencia: string | null
   diasEmExecucao: number | null
   diasAteVencimento: number | null
+  anoReferencia: number | null
+  diaLimitePrestContas: string | null
+  diasPrestContas: number | null
 }
 
 export interface TGovTabResponse {
