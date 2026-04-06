@@ -1041,7 +1041,7 @@ function ExecucaoTable({
           <SortableTh label="Saldo Conta" col="saldoConta" className="text-right px-3 whitespace-nowrap" {...thProps} />
           <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Desembolso</th>
           <SortableTh label="Fim Vigência" col="dataFimVigencia" className="text-left px-3 whitespace-nowrap" {...thProps} />
-          <SortableTh label="Limite PC" col="dataInicioVigencia" className="text-left px-3 whitespace-nowrap" {...thProps} />
+          <SortableTh label="Limite PC" col="diaLimitePrestContas" className="text-left px-3 whitespace-nowrap" {...thProps} />
           <th className="px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide w-8"></th>
         </tr>
       </thead>
@@ -1097,7 +1097,7 @@ function ExecucaoTable({
                   {formatDate(row.dataFimVigencia)}
                 </td>
                 <td className="px-3 py-2.5 text-xs tabular-nums whitespace-nowrap text-gray-600">
-                  {formatDate(row.dataInicioVigencia)}
+                  {formatDate(row.diaLimitePrestContas)}
                 </td>
                 <td className="px-3 py-2.5 text-gray-300">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1205,6 +1205,10 @@ function ExecucaoSidecard({
             <SidecardField label="Data Assinatura" value={formatDate(row.data)} />
             <SidecardField label="Início Vigência" value={formatDate(row.dataInicioVigencia)} />
             <SidecardField label="Fim Vigência" value={formatDate(row.dataFimVigencia)} />
+            <SidecardField label="Limite Prest. Contas" value={formatDate(row.diaLimitePrestContas)} />
+            {row.diasPrestContas !== null && row.diasPrestContas > 0 && (
+              <SidecardField label="Dias para Prest. Contas" value={`${row.diasPrestContas} dias`} />
+            )}
             {row.diasEmExecucao !== null && (
               <SidecardField label="Dias em Execução" value={`${row.diasEmExecucao} dias`} />
             )}
