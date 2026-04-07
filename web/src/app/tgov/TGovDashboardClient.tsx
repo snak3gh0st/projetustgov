@@ -229,6 +229,10 @@ interface ExecucaoResponse extends TGovTabResponse {
     pc_30: number; pc_60: number; pc_90: number; pc_vencido: number
   } | null
   avgValor?: number | null
+  sumGlobal?: number | null
+  sumDesembolsado?: number | null
+  comDesembolsoTotal?: number | null
+  semDesembolsoTotal?: number | null
 }
 
 interface AprovacaoResponse extends TGovTabResponse {
@@ -734,6 +738,10 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
           byAvgUf={(data as ExecucaoResponse).byAvgUf ?? []}
           prazos={(data as ExecucaoResponse).prazos ?? null}
           avgValor={(data as ExecucaoResponse).avgValor ?? null}
+          sumGlobal={(data as ExecucaoResponse).sumGlobal ?? null}
+          sumDesembolsado={(data as ExecucaoResponse).sumDesembolsado ?? null}
+          comDesembolsoTotal={(data as ExecucaoResponse).comDesembolsoTotal ?? null}
+          semDesembolsoTotal={(data as ExecucaoResponse).semDesembolsoTotal ?? null}
           onStatusClick={(s) => handleMainFilterChange('status', mainFilters.status === s ? '' : s)}
         />
       )}
@@ -1554,7 +1562,31 @@ function AprovacaoBISummary({
     ? [...topStatuses, { status: 'Outros', count: otherCount, percent: total > 0 ? Number(((otherCount / total) * 100).toFixed(1)) : 0 }]
     : topStatuses
 
-  const COLORS = ['#2563eb','#16a34a','#d97706','#7c3aed','#dc2626','#0891b2','#9ca3af']
+  const STATUS_COLORS: Record<string, string> = {
+    'Prestação de Contas em Complementação': '#ea580c', // laranja forte — máxima atenção
+    'Prestação de Contas Rejeitada': '#dc2626',
+    'Inadimplente': '#b91c1c',
+    'Em Execução': '#16a34a', 'Em execução': '#16a34a',
+    'Aprovado': '#2563eb',
+    'Proposta/Plano de Trabalho Aprovados': '#2563eb',
+    'Aguardando Análise': '#d97706',
+    'Aguardando Envio do Plano de Trabalho': '#f59e0b',
+    'Aguardando Prestação de Contas': '#d97706',
+    'Em Análise': '#7c3aed',
+    'Prestação de Contas em Análise': '#db2777',
+    'Prestação de Contas enviada para Análise': '#6366f1',
+    'Prestação de contas enviada para análise': '#6366f1',
+    'Prestação de Contas Aprovada': '#10b981',
+    'Prestação de Contas Concluída': '#0d9488',
+    'Prestação de Contas Comprovada': '#0891b2',
+    'Concluído': '#0d9488',
+    'Reprovado': '#dc2626',
+    'Cancelado': '#9ca3af',
+    'Sem Situação': '#9ca3af',
+    'Outros': '#9ca3af',
+  }
+  const FALLBACK = ['#2563eb','#16a34a','#d97706','#7c3aed','#0891b2','#9ca3af']
+  const colorFor = (status: string, i: number) => STATUS_COLORS[status] ?? FALLBACK[i % FALLBACK.length]
 
   return (
     <div className="space-y-4">
@@ -1606,7 +1638,7 @@ function AprovacaoBISummary({
                       style={{ cursor: onStatusClick ? 'pointer' : undefined }}
                     >
                       {donutData.map((entry, i) => (
-                        <BICell key={entry.status} fill={COLORS[i % COLORS.length]} />
+                        <BICell key={entry.status} fill={colorFor(entry.status, i)} />
                       ))}
                     </BIPie>
                     <BITooltipChart formatter={(v: number) => [String(v), 'Quantidade']} />
@@ -1616,7 +1648,7 @@ function AprovacaoBISummary({
               <div className="flex-1 space-y-1 min-w-0 overflow-y-auto max-h-48">
                 {donutData.map((entry, i) => (
                   <div key={entry.status} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1 transition-colors" onClick={() => onStatusClick?.(entry.status)}>
-                    <span className="shrink-0 w-2 h-2 rounded-sm" style={{ background: COLORS[i % COLORS.length] }} />
+                    <span className="shrink-0 w-2 h-2 rounded-sm" style={{ background: colorFor(entry.status, i) }} />
                     <span className="text-xs text-gray-600 truncate flex-1" title={entry.status}>{entry.status}</span>
                     <span className="text-xs font-bold text-gray-800 tabular-nums">{entry.count}</span>
                   </div>
@@ -1687,7 +1719,8 @@ function AprovacaoBISummary({
 // ---------------------------------------------------------------------------
 
 function ExecucaoBISummary({
-  rows, total, byStatus, byYear, byDesembolsoYear, byAvgUf, prazos, avgValor, onStatusClick,
+  rows, total, byStatus, byYear, byDesembolsoYear, byAvgUf, prazos, avgValor,
+  sumGlobal, sumDesembolsado, comDesembolsoTotal, semDesembolsoTotal, onStatusClick,
 }: {
   rows: TGovExecucaoTableRow[]
   total: number
@@ -1700,12 +1733,17 @@ function ExecucaoBISummary({
     pc_30: number; pc_60: number; pc_90: number; pc_vencido: number
   } | null
   avgValor: number | null
+  sumGlobal: number | null
+  sumDesembolsado: number | null
+  comDesembolsoTotal: number | null
+  semDesembolsoTotal: number | null
   onStatusClick?: (status: string) => void
 }) {
-  const valorGlobalTotal = rows.reduce((sum, r) => sum + (r.valorGlobal ?? 0), 0)
-  const valorDesembolsadoTotal = rows.reduce((sum, r) => sum + (r.valorDesembolsado ?? 0), 0)
-  const comDesembolso = rows.filter(r => r.valorDesembolsado !== null && r.valorDesembolsado > 0).length
-  const semDesembolso = rows.length - comDesembolso
+  // Use dataset totals from backend when available; fall back to page-level sums for safety
+  const valorGlobalTotal = sumGlobal ?? rows.reduce((sum, r) => sum + (r.valorGlobal ?? 0), 0)
+  const valorDesembolsadoTotal = sumDesembolsado ?? rows.reduce((sum, r) => sum + (r.valorDesembolsado ?? 0), 0)
+  const comDesembolso = comDesembolsoTotal ?? rows.filter(r => r.valorDesembolsado !== null && r.valorDesembolsado > 0).length
+  const semDesembolso = semDesembolsoTotal ?? (rows.length - (comDesembolsoTotal ?? 0))
 
   // Donut: top statuses + "Outros" bucket
   const sortedStatus = [...byStatus].sort((a, b) => b.count - a.count)
@@ -1721,6 +1759,8 @@ function ExecucaoBISummary({
     'Proposta/Plano de Trabalho Aprovados': '#2563eb',
     'Concluído': '#0891b2', 'Inadimplente': '#b91c1c',
     'Prestação de Contas em Análise': '#db2777',
+    'Prestação de Contas em Complementação': '#ea580c', // laranja forte — máxima atenção
+    'Prestação de Contas Rejeitada': '#dc2626',
     'Prestação de Contas Aprovada': '#10b981',
     'Outros': '#9ca3af',
   }
@@ -1740,9 +1780,9 @@ function ExecucaoBISummary({
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
           { label: 'Total Projetos', value: total.toLocaleString('pt-BR'), color: 'text-gray-900' },
-          { label: 'Valor Global (página)', value: shortCurrency(valorGlobalTotal), color: 'text-gray-900' },
+          { label: 'Valor Global Total', value: shortCurrency(valorGlobalTotal), color: 'text-gray-900' },
           { label: 'Média por Projeto', value: avgValor !== null ? shortCurrency(avgValor) : '—', color: 'text-violet-700' },
-          { label: 'Total Desembolsado (página)', value: shortCurrency(valorDesembolsadoTotal), color: 'text-blue-700' },
+          { label: 'Total Desembolsado', value: shortCurrency(valorDesembolsadoTotal), color: 'text-blue-700' },
           { label: 'Com Desembolso', value: `${comDesembolso} / ${comDesembolso + semDesembolso}`, color: 'text-green-700' },
         ].map(c => (
           <div key={c.label} className="bg-white rounded-xl border border-gray-200 p-4">
@@ -1933,25 +1973,30 @@ function EmptyRow({ cols }: { cols: number }) {
 
 function SituacaoBadge({ situacao }: { situacao: string }) {
   const colorMap: Record<string, string> = {
-    'Em Execução': 'bg-green-100 text-green-700',
-    'Em execução': 'bg-green-100 text-green-700',
+    // 🔴 Ação urgente — vermelho/laranja
+    'Prestação de Contas em Complementação': 'bg-orange-200 text-orange-900 ring-1 ring-orange-400',
+    'Prestação de Contas Rejeitada': 'bg-red-200 text-red-900 ring-1 ring-red-400',
+    'Reprovado': 'bg-red-200 text-red-900',
+    'Inadimplente': 'bg-red-200 text-red-900 ring-1 ring-red-400',
+    // 🟡 Aguardando ação — amarelo/âmbar
+    'Aguardando Envio do Plano de Trabalho': 'bg-amber-100 text-amber-800',
+    'Aguardando Análise': 'bg-amber-100 text-amber-800',
+    'Aguardando Prestação de Contas': 'bg-amber-100 text-amber-800',
+    'Em Análise': 'bg-amber-100 text-amber-800',
+    'Prestação de Contas em Análise': 'bg-amber-100 text-amber-800',
+    'Prestação de Contas enviada para Análise': 'bg-amber-100 text-amber-800',
+    'Prestação de contas enviada para análise': 'bg-amber-100 text-amber-800',
+    // 🔵 Aprovado / em andamento — azul
     'Aprovado': 'bg-blue-100 text-blue-700',
-    'Aguardando Análise': 'bg-amber-100 text-amber-700',
-    'Aguardando Envio do Plano de Trabalho': 'bg-orange-100 text-orange-700',
-    'Aguardando Prestação de Contas': 'bg-amber-100 text-amber-700',
-    'Em Análise': 'bg-violet-100 text-violet-700',
-    'Reprovado': 'bg-red-100 text-red-700',
-    'Cancelado': 'bg-gray-100 text-gray-600',
-    'Concluído': 'bg-teal-100 text-teal-700',
-    'Prestação de Contas em Análise': 'bg-pink-100 text-pink-700',
-    'Prestação de Contas enviada para Análise': 'bg-indigo-100 text-indigo-700',
-    'Prestação de Contas em Complementação': 'bg-purple-100 text-purple-700',
-    'Prestação de Contas Concluída': 'bg-teal-100 text-teal-700',
-    'Prestação de Contas Comprovada': 'bg-cyan-100 text-cyan-700',
+    'Em Execução': 'bg-blue-100 text-blue-700',
+    'Em execução': 'bg-blue-100 text-blue-700',
+    // 🟢 Concluído com sucesso — verde
+    'Concluído': 'bg-emerald-100 text-emerald-700',
+    'Prestação de Contas Concluída': 'bg-emerald-100 text-emerald-700',
+    'Prestação de Contas Comprovada': 'bg-emerald-100 text-emerald-700',
     'Prestação de Contas Aprovada': 'bg-emerald-100 text-emerald-700',
-    'Prestação de Contas Rejeitada': 'bg-red-100 text-red-600',
-    'Prestação de contas enviada para análise': 'bg-indigo-100 text-indigo-700',
-    'Inadimplente': 'bg-red-100 text-red-700',
+    // ⚪ Neutro — cinza
+    'Cancelado': 'bg-gray-100 text-gray-600',
     'Sem Situação': 'bg-gray-100 text-gray-500',
   }
   const cls = colorMap[situacao] ?? 'bg-gray-100 text-gray-600'

@@ -160,15 +160,15 @@ export async function GET(request: NextRequest) {
       query<{ uf: string; avg_valor: string; cnt: number }>(
         `${ALL_PROPOSTAS_CTE} SELECT
           COALESCE(p.estado, 'N/A') AS uf,
-          COALESCE(AVG(p.valor_global), 0)::text AS avg_valor,
+          COALESCE(SUM(p.valor_global) / NULLIF(COUNT(*), 0), 0)::text AS avg_valor,
           COUNT(*)::int AS cnt
         FROM all_propostas p ${mainWhereClause}
-        GROUP BY 1 ORDER BY AVG(p.valor_global) DESC NULLS LAST`,
+        GROUP BY 1 ORDER BY SUM(p.valor_global) / NULLIF(COUNT(*), 0) DESC NULLS LAST`,
         mainParams
       ),
 
       query<{ avg_valor: string }>(
-        `${ALL_PROPOSTAS_CTE} SELECT COALESCE(AVG(p.valor_global), 0)::text AS avg_valor FROM all_propostas p ${mainWhereClause}`,
+        `${ALL_PROPOSTAS_CTE} SELECT COALESCE(SUM(p.valor_global) / NULLIF(COUNT(*), 0), 0)::text AS avg_valor FROM all_propostas p ${mainWhereClause}`,
         mainParams
       ),
 

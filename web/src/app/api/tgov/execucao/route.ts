@@ -279,6 +279,10 @@ export async function GET(request: NextRequest) {
       by_avg_uf: { uf: string; avg_valor: string; cnt: number }[] | null
       prazos: { vigencia_30: number; vigencia_60: number; vigencia_90: number; vigencia_vencido: number; pc_30: number; pc_60: number; pc_90: number; pc_vencido: number } | null
       avg_valor: string | null
+      sum_global: string | null
+      sum_desembolsado: string | null
+      com_desembolso_total: number | null
+      sem_desembolso_total: number | null
       table_total: number
       table_data: {
         nr_convenio: string | null
@@ -365,7 +369,7 @@ export async function GET(request: NextRequest) {
         SELECT json_agg(u ORDER BY u.avg_valor::numeric DESC NULLS LAST) AS v FROM (
           SELECT
             COALESCE(uf, 'N/A') AS uf,
-            COALESCE(AVG(valor_global), 0)::text AS avg_valor,
+            COALESCE(SUM(valor_global) / NULLIF(COUNT(*), 0), 0)::text AS avg_valor,
             COUNT(*)::int AS cnt
           FROM filtered_main GROUP BY 1
         ) u
@@ -385,7 +389,15 @@ export async function GET(request: NextRequest) {
         ) p
       ),
       agg_avg_total AS (
-        SELECT COALESCE(AVG(valor_global), 0)::text AS v FROM filtered_main
+        SELECT COALESCE(SUM(valor_global) / NULLIF(COUNT(*), 0), 0)::text AS v FROM filtered_main
+      ),
+      agg_sum_total AS (
+        SELECT
+          COALESCE(SUM(valor_global), 0)::text AS sum_global,
+          COALESCE(SUM(valor_desembolsado), 0)::text AS sum_desembolsado,
+          COUNT(*) FILTER (WHERE valor_desembolsado > 0)::int AS com_desembolso,
+          COUNT(*) FILTER (WHERE valor_desembolsado IS NULL OR valor_desembolsado <= 0)::int AS sem_desembolso
+        FROM filtered_main
       ),`
       : ''
 
@@ -396,14 +408,22 @@ export async function GET(request: NextRequest) {
         (SELECT v FROM agg_desembolso_year) AS by_desembolso_year,
         (SELECT v FROM agg_avg_uf)          AS by_avg_uf,
         (SELECT v FROM agg_prazos)          AS prazos,
-        (SELECT v FROM agg_avg_total)       AS avg_valor,`
+        (SELECT v FROM agg_avg_total)       AS avg_valor,
+        (SELECT sum_global FROM agg_sum_total)       AS sum_global,
+        (SELECT sum_desembolsado FROM agg_sum_total) AS sum_desembolsado,
+        (SELECT com_desembolso FROM agg_sum_total)   AS com_desembolso_total,
+        (SELECT sem_desembolso FROM agg_sum_total)   AS sem_desembolso_total,`
       : `NULL::json AS by_status,
         NULL::json AS by_exec_range,
         NULL::json AS by_year,
         NULL::json AS by_desembolso_year,
         NULL::json AS by_avg_uf,
         NULL::jsonb AS prazos,
-        NULL::text AS avg_valor,`
+        NULL::text AS avg_valor,
+        NULL::text AS sum_global,
+        NULL::text AS sum_desembolsado,
+        NULL::int AS com_desembolso_total,
+        NULL::int AS sem_desembolso_total,`
 
     const result = await query<AggResult>(
       `WITH
@@ -509,6 +529,10 @@ export async function GET(request: NextRequest) {
 
     const prazos = r?.prazos ?? null
     const avgValor = r?.avg_valor ? parseFloat(r.avg_valor) : null
+    const sumGlobal = r?.sum_global ? parseFloat(r.sum_global) : null
+    const sumDesembolsado = r?.sum_desembolsado ? parseFloat(r.sum_desembolsado) : null
+    const comDesembolsoTotal = r?.com_desembolso_total ?? null
+    const semDesembolsoTotal = r?.sem_desembolso_total ?? null
 
     const rows: TGovExecucaoTableRow[] = (r?.table_data ?? []).map((row) => ({
       numeroProposta: row.nr_proposta || row.id_proposta || row.nr_convenio || '—',
@@ -546,6 +570,10 @@ export async function GET(request: NextRequest) {
       byAvgUf: typeof byAvgUf
       prazos: typeof prazos
       avgValor: typeof avgValor
+      sumGlobal: typeof sumGlobal
+      sumDesembolsado: typeof sumDesembolsado
+      comDesembolsoTotal: typeof comDesembolsoTotal
+      semDesembolsoTotal: typeof semDesembolsoTotal
     } = {
       total,
       byStatus,
@@ -555,6 +583,10 @@ export async function GET(request: NextRequest) {
       byAvgUf,
       prazos,
       avgValor,
+      sumGlobal,
+      sumDesembolsado,
+      comDesembolsoTotal,
+      semDesembolsoTotal,
       table: {
         rows,
         page,
