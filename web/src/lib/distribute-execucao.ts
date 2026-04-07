@@ -64,17 +64,14 @@ export async function distributeUnassignedExecucao(): Promise<DistributeResult> 
       }
 
       // 2. Get unassigned execucao CNPJs
-      // Isolation: ignora linhas 'tgov_only' — esses CNPJs vieram da TGov
-      // whitelist/hardcoded scope e NÃO devem virar leads no CRM.
       const { rows: unassigned } = await client.query<{ cnpj: string; nome_proponente: string }>(`
         SELECT DISTINCT pe.cnpj, MAX(pe.nome_proponente) AS nome_proponente
         FROM projetos_execucao pe
-        WHERE pe.source = 'crm'
-          AND NOT EXISTS (
-            SELECT 1 FROM vendedor_projetos vp
-            WHERE REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = pe.cnpj
-              AND vp.vendedor_id IS NOT NULL
-          )
+        WHERE NOT EXISTS (
+          SELECT 1 FROM vendedor_projetos vp
+          WHERE REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = pe.cnpj
+            AND vp.vendedor_id IS NOT NULL
+        )
         GROUP BY pe.cnpj
         ORDER BY pe.cnpj
       `)
