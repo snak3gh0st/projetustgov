@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { logout } from '@/lib/auth-actions'
 
 interface SidebarProps {
@@ -65,11 +65,14 @@ const BASE_WITH_EXECUCAO = [
 
 export default function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const currentView = searchParams.get('view')
 
   const navItems = (user.role === 'gestor' || user.role === 'admin')
     ? [
         ...BASE_WITH_EXECUCAO,
-        { href: '/tgov', label: 'TGov Dashboard', icon: 'tgov' },
+        { href: '/tgov', label: 'TGov Pipeline', icon: 'pipeline' },
+        { href: '/tgov?view=dashboard', label: 'TGov BI', icon: 'tgov' },
         { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
         { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
         { href: '/cadastro-vendedor', label: 'Usuarios', icon: 'vendedores' },
@@ -84,8 +87,8 @@ export default function Sidebar({ user }: SidebarProps) {
     ? BASE_NAV_ITEMS.filter((item) => item.href !== '/monitorar')
     : user.role === 'adm_produto'
     ? [
-        { href: '/tgov', label: 'Pipeline TGOV', icon: 'pipeline' },
-        { href: '/tgov?view=dashboard', label: 'TGOV Dashboard', icon: 'tgov' },
+        { href: '/tgov', label: 'TGov Pipeline', icon: 'pipeline' },
+        { href: '/tgov?view=dashboard', label: 'TGov BI', icon: 'tgov' },
         { href: '/cadastro-vendedor', label: 'Usuarios TGOV', icon: 'vendedores' },
       ]
     : BASE_WITH_EXECUCAO
@@ -102,9 +105,21 @@ export default function Sidebar({ user }: SidebarProps) {
 
       <nav className="flex-1 py-4">
         {navItems.map(({ href, label, icon }) => {
-          const isActive = href === '/'
-            ? pathname === '/'
-            : pathname.startsWith(href)
+          // Compute active state. For hrefs with ?view=, match both pathname AND view.
+          // For plain /tgov, only active when on /tgov without a view querystring (so
+          // Pipeline doesn't stay highlighted when BI view is open).
+          const [hrefPath, hrefQuery] = href.split('?')
+          const hrefView = hrefQuery
+            ? new URLSearchParams(hrefQuery).get('view')
+            : null
+          let isActive: boolean
+          if (href === '/') {
+            isActive = pathname === '/'
+          } else if (hrefPath === '/tgov') {
+            isActive = pathname === '/tgov' && (currentView ?? null) === (hrefView ?? null)
+          } else {
+            isActive = pathname.startsWith(hrefPath)
+          }
 
           return (
             <Link

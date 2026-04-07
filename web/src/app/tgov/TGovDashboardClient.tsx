@@ -431,7 +431,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">
-              {isDashboardView ? 'TGOV Dashboard' : 'Pipeline TGOV'}
+              {isDashboardView ? 'TGov BI' : 'TGov Pipeline'}
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">
               {isDashboardView
