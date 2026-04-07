@@ -821,7 +821,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
                                 <th className="text-left px-3 py-2 font-medium text-gray-500">Situação</th>
                                 <th className="text-right px-3 py-2 font-medium text-gray-500">Valor Global</th>
                                 <th className="text-left px-3 py-2 font-medium text-gray-500">UF</th>
-                                <th className="text-center px-3 py-2 font-medium text-gray-500 w-24"></th>
+                                <th className="text-center px-3 py-2 font-medium text-gray-500 w-32"></th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -830,7 +830,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
                                 const nrStripped = nr.replace(/^0+/, '')
                                 const isInWhitelist = whitelistNrPropostas.has(nr) || whitelistNrPropostas.has(nrStripped)
                                 const wasAdded = addedInSession.has(nr)
-                                const alreadyAdded = isInWhitelist || wasAdded || cnpjResult.isProjetusClient
+                                const alreadyAdded = isInWhitelist || wasAdded
                                 return (
                                   <tr key={i} className="hover:bg-blue-50/30">
                                     <td className="px-3 py-2 font-mono">{nr}</td>
@@ -839,7 +839,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
                                     <td className="px-3 py-2 text-gray-500">{p.uf || '—'}</td>
                                     <td className="px-3 py-2 text-center">
                                       {alreadyAdded ? (
-                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500">
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500 whitespace-nowrap">
                                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                                           Já acompanhada
                                         </span>
@@ -888,7 +888,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
                                 <th className="text-right px-3 py-2 font-medium text-gray-500">Valor Global</th>
                                 <th className="text-right px-3 py-2 font-medium text-gray-500">Desembolsado</th>
                                 <th className="text-left px-3 py-2 font-medium text-gray-500">Fim Vigência</th>
-                                <th className="text-center px-3 py-2 font-medium text-gray-500 w-24"></th>
+                                <th className="text-center px-3 py-2 font-medium text-gray-500 w-32"></th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -897,7 +897,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
                                 const nrStripped = nr.replace(/^0+/, '')
                                 const isInWhitelist = whitelistNrPropostas.has(nr) || whitelistNrPropostas.has(nrStripped)
                                 const wasAdded = addedInSession.has(nr)
-                                const alreadyAdded = isInWhitelist || wasAdded || cnpjResult.isProjetusClient
+                                const alreadyAdded = isInWhitelist || wasAdded
                                 return (
                                   <tr key={i} className="hover:bg-blue-50/30">
                                     <td className="px-3 py-2 font-mono">
@@ -910,7 +910,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
                                     <td className="px-3 py-2 text-gray-500">{formatDate(e.dataFimVigencia)}</td>
                                     <td className="px-3 py-2 text-center">
                                       {alreadyAdded ? (
-                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500">
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500 whitespace-nowrap">
                                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                                           Já acompanhada
                                         </span>
