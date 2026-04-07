@@ -23,7 +23,6 @@
 import { getPool } from '@/lib/db'
 import { buildStructuredLeadScopeSql } from '@/lib/crm-scope'
 import { cleanCNPJ, parseBRNumber, fixText, downloadAndStreamCSV, formatPhone } from '@/lib/repo-sync'
-import { EXECUCAO_NR_PROPOSTAS, APROVACAO_NR_PROPOSTAS } from '@/lib/tgov'
 
 // ---------------------------------------------------------------------------
 // Internal utility
@@ -161,17 +160,8 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
   const whitelistNrResult = await pool.query<{ nr_proposta: string }>(
     `SELECT nr_proposta FROM tgov_whitelist WHERE nr_proposta IS NOT NULL`
   )
-  const whitelistNrSet = new Set<string>(whitelistNrResult.rows.map(r => r.nr_proposta.replace(/^0+/, '')))
-
-  // Also include hardcoded scope sets used by the read APIs (/api/tgov/execucao
-  // and /api/tgov/aprovacao). These are the source of truth for "what should be
-  // visible in the dashboard". Without including them here, propostas listed in
-  // those constants but whose CNPJ isn't in CRM clients never get synced and
-  // never appear in projetos_execucao — even though the UI promises they will.
-  Array.from(EXECUCAO_NR_PROPOSTAS).forEach(nr => whitelistNrSet.add(nr.replace(/^0+/, '')))
-  Array.from(APROVACAO_NR_PROPOSTAS).forEach(nr => whitelistNrSet.add(nr.replace(/^0+/, '')))
-
-  console.log(`[execucao-sync] STEP A: ${projetusCnpjSet.size} CNPJs in scope, ${whitelistNrSet.size} nr_propostas in scope (whitelist + hardcoded)`)
+  const whitelistNrSet = new Set(whitelistNrResult.rows.map(r => r.nr_proposta.replace(/^0+/, '')))
+  console.log(`[execucao-sync] STEP A: ${projetusCnpjSet.size} CNPJs in scope, ${whitelistNrSet.size} nr_propostas in TGov whitelist`)
 
   // -------------------------------------------------------------------------
   // STEP B: Stream siconv_proposta.csv.zip — build propostaMap filtered
