@@ -268,7 +268,9 @@ interface TGovDashboardClientProps {
 // ---------------------------------------------------------------------------
 
 export default function TGovDashboardClient({ userRole: _userRole, view = 'pipeline' }: TGovDashboardClientProps) {
-  const isDashboardView = view === 'dashboard'
+  // Swap: default /tgov (menu "TGov Pipeline") shows BI content;
+  // /tgov?view=dashboard (menu "TGov Dashboard") shows the pipeline table.
+  const isDashboardView = view !== 'dashboard'
   const [activeTab, setActiveTab] = useState<TGovTab>(DEFAULT_TGOV_TAB)
   const [mainFilters, setMainFilters] = useState<TGovMainFilters>(DEFAULT_MAIN_FILTERS)
   const [tableFilters, setTableFilters] = useState<TGovTableFilters>(DEFAULT_TABLE_FILTERS)
@@ -431,7 +433,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">
-              {isDashboardView ? 'TGov BI' : 'TGov Pipeline'}
+              {isDashboardView ? 'TGov Pipeline' : 'TGov Dashboard'}
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">
               {isDashboardView

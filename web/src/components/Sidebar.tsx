@@ -72,7 +72,7 @@ export default function Sidebar({ user }: SidebarProps) {
     ? [
         ...BASE_WITH_EXECUCAO,
         { href: '/tgov', label: 'TGov Pipeline', icon: 'pipeline' },
-        { href: '/tgov?view=dashboard', label: 'TGov BI', icon: 'tgov' },
+        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
         { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
         { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
         { href: '/cadastro-vendedor', label: 'Usuarios', icon: 'vendedores' },
@@ -88,7 +88,7 @@ export default function Sidebar({ user }: SidebarProps) {
     : user.role === 'adm_produto'
     ? [
         { href: '/tgov', label: 'TGov Pipeline', icon: 'pipeline' },
-        { href: '/tgov?view=dashboard', label: 'TGov BI', icon: 'tgov' },
+        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
         { href: '/cadastro-vendedor', label: 'Usuarios TGOV', icon: 'vendedores' },
       ]
     : BASE_WITH_EXECUCAO

@@ -83,7 +83,7 @@ export interface DashboardStats {
   }
 }
 
-export type UserRole = 'gestor' | 'vendedor' | 'visualizador' | 'coordenador'
+export type UserRole = 'gestor' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto'
 
 export interface CRMUser {
   id: string

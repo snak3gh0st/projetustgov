@@ -75,12 +75,13 @@ interface TGovStatusDonutProps {
   data: TGovStatusBucket[]
   /** Total matching main filters — used to compute percentages. */
   total: number
+  onStatusClick?: (status: string) => void
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export default function TGovStatusDonut({ data, total }: TGovStatusDonutProps) {
+export default function TGovStatusDonut({ data, total, onStatusClick }: TGovStatusDonutProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
 
   // UI PRO MAX: "Large slices first" for visual balance
@@ -120,6 +121,7 @@ export default function TGovStatusDonut({ data, total }: TGovStatusDonutProps) {
               stroke="none"
               onMouseEnter={(_, idx) => setActiveIndex(idx)}
               onMouseLeave={() => setActiveIndex(null)}
+              onClick={(d: TGovStatusBucket) => onStatusClick?.(d.status)}
             >
               {sorted.map((entry, index) => (
                 <Cell
@@ -160,6 +162,7 @@ export default function TGovStatusDonut({ data, total }: TGovStatusDonutProps) {
               style={{ opacity: isDimmed ? 0.45 : 1, transition: 'opacity 150ms ease' }}
               onMouseEnter={() => setActiveIndex(index)}
               onMouseLeave={() => setActiveIndex(null)}
+              onClick={() => onStatusClick?.(entry.status)}
             >
               <div className="flex items-center gap-2 min-w-0">
                 <span

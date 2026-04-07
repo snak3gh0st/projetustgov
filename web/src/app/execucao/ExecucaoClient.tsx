@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { formatCNPJ, formatCompactCurrency, formatDate } from '@/lib/format'
+import { formatCNPJ, formatCompactCurrency, formatCurrency, formatDate } from '@/lib/format'
 import KPIRow from '@/components/KPIRow'
 import ExecucaoSlideOver from '@/components/ExecucaoSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
@@ -203,9 +203,9 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
     if (activeTags.size === 0) return result
     const tagsArr = Array.from(activeTags)
     return result.filter(r =>
-      tagsArr.every(tag => {
+      tagsArr.some(tag => {
         const def = TAG_KEYS.find(t => t.key === tag)
-        return def ? r[def.field] : true
+        return def ? r[def.field] : false
       })
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps

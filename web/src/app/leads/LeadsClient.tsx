@@ -188,7 +188,7 @@ export default function LeadsClient() {
     if (activeTags.size > 0) {
       const tagsArr = Array.from(activeTags)
       result = result.filter(r =>
-        tagsArr.every(tag => {
+        tagsArr.some(tag => {
           const field = `tag_${tag}` as keyof typeof r
           return r[field]
         })
