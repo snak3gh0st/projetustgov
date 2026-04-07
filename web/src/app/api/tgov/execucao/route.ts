@@ -2,19 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
 import { TGOV_PAGE_SIZE, TGOV_MAX_PAGE_SIZE, TGovTabResponse, TGovExecucaoTableRow, EXECUCAO_NR_PROPOSTAS, buildNrPropostaWhereClause } from '@/lib/tgov'
+import { ensureTgovTables } from '@/lib/tgov-tables'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
 /**
- * CTE that unions projetos_execucao (with financial data) and propostas
- * (without convenio yet). This ensures ALL whitelist proposals appear,
- * even if they don't have a signed convenio in projetos_execucao.
+ * CTE that unions FOUR sources to feed the TGov execução tab:
  *
- * The whitelist filter is applied INSIDE this CTE so Postgres only
- * materializes the relevant rows (~200 proposals) instead of all rows
- * from both tables. The wl CTE pre-computes all allowed cnpjs/nr_propostas
- * so the EXISTS check is efficient via hash join.
+ *   1. projetos_execucao (CRM scope)        — financial data, scoped by hardcoded
+ *                                             EXECUCAO_NR_PROPOSTAS or whitelist
+ *   2. tgov_projetos_execucao (TGov-only)   — financial data, populated by
+ *                                             tgov-only-sync. NO scope filter:
+ *                                             toda linha aqui já é TGov-only.
+ *   3. propostas (CRM scope)                — fallback proposta sem convênio
+ *   4. tgov_propostas (TGov-only)           — idem, populado por tgov-only-sync
+ *
+ * As tabelas tgov_* têm storage físico separado das CRM, garantindo zero
+ * cross-contamination com leads/Comercial.
+ *
+ * O wl CTE pré-computa whitelist para hash join eficiente nas branches CRM.
  */
 const ALL_EXEC_CTE = `
   wl AS MATERIALIZED (
@@ -55,6 +62,40 @@ const ALL_EXEC_CTE = `
 
     UNION ALL
 
+    -- TGov-only execução (storage separado, sem filtro adicional)
+    SELECT
+      pe.nr_convenio,
+      pe.id_proposta,
+      pe.nr_proposta,
+      pe.situacao,
+      pe.cnpj,
+      pe.nome_proponente,
+      pe.valor_global,
+      pe.valor_repasse,
+      pe.valor_desembolsado,
+      pe.saldo_conta,
+      pe.valor_empenhado,
+      pe.rendimento_aplicacao,
+      pe.ingresso_contrapartida,
+      pe.pct_execucao,
+      pe.uf,
+      pe.municipio,
+      pe.data_assinatura,
+      pe.data_inicio_vigencia,
+      pe.data_fim_vigencia,
+      pe.dias_em_execucao,
+      pe.dias_ate_vencimento,
+      pe.ano_referencia,
+      pe.dia_limite_prest_contas,
+      pe.dias_prest_contas
+    FROM tgov_projetos_execucao pe
+    WHERE pe.nr_proposta IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM projetos_execucao crm WHERE crm.nr_convenio = pe.nr_convenio
+      )
+
+    UNION ALL
+
     SELECT
       NULL AS nr_convenio,
       p.transfer_gov_id AS id_proposta,
@@ -90,6 +131,53 @@ const ALL_EXEC_CTE = `
         SELECT 1 FROM projetos_execucao pe2
         WHERE pe2.nr_proposta = p.nr_proposta
       )
+      AND NOT EXISTS (
+        SELECT 1 FROM tgov_projetos_execucao pe3
+        WHERE pe3.nr_proposta = p.nr_proposta
+      )
+
+    UNION ALL
+
+    -- TGov-only propostas sem convênio (storage separado)
+    SELECT
+      NULL AS nr_convenio,
+      p.transfer_gov_id AS id_proposta,
+      p.nr_proposta,
+      p.situacao,
+      p.proponente_cnpj AS cnpj,
+      p.proponente AS nome_proponente,
+      p.valor_global::numeric AS valor_global,
+      p.valor_repasse::numeric AS valor_repasse,
+      NULL AS valor_desembolsado,
+      NULL AS saldo_conta,
+      NULL AS valor_empenhado,
+      NULL AS rendimento_aplicacao,
+      NULL AS ingresso_contrapartida,
+      NULL AS pct_execucao,
+      p.estado AS uf,
+      p.municipio,
+      NULL AS data_assinatura,
+      p.data_inicio_vigencia,
+      p.data_fim_vigencia,
+      NULL AS dias_em_execucao,
+      NULL AS dias_ate_vencimento,
+      NULL::int AS ano_referencia,
+      NULL::date AS dia_limite_prest_contas,
+      NULL::int AS dias_prest_contas
+    FROM tgov_propostas p
+    WHERE p.nr_proposta IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM projetos_execucao pe2
+        WHERE pe2.nr_proposta = p.nr_proposta
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM tgov_projetos_execucao pe3
+        WHERE pe3.nr_proposta = p.nr_proposta
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM propostas crm
+        WHERE crm.nr_proposta = p.nr_proposta
+      )
   )
 `
 
@@ -99,6 +187,9 @@ export async function GET(request: NextRequest) {
     if (!session || (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+
+    // Garante existência das tabelas TGov-only (defensivo, idempotente)
+    await ensureTgovTables()
 
     const { searchParams } = new URL(request.url)
 

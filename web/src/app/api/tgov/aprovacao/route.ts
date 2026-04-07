@@ -2,9 +2,42 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
 import { TGOV_PAGE_SIZE, TGOV_MAX_PAGE_SIZE, TGovTabResponse, APROVACAO_NR_PROPOSTAS, buildNrPropostaWhereClause } from '@/lib/tgov'
+import { ensureTgovTables } from '@/lib/tgov-tables'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
+
+/**
+ * CTE que une `propostas` (CRM scope) com `tgov_propostas` (TGov-only scope).
+ * Storage físico separado garante zero leak para o CRM. As branches incluem
+ * apenas as colunas usadas pelas queries da rota — schemas das duas tabelas
+ * são equivalentes para esses campos.
+ *
+ * tgov_propostas só contribui linhas cujo transfer_gov_id NÃO esteja em
+ * propostas (evita duplicação caso um CNPJ migre de TGov-only para CRM).
+ */
+const ALL_PROPOSTAS_CTE = `
+  WITH all_propostas AS MATERIALIZED (
+    SELECT
+      p.transfer_gov_id, p.nr_proposta, p.titulo, p.situacao,
+      p.valor_global, p.valor_repasse, p.valor_contrapartida,
+      p.data_publicacao, p.data_inicio_vigencia, p.data_fim_vigencia,
+      p.estado, p.municipio, p.proponente, p.proponente_cnpj,
+      p.modalidade, p.orgao_superior, p.orgao_vinculado
+    FROM all_propostas p
+    UNION ALL
+    SELECT
+      p.transfer_gov_id, p.nr_proposta, p.titulo, p.situacao,
+      p.valor_global, p.valor_repasse, p.valor_contrapartida,
+      p.data_publicacao, p.data_inicio_vigencia, p.data_fim_vigencia,
+      p.estado, p.municipio, p.proponente, p.proponente_cnpj,
+      p.modalidade, p.orgao_superior, p.orgao_vinculado
+    FROM tgov_propostas p
+    WHERE NOT EXISTS (
+      SELECT 1 FROM propostas crm WHERE crm.transfer_gov_id = p.transfer_gov_id
+    )
+  )
+`
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,6 +45,9 @@ export async function GET(request: NextRequest) {
     if (!session || (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+
+    // Garante existência das tabelas TGov-only (defensivo, idempotente)
+    await ensureTgovTables()
 
     const { searchParams } = new URL(request.url)
 
@@ -85,15 +121,15 @@ export async function GET(request: NextRequest) {
 
     const [totalRows, byStatusRows, byUfRows, byValorStatusRows, byAvgUfRows, avgTotalRows, tableCountRows, tableDataRows] = await Promise.all([
       query<{ total: number }>(
-        `SELECT COUNT(*)::int AS total FROM propostas p ${mainWhereClause}`,
+        `${ALL_PROPOSTAS_CTE} SELECT COUNT(*)::int AS total FROM all_propostas p ${mainWhereClause}`,
         mainParams
       ),
 
       query<{ situacao: string; cnt: number }>(
-        `SELECT
+        `${ALL_PROPOSTAS_CTE} SELECT
           COALESCE(p.situacao, 'Sem Situação') AS situacao,
           COUNT(*)::int AS cnt
-        FROM propostas p
+        FROM all_propostas p
         ${mainWhereClause}
         GROUP BY p.situacao
         ORDER BY COUNT(*) DESC`,
@@ -102,42 +138,42 @@ export async function GET(request: NextRequest) {
 
       // BI: valor global by UF
       query<{ uf: string; valor_global: string; cnt: number }>(
-        `SELECT
+        `${ALL_PROPOSTAS_CTE} SELECT
           COALESCE(p.estado, 'N/A') AS uf,
           COALESCE(SUM(p.valor_global), 0)::text AS valor_global,
           COUNT(*)::int AS cnt
-        FROM propostas p ${mainWhereClause}
+        FROM all_propostas p ${mainWhereClause}
         GROUP BY 1 ORDER BY SUM(p.valor_global) DESC NULLS LAST LIMIT 10`,
         mainParams
       ),
 
       // BI: valor global by situacao
       query<{ situacao: string; valor_global: string }>(
-        `SELECT
+        `${ALL_PROPOSTAS_CTE} SELECT
           COALESCE(p.situacao, 'Sem Situação') AS situacao,
           COALESCE(SUM(p.valor_global), 0)::text AS valor_global
-        FROM propostas p ${mainWhereClause}
+        FROM all_propostas p ${mainWhereClause}
         GROUP BY 1 ORDER BY SUM(p.valor_global) DESC NULLS LAST`,
         mainParams
       ),
 
       query<{ uf: string; avg_valor: string; cnt: number }>(
-        `SELECT
+        `${ALL_PROPOSTAS_CTE} SELECT
           COALESCE(p.estado, 'N/A') AS uf,
           COALESCE(AVG(p.valor_global), 0)::text AS avg_valor,
           COUNT(*)::int AS cnt
-        FROM propostas p ${mainWhereClause}
+        FROM all_propostas p ${mainWhereClause}
         GROUP BY 1 ORDER BY AVG(p.valor_global) DESC NULLS LAST`,
         mainParams
       ),
 
       query<{ avg_valor: string }>(
-        `SELECT COALESCE(AVG(p.valor_global), 0)::text AS avg_valor FROM propostas p ${mainWhereClause}`,
+        `${ALL_PROPOSTAS_CTE} SELECT COALESCE(AVG(p.valor_global), 0)::text AS avg_valor FROM all_propostas p ${mainWhereClause}`,
         mainParams
       ),
 
       query<{ total: number }>(
-        `SELECT COUNT(*)::int AS total FROM propostas p ${tableWhereClause}`,
+        `${ALL_PROPOSTAS_CTE} SELECT COUNT(*)::int AS total FROM all_propostas p ${tableWhereClause}`,
         tableParams
       ),
 
@@ -162,7 +198,7 @@ export async function GET(request: NextRequest) {
         data_fim_vigencia: string | null
         internal_status: string | null
       }>(
-        `SELECT
+        `${ALL_PROPOSTAS_CTE} SELECT
           p.transfer_gov_id,
           p.nr_proposta,
           p.data_publicacao::text,
@@ -181,7 +217,7 @@ export async function GET(request: NextRequest) {
           p.data_inicio_vigencia::text,
           p.data_fim_vigencia::text,
           ti.status AS internal_status
-        FROM propostas p
+        FROM all_propostas p
         LEFT JOIN tgov_interactions ti ON ti.item_key = p.nr_proposta AND ti.tab = 'aprovacao'
         ${tableWhereClause}
         ORDER BY p.data_publicacao DESC NULLS LAST, p.transfer_gov_id DESC

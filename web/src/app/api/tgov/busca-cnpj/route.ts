@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
+import { ensureTgovTables } from '@/lib/tgov-tables'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,8 @@ export async function GET(request: NextRequest) {
     if (!session || (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+
+    await ensureTgovTables()
 
     const cnpjParam = (request.nextUrl.searchParams.get('cnpj') ?? '').replace(/\D/g, '')
     const nrPropostaParam = request.nextUrl.searchParams.get('nr_proposta') ?? ''
@@ -46,7 +49,17 @@ export async function GET(request: NextRequest) {
         municipio: string | null
         data_publicacao: string | null
       }>(
-        `SELECT
+        `WITH all_propostas AS (
+          SELECT transfer_gov_id, nr_proposta, titulo, proponente, proponente_cnpj,
+                 situacao, valor_global, valor_repasse, estado, municipio, data_publicacao
+          FROM propostas
+          UNION ALL
+          SELECT transfer_gov_id, nr_proposta, titulo, proponente, proponente_cnpj,
+                 situacao, valor_global, valor_repasse, estado, municipio, data_publicacao
+          FROM tgov_propostas tp
+          WHERE NOT EXISTS (SELECT 1 FROM propostas crm WHERE crm.transfer_gov_id = tp.transfer_gov_id)
+        )
+        SELECT
           transfer_gov_id,
           nr_proposta,
           titulo,
@@ -58,7 +71,7 @@ export async function GET(request: NextRequest) {
           estado,
           municipio,
           data_publicacao::text
-        FROM propostas
+        FROM all_propostas
         WHERE ${propostaWhere}
         ORDER BY data_publicacao DESC NULLS LAST`,
         [searchValue]
@@ -82,7 +95,19 @@ export async function GET(request: NextRequest) {
         data_inicio_vigencia: string | null
         data_fim_vigencia: string | null
       }>(
-        `SELECT
+        `WITH all_exec AS (
+          SELECT nr_convenio, id_proposta, nr_proposta, nome_proponente, cnpj, situacao,
+                 valor_global, valor_repasse, valor_desembolsado, saldo_conta, pct_execucao,
+                 uf, municipio, data_assinatura, data_inicio_vigencia, data_fim_vigencia
+          FROM projetos_execucao
+          UNION ALL
+          SELECT nr_convenio, id_proposta, nr_proposta, nome_proponente, cnpj, situacao,
+                 valor_global, valor_repasse, valor_desembolsado, saldo_conta, pct_execucao,
+                 uf, municipio, data_assinatura, data_inicio_vigencia, data_fim_vigencia
+          FROM tgov_projetos_execucao tpe
+          WHERE NOT EXISTS (SELECT 1 FROM projetos_execucao crm WHERE crm.nr_convenio = tpe.nr_convenio)
+        )
+        SELECT
           nr_convenio,
           id_proposta,
           nr_proposta,
@@ -99,7 +124,7 @@ export async function GET(request: NextRequest) {
           data_assinatura::text,
           data_inicio_vigencia::text,
           data_fim_vigencia::text
-        FROM projetos_execucao
+        FROM all_exec
         WHERE ${execWhere}
         ORDER BY valor_global DESC NULLS LAST`,
         [searchValue]
