@@ -83,3 +83,8 @@ fix_*.log
 .vercel
 .env*.local
 backups/
+
+# build / tooling caches
+.next/
+.claude/
+.playwright-mcp/
