@@ -460,6 +460,20 @@ Plans:
 - [x] 19-02-PLAN.md — API endpoints: /api/tgov/aprovacao and /api/tgov/execucao with SQL aggregates + pagination
 - [x] 19-03-PLAN.md — UI: /tgov page with tabs, donut chart, KPI card, paginated table, sidebar entry
 
+### Phase 20: Ajustes TGov 07/04 — Técnico Responsável + Perfil CSM
+**Goal**: Atender lista "AJUSTES TGOV 07/04" — criar sistema de designação manual de técnico responsável (em propostas e execuções TGov, pool = adm_produto/gestor/admin) e novo perfil CSM (read-only TGov + comentários). Inclui criar do zero um sistema de comentários TGov (`tgov_comments`) com thread no sidecard do cliente.
+
+**Depends on**: Phase 19 (TGov dashboard + sidecard existente)
+
+**Plans**: TBD (definido em plan-phase)
+
+**Out of scope**: Pipeline coordenação Paulo+Philipe (pulado), round-robin automático, edição/deleção de comentários, notificações.
+
+Itens resolvidos fora dessa fase (commits avulsos 2026-04-07):
+- Bug média valor projeto (AVG → SUM/COUNT)
+- Cores pizza aprovação (complementação = atenção)
+- Cores coluna situação (5 tiers semânticos)
+
 ## Progress
 
 **Execution Order:**
@@ -494,6 +508,7 @@ Plans:
 | 17. UI & Navigation | 2/2 | Complete    | 2026-03-18 |
 | **Milestone v5.0** | | | |
 | 19. TGov Dashboard | 3/3 | Complete | 2026-03-30 |
+| 20. Ajustes TGov 07/04 — Técnico + CSM | 0/TBD | Planning | - |
 
 ---
 *Roadmap created: 2026-02-04*
