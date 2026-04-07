@@ -65,6 +65,15 @@ interface PropostaInfo {
   uf: string | null
   municipio: string | null
   nr_proposta: string | null
+  /**
+   * 'crm'       — CNPJ pertence ao CRM (existing_clients ou vendedor_projetos).
+   *               Linhas 'crm' SÃO elegíveis para enrichment de lead_contacts e
+   *               para distribuição automática a vendedores.
+   * 'tgov_only' — CNPJ entrou apenas via tgov_whitelist ou constantes hardcoded
+   *               (EXECUCAO_NR_PROPOSTAS / APROVACAO_NR_PROPOSTAS). NÃO deve
+   *               vazar para a base de leads do CRM.
+   */
+  source: 'crm' | 'tgov_only'
 }
 
 interface ExecucaoRecord {
@@ -96,6 +105,7 @@ interface ExecucaoRecord {
   dias_ate_vencimento: number | null
   alerta_desembolso: boolean
   verificar_saldo: boolean
+  source: 'crm' | 'tgov_only'
 }
 
 // ---------------------------------------------------------------------------
@@ -136,42 +146,56 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
   }
 
   // -------------------------------------------------------------------------
-  // STEP A: Load Projetus client CNPJs from existing_clients + vendedor_projetos
-  // This replaces the hardcoded whitelist — uses the DB as source of truth
+  // STEP A: Build 3 disjoint scope sets
+  //
+  //   crmCnpjSet     — CNPJs do CRM (existing_clients ∪ vendedor_projetos).
+  //                    Linhas marcadas 'crm' fluem normalmente para enrichment
+  //                    de lead_contacts e distribuição a vendedores.
+  //
+  //   tgovCnpjSet    — CNPJs adicionados via tgov_whitelist (apenas TGov).
+  //                    Marcam linhas como 'tgov_only' — NÃO vazam para CRM.
+  //
+  //   tgovNrSet      — nr_propostas via tgov_whitelist + EXECUCAO/APROVACAO
+  //                    constants hardcoded em web/src/lib/tgov.ts. Também
+  //                    'tgov_only'.
+  //
+  // Quando um CNPJ aparece em mais de uma fonte, 'crm' tem prioridade.
   // -------------------------------------------------------------------------
   const pool = getPool()
   const structuredLeadScopeSql = buildStructuredLeadScopeSql('vp')
-  const clientCnpjResult = await pool.query<{ cnpj: string }>(`
+
+  const crmCnpjResult = await pool.query<{ cnpj: string }>(`
     SELECT DISTINCT cnpj FROM (
       SELECT cnpj FROM existing_clients
       UNION
       SELECT REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AS cnpj
       FROM vendedor_projetos vp
       WHERE ${structuredLeadScopeSql}
-      UNION
-      SELECT cnpj FROM tgov_whitelist WHERE cnpj IS NOT NULL
     ) all_cnpjs
     WHERE cnpj IS NOT NULL AND cnpj != ''
   `)
-  const projetusCnpjSet = new Set(clientCnpjResult.rows.map(r => r.cnpj))
+  const crmCnpjSet = new Set(crmCnpjResult.rows.map(r => r.cnpj))
 
-  // Also accept propostas added directly to TGov whitelist by nr_proposta
-  // (covers cases where the user added a CNPJ via the TGov search modal but
-  // that CNPJ isn't in existing_clients/vendedor_projetos).
-  const whitelistNrResult = await pool.query<{ nr_proposta: string }>(
+  const tgovCnpjResult = await pool.query<{ cnpj: string }>(
+    `SELECT cnpj FROM tgov_whitelist WHERE cnpj IS NOT NULL`
+  )
+  const tgovCnpjSet = new Set(tgovCnpjResult.rows.map(r => r.cnpj))
+
+  const tgovNrResult = await pool.query<{ nr_proposta: string }>(
     `SELECT nr_proposta FROM tgov_whitelist WHERE nr_proposta IS NOT NULL`
   )
-  const whitelistNrSet = new Set<string>(whitelistNrResult.rows.map(r => r.nr_proposta.replace(/^0+/, '')))
+  const tgovNrSet = new Set<string>(tgovNrResult.rows.map(r => r.nr_proposta.replace(/^0+/, '')))
+  Array.from(EXECUCAO_NR_PROPOSTAS).forEach(nr => tgovNrSet.add(nr.replace(/^0+/, '')))
+  Array.from(APROVACAO_NR_PROPOSTAS).forEach(nr => tgovNrSet.add(nr.replace(/^0+/, '')))
 
-  // Also include hardcoded scope sets used by the read APIs (/api/tgov/execucao
-  // and /api/tgov/aprovacao). These are the source of truth for "what should be
-  // visible in the dashboard". Without including them here, propostas listed in
-  // those constants but whose CNPJ isn't in CRM clients never get synced and
-  // never appear in projetos_execucao — even though the UI promises they will.
-  Array.from(EXECUCAO_NR_PROPOSTAS).forEach(nr => whitelistNrSet.add(nr.replace(/^0+/, '')))
-  Array.from(APROVACAO_NR_PROPOSTAS).forEach(nr => whitelistNrSet.add(nr.replace(/^0+/, '')))
+  console.log(`[execucao-sync] STEP A: crm_cnpjs=${crmCnpjSet.size}, tgov_only_cnpjs=${tgovCnpjSet.size}, tgov_only_nrs=${tgovNrSet.size}`)
 
-  console.log(`[execucao-sync] STEP A: ${projetusCnpjSet.size} CNPJs in scope, ${whitelistNrSet.size} nr_propostas in scope (whitelist + hardcoded)`)
+  // Defensive: ensure projetos_execucao.source column exists (drives the
+  // CRM/TGov isolation in STEP D3 and distribute-execucao). Idempotent.
+  await pool.query(`
+    ALTER TABLE projetos_execucao
+    ADD COLUMN IF NOT EXISTS source VARCHAR(20) NOT NULL DEFAULT 'crm'
+  `)
 
   // -------------------------------------------------------------------------
   // STEP B: Stream siconv_proposta.csv.zip — build propostaMap filtered
@@ -194,12 +218,13 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     const cnpj = cleanCNPJ(rawCnpj)
     if (!cnpj) return
 
-    // Keep proposta if CNPJ is a Projetus client OR if its nr_proposta is in the
-    // TGov whitelist (added manually via the SICONV search modal).
+    // Determinar source: CRM tem prioridade. Se CNPJ não está em CRM mas matcha
+    // por TGov scope (whitelist cnpj/nr_proposta ou hardcoded sets), marca como
+    // 'tgov_only' — esse CNPJ NÃO pode vazar para a base de leads.
     const nrProposta = (row['NR_PROPOSTA'] || '').replace(/^0+/, '') || null
-    const cnpjMatch = projetusCnpjSet.has(cnpj)
-    const nrMatch = nrProposta && whitelistNrSet.has(nrProposta)
-    if (!cnpjMatch && !nrMatch) return
+    const isCrm = crmCnpjSet.has(cnpj)
+    const isTgov = !isCrm && (tgovCnpjSet.has(cnpj) || (nrProposta != null && tgovNrSet.has(nrProposta)))
+    if (!isCrm && !isTgov) return
 
     stats.osc_rows_kept++
     propostaMap.set(row['ID_PROPOSTA'], {
@@ -209,6 +234,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
       uf: row['UF_PROPONENTE'] || row['UF'] || null,
       municipio: fixText(row['MUNICIPIO_PROPONENTE'] || row['MUNIC_PROPONENTE'] || null) || null,
       nr_proposta: row['NR_PROPOSTA'] || null,
+      source: isCrm ? 'crm' : 'tgov_only',
     })
   })
 
@@ -318,6 +344,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
       dias_ate_vencimento,
       alerta_desembolso,
       verificar_saldo,
+      source: proposta.source,
     })
   })
 
@@ -352,8 +379,9 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
         dia_limite_prest_contas, dias_prest_contas, ano_referencia,
         pct_execucao, dias_em_execucao, dias_ate_vencimento,
         alerta_desembolso, verificar_saldo,
+        source,
         synced_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,NOW())
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,NOW())
       ON CONFLICT (nr_convenio) DO UPDATE SET
         id_proposta            = EXCLUDED.id_proposta,
         nr_proposta            = EXCLUDED.nr_proposta,
@@ -382,6 +410,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
         dias_ate_vencimento    = EXCLUDED.dias_ate_vencimento,
         alerta_desembolso      = EXCLUDED.alerta_desembolso,
         verificar_saldo        = EXCLUDED.verificar_saldo,
+        source                 = EXCLUDED.source,
         synced_at              = NOW()
     `
 
@@ -416,6 +445,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
           rec.dias_ate_vencimento,
           rec.alerta_desembolso,
           rec.verificar_saldo,
+          rec.source,
         ])
       } catch (err) {
         stats.errors++
@@ -449,10 +479,13 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     // -------------------------------------------------------------------------
     // STEP D3: BrasilAPI contact enrichment for projetos_execucao CNPJs
     // -------------------------------------------------------------------------
+    // Isolation: only enrich CNPJs marcados como 'crm'. Linhas 'tgov_only'
+    // (vindas de tgov_whitelist ou hardcoded scope) NÃO devem virar leads.
     const c3Res = await client.query<{ cnpj: string }>(`
       SELECT DISTINCT pe.cnpj FROM projetos_execucao pe
       LEFT JOIN lead_contacts lc ON pe.cnpj = lc.lead_cnpj
       WHERE lc.lead_cnpj IS NULL
+        AND pe.source = 'crm'
       LIMIT 100
     `)
     console.log(`[execucao-sync] STEP D3: ${c3Res.rows.length} CNPJs in projetos_execucao need contacts`)
