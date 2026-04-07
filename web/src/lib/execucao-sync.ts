@@ -147,21 +147,11 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
       SELECT REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AS cnpj
       FROM vendedor_projetos vp
       WHERE ${structuredLeadScopeSql}
-      UNION
-      SELECT cnpj FROM tgov_whitelist WHERE cnpj IS NOT NULL
     ) all_cnpjs
     WHERE cnpj IS NOT NULL AND cnpj != ''
   `)
   const projetusCnpjSet = new Set(clientCnpjResult.rows.map(r => r.cnpj))
-
-  // Also accept propostas added directly to TGov whitelist by nr_proposta
-  // (covers cases where the user added a CNPJ via the TGov search modal but
-  // that CNPJ isn't in existing_clients/vendedor_projetos).
-  const whitelistNrResult = await pool.query<{ nr_proposta: string }>(
-    `SELECT nr_proposta FROM tgov_whitelist WHERE nr_proposta IS NOT NULL`
-  )
-  const whitelistNrSet = new Set(whitelistNrResult.rows.map(r => r.nr_proposta.replace(/^0+/, '')))
-  console.log(`[execucao-sync] STEP A: ${projetusCnpjSet.size} CNPJs in scope, ${whitelistNrSet.size} nr_propostas in TGov whitelist`)
+  console.log(`[execucao-sync] STEP A: loaded ${projetusCnpjSet.size} unique Projetus client CNPJs from DB`)
 
   // -------------------------------------------------------------------------
   // STEP B: Stream siconv_proposta.csv.zip — build propostaMap filtered
@@ -184,12 +174,8 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     const cnpj = cleanCNPJ(rawCnpj)
     if (!cnpj) return
 
-    // Keep proposta if CNPJ is a Projetus client OR if its nr_proposta is in the
-    // TGov whitelist (added manually via the SICONV search modal).
-    const nrProposta = (row['NR_PROPOSTA'] || '').replace(/^0+/, '') || null
-    const cnpjMatch = projetusCnpjSet.has(cnpj)
-    const nrMatch = nrProposta && whitelistNrSet.has(nrProposta)
-    if (!cnpjMatch && !nrMatch) return
+    // Filter by Projetus client CNPJs — only keep proposals from known clients
+    if (!projetusCnpjSet.has(cnpj)) return
 
     stats.osc_rows_kept++
     propostaMap.set(row['ID_PROPOSTA'], {
