@@ -21,6 +21,7 @@ import {
   DEFAULT_TABLE_FILTERS,
   DEFAULT_TGOV_TAB,
   TGOV_PAGE_SIZE,
+  TGOV_PAGE_SIZE_OPTIONS,
   TGOV_TIPO_LABELS,
   type TGovMainFilters,
   type TGovTab,
@@ -29,6 +30,8 @@ import {
   type TGovExecucaoTableRow,
   type TGovAprovacaoTableRow,
   type TGovStatusBucket,
+  APROVACAO_NR_PROPOSTAS,
+  EXECUCAO_NR_PROPOSTAS,
 } from '@/lib/tgov'
 
 // ---------------------------------------------------------------------------
@@ -57,9 +60,14 @@ function formatPercent(value: number | null): string {
   return `${value.toFixed(1)}%`
 }
 
-/** TransfereGov link for a convenio number */
-function buildTGovLink(nrConvenio: string): string {
-  return `https://discricionarias.transferegov.sistema.gov.br/voluntarias/convenio/ConsultarConvenio/ConsultarConvenio.do?Op=0&nrConvenio=${nrConvenio}`
+/** TransfereGov link for execução (convenio) */
+function buildTGovExecucaoLink(nrConvenio: string): string {
+  return `https://discricionarias.transferegov.sistema.gov.br/voluntarias/ConsultarProposta/ResultadoDaConsultaDeConvenioSelecionarConvenio.do?idConvenio=${nrConvenio}`
+}
+
+/** TransfereGov link for aprovação (proposta) */
+function buildTGovAprovacaoLink(idProposta: string): string {
+  return `https://discricionarias.transferegov.sistema.gov.br/voluntarias/ConsultarProposta/ResultadoDaConsultaDePropostaDetalharProposta.do?idProposta=${idProposta}`
 }
 
 function buildYearOptions(): string[] {
@@ -215,16 +223,25 @@ interface ExecucaoResponse extends TGovTabResponse {
   byExecRange?: TGovStatusBucket[]
   byYear?: { ano: string; valorGlobal: number; count: number }[]
   byDesembolsoYear?: { ano: string; comDesembolso: number; semDesembolso: number }[]
+  byAvgUf?: { uf: string; avgValor: number; count: number }[]
+  prazos?: {
+    vigencia_30: number; vigencia_60: number; vigencia_90: number; vigencia_vencido: number
+    pc_30: number; pc_60: number; pc_90: number; pc_vencido: number
+  } | null
+  avgValor?: number | null
 }
 
 interface AprovacaoResponse extends TGovTabResponse {
   byUf?: { uf: string; valorGlobal: number; count: number }[]
   byValorStatus?: { situacao: string; valorGlobal: number }[]
+  byAvgUf?: { uf: string; avgValor: number; count: number }[]
+  avgValor?: number | null
 }
 
 interface CnpjSearchResult {
   cnpj: string
   proponente: string | null
+  isProjetusClient: boolean
   propostas: {
     numeroProposta: string; titulo: string | null; proponente: string; situacao: string
     valorGlobal: number | null; valorRepasse: number | null; uf: string | null; municipio: string | null; data: string | null
@@ -256,6 +273,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
   const [mainFilters, setMainFilters] = useState<TGovMainFilters>(DEFAULT_MAIN_FILTERS)
   const [tableFilters, setTableFilters] = useState<TGovTableFilters>(DEFAULT_TABLE_FILTERS)
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(TGOV_PAGE_SIZE)
   const [data, setData] = useState<ExecucaoResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -270,13 +288,17 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
   const [cnpjLoading, setCnpjLoading] = useState(false)
   const [cnpjResult, setCnpjResult] = useState<CnpjSearchResult | null>(null)
   const [cnpjError, setCnpjError] = useState<string | null>(null)
+  // Track which nr_propostas are already in whitelist (for duplicate indication)
+  const [whitelistNrPropostas, setWhitelistNrPropostas] = useState<Set<string>>(new Set())
+  // Track proposals added in this modal session (optimistic UI)
+  const [addedInSession, setAddedInSession] = useState<Set<string>>(new Set())
 
   // ---------------------------------------------------------------------------
   // Fetch
   // ---------------------------------------------------------------------------
 
   const fetchData = useCallback(
-    async (tab: TGovTab, mf: TGovMainFilters, tf: TGovTableFilters, pg: number) => {
+    async (tab: TGovTab, mf: TGovMainFilters, tf: TGovTableFilters, pg: number, ps: number) => {
       setLoading(true)
       setError(null)
       try {
@@ -288,7 +310,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
         if (tf.proponente) params.set('proponente', tf.proponente)
         if (tf.numeroProposta) params.set('numero_proposta', tf.numeroProposta)
         params.set('page', String(pg))
-        params.set('page_size', String(TGOV_PAGE_SIZE))
+        params.set('page_size', String(ps))
 
         const res = await fetch(`/api/tgov/${tab}?${params.toString()}`)
         if (!res.ok) {
@@ -320,8 +342,8 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
   )
 
   useEffect(() => {
-    fetchData(activeTab, mainFilters, tableFilters, page)
-  }, [activeTab, mainFilters, tableFilters, page, fetchData])
+    fetchData(activeTab, mainFilters, tableFilters, page, pageSize)
+  }, [activeTab, mainFilters, tableFilters, page, pageSize, fetchData])
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -398,13 +420,9 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
   const totalPages = data?.table.totalPages ?? 1
   const totalRows = data?.table.totalRows ?? 0
 
-  // For execucao tab, use byExecRange for donut; for aprovacao, use byStatus
-  const donutData = activeTab === 'execucao' && data?.byExecRange
-    ? data.byExecRange
-    : data?.byStatus ?? []
-  const donutLabel = activeTab === 'execucao'
-    ? 'Distribuição por % Execução'
-    : 'Distribuição por Situação'
+  // Both tabs use byStatus (situação) for the donut chart
+  const donutData = data?.byStatus ?? []
+  const donutLabel = 'Distribuição por Situação'
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -423,7 +441,25 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => { setCnpjModalOpen(true); setCnpjResult(null); setCnpjError(null); setCnpjInput('') }}
+              onClick={async () => {
+                setCnpjModalOpen(true); setCnpjResult(null); setCnpjError(null); setCnpjInput(''); setAddedInSession(new Set())
+                try {
+                  const res = await fetch('/api/tgov/whitelist')
+                  if (res.ok) {
+                    const json = await res.json()
+                    const nrs = new Set<string>([
+                      // Dynamic whitelist entries
+                      ...(json.entries ?? [])
+                        .map((e: { nr_proposta: string | null }) => e.nr_proposta)
+                        .filter(Boolean) as string[],
+                      // Hardcoded scope (strip leading zeros for consistent matching)
+                      ...Array.from(APROVACAO_NR_PROPOSTAS).map(nr => nr.replace(/^0+/, '')),
+                      ...Array.from(EXECUCAO_NR_PROPOSTAS).map(nr => nr.replace(/^0+/, '')),
+                    ])
+                    setWhitelistNrPropostas(nrs)
+                  }
+                } catch { /* ignore */ }
+              }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -449,7 +485,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
           </div>
         </div>
 
-        <div className={`mt-4 flex flex-wrap items-end gap-3${isDashboardView ? ' hidden' : ''}`}>
+        <div className="mt-4 flex flex-wrap items-end gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Ano</label>
             <select
@@ -506,7 +542,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
       </div>
 
       {/* Main content */}
-      <div className={`px-8 py-6 space-y-6${isDashboardView ? ' hidden' : ''}`}>
+      <div className="px-8 py-6 space-y-6">
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
@@ -551,8 +587,8 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
           </div>
         </div>
 
-        {/* Table section */}
-        <div className="bg-white rounded-xl border border-gray-200">
+        {/* Table section — pipeline only */}
+        <div className={`bg-white rounded-xl border border-gray-200${isDashboardView ? ' hidden' : ''}`}>
           <div className="px-5 py-4 border-b border-gray-100">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex-1">
@@ -643,9 +679,20 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
             )}
           </div>
 
-          {!loading && totalPages > 1 && (
+          {!loading && (totalPages > 1 || pageSize !== TGOV_PAGE_SIZE) && (
             <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
-              <p className="text-xs text-gray-500">Página {page} de {totalPages}</p>
+              <div className="flex items-center gap-3">
+                <p className="text-xs text-gray-500">Página {page} de {totalPages}</p>
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}
+                  className="text-xs border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 bg-white"
+                >
+                  {TGOV_PAGE_SIZE_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s} linhas</option>
+                  ))}
+                </select>
+              </div>
               <div className="flex items-center gap-1">
                 <PaginationButton label="«" onClick={() => setPage(1)} disabled={page === 1} />
                 <PaginationButton label="‹" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} />
@@ -674,23 +721,28 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
         </div>
       </div>
 
-      {/* BI Summary */}
-      {activeTab === 'execucao' && !loading && data && data.total > 0 && (
+      {/* BI Summary — only on dashboard view */}
+      {isDashboardView && activeTab === 'execucao' && !loading && data && data.total > 0 && (
         <ExecucaoBISummary
           rows={data.table.rows as TGovExecucaoTableRow[]}
           total={data.total}
           byStatus={data.byStatus}
           byYear={(data as ExecucaoResponse).byYear ?? []}
           byDesembolsoYear={(data as ExecucaoResponse).byDesembolsoYear ?? []}
+          byAvgUf={(data as ExecucaoResponse).byAvgUf ?? []}
+          prazos={(data as ExecucaoResponse).prazos ?? null}
+          avgValor={(data as ExecucaoResponse).avgValor ?? null}
           onStatusClick={(s) => handleMainFilterChange('status', mainFilters.status === s ? '' : s)}
         />
       )}
-      {activeTab === 'aprovacao' && !loading && data && data.total > 0 && (
+      {isDashboardView && activeTab === 'aprovacao' && !loading && data && data.total > 0 && (
         <AprovacaoBISummary
           total={data.total}
           byStatus={data.byStatus}
           byUf={(data as AprovacaoResponse).byUf ?? []}
           byValorStatus={(data as AprovacaoResponse).byValorStatus ?? []}
+          byAvgUf={(data as AprovacaoResponse).byAvgUf ?? []}
+          avgValor={(data as AprovacaoResponse).avgValor ?? null}
           onStatusClick={(s) => handleMainFilterChange('status', mainFilters.status === s ? '' : s)}
         />
       )}
@@ -750,40 +802,12 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
 
                 {cnpjResult && (
                   <div className="space-y-4">
-                    <div className="rounded-lg bg-gray-50 px-4 py-3 flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{cnpjResult.proponente || 'Proponente'}</p>
-                        <p className="text-xs text-gray-500 font-mono mt-0.5">{formatCnpj(cnpjResult.cnpj)}</p>
-                      </div>
-                      <button
-                        onClick={async () => {
-                          const inputDigits = cnpjInput.replace(/\D/g, '')
-                          const isNr = cnpjInput.includes('/') && inputDigits.length !== 14
-                          const body = isNr
-                            ? { nr_proposta: cnpjInput.trim(), tab: 'ambos' }
-                            : { cnpj: inputDigits, tab: 'ambos' }
-                          const res = await fetch('/api/tgov/whitelist', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(body),
-                          })
-                          const json = await res.json()
-                          alert(json.message || json.error || 'Erro')
-                          if (res.ok) {
-                            // Refresh main data
-                            fetchData(activeTab, mainFilters, tableFilters, page)
-                          }
-                        }}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors shrink-0"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        Adicionar ao TGov
-                      </button>
+                    <div className="rounded-lg bg-gray-50 px-4 py-3">
+                      <p className="text-sm font-semibold text-gray-900">{cnpjResult.proponente || 'Proponente'}</p>
+                      <p className="text-xs text-gray-500 font-mono mt-0.5">{formatCnpj(cnpjResult.cnpj)}</p>
                     </div>
 
-                    {/* Propostas */}
+                    {/* Propostas — com botão individual por linha */}
                     {cnpjResult.propostas.length > 0 && (
                       <div>
                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
@@ -797,24 +821,59 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
                                 <th className="text-left px-3 py-2 font-medium text-gray-500">Situação</th>
                                 <th className="text-right px-3 py-2 font-medium text-gray-500">Valor Global</th>
                                 <th className="text-left px-3 py-2 font-medium text-gray-500">UF</th>
+                                <th className="text-center px-3 py-2 font-medium text-gray-500 w-24"></th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                              {cnpjResult.propostas.map((p, i) => (
-                                <tr key={i} className="hover:bg-blue-50/30">
-                                  <td className="px-3 py-2 font-mono">{p.numeroProposta}</td>
-                                  <td className="px-3 py-2"><SituacaoBadge situacao={p.situacao} /></td>
-                                  <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(p.valorGlobal)}</td>
-                                  <td className="px-3 py-2 text-gray-500">{p.uf || '—'}</td>
-                                </tr>
-                              ))}
+                              {cnpjResult.propostas.map((p, i) => {
+                                const nr = p.numeroProposta
+                                const nrStripped = nr.replace(/^0+/, '')
+                                const isInWhitelist = whitelistNrPropostas.has(nr) || whitelistNrPropostas.has(nrStripped)
+                                const wasAdded = addedInSession.has(nr)
+                                const alreadyAdded = isInWhitelist || wasAdded || cnpjResult.isProjetusClient
+                                return (
+                                  <tr key={i} className="hover:bg-blue-50/30">
+                                    <td className="px-3 py-2 font-mono">{nr}</td>
+                                    <td className="px-3 py-2"><SituacaoBadge situacao={p.situacao} /></td>
+                                    <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(p.valorGlobal)}</td>
+                                    <td className="px-3 py-2 text-gray-500">{p.uf || '—'}</td>
+                                    <td className="px-3 py-2 text-center">
+                                      {alreadyAdded ? (
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500">
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                          Já acompanhada
+                                        </span>
+                                      ) : (
+                                        <button
+                                          onClick={async (ev) => {
+                                            ev.stopPropagation()
+                                            const res = await fetch('/api/tgov/whitelist', {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ nr_proposta: nr, tab: 'aprovacao' }),
+                                            })
+                                            if (res.ok) {
+                                              setAddedInSession(prev => new Set(prev).add(nr))
+                                              fetchData(activeTab, mainFilters, tableFilters, page, pageSize)
+                                            }
+                                          }}
+                                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-600 text-white text-[10px] font-medium hover:bg-green-700 transition-colors"
+                                        >
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                          Adicionar
+                                        </button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
                             </tbody>
                           </table>
                         </div>
                       </div>
                     )}
 
-                    {/* Execução */}
+                    {/* Execução — com botão individual por linha */}
                     {cnpjResult.execucao.length > 0 && (
                       <div>
                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
@@ -829,21 +888,56 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
                                 <th className="text-right px-3 py-2 font-medium text-gray-500">Valor Global</th>
                                 <th className="text-right px-3 py-2 font-medium text-gray-500">Desembolsado</th>
                                 <th className="text-left px-3 py-2 font-medium text-gray-500">Fim Vigência</th>
+                                <th className="text-center px-3 py-2 font-medium text-gray-500 w-24"></th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                              {cnpjResult.execucao.map((e, i) => (
-                                <tr key={i} className="hover:bg-blue-50/30">
-                                  <td className="px-3 py-2 font-mono">
-                                    <a href={buildTGovLink(e.nrConvenio)} target="_blank" rel="noopener noreferrer"
-                                       className="text-blue-600 hover:underline">{e.nrConvenio}</a>
-                                  </td>
-                                  <td className="px-3 py-2"><SituacaoBadge situacao={e.situacao} /></td>
-                                  <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(e.valorGlobal)}</td>
-                                  <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(e.valorDesembolsado)}</td>
-                                  <td className="px-3 py-2 text-gray-500">{formatDate(e.dataFimVigencia)}</td>
-                                </tr>
-                              ))}
+                              {cnpjResult.execucao.map((e, i) => {
+                                const nr = e.numeroProposta
+                                const nrStripped = nr.replace(/^0+/, '')
+                                const isInWhitelist = whitelistNrPropostas.has(nr) || whitelistNrPropostas.has(nrStripped)
+                                const wasAdded = addedInSession.has(nr)
+                                const alreadyAdded = isInWhitelist || wasAdded || cnpjResult.isProjetusClient
+                                return (
+                                  <tr key={i} className="hover:bg-blue-50/30">
+                                    <td className="px-3 py-2 font-mono">
+                                      <a href={buildTGovExecucaoLink(e.nrConvenio)} target="_blank" rel="noopener noreferrer"
+                                         className="text-blue-600 hover:underline">{e.nrConvenio}</a>
+                                    </td>
+                                    <td className="px-3 py-2"><SituacaoBadge situacao={e.situacao} /></td>
+                                    <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(e.valorGlobal)}</td>
+                                    <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(e.valorDesembolsado)}</td>
+                                    <td className="px-3 py-2 text-gray-500">{formatDate(e.dataFimVigencia)}</td>
+                                    <td className="px-3 py-2 text-center">
+                                      {alreadyAdded ? (
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500">
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                          Já acompanhada
+                                        </span>
+                                      ) : (
+                                        <button
+                                          onClick={async (ev) => {
+                                            ev.stopPropagation()
+                                            const res = await fetch('/api/tgov/whitelist', {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ nr_proposta: nr, tab: 'execucao' }),
+                                            })
+                                            if (res.ok) {
+                                              setAddedInSession(prev => new Set(prev).add(nr))
+                                              fetchData(activeTab, mainFilters, tableFilters, page, pageSize)
+                                            }
+                                          }}
+                                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-600 text-white text-[10px] font-medium hover:bg-green-700 transition-colors"
+                                        >
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                          Adicionar
+                                        </button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
                             </tbody>
                           </table>
                         </div>
@@ -955,7 +1049,7 @@ function AprovacaoTable({
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-gray-100 bg-gray-50">
-          <SortableTh label="ID Proposta" col="numeroProposta" className="text-left px-5" {...thProps} />
+          <SortableTh label="NR Proposta" col="numeroProposta" className="text-left px-5" {...thProps} />
           <SortableTh label="Data" col="data" className="text-left px-4" {...thProps} />
           <SortableTh label="CNPJ" col="cnpj" className="text-left px-4" {...thProps} />
           <SortableTh label="Proponente" col="proponente" className="text-left px-4" {...thProps} />
@@ -1032,22 +1126,19 @@ function ExecucaoTable({
         <tr className="border-b border-gray-100 bg-gray-50">
           <SortableTh label="Nr Convênio" col="nrConvenio" className="text-left px-4 whitespace-nowrap" {...thProps} />
           <SortableTh label="Ano" col="anoInstrumento" className="text-left px-3" {...thProps} />
+          <SortableTh label="Fim Vigência" col="dataFimVigencia" className="text-left px-3 whitespace-nowrap" {...thProps} />
+          <SortableTh label="Limite PC" col="diaLimitePrestContas" className="text-left px-3 whitespace-nowrap" {...thProps} />
           <SortableTh label="CNPJ" col="cnpj" className="text-left px-3" {...thProps} />
           <SortableTh label="Proponente" col="proponente" className="text-left px-3" {...thProps} />
           <SortableTh label="UF" col="uf" className="text-left px-3" {...thProps} />
           <SortableTh label="Situação" col="situacao" className="text-left px-3" {...thProps} />
-          <SortableTh label="Status" col="internalStatus" className="text-left px-3 whitespace-nowrap" {...thProps} />
-          <SortableTh label="Valor Global" col="valorGlobal" className="text-right px-3 whitespace-nowrap" {...thProps} />
-          <SortableTh label="Saldo Conta" col="saldoConta" className="text-right px-3 whitespace-nowrap" {...thProps} />
           <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Desembolso</th>
-          <SortableTh label="Fim Vigência" col="dataFimVigencia" className="text-left px-3 whitespace-nowrap" {...thProps} />
-          <SortableTh label="Limite PC" col="diaLimitePrestContas" className="text-left px-3 whitespace-nowrap" {...thProps} />
           <th className="px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide w-8"></th>
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-50">
         {loading ? (
-          <SkeletonRows cols={13} />
+          <SkeletonRows cols={10} />
         ) : sorted && sorted.length > 0 ? (
           sorted.map((row, idx) => {
             const hasDesembolso = row.valorDesembolsado !== null && row.valorDesembolsado > 0
@@ -1059,7 +1150,7 @@ function ExecucaoTable({
               >
                 <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">
                   <a
-                    href={buildTGovLink(row.nrConvenio)}
+                    href={buildTGovExecucaoLink(row.nrConvenio)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-800 hover:underline"
@@ -1070,19 +1161,18 @@ function ExecucaoTable({
                   </a>
                 </td>
                 <td className="px-3 py-2.5 text-gray-500 text-xs tabular-nums">{row.anoInstrumento || '—'}</td>
+                <td className="px-3 py-2.5 text-xs tabular-nums whitespace-nowrap text-gray-600">
+                  {formatDate(row.dataFimVigencia)}
+                </td>
+                <td className="px-3 py-2.5 text-xs tabular-nums whitespace-nowrap text-gray-600">
+                  {formatDate(row.diaLimitePrestContas)}
+                </td>
                 <td className="px-3 py-2.5 text-gray-500 font-mono text-xs whitespace-nowrap">{formatCnpj(row.cnpj) || '—'}</td>
                 <td className="px-3 py-2.5 text-gray-700 text-xs">
                   {row.proponente || '—'}
                 </td>
                 <td className="px-3 py-2.5 text-gray-500 text-xs">{row.uf || '—'}</td>
                 <td className="px-3 py-2.5"><SituacaoBadge situacao={row.situacao} /></td>
-                <td className="px-3 py-2.5"><InternalStatusBadge status={row.internalStatus} /></td>
-                <td className="px-3 py-2.5 text-right text-xs tabular-nums whitespace-nowrap text-gray-700 font-medium">
-                  {formatCurrency(row.valorGlobal)}
-                </td>
-                <td className="px-3 py-2.5 text-right text-xs tabular-nums whitespace-nowrap text-gray-600">
-                  {formatCurrency(row.saldoConta)}
-                </td>
                 <td className="px-3 py-2.5 text-center">
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                     hasDesembolso
@@ -1093,12 +1183,6 @@ function ExecucaoTable({
                     {hasDesembolso ? 'Sim' : 'Não'}
                   </span>
                 </td>
-                <td className="px-3 py-2.5 text-xs tabular-nums whitespace-nowrap text-gray-600">
-                  {formatDate(row.dataFimVigencia)}
-                </td>
-                <td className="px-3 py-2.5 text-xs tabular-nums whitespace-nowrap text-gray-600">
-                  {formatDate(row.diaLimitePrestContas)}
-                </td>
                 <td className="px-3 py-2.5 text-gray-300">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -1108,7 +1192,7 @@ function ExecucaoTable({
             )
           })
         ) : (
-          <EmptyRow cols={13} />
+          <EmptyRow cols={10} />
         )}
       </tbody>
     </table>
@@ -1144,7 +1228,7 @@ function ExecucaoSidecard({
           </div>
           <div className="flex items-center gap-2">
             <a
-              href={buildTGovLink(row.nrConvenio)}
+              href={buildTGovExecucaoLink(row.nrConvenio)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors"
@@ -1283,7 +1367,7 @@ function AprovacaoSidecard({
   row: TGovAprovacaoTableRow
   onClose: () => void
 }) {
-  const tgovPropostaLink = `https://discricionarias.transferegov.sistema.gov.br/voluntarias/proposta/ConsultarProposta/ConsultarProposta.do?idProposta=${row.numeroProposta}`
+  const tgovPropostaLink = buildTGovAprovacaoLink(row.transferGovId)
   return (
     <>
       <div className="fixed inset-0 bg-black/20 z-40 transition-opacity" onClick={onClose} />
@@ -1340,7 +1424,7 @@ function AprovacaoSidecard({
 
           {/* Instrumento */}
           <SidecardSection title="Instrumento">
-            <SidecardField label="ID Proposta" value={row.numeroProposta} mono />
+            <SidecardField label="NR Proposta" value={row.numeroProposta} mono />
             <SidecardField label="Modalidade" value={row.modalidade} />
             <SidecardField label="Data Publicação" value={formatDate(row.data)} />
             <SidecardField label="Início Vigência" value={formatDate(row.dataInicioVigencia)} />
@@ -1441,10 +1525,12 @@ function SidecardCurrency({
 // ---------------------------------------------------------------------------
 
 function AprovacaoBISummary({
-  total, byStatus, byUf, byValorStatus, onStatusClick,
+  total, byStatus, byUf, byValorStatus, byAvgUf, avgValor, onStatusClick,
 }: {
   total: number
   byStatus: TGovStatusBucket[]
+  byAvgUf: { uf: string; avgValor: number; count: number }[]
+  avgValor: number | null
   byUf: { uf: string; valorGlobal: number; count: number }[]
   byValorStatus: { situacao: string; valorGlobal: number }[]
   onStatusClick?: (status: string) => void
@@ -1471,10 +1557,11 @@ function AprovacaoBISummary({
   return (
     <div className="space-y-4">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total Propostas', value: total.toLocaleString('pt-BR'), color: 'text-gray-900' },
           { label: 'Valor Global Total', value: shortCurrency(valorGlobalTotal), color: 'text-blue-700' },
+          { label: 'Média por Projeto', value: avgValor !== null ? shortCurrency(avgValor) : '—', color: 'text-violet-700' },
           { label: 'UFs Representadas', value: String(byUf.length), color: 'text-gray-900' },
         ].map(c => (
           <div key={c.label} className="bg-white rounded-xl border border-gray-200 p-4">
@@ -1555,6 +1642,24 @@ function AprovacaoBISummary({
           </div>
         )}
       </div>
+
+      {/* BI: Média de Valor por UF */}
+      {byAvgUf.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Média de Valor por Projeto — por UF (top 10)</p>
+          <div className="h-64">
+            <BIResponsiveContainer>
+              <BIBarChart data={byAvgUf.slice(0, 10)} layout="vertical">
+                <BICartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                <BIXAxis type="number" tickFormatter={(v: number) => shortCurrency(v)} tick={{ fontSize: 10 }} />
+                <BIYAxis dataKey="uf" type="category" tick={{ fontSize: 11 }} width={35} />
+                <BITooltipChart formatter={(v: number, _n: unknown, p: { payload?: { count?: number } }) => [`${formatCurrency(v)} (${p?.payload?.count ?? 0} proj.)`, 'Média']} />
+                <BIBar dataKey="avgValor" fill="#7c3aed" radius={[0, 4, 4, 0]} />
+              </BIBarChart>
+            </BIResponsiveContainer>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1564,13 +1669,19 @@ function AprovacaoBISummary({
 // ---------------------------------------------------------------------------
 
 function ExecucaoBISummary({
-  rows, total, byStatus, byYear, byDesembolsoYear, onStatusClick,
+  rows, total, byStatus, byYear, byDesembolsoYear, byAvgUf, prazos, avgValor, onStatusClick,
 }: {
   rows: TGovExecucaoTableRow[]
   total: number
   byStatus: TGovStatusBucket[]
   byYear: { ano: string; valorGlobal: number; count: number }[]
   byDesembolsoYear: { ano: string; comDesembolso: number; semDesembolso: number }[]
+  byAvgUf: { uf: string; avgValor: number; count: number }[]
+  prazos: {
+    vigencia_30: number; vigencia_60: number; vigencia_90: number; vigencia_vencido: number
+    pc_30: number; pc_60: number; pc_90: number; pc_vencido: number
+  } | null
+  avgValor: number | null
   onStatusClick?: (status: string) => void
 }) {
   const valorGlobalTotal = rows.reduce((sum, r) => sum + (r.valorGlobal ?? 0), 0)
@@ -1608,10 +1719,11 @@ function ExecucaoBISummary({
   return (
     <div className="space-y-4">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
           { label: 'Total Projetos', value: total.toLocaleString('pt-BR'), color: 'text-gray-900' },
           { label: 'Valor Global (página)', value: shortCurrency(valorGlobalTotal), color: 'text-gray-900' },
+          { label: 'Média por Projeto', value: avgValor !== null ? shortCurrency(avgValor) : '—', color: 'text-violet-700' },
           { label: 'Total Desembolsado (página)', value: shortCurrency(valorDesembolsadoTotal), color: 'text-blue-700' },
           { label: 'Com Desembolso', value: `${comDesembolso} / ${comDesembolso + semDesembolso}`, color: 'text-green-700' },
         ].map(c => (
@@ -1695,6 +1807,78 @@ function ExecucaoBISummary({
           </div>
         )}
       </div>
+
+      {/* Detalhamentos: Prazos críticos */}
+      {prazos && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Detalhamentos — Prazos Críticos</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Vigência */}
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold text-gray-700 uppercase tracking-wide">Fim de Vigência</p>
+              <PrazoRow label="Vencidos" value={prazos.vigencia_vencido} color="bg-red-100 text-red-700" />
+              <PrazoRow label="≤ 30 dias" value={prazos.vigencia_30} color="bg-orange-100 text-orange-700" />
+              <PrazoRow label="31–60 dias" value={prazos.vigencia_60} color="bg-amber-100 text-amber-700" />
+              <PrazoRow label="61–90 dias" value={prazos.vigencia_90} color="bg-yellow-100 text-yellow-700" />
+            </div>
+            {/* Prestação de Contas */}
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold text-gray-700 uppercase tracking-wide">Prestação de Contas</p>
+              <PrazoRow label="Vencidos" value={prazos.pc_vencido} color="bg-red-100 text-red-700" />
+              <PrazoRow label="≤ 30 dias" value={prazos.pc_30} color="bg-orange-100 text-orange-700" />
+              <PrazoRow label="31–60 dias" value={prazos.pc_60} color="bg-amber-100 text-amber-700" />
+              <PrazoRow label="61–90 dias" value={prazos.pc_90} color="bg-yellow-100 text-yellow-700" />
+            </div>
+            {/* Situações críticas */}
+            <div className="lg:col-span-2 space-y-2">
+              <p className="text-[11px] font-semibold text-gray-700 uppercase tracking-wide">Situações que Exigem Ação</p>
+              {byStatus
+                .filter(s => /Inadimplente|Reprovado|Aguardando Prestação|Aguardando Envio|Rejeitada|em Complementação/i.test(s.status))
+                .slice(0, 6)
+                .map(s => (
+                  <div
+                    key={s.status}
+                    onClick={() => onStatusClick?.(s.status)}
+                    className="flex items-center justify-between gap-2 cursor-pointer hover:bg-gray-50 px-2 py-1 rounded"
+                  >
+                    <span className="text-xs text-gray-700 truncate" title={s.status}>{s.status}</span>
+                    <span className="shrink-0 text-xs font-bold tabular-nums px-2 py-0.5 rounded-full bg-red-100 text-red-700">{s.count}</span>
+                  </div>
+                ))}
+              {byStatus.filter(s => /Inadimplente|Reprovado|Aguardando Prestação|Aguardando Envio|Rejeitada|em Complementação/i.test(s.status)).length === 0 && (
+                <p className="text-xs text-gray-400 italic">Nenhuma situação crítica encontrada.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BI: Média de Valor por UF */}
+      {byAvgUf.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Média de Valor por Projeto — por UF (top 10)</p>
+          <div className="h-64">
+            <BIResponsiveContainer>
+              <BIBarChart data={byAvgUf.slice(0, 10)} layout="vertical">
+                <BICartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                <BIXAxis type="number" tickFormatter={(v: number) => shortCurrency(v)} tick={{ fontSize: 10 }} />
+                <BIYAxis dataKey="uf" type="category" tick={{ fontSize: 11 }} width={35} />
+                <BITooltipChart formatter={(v: number, _n: unknown, p: { payload?: { count?: number } }) => [`${formatCurrency(v)} (${p?.payload?.count ?? 0} proj.)`, 'Média']} />
+                <BIBar dataKey="avgValor" fill="#7c3aed" radius={[0, 4, 4, 0]} />
+              </BIBarChart>
+            </BIResponsiveContainer>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PrazoRow({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-xs text-gray-600">{label}</span>
+      <span className={`shrink-0 text-xs font-bold tabular-nums px-2 py-0.5 rounded-full ${color}`}>{value}</span>
     </div>
   )
 }

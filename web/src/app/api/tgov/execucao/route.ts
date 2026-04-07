@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
-import { TGOV_PAGE_SIZE, TGovTabResponse, TGovExecucaoTableRow, EXECUCAO_NR_PROPOSTAS, buildNrPropostaWhereClause } from '@/lib/tgov'
+import { TGOV_PAGE_SIZE, TGOV_MAX_PAGE_SIZE, TGovTabResponse, TGovExecucaoTableRow, EXECUCAO_NR_PROPOSTAS, buildNrPropostaWhereClause } from '@/lib/tgov'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -110,7 +110,8 @@ export async function GET(request: NextRequest) {
     const numeroPropostaFilter = searchParams.get('numero_proposta') ?? ''
 
     const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
-    const offset = (page - 1) * TGOV_PAGE_SIZE
+    const pageSize = Math.min(TGOV_MAX_PAGE_SIZE, Math.max(1, parseInt(searchParams.get('page_size') ?? String(TGOV_PAGE_SIZE), 10)))
+    const offset = (page - 1) * pageSize
 
     // ---------------------------------------------------------------------------
     // Build main filter conditions (affect totals + table)
@@ -184,6 +185,9 @@ export async function GET(request: NextRequest) {
       by_exec_range: { faixa: string; cnt: number }[] | null
       by_year: { ano: string; valor_global: string; cnt: number }[] | null
       by_desembolso_year: { ano: string; com_desembolso: number; sem_desembolso: number }[] | null
+      by_avg_uf: { uf: string; avg_valor: string; cnt: number }[] | null
+      prazos: { vigencia_30: number; vigencia_60: number; vigencia_90: number; vigencia_vencido: number; pc_30: number; pc_60: number; pc_90: number; pc_vencido: number } | null
+      avg_valor: string | null
       table_total: number
       table_data: {
         nr_convenio: string | null
@@ -265,6 +269,32 @@ export async function GET(request: NextRequest) {
             COUNT(*) FILTER (WHERE valor_desembolsado IS NULL OR valor_desembolsado <= 0)::int AS sem_desembolso
           FROM filtered_main GROUP BY 1
         ) d
+      ),
+      agg_avg_uf AS (
+        SELECT json_agg(u ORDER BY u.avg_valor::numeric DESC NULLS LAST) AS v FROM (
+          SELECT
+            COALESCE(uf, 'N/A') AS uf,
+            COALESCE(AVG(valor_global), 0)::text AS avg_valor,
+            COUNT(*)::int AS cnt
+          FROM filtered_main GROUP BY 1
+        ) u
+      ),
+      agg_prazos AS (
+        SELECT to_jsonb(p) AS v FROM (
+          SELECT
+            COUNT(*) FILTER (WHERE data_fim_vigencia IS NOT NULL AND data_fim_vigencia >= CURRENT_DATE AND data_fim_vigencia < CURRENT_DATE + INTERVAL '30 days')::int AS vigencia_30,
+            COUNT(*) FILTER (WHERE data_fim_vigencia IS NOT NULL AND data_fim_vigencia >= CURRENT_DATE + INTERVAL '30 days' AND data_fim_vigencia < CURRENT_DATE + INTERVAL '60 days')::int AS vigencia_60,
+            COUNT(*) FILTER (WHERE data_fim_vigencia IS NOT NULL AND data_fim_vigencia >= CURRENT_DATE + INTERVAL '60 days' AND data_fim_vigencia < CURRENT_DATE + INTERVAL '90 days')::int AS vigencia_90,
+            COUNT(*) FILTER (WHERE data_fim_vigencia IS NOT NULL AND data_fim_vigencia < CURRENT_DATE)::int AS vigencia_vencido,
+            COUNT(*) FILTER (WHERE dia_limite_prest_contas IS NOT NULL AND dia_limite_prest_contas >= CURRENT_DATE AND dia_limite_prest_contas < CURRENT_DATE + INTERVAL '30 days')::int AS pc_30,
+            COUNT(*) FILTER (WHERE dia_limite_prest_contas IS NOT NULL AND dia_limite_prest_contas >= CURRENT_DATE + INTERVAL '30 days' AND dia_limite_prest_contas < CURRENT_DATE + INTERVAL '60 days')::int AS pc_60,
+            COUNT(*) FILTER (WHERE dia_limite_prest_contas IS NOT NULL AND dia_limite_prest_contas >= CURRENT_DATE + INTERVAL '60 days' AND dia_limite_prest_contas < CURRENT_DATE + INTERVAL '90 days')::int AS pc_90,
+            COUNT(*) FILTER (WHERE dia_limite_prest_contas IS NOT NULL AND dia_limite_prest_contas < CURRENT_DATE)::int AS pc_vencido
+          FROM filtered_main
+        ) p
+      ),
+      agg_avg_total AS (
+        SELECT COALESCE(AVG(valor_global), 0)::text AS v FROM filtered_main
       ),`
       : ''
 
@@ -272,11 +302,17 @@ export async function GET(request: NextRequest) {
       ? `(SELECT v FROM agg_status)         AS by_status,
         (SELECT v FROM agg_exec_range)      AS by_exec_range,
         (SELECT v FROM agg_year)            AS by_year,
-        (SELECT v FROM agg_desembolso_year) AS by_desembolso_year,`
+        (SELECT v FROM agg_desembolso_year) AS by_desembolso_year,
+        (SELECT v FROM agg_avg_uf)          AS by_avg_uf,
+        (SELECT v FROM agg_prazos)          AS prazos,
+        (SELECT v FROM agg_avg_total)       AS avg_valor,`
       : `NULL::json AS by_status,
         NULL::json AS by_exec_range,
         NULL::json AS by_year,
-        NULL::json AS by_desembolso_year,`
+        NULL::json AS by_desembolso_year,
+        NULL::json AS by_avg_uf,
+        NULL::jsonb AS prazos,
+        NULL::text AS avg_valor,`
 
     const result = await query<AggResult>(
       `WITH
@@ -326,7 +362,7 @@ export async function GET(request: NextRequest) {
           FROM filtered_table pe
           LEFT JOIN tgov_interactions ti ON ti.item_key = pe.nr_convenio AND ti.tab = 'execucao'
           ORDER BY pe.valor_global DESC NULLS LAST, pe.nr_convenio DESC NULLS LAST
-          LIMIT ${TGOV_PAGE_SIZE} OFFSET ${offset}
+          LIMIT ${pageSize} OFFSET ${offset}
         ) t
       )
       SELECT
@@ -340,7 +376,7 @@ export async function GET(request: NextRequest) {
     const r = result[0]
     const total = Number(r?.total) || 0
     const totalTableRows = Number(r?.table_total) || 0
-    const totalPages = Math.max(1, Math.ceil(totalTableRows / TGOV_PAGE_SIZE))
+    const totalPages = Math.max(1, Math.ceil(totalTableRows / pageSize))
 
     const byStatusRaw = r?.by_status ?? []
     const byStatus = byStatusRaw.map((s) => {
@@ -374,6 +410,15 @@ export async function GET(request: NextRequest) {
       semDesembolso: d.sem_desembolso,
     }))
 
+    const byAvgUf = (r?.by_avg_uf ?? []).map((u) => ({
+      uf: u.uf,
+      avgValor: parseFloat(u.avg_valor) || 0,
+      count: u.cnt,
+    }))
+
+    const prazos = r?.prazos ?? null
+    const avgValor = r?.avg_valor ? parseFloat(r.avg_valor) : null
+
     const rows: TGovExecucaoTableRow[] = (r?.table_data ?? []).map((row) => ({
       numeroProposta: row.nr_proposta || row.id_proposta || row.nr_convenio || '—',
       nrConvenio: row.nr_convenio || '',
@@ -402,16 +447,26 @@ export async function GET(request: NextRequest) {
       internalStatus: row.internal_status ?? null,
     }))
 
-    const response: TGovTabResponse & { byExecRange: typeof byExecRange; byYear: typeof byYear; byDesembolsoYear: typeof byDesembolsoYear } = {
+    const response: TGovTabResponse & {
+      byExecRange: typeof byExecRange
+      byYear: typeof byYear
+      byDesembolsoYear: typeof byDesembolsoYear
+      byAvgUf: typeof byAvgUf
+      prazos: typeof prazos
+      avgValor: typeof avgValor
+    } = {
       total,
       byStatus,
       byExecRange,
       byYear,
       byDesembolsoYear,
+      byAvgUf,
+      prazos,
+      avgValor,
       table: {
         rows,
         page,
-        pageSize: TGOV_PAGE_SIZE,
+        pageSize,
         totalRows: totalTableRows,
         totalPages,
       },

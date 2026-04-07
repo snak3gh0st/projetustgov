@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
-import { TGOV_PAGE_SIZE, TGovTabResponse, APROVACAO_NR_PROPOSTAS, buildNrPropostaWhereClause } from '@/lib/tgov'
+import { TGOV_PAGE_SIZE, TGOV_MAX_PAGE_SIZE, TGovTabResponse, APROVACAO_NR_PROPOSTAS, buildNrPropostaWhereClause } from '@/lib/tgov'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -9,7 +9,7 @@ export const maxDuration = 30
 export async function GET(request: NextRequest) {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'admin')) {
+    if (!session || (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
     const numeroPropostaFilter = searchParams.get('numero_proposta') ?? ''
 
     const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
-    const offset = (page - 1) * TGOV_PAGE_SIZE
+    const pageSize = Math.min(TGOV_MAX_PAGE_SIZE, Math.max(1, parseInt(searchParams.get('page_size') ?? String(TGOV_PAGE_SIZE), 10)))
+    const offset = (page - 1) * pageSize
 
     const mainParams: unknown[] = []
     const mainConditions: string[] = []
@@ -75,14 +76,14 @@ export async function GET(request: NextRequest) {
 
     if (numeroPropostaFilter) {
       tableParams.push(`%${numeroPropostaFilter}%`)
-      tableConditions.push(`p.transfer_gov_id LIKE $${tableParams.length}`)
+      tableConditions.push(`(p.nr_proposta LIKE $${tableParams.length} OR p.transfer_gov_id LIKE $${tableParams.length})`)
     }
 
     const tableWhereClause = tableConditions.length > 0
       ? `WHERE ${tableConditions.join(' AND ')}`
       : ''
 
-    const [totalRows, byStatusRows, byUfRows, byValorStatusRows, tableCountRows, tableDataRows] = await Promise.all([
+    const [totalRows, byStatusRows, byUfRows, byValorStatusRows, byAvgUfRows, avgTotalRows, tableCountRows, tableDataRows] = await Promise.all([
       query<{ total: number }>(
         `SELECT COUNT(*)::int AS total FROM propostas p ${mainWhereClause}`,
         mainParams
@@ -117,6 +118,21 @@ export async function GET(request: NextRequest) {
           COALESCE(SUM(p.valor_global), 0)::text AS valor_global
         FROM propostas p ${mainWhereClause}
         GROUP BY 1 ORDER BY SUM(p.valor_global) DESC NULLS LAST`,
+        mainParams
+      ),
+
+      query<{ uf: string; avg_valor: string; cnt: number }>(
+        `SELECT
+          COALESCE(p.estado, 'N/A') AS uf,
+          COALESCE(AVG(p.valor_global), 0)::text AS avg_valor,
+          COUNT(*)::int AS cnt
+        FROM propostas p ${mainWhereClause}
+        GROUP BY 1 ORDER BY AVG(p.valor_global) DESC NULLS LAST`,
+        mainParams
+      ),
+
+      query<{ avg_valor: string }>(
+        `SELECT COALESCE(AVG(p.valor_global), 0)::text AS avg_valor FROM propostas p ${mainWhereClause}`,
         mainParams
       ),
 
@@ -169,14 +185,14 @@ export async function GET(request: NextRequest) {
         LEFT JOIN tgov_interactions ti ON ti.item_key = p.nr_proposta AND ti.tab = 'aprovacao'
         ${tableWhereClause}
         ORDER BY p.data_publicacao DESC NULLS LAST, p.transfer_gov_id DESC
-        LIMIT ${TGOV_PAGE_SIZE} OFFSET ${offset}`,
+        LIMIT ${pageSize} OFFSET ${offset}`,
         tableParams
       ),
     ])
 
     const total = Number(totalRows[0]?.total) || 0
     const totalTableRows = Number(tableCountRows[0]?.total) || 0
-    const totalPages = Math.max(1, Math.ceil(totalTableRows / TGOV_PAGE_SIZE))
+    const totalPages = Math.max(1, Math.ceil(totalTableRows / pageSize))
 
     const byStatus = byStatusRows.map((r) => {
       const count = Number(r.cnt)
@@ -198,14 +214,25 @@ export async function GET(request: NextRequest) {
       valorGlobal: parseFloat(r.valor_global) || 0,
     }))
 
-    const response: TGovTabResponse & { byUf: typeof byUf; byValorStatus: typeof byValorStatus } = {
+    const byAvgUf = byAvgUfRows.map(r => ({
+      uf: r.uf,
+      avgValor: parseFloat(r.avg_valor) || 0,
+      count: r.cnt,
+    }))
+
+    const avgValor = avgTotalRows[0]?.avg_valor ? parseFloat(avgTotalRows[0].avg_valor) : null
+
+    const response: TGovTabResponse & { byUf: typeof byUf; byValorStatus: typeof byValorStatus; byAvgUf: typeof byAvgUf; avgValor: typeof avgValor } = {
       total,
       byStatus,
       byUf,
       byValorStatus,
+      byAvgUf,
+      avgValor,
       table: {
         rows: tableDataRows.map((r) => ({
           numeroProposta: r.nr_proposta || r.transfer_gov_id,
+          transferGovId: r.transfer_gov_id,
           data: r.data_publicacao ? String(r.data_publicacao) : null,
           cnpj: r.proponente_cnpj,
           proponente: r.proponente ?? '',
@@ -225,7 +252,7 @@ export async function GET(request: NextRequest) {
           internalStatus: r.internal_status ?? null,
         })),
         page,
-        pageSize: TGOV_PAGE_SIZE,
+        pageSize,
         totalRows: totalTableRows,
         totalPages,
       },
