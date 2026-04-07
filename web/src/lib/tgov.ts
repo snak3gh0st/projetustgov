@@ -122,6 +122,8 @@ export interface TGovAprovacaoTableRow extends TGovTableRow {
   orgaoVinculado: string | null
   dataInicioVigencia: string | null
   dataFimVigencia: string | null
+  tecnicoId?: number | null
+  tecnicoNome?: string | null
 }
 
 /** Extended row for the Execucao tab with financial and detail columns. */
@@ -147,6 +149,8 @@ export interface TGovExecucaoTableRow extends TGovTableRow {
   anoReferencia: number | null
   diaLimitePrestContas: string | null
   diasPrestContas: number | null
+  tecnicoId?: number | null
+  tecnicoNome?: string | null
 }
 
 export interface TGovTabResponse {
