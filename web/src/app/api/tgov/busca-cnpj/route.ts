@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'admin')) {
+    if (!session || (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -109,9 +109,24 @@ export async function GET(request: NextRequest) {
     const cnpj = cnpjParam || propostas[0]?.proponente_cnpj || execucao[0]?.cnpj || ''
     const proponente = propostas[0]?.proponente || execucao[0]?.nome_proponente || null
 
+    // Check if this CNPJ is already a Projetus client (existing_clients or vendedor_projetos)
+    let isProjetusClient = false
+    if (cnpj) {
+      const clientCheck = await query<{ found: boolean }>(
+        `SELECT EXISTS(
+          SELECT 1 FROM existing_clients WHERE cnpj = $1
+          UNION ALL
+          SELECT 1 FROM vendedor_projetos WHERE REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') = $1
+        ) AS found`,
+        [cnpj]
+      )
+      isProjetusClient = clientCheck[0]?.found ?? false
+    }
+
     return NextResponse.json({
       cnpj,
       proponente,
+      isProjetusClient,
       propostas: propostas.map(r => ({
         numeroProposta: r.nr_proposta || r.transfer_gov_id,
         titulo: r.titulo,
@@ -125,6 +140,7 @@ export async function GET(request: NextRequest) {
       })),
       execucao: execucao.map(r => ({
         nrConvenio: r.nr_convenio,
+        idProposta: r.id_proposta,
         numeroProposta: r.nr_proposta || r.id_proposta || r.nr_convenio,
         proponente: r.nome_proponente ?? '',
         situacao: r.situacao ?? 'Sem Situação',

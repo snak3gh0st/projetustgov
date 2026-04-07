@@ -422,6 +422,7 @@ export async function GET(request: NextRequest) {
     const rows: TGovExecucaoTableRow[] = (r?.table_data ?? []).map((row) => ({
       numeroProposta: row.nr_proposta || row.id_proposta || row.nr_convenio || '—',
       nrConvenio: row.nr_convenio || '',
+      idProposta: row.id_proposta ? String(row.id_proposta) : null,
       anoInstrumento: row.ano_instrumento,
       data: row.data_assinatura ? String(row.data_assinatura) : null,
       cnpj: row.cnpj,

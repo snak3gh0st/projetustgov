@@ -60,9 +60,9 @@ function formatPercent(value: number | null): string {
   return `${value.toFixed(1)}%`
 }
 
-/** TransfereGov link for execução (convenio) */
-function buildTGovExecucaoLink(nrConvenio: string): string {
-  return `https://discricionarias.transferegov.sistema.gov.br/voluntarias/ConsultarProposta/ResultadoDaConsultaDeConvenioSelecionarConvenio.do?idConvenio=${nrConvenio}`
+/** TransfereGov link for execução — uses idProposta (same URL as aprovação). */
+function buildTGovExecucaoLink(idProposta: string | null | undefined): string {
+  return `https://discricionarias.transferegov.sistema.gov.br/voluntarias/ConsultarProposta/ResultadoDaConsultaDePropostaDetalharProposta.do?idProposta=${idProposta ?? ''}`
 }
 
 /** TransfereGov link for aprovação (proposta) */
@@ -247,7 +247,7 @@ interface CnpjSearchResult {
     valorGlobal: number | null; valorRepasse: number | null; uf: string | null; municipio: string | null; data: string | null
   }[]
   execucao: {
-    nrConvenio: string; numeroProposta: string; proponente: string; situacao: string
+    nrConvenio: string; idProposta: string | null; numeroProposta: string; proponente: string; situacao: string
     valorGlobal: number | null; valorRepasse: number | null; valorDesembolsado: number | null
     saldoConta: number | null; pctExecucao: number | null; uf: string | null; municipio: string | null
     data: string | null; dataFimVigencia: string | null
@@ -901,7 +901,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
                                 return (
                                   <tr key={i} className="hover:bg-blue-50/30">
                                     <td className="px-3 py-2 font-mono">
-                                      <a href={buildTGovExecucaoLink(e.nrConvenio)} target="_blank" rel="noopener noreferrer"
+                                      <a href={buildTGovExecucaoLink(e.idProposta || e.numeroProposta)} target="_blank" rel="noopener noreferrer"
                                          className="text-blue-600 hover:underline">{e.nrConvenio}</a>
                                     </td>
                                     <td className="px-3 py-2"><SituacaoBadge situacao={e.situacao} /></td>
@@ -1150,7 +1150,7 @@ function ExecucaoTable({
               >
                 <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">
                   <a
-                    href={buildTGovExecucaoLink(row.nrConvenio)}
+                    href={buildTGovExecucaoLink(row.idProposta)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-800 hover:underline"
@@ -1228,7 +1228,7 @@ function ExecucaoSidecard({
           </div>
           <div className="flex items-center gap-2">
             <a
-              href={buildTGovExecucaoLink(row.nrConvenio)}
+              href={buildTGovExecucaoLink(row.idProposta)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors"

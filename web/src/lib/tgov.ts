@@ -17,6 +17,12 @@
 /** Default number of rows per page in the TGov detail table. */
 export const TGOV_PAGE_SIZE = 25
 
+/** Allowed page sizes for the TGov detail table. */
+export const TGOV_PAGE_SIZE_OPTIONS = [25, 50, 100] as const
+
+/** Maximum allowed page size to prevent DB overload. */
+export const TGOV_MAX_PAGE_SIZE = 100
+
 /** Tab shown on first load. */
 export const DEFAULT_TGOV_TAB: TGovTab = 'aprovacao'
 
@@ -103,6 +109,8 @@ export interface TGovTableRow {
 
 /** Extended row for the Aprovacao tab with proposal details. */
 export interface TGovAprovacaoTableRow extends TGovTableRow {
+  /** transfer_gov_id — used as idProposta in TransfereGov links. */
+  transferGovId: string
   titulo: string | null
   valorGlobal: number | null
   valorRepasse: number | null
@@ -119,6 +127,8 @@ export interface TGovAprovacaoTableRow extends TGovTableRow {
 /** Extended row for the Execucao tab with financial and detail columns. */
 export interface TGovExecucaoTableRow extends TGovTableRow {
   nrConvenio: string
+  /** id_proposta from projetos_execucao — used as idProposta in TransfereGov URL. */
+  idProposta: string | null
   anoInstrumento: number | null
   valorGlobal: number | null
   valorRepasse: number | null
