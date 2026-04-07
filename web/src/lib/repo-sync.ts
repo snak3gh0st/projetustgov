@@ -778,6 +778,18 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     const touchedCnpjs = Array.from(new Set(leads.map(l => l.cnpj)))
     if (touchedCnpjs.length > 0) {
       try {
+        // Defensive: ensure cnpj_monitorado exists. setup-crm normally creates it,
+        // but in environments where setup-crm hasn't run (or failed silently) the
+        // SELECT below would throw 42P01 and abort STEP 7b on every sync run.
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS cnpj_monitorado (
+            id SERIAL PRIMARY KEY,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            cnpj VARCHAR(14) NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(user_id, cnpj)
+          )
+        `)
         // Check which touched CNPJs are in cnpj_monitorado
         const monitoredRes = await client.query<{ cnpj: string; nome: string | null }>(
           `SELECT DISTINCT cm.cnpj, vp.nome
