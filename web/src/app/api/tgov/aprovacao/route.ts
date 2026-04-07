@@ -24,7 +24,7 @@ const ALL_PROPOSTAS_CTE = `
       p.data_publicacao, p.data_inicio_vigencia, p.data_fim_vigencia,
       p.estado, p.municipio, p.proponente, p.proponente_cnpj,
       p.modalidade, p.orgao_superior, p.orgao_vinculado
-    FROM all_propostas p
+    FROM propostas p
     UNION ALL
     SELECT
       p.transfer_gov_id, p.nr_proposta, p.titulo, p.situacao,
