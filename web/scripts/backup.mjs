@@ -1,121 +1,118 @@
-#!/usr/bin/env node
-/**
- * Daily database backup for Projetus CRM.
- * Reads POSTGRES_URL or POSTGRES_URL_NON_POOLING from env.
- * Saves JSON backup to <project-root>/backups/backup-<timestamp>.json
- */
+// Daily database backup for projetustgov CRM
+// Reads POSTGRES_URL or POSTGRES_URL_NON_POOLING from environment
+// Saves JSON backup to ../backups/ relative to web/
+// Run from web/ directory: node scripts/backup.mjs
 
-import pg from 'pg';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { writeFileSync, mkdirSync } from 'fs'
+import { join, resolve } from 'path'
+import { fileURLToPath } from 'url'
+import pg from 'pg'
 
-const { Pool } = pg;
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
-const TABLES = [
-  // Core data tables
-  'programas',
-  'proponentes',
-  'propostas',
-  'apoiadores',
-  'emendas',
-  'proposta_apoiadores',
-  'proposta_emendas',
-  'convenios',
-  'desembolsos',
-  'historico_situacao',
-  'extraction_logs',
-  'data_lineage',
-  'cron_sync_log',
-  'projetos_execucao',
-  // CRM tables
-  'users',
-  'vendedor_projetos',
-  'existing_clients',
-  'contact_notes',
-  'commission_config',
-  'commission_overrides',
-  'lead_contacts',
-  'cnpj_monitorado',
-  'push_subscriptions',
-  'enrichment_queue',
-  'tgov_interactions',
-];
-
-const connStr = process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL;
-if (!connStr) {
-  console.error('ERROR: Neither POSTGRES_URL nor POSTGRES_URL_NON_POOLING is set.');
-  process.exit(1);
+const dbUrl = process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL || process.env.DATABASE_URL
+if (!dbUrl) {
+  console.error('ERROR: No database URL found. Set POSTGRES_URL, POSTGRES_URL_NON_POOLING, or DATABASE_URL.')
+  process.exit(1)
 }
 
-const pool = new Pool({ connectionString: connStr, ssl: { rejectUnauthorized: false } });
+const pool = new pg.Pool({
+  connectionString: dbUrl,
+  max: 2,
+  ssl: { rejectUnauthorized: false },
+  connectionTimeoutMillis: 15000,
+})
+
+// Tables to back up (in dependency order)
+const TABLES = [
+  'users',
+  'propostas',
+  'proponentes',
+  'projetos_execucao',
+  'execucao_cnpjs',
+  'execucao_tags',
+  'execucao_status',
+  'lead_contacts',
+  'contact_notes',
+  'vendedor_projetos',
+  'existing_clients',
+]
+
+async function backupTable(client, table) {
+  try {
+    const res = await client.query(`SELECT * FROM ${table}`)
+    return { table, rows: res.rows, count: res.rowCount }
+  } catch (err) {
+    // Table may not exist — skip gracefully
+    if (err.code === '42P01') {
+      return { table, rows: [], count: 0, skipped: true }
+    }
+    throw err
+  }
+}
 
 async function main() {
-  const startTs = new Date();
-  console.log(`[backup] Starting at ${startTs.toISOString()}`);
-
-  let client;
+  let client
   try {
-    client = await pool.connect();
+    client = await pool.connect()
   } catch (err) {
-    console.error('ERROR: Could not connect to database:', err.message);
-    process.exit(1);
+    console.error(`ERROR: Could not connect to database: ${err.message}`)
+    process.exit(1)
   }
 
+  const timestamp = new Date().toISOString()
   const backup = {
-    timestamp: startTs.toISOString(),
+    timestamp,
+    version: '1.0',
     tables: {},
-  };
-  const rowCounts = {};
+    meta: { rowCounts: {} },
+  }
+
+  console.log(`Starting backup at ${timestamp}`)
+  console.log('─'.repeat(50))
 
   for (const table of TABLES) {
-    try {
-      const res = await client.query(`SELECT * FROM ${table}`);
-      backup.tables[table] = res.rows;
-      rowCounts[table] = res.rows.length;
-      console.log(`  ${table}: ${res.rows.length} rows`);
-    } catch (err) {
-      // Table may not exist yet — record as empty
-      console.warn(`  WARNING: could not read table "${table}": ${err.message}`);
-      backup.tables[table] = [];
-      rowCounts[table] = 0;
+    const result = await backupTable(client, table)
+    if (result.skipped) {
+      console.log(`  ${table.padEnd(25)} (skipped — table not found)`)
+    } else {
+      backup.tables[table] = result.rows
+      backup.meta.rowCounts[table] = result.count
+      console.log(`  ${table.padEnd(25)} ${String(result.count).padStart(6)} rows`)
     }
   }
 
-  client.release();
-  await pool.end();
+  client.release()
+  await pool.end()
 
-  // Ensure backups dir exists
-  const backupsDir = path.join(PROJECT_ROOT, 'backups');
-  fs.mkdirSync(backupsDir, { recursive: true });
+  // Save to ../backups/ relative to web/
+  const backupsDir = resolve(__dirname, '../../backups')
+  mkdirSync(backupsDir, { recursive: true })
 
-  const filename = `backup-${startTs.toISOString().replace(/[:.]/g, '-')}.json`;
-  const filepath = path.join(backupsDir, filename);
+  const filename = `backup-${timestamp.replace(/[:.]/g, '-')}.json`
+  const filepath = join(backupsDir, filename)
+  writeFileSync(filepath, JSON.stringify(backup, null, 2), 'utf8')
 
-  fs.writeFileSync(filepath, JSON.stringify(backup, null, 2), 'utf-8');
+  const fileSizeBytes = Buffer.byteLength(JSON.stringify(backup, null, 2))
+  const fileSizeKB = (fileSizeBytes / 1024).toFixed(1)
 
-  const stats = fs.statSync(filepath);
-  const sizeMB = (stats.size / 1024 / 1024).toFixed(2);
+  console.log('─'.repeat(50))
+  console.log(`Backup saved: ${filepath}`)
+  console.log(`File size:    ${fileSizeKB} KB`)
+  console.log(`Timestamp:    ${timestamp}`)
 
-  console.log('\n=== Backup Summary ===');
-  console.log(`Timestamp : ${startTs.toISOString()}`);
-  console.log(`File      : ${filepath}`);
-  console.log(`Size      : ${sizeMB} MB (${stats.size} bytes)`);
-  console.log('Row counts:');
-  for (const [table, count] of Object.entries(rowCounts)) {
-    console.log(`  ${table.padEnd(30)} ${count}`);
+  // Emit structured summary for easy parsing by the caller
+  console.log('\n=== BACKUP SUMMARY ===')
+  console.log(`FILE=${filepath}`)
+  console.log(`SIZE_KB=${fileSizeKB}`)
+  console.log(`TIMESTAMP=${timestamp}`)
+  for (const [table, count] of Object.entries(backup.meta.rowCounts)) {
+    console.log(`TABLE_${table}=${count}`)
   }
-  console.log('======================\n');
-
-  // Emit structured output for the caller
-  process.stdout.write(
-    JSON.stringify({ filepath, size: stats.size, rowCounts, timestamp: startTs.toISOString() }) + '\n'
-  );
+  console.log('=== END SUMMARY ===')
 }
 
-main().catch((err) => {
-  console.error('ERROR:', err.message);
-  process.exit(1);
-});
+main().catch(err => {
+  console.error(`ERROR: Backup failed: ${err.message}`)
+  process.exit(1)
+})
