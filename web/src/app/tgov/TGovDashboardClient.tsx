@@ -760,7 +760,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
         <>
           <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setCnpjModalOpen(false)} />
           <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
-            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
               {/* Header */}
               <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h3 className="text-lg font-bold text-gray-900">Buscar no SICONV</h3>
@@ -857,7 +857,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
                                               fetchData(activeTab, mainFilters, tableFilters, page, pageSize)
                                             }
                                           }}
-                                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-600 text-white text-[10px] font-medium hover:bg-green-700 transition-colors"
+                                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-600 text-white text-[10px] font-medium hover:bg-green-700 transition-colors whitespace-nowrap"
                                         >
                                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                                           Adicionar
@@ -928,7 +928,7 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
                                               fetchData(activeTab, mainFilters, tableFilters, page, pageSize)
                                             }
                                           }}
-                                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-600 text-white text-[10px] font-medium hover:bg-green-700 transition-colors"
+                                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-600 text-white text-[10px] font-medium hover:bg-green-700 transition-colors whitespace-nowrap"
                                         >
                                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                                           Adicionar
