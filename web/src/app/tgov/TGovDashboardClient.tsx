@@ -1625,22 +1625,38 @@ function AprovacaoBISummary({
         )}
 
         {/* 3. Barras — Valor Global por Situação */}
-        {byValorStatus.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Valor por Situação</p>
-            <div className="h-52">
-              <BIResponsiveContainer>
-                <BIBarChart data={byValorStatus.slice(0, 8)} layout="vertical">
-                  <BICartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                  <BIXAxis type="number" tickFormatter={(v: number) => shortCurrency(v)} tick={{ fontSize: 10 }} />
-                  <BIYAxis dataKey="situacao" type="category" tick={{ fontSize: 9 }} width={120} />
-                  <BITooltipChart formatter={(v: number) => [formatCurrency(v), 'Valor Global']} />
-                  <BIBar dataKey="valorGlobal" fill="#7c3aed" radius={[0, 4, 4, 0]} />
-                </BIBarChart>
-              </BIResponsiveContainer>
+        {byValorStatus.length > 0 && (() => {
+          const top = byValorStatus.slice(0, 8)
+          const truncate = (s: string, n = 28) => (s.length > n ? s.slice(0, n - 1) + '…' : s)
+          // ~36px per row + margins, min 240px
+          const chartHeight = Math.max(240, top.length * 36 + 40)
+          return (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Valor por Situação</p>
+              <div style={{ height: chartHeight }}>
+                <BIResponsiveContainer>
+                  <BIBarChart data={top} layout="vertical" margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
+                    <BICartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
+                    <BIXAxis type="number" tickFormatter={(v: number) => shortCurrency(v)} tick={{ fontSize: 10 }} />
+                    <BIYAxis
+                      dataKey="situacao"
+                      type="category"
+                      tick={{ fontSize: 11 }}
+                      width={210}
+                      interval={0}
+                      tickFormatter={(v: string) => truncate(v)}
+                    />
+                    <BITooltipChart
+                      formatter={(v: number) => [formatCurrency(v), 'Valor Global']}
+                      labelFormatter={(label: string) => label}
+                    />
+                    <BIBar dataKey="valorGlobal" fill="#7c3aed" radius={[0, 4, 4, 0]} barSize={20} />
+                  </BIBarChart>
+                </BIResponsiveContainer>
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
       </div>
 
       {/* BI: Média de Valor por UF */}
