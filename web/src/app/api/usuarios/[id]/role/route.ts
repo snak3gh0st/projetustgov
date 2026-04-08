@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { getApiSession } from '@/lib/dal'
+import { getApiSession, ROLE_CAN_CREATE, canManageRole, type Role } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
-
-const ALLOWED_ROLES = ['vendedor', 'visualizador', 'coordenador', 'adm_produto'] as const
-type AllowedRole = typeof ALLOWED_ROLES[number]
 
 export async function PATCH(
   request: Request,
@@ -16,13 +13,16 @@ export async function PATCH(
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    if (session.role !== 'gestor') {
+
+    const actorRole = session.role as Role
+    const creatableRoles = ROLE_CAN_CREATE[actorRole] ?? []
+
+    if (creatableRoles.length === 0) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { id } = params
 
-    // Prevent changing own role
     if (session.userId === id) {
       return NextResponse.json({ error: 'Nao e possivel alterar o proprio cargo' }, { status: 403 })
     }
@@ -36,27 +36,32 @@ export async function PATCH(
 
     const { role } = body
 
-    if (!role || !(ALLOWED_ROLES as readonly string[]).includes(role)) {
+    if (!role || !creatableRoles.includes(role as Role)) {
       return NextResponse.json(
-        { error: `Role invalido. Valores permitidos: ${ALLOWED_ROLES.join(', ')}` },
+        { error: `Role invalido. Valores permitidos: ${creatableRoles.join(', ')}` },
         { status: 400 }
       )
     }
 
-    // Check target user exists and is not a gestor
     const targetRows = await query(`SELECT id, role FROM users WHERE id = $1`, [id])
     if (targetRows.length === 0) {
       return NextResponse.json({ error: 'Usuario nao encontrado' }, { status: 404 })
     }
-    if (targetRows[0].role === 'gestor') {
+
+    const targetRole = targetRows[0].role as Role
+
+    if (targetRole === 'gestor') {
       return NextResponse.json({ error: 'Nao e possivel alterar o cargo de um gestor' }, { status: 403 })
     }
 
-    // Update role
+    if (!canManageRole(actorRole, targetRole)) {
+      return NextResponse.json({ error: 'Sem permissao para alterar este cargo' }, { status: 403 })
+    }
+
     const updated = await query(
       `UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2
        RETURNING id, nome, email, role, active, created_at`,
-      [role as AllowedRole, id]
+      [role, id]
     )
 
     return NextResponse.json(updated[0])
