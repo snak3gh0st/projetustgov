@@ -54,6 +54,21 @@ export function canModifyData(role: string): boolean {
   return role === 'gestor' || role === 'vendedor' || role === 'coordenador'
 }
 
+/** TGov reads (aprovação, execução, busca-cnpj, whitelist GET, interaction GET, comments GET). */
+export function canReadTgov(role: string | undefined): boolean {
+  return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'csm'
+}
+
+/** TGov mutations privilegiadas (whitelist write, interaction PATCH, tecnico assignment). NÃO inclui CSM. */
+export function canWriteTgov(role: string | undefined): boolean {
+  return role === 'gestor' || role === 'admin' || role === 'adm_produto'
+}
+
+/** Quem pode escrever comentários TGov (inclui CSM). */
+export function canCommentTgov(role: string | undefined): boolean {
+  return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'csm'
+}
+
 // Helper: check if user has admin-level access (full control)
 export function isAdmin(role: string): boolean {
   return role === 'gestor'
