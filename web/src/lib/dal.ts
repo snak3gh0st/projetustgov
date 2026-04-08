@@ -4,6 +4,21 @@ import { auth } from '@/lib/auth'
 import { query } from '@/lib/db'
 import { redirect } from 'next/navigation'
 
+export type Role = 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista'
+
+/** Who can create/manage users of which roles. Single source of truth. */
+export const ROLE_CAN_CREATE: Partial<Record<Role, Role[]>> = {
+  gestor:               ['admin', 'vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista'],
+  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista'],
+  adm_produto:          ['coord_aprovacao', 'assistente_aprovacao', 'projetista'],
+  coord_aprovacao:      ['assistente_aprovacao', 'projetista'],
+  assistente_aprovacao: ['projetista'],
+}
+
+export function canManageRole(actorRole: Role, targetRole: Role): boolean {
+  return ROLE_CAN_CREATE[actorRole]?.includes(targetRole) ?? false
+}
+
 export const verifySession = cache(async () => {
   const session = await auth()
   if (!session?.user?.id) {
@@ -12,7 +27,7 @@ export const verifySession = cache(async () => {
   return {
     isAuth: true,
     userId: session.user.id,
-    role: session.user.role as 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm',
+    role: session.user.role as Role,
     email: session.user.email,
     name: session.user.name
   }
@@ -24,7 +39,7 @@ export async function getApiSession() {
   if (!session?.user?.id) return null
   return {
     userId: session.user.id,
-    role: session.user.role as 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm',
+    role: session.user.role as Role,
     email: session.user.email,
     name: session.user.name
   }
@@ -56,17 +71,17 @@ export function canModifyData(role: string): boolean {
 
 /** TGov reads (aprovação, execução, busca-cnpj, whitelist GET, interaction GET, comments GET). */
 export function canReadTgov(role: string | undefined): boolean {
-  return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'csm'
+  return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'csm' || role === 'coord_aprovacao' || role === 'assistente_aprovacao' || role === 'projetista'
 }
 
-/** TGov mutations privilegiadas (whitelist write, interaction PATCH, tecnico assignment). NÃO inclui CSM. */
+/** TGov mutations privilegiadas (whitelist write, interaction PATCH, tecnico assignment). NÃO inclui CSM nem projetista. */
 export function canWriteTgov(role: string | undefined): boolean {
-  return role === 'gestor' || role === 'admin' || role === 'adm_produto'
+  return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'coord_aprovacao' || role === 'assistente_aprovacao'
 }
 
-/** Quem pode escrever comentários TGov (inclui CSM). */
+/** Quem pode escrever comentários TGov (inclui CSM, coord_aprovacao, projetista). */
 export function canCommentTgov(role: string | undefined): boolean {
-  return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'csm'
+  return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'csm' || role === 'coord_aprovacao' || role === 'assistente_aprovacao' || role === 'projetista'
 }
 
 // Helper: check if user has admin-level access (full control)
