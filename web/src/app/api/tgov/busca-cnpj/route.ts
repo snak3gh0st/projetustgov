@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { getApiSession } from '@/lib/dal'
+import { getApiSession, canReadTgov } from '@/lib/dal'
 import { ensureTgovTables } from '@/lib/tgov-tables'
 
 export const dynamic = 'force-dynamic'
@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto')) {
+    if (!session || !canReadTgov(session.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

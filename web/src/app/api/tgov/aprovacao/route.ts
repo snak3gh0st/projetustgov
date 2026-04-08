@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { getApiSession } from '@/lib/dal'
+import { getApiSession, canReadTgov } from '@/lib/dal'
 import { TGOV_PAGE_SIZE, TGOV_MAX_PAGE_SIZE, TGovTabResponse, APROVACAO_NR_PROPOSTAS, buildNrPropostaWhereClause } from '@/lib/tgov'
 import { ensureTgovTables } from '@/lib/tgov-tables'
 
@@ -42,7 +42,7 @@ const ALL_PROPOSTAS_CTE = `
 export async function GET(request: NextRequest) {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto')) {
+    if (!session || !canReadTgov(session.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

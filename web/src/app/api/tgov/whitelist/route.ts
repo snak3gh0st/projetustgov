@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { getApiSession } from '@/lib/dal'
+import { getApiSession, canReadTgov, canWriteTgov } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto')) {
+    if (!session || !canReadTgov(session.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -28,7 +28,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto')) {
+    if (!session || !canWriteTgov(session.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto')) {
+    if (!session || !canWriteTgov(session.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
