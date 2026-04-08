@@ -73,6 +73,44 @@ export default auth((req) => {
     }
   }
 
+  if (role === 'coord_aprovacao') {
+    // coord_aprovacao é TGov-only (somente aprovação).
+    if (isCrmPage || isCrmHome) {
+      return Response.redirect(new URL('/tgov', req.url))
+    }
+    if (isCrmApi) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  }
+
+  if (role === 'assistente_aprovacao') {
+    // assistente_aprovacao é TGov-only (somente aprovação).
+    if (isCrmPage || isCrmHome) {
+      return Response.redirect(new URL('/tgov', req.url))
+    }
+    if (isCrmApi) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  }
+
+  if (role === 'projetista') {
+    // projetista é TGov-only (somente aprovação, somente propostas atribuídas).
+    if (isCrmPage || isCrmHome) {
+      return Response.redirect(new URL('/tgov', req.url))
+    }
+    if (isCrmApi) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    // Projetista só pode escrever em /api/tgov/comments. Tudo mais bloqueado.
+    const isTgovPrivilegedMutation =
+      pathname.startsWith('/api/tgov/whitelist') ||
+      pathname.startsWith('/api/tgov/interaction') ||
+      pathname.startsWith('/api/tgov/tecnico')
+    if (isTgovPrivilegedMutation && req.method !== 'GET') {
+      return Response.json({ error: 'Forbidden: projetista is read-only on this resource' }, { status: 403 })
+    }
+  }
+
   // vendedor / coordenador / visualizador cannot access TGov
   if (role && ['vendedor', 'coordenador', 'visualizador'].includes(role) && isTGovPath) {
     if (pathname.startsWith('/api/')) {

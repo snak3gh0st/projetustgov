@@ -7,7 +7,8 @@ export default async function CadastroVendedorPage() {
   if (!session) redirect('/login')
 
   const { role } = session as { role: string }
-  if (role !== 'gestor' && role !== 'adm_produto') redirect('/sem-permissao')
+  const USERS_PAGE_ROLES = ['gestor', 'admin', 'adm_produto', 'coord_aprovacao', 'assistente_aprovacao']
+  if (!USERS_PAGE_ROLES.includes(role)) redirect('/sem-permissao')
 
   return <CadastroVendedorClient userRole={role} />
 }
