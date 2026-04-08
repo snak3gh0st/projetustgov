@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — Projetos em Execucao
 status: executing
-stopped_at: Completed 20-03 (3 endpoints novos + CTEs com tecnico_id)
-last_updated: "2026-04-08T01:05:19.000Z"
-last_activity: 2026-04-08 -- Plan 20-03 complete
+stopped_at: Completed 20-04 (UI sidecard técnico + comentários + CSM sidebar) — UAT pending no build deployado
+last_updated: "2026-04-07T00:00:00.000Z"
+last_activity: 2026-04-07 -- Plan 20-04 complete (Phase 20 fechada, UAT diferido)
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 11
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State: PROJETUS — v5.0 TGov Dashboard
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 ## Current Position
 
-Phase: 20 (tgov-ajustes-0704) — EXECUTING
-Plan: 4 of 4
-Status: Executing Phase 20
-Last activity: 2026-04-08 -- Plan 20-03 complete (3 endpoints + CTEs com tecnico_id)
+Phase: 20 (tgov-ajustes-0704) — COMPLETE (UAT pending)
+Plan: 4 of 4 — DONE
+Status: Phase 20 closed; UAT (gestor + CSM) será rodado contra build deployado
+Last activity: 2026-04-07 -- Plan 20-04 complete (UI sidecard + perf fixes pós-wave)
 
 Progress (v5.0): [███░░░░░░░] 100%
 
@@ -55,6 +55,7 @@ Progress (v5.0): [███░░░░░░░] 100%
 | 20-tgov-ajustes-0704 | 01 | ~25 min | 6 | 5 |
 | 20-tgov-ajustes-0704 | 02 | ~10 min | 4 | 7 |
 | 20-tgov-ajustes-0704 | 03 | ~3 min | 5 | 5 |
+| 20-tgov-ajustes-0704 | 04 | ~45 min | 4+2perf | 8 |
 
 *Updated after each plan completion*
 
@@ -100,6 +101,10 @@ Progress (v5.0): [███░░░░░░░] 100%
 | Helpers RBAC TGov centralizados em dal.ts (Plan 20-02) | canReadTgov/canWriteTgov/canCommentTgov eliminam 8 inline checks duplicados; defense-in-depth (middleware + route) para mutations csm |
 | tecnico_id é UUID (string\|null) no PATCH /api/tgov/tecnico (Plan 20-03) | Validação por regex UUID antes do UPDATE; chain CRM→TGov→fallback proposta com early-exit |
 | LEFT JOIN users tu apenas na query final de tableData, não no CTE materialized (Plan 20-03) | Aggregations não precisam de tecnico_nome — JOIN no filtered_main aumentaria custo de todas as agg sem benefício |
+| Remover LEFT JOIN users do CTE /aprovacao + resolver técnico_nome em segunda query (Plan 20-04 perf fix) | Plan 20-03 causou timeout 116s/500 em produção sobre CTE de 904k rows; segunda query SELECT id,nome WHERE id=ANY($1) é trivial |
+| NOT MATERIALIZED nos CTEs all_propostas/all_exec (Plan 20-04 perf fix) | Postgres materializava CTE referenciada uma única vez; hint força inlining e desbloqueia push-down — speedup 100x (5s → 54ms) |
+| dal.ts role union estendido com 'csm' (Plan 20-04) | next-auth.d.ts já tinha do 20-01 mas dal.ts duplicava o union — pages com guard `role==='csm'` falhavam build TS |
+| UAT do Plan 20-04 diferido para build deployado (Plan 20-04) | Decisão do usuário: fechar plan e validar gestor+CSM contra produção em vez de ambiente local |
 
 ### Quick Tasks Completed
 
@@ -146,6 +151,6 @@ Progress (v5.0): [███░░░░░░░] 100%
 
 ## Session Continuity
 
-Last session: 2026-04-08T01:05:19Z
-Stopped at: Completed 20-03 (3 endpoints novos + CTEs com tecnico_id)
-Resume file: .planning/phases/20-tgov-ajustes-0704/20-03-SUMMARY.md
+Last session: 2026-04-07
+Stopped at: Completed 20-04 (UI sidecard + perf fixes pós-wave) — Phase 20 fechada, UAT pendente no build deployado
+Resume file: .planning/phases/20-tgov-ajustes-0704/20-04-SUMMARY.md
