@@ -1,0 +1,115 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { query } from '@/lib/db'
+import { getApiSession, canWriteTgov } from '@/lib/dal'
+
+export const dynamic = 'force-dynamic'
+
+const VALID_TARGETS = ['proposta', 'execucao'] as const
+type TargetType = (typeof VALID_TARGETS)[number]
+const TECNICO_ROLES = ['adm_produto', 'gestor', 'admin'] as const
+
+// Simple UUID v1-v5 sanity check (8-4-4-4-12 hex)
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// PATCH /api/tgov/tecnico  body: { target_type, target_key, tecnico_id }
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await getApiSession()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!canWriteTgov(session.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const payload = await request.json().catch(() => null)
+    if (!payload || typeof payload !== 'object') {
+      return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
+    }
+    const { target_type, target_key, tecnico_id } = payload as {
+      target_type?: string
+      target_key?: string
+      tecnico_id?: string | null
+    }
+
+    if (!target_type || !VALID_TARGETS.includes(target_type as TargetType)) {
+      return NextResponse.json({ error: 'target_type inválido (use proposta|execucao)' }, { status: 400 })
+    }
+    if (!target_key) {
+      return NextResponse.json({ error: 'target_key obrigatório' }, { status: 400 })
+    }
+    // tecnico_id é UUID (users.id) ou null para desatribuir
+    if (tecnico_id !== null && tecnico_id !== undefined) {
+      if (typeof tecnico_id !== 'string' || !UUID_RE.test(tecnico_id)) {
+        return NextResponse.json({ error: 'tecnico_id deve ser UUID ou null' }, { status: 400 })
+      }
+    }
+    const tecnicoIdValue: string | null = tecnico_id ?? null
+
+    // Validar pool de técnicos elegíveis
+    if (tecnicoIdValue !== null) {
+      const u = await query<{ role: string }>(
+        `SELECT role FROM users WHERE id = $1`,
+        [tecnicoIdValue],
+      )
+      if (!u[0]) {
+        return NextResponse.json({ error: 'usuário não existe' }, { status: 400 })
+      }
+      if (!TECNICO_ROLES.includes(u[0].role as (typeof TECNICO_ROLES)[number])) {
+        return NextResponse.json({ error: 'usuário fora do pool de técnicos' }, { status: 400 })
+      }
+    }
+
+    // Resolver tabela física onde o registro vive
+    let updated = 0
+    if (target_type === 'proposta') {
+      const r1 = await query<{ nr_proposta: string }>(
+        `UPDATE propostas SET tecnico_id = $1 WHERE nr_proposta = $2 RETURNING nr_proposta`,
+        [tecnicoIdValue, target_key],
+      )
+      updated += r1.length
+      if (updated === 0) {
+        const r2 = await query<{ nr_proposta: string }>(
+          `UPDATE tgov_propostas SET tecnico_id = $1 WHERE nr_proposta = $2 RETURNING nr_proposta`,
+          [tecnicoIdValue, target_key],
+        )
+        updated += r2.length
+      }
+    } else {
+      // execucao: tentar projetos_execucao por nr_convenio, depois tgov_projetos_execucao,
+      // depois fallback proposta sem convênio (target_key = nr_proposta)
+      const r1 = await query<{ nr_convenio: string }>(
+        `UPDATE projetos_execucao SET tecnico_id = $1 WHERE nr_convenio = $2 RETURNING nr_convenio`,
+        [tecnicoIdValue, target_key],
+      )
+      updated += r1.length
+      if (updated === 0) {
+        const r2 = await query<{ nr_convenio: string }>(
+          `UPDATE tgov_projetos_execucao SET tecnico_id = $1 WHERE nr_convenio = $2 RETURNING nr_convenio`,
+          [tecnicoIdValue, target_key],
+        )
+        updated += r2.length
+      }
+      if (updated === 0) {
+        const r3 = await query<{ nr_proposta: string }>(
+          `UPDATE propostas SET tecnico_id = $1 WHERE nr_proposta = $2 RETURNING nr_proposta`,
+          [tecnicoIdValue, target_key],
+        )
+        updated += r3.length
+        if (updated === 0) {
+          const r4 = await query<{ nr_proposta: string }>(
+            `UPDATE tgov_propostas SET tecnico_id = $1 WHERE nr_proposta = $2 RETURNING nr_proposta`,
+            [tecnicoIdValue, target_key],
+          )
+          updated += r4.length
+        }
+      }
+    }
+
+    if (updated === 0) {
+      return NextResponse.json({ error: 'registro não encontrado' }, { status: 404 })
+    }
+    return NextResponse.json({ ok: true, updated })
+  } catch (error) {
+    console.error('[api/tgov/tecnico][PATCH] error:', error)
+    return NextResponse.json({ error: 'Failed to update tecnico' }, { status: 500 })
+  }
+}
