@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v5.0
-milestone_name: — TGov Dashboard
-status: in_progress
-stopped_at: Completed quick/260401-e9r (TGov Projetus proposals whitelist filter)
-last_updated: "2026-04-01T00:00:00Z"
-last_activity: 2026-04-01 - Completed quick task 260401-kvp: Restringir visoes do ADM Produto: apenas Pipeline TGOV, Usuarios TGOV e TGOV Dashboard
+milestone: v4.0
+milestone_name: — Projetos em Execucao
+status: executing
+stopped_at: Completed 20-01 (fundação SQL + tipos TGov; UUID FK fix)
+last_updated: "2026-04-07T23:30:00.000Z"
+last_activity: 2026-04-07 -- Plan 20-01 complete
 progress:
-  total_phases: 14
-  completed_phases: 8
-  total_plans: 42
-  completed_plans: 37
+  total_phases: 6
+  completed_phases: 1
+  total_plans: 11
+  completed_plans: 4
 ---
 
 # Project State: PROJETUS — v5.0 TGov Dashboard
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Inteligencia pos-venda para gestores identificarem clientes qualificados com projetos em execucao no TransferenciaGov.
-**Current focus:** Phase 19 — TGov Dashboard
+**Current focus:** Phase 20 — tgov-ajustes-0704
 
 ## Current Position
 
-Phase: 19 of 19 in milestone v5.0 (TGov Dashboard) — IN PROGRESS
-Plan: 3 of 3 in Phase 19 — COMPLETE
-Status: Plan 19-03 complete — /tgov page, TGovDashboardClient, TGovStatusDonut, sidebar + middleware 403
-Last activity: 2026-03-30 — Plan 19-03 executed (2 tasks, 7 files, ~9 min)
+Phase: 20 (tgov-ajustes-0704) — EXECUTING
+Plan: 2 of 4
+Status: Executing Phase 20
+Last activity: 2026-04-07 -- Plan 20-01 complete (fundação SQL + tipos)
 
 Progress (v5.0): [███░░░░░░░] 100%
 
@@ -52,6 +52,7 @@ Progress (v5.0): [███░░░░░░░] 100%
 | 19-tgov-dashboard | 01 | 4 min | 2 | 3 |
 | 19-tgov-dashboard | 02 | 3 min | 2 | 2 |
 | 19-tgov-dashboard | 03 | 9 min | 2 | 7 |
+| 20-tgov-ajustes-0704 | 01 | ~25 min | 6 | 5 |
 
 *Updated after each plan completion*
 
@@ -93,6 +94,7 @@ Progress (v5.0): [███░░░░░░░] 100%
 | Redirect non-gestores to /sem-permissao in page.tsx (Plan 19-03) | Second layer after middleware 403; page redirect gives better UX than middleware 403 HTML for SSR-navigated requests |
 | Middleware returns true HTTP 403 Response for /tgov page (Plan 19-03) | `new Response(...)` with status 403 is the only way to return true 403 for page routes in Next 14; `redirect()` returns 302 |
 | eslintrc @typescript-eslint plugin declared as off (Plan 19-03) | Pre-existing disable-comments need known rule — "off" prevents "rule not found" error without changing any lint behavior |
+| users.id é UUID; FKs tecnico_id e tgov_comments.author_id são UUID (Plan 20-01) | Schema real divergia do plano (assumia INT) — descoberto na verificação manual; tecnicoId tipado como string\|null em TGov row types |
 
 ### Quick Tasks Completed
 
@@ -139,6 +141,6 @@ Progress (v5.0): [███░░░░░░░] 100%
 
 ## Session Continuity
 
-Last session: 2026-03-30T19:45:00Z
-Stopped at: Completed 19-03 (TGov dashboard UI, navigation, and middleware 403 guard)
-Resume file: .planning/phases/19-tgov-dashboard/19-03-SUMMARY.md
+Last session: 2026-04-07T23:30:00Z
+Stopped at: Completed 20-01 (fundação SQL + tipos TGov; UUID FK fix)
+Resume file: .planning/phases/20-tgov-ajustes-0704/20-01-SUMMARY.md
