@@ -133,11 +133,11 @@ export async function createUsuario(
     }
 
     const formRole = formData.get('role') as string
-    if (!creatableRoles.includes(formRole as Role)) {
+    if (!formRole || !creatableRoles.includes(formRole as Role)) {
       return { error: 'Sem permissao para criar usuarios com este cargo' }
     }
 
-    const assignedRole = formData.get('role') ?? 'vendedor'
+    const assignedRole = formRole
 
     // Extract and validate form data
     const rawData = {
