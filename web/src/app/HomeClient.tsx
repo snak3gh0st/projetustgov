@@ -115,6 +115,9 @@ interface SyncLog {
   updated: number
   errors: number
   duration_ms: number
+  execucao_inserted?: number
+  execucao_updated?: number
+  execucao_errors?: number
 }
 
 // --- Status config ---
@@ -272,21 +275,31 @@ function SyncBar({ role }: { role: string | undefined }) {
     setSyncError(null)
     setJustFinished(false)
     try {
-      const res = await fetch('/api/cron/sync-leads')
-      const d = await res.json()
-      if (!res.ok) {
-        const rawError: string = d.error || 'Erro ao sincronizar'
+      const [leadsRes, execucaoRes] = await Promise.allSettled([
+        fetch('/api/cron/sync-leads').then(r => r.json().then(d => ({ ok: r.ok, d }))),
+        fetch('/api/cron/sync-execucao').then(r => r.json().then(d => ({ ok: r.ok, d }))),
+      ])
+
+      const leads = leadsRes.status === 'fulfilled' ? leadsRes.value : null
+      const execucao = execucaoRes.status === 'fulfilled' ? execucaoRes.value : null
+
+      if (!leads?.ok) {
+        const rawError: string = leads?.d?.error || 'Erro ao sincronizar leads'
         setSyncError(rawError.includes('Servidor do governo indisponível')
           ? 'Servidor do governo indisponível. Tente em alguns minutos.'
           : rawError)
         return
       }
+
       setSyncLog({
         ran_at: new Date().toISOString(),
-        inserted: d.inserted ?? 0,
-        updated: d.updated ?? 0,
-        errors: d.errors ?? 0,
-        duration_ms: d.duration_ms ?? 0,
+        inserted: leads.d.inserted ?? 0,
+        updated: leads.d.updated ?? 0,
+        errors: leads.d.errors ?? 0,
+        duration_ms: leads.d.duration_ms ?? 0,
+        execucao_inserted: execucao?.ok ? (execucao.d.inserted ?? 0) : undefined,
+        execucao_updated: execucao?.ok ? (execucao.d.updated ?? 0) : undefined,
+        execucao_errors: execucao?.ok ? (execucao.d.errors ?? 0) : undefined,
       })
       setJustFinished(true)
       setTimeout(() => setJustFinished(false), 8000)
@@ -324,10 +337,21 @@ function SyncBar({ role }: { role: string | undefined }) {
               Sync {timeAgo(syncLog.ran_at)}
             </span>
             <span className="text-gray-300 hidden sm:inline">|</span>
+            <span className="text-gray-500 hidden sm:inline">Leads:</span>
             <span className="text-green-600 font-medium">{syncLog.inserted} novos</span>
             <span className="text-[#0072F7] font-medium">{syncLog.updated} atualizados</span>
             {syncLog.errors > 0 && (
               <span className="text-red-500 font-medium">{syncLog.errors} erros</span>
+            )}
+            {syncLog.execucao_updated !== undefined && (
+              <>
+                <span className="text-gray-300 hidden sm:inline">|</span>
+                <span className="text-gray-500 hidden sm:inline">Exec:</span>
+                <span className="text-[#0072F7] font-medium">{syncLog.execucao_updated} atualizados</span>
+                {(syncLog.execucao_errors ?? 0) > 0 && (
+                  <span className="text-red-500 font-medium">{syncLog.execucao_errors} erros</span>
+                )}
+              </>
             )}
             <span className="text-gray-400">{(syncLog.duration_ms / 1000).toFixed(1)}s</span>
           </div>
