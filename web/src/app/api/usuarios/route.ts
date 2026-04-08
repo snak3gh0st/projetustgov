@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { getApiSession } from '@/lib/dal'
+import { getApiSession, ROLE_CAN_CREATE, type Role } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,12 +10,18 @@ export async function GET() {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    if (session.role !== 'gestor' && session.role !== 'adm_produto') {
+
+    const actorRole = session.role as Role
+    const isGestor = actorRole === 'gestor'
+    const managedRoles = ROLE_CAN_CREATE[actorRole] ?? []
+
+    // Roles with no managed subordinates have no access to this endpoint
+    if (!isGestor && managedRoles.length === 0) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const rows = await query(
-      session.role === 'adm_produto'
+      isGestor
         ? `
           SELECT
             u.id,
@@ -27,7 +33,6 @@ export async function GET() {
             COUNT(vp.id)::int AS lead_count
           FROM users u
           LEFT JOIN vendedor_projetos vp ON u.id = vp.vendedor_id
-          WHERE u.role = 'adm_produto'
           GROUP BY u.id, u.nome, u.email, u.role, u.active, u.created_at
           ORDER BY u.nome
         `
@@ -42,9 +47,11 @@ export async function GET() {
             COUNT(vp.id)::int AS lead_count
           FROM users u
           LEFT JOIN vendedor_projetos vp ON u.id = vp.vendedor_id
+          WHERE u.role = ANY($1::text[])
           GROUP BY u.id, u.nome, u.email, u.role, u.active, u.created_at
           ORDER BY u.nome
-        `
+        `,
+      isGestor ? [] : [managedRoles]
     )
 
     const result = rows.map((row: Record<string, unknown>) => ({
