@@ -469,7 +469,7 @@ Plans:
 
 Plans:
 - [ ] 20-01-PLAN.md — SQL migrations (tecnico_id em 4 tabelas + tgov_comments) + tipos TS (next-auth role csm, tgov.ts, tgov-tables.ts)
-- [ ] 20-02-PLAN.md — Helpers RBAC em dal.ts + middleware branch csm + refator das 5 routes TGov existentes
+- [x] 20-02-PLAN.md — Helpers RBAC em dal.ts + middleware branch csm + refator das 5 routes TGov existentes
 - [ ] 20-03-PLAN.md — Endpoints novos: /api/tgov/comments (GET/POST), /api/tgov/tecnico (PATCH), /api/tgov/usuarios/tecnicos (GET) + join tecnico nos CTEs aprovacao/execucao
 - [ ] 20-04-PLAN.md — Frontend: CommentsThread + TecnicoSelector, integração nos 2 sidecards, sidebar oculta CRM pra csm
 
@@ -514,7 +514,7 @@ Itens resolvidos fora dessa fase (commits avulsos 2026-04-07):
 | 17. UI & Navigation | 2/2 | Complete    | 2026-03-18 |
 | **Milestone v5.0** | | | |
 | 19. TGov Dashboard | 3/3 | Complete | 2026-03-30 |
-| 20. Ajustes TGov 07/04 — Técnico + CSM | 1/4 | In Progress|  |
+| 20. Ajustes TGov 07/04 — Técnico + CSM | 2/4 | In Progress|  |
 
 ---
 *Roadmap created: 2026-02-04*

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: — Projetos em Execucao
 status: executing
-stopped_at: Completed 20-01 (fundação SQL + tipos TGov; UUID FK fix)
-last_updated: "2026-04-07T23:30:00.000Z"
-last_activity: 2026-04-07 -- Plan 20-01 complete
+stopped_at: Completed 20-02 (RBAC helpers + middleware csm + 5 routes refatoradas)
+last_updated: "2026-04-07T23:45:00.000Z"
+last_activity: 2026-04-07 -- Plan 20-02 complete
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 11
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State: PROJETUS — v5.0 TGov Dashboard
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 20 (tgov-ajustes-0704) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Executing Phase 20
-Last activity: 2026-04-07 -- Plan 20-01 complete (fundação SQL + tipos)
+Last activity: 2026-04-07 -- Plan 20-02 complete (RBAC helpers + middleware csm)
 
 Progress (v5.0): [███░░░░░░░] 100%
 
@@ -53,6 +53,7 @@ Progress (v5.0): [███░░░░░░░] 100%
 | 19-tgov-dashboard | 02 | 3 min | 2 | 2 |
 | 19-tgov-dashboard | 03 | 9 min | 2 | 7 |
 | 20-tgov-ajustes-0704 | 01 | ~25 min | 6 | 5 |
+| 20-tgov-ajustes-0704 | 02 | ~10 min | 4 | 7 |
 
 *Updated after each plan completion*
 
@@ -95,6 +96,7 @@ Progress (v5.0): [███░░░░░░░] 100%
 | Middleware returns true HTTP 403 Response for /tgov page (Plan 19-03) | `new Response(...)` with status 403 is the only way to return true 403 for page routes in Next 14; `redirect()` returns 302 |
 | eslintrc @typescript-eslint plugin declared as off (Plan 19-03) | Pre-existing disable-comments need known rule — "off" prevents "rule not found" error without changing any lint behavior |
 | users.id é UUID; FKs tecnico_id e tgov_comments.author_id são UUID (Plan 20-01) | Schema real divergia do plano (assumia INT) — descoberto na verificação manual; tecnicoId tipado como string\|null em TGov row types |
+| Helpers RBAC TGov centralizados em dal.ts (Plan 20-02) | canReadTgov/canWriteTgov/canCommentTgov eliminam 8 inline checks duplicados; defense-in-depth (middleware + route) para mutations csm |
 
 ### Quick Tasks Completed
 
@@ -141,6 +143,6 @@ Progress (v5.0): [███░░░░░░░] 100%
 
 ## Session Continuity
 
-Last session: 2026-04-07T23:30:00Z
-Stopped at: Completed 20-01 (fundação SQL + tipos TGov; UUID FK fix)
-Resume file: .planning/phases/20-tgov-ajustes-0704/20-01-SUMMARY.md
+Last session: 2026-04-07T23:45:00Z
+Stopped at: Completed 20-02 (RBAC helpers + middleware csm + 5 routes refatoradas)
+Resume file: .planning/phases/20-tgov-ajustes-0704/20-02-SUMMARY.md
