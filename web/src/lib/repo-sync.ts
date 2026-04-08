@@ -618,6 +618,18 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
 
     const newCnpjsNeedingContacts = new Set<string>()
 
+    // Deduplicate leads by conflict key (cnpj + codigo_programa + nr_emenda) before batching.
+    // PostgreSQL rejects ON CONFLICT DO UPDATE when the same row appears twice in one statement.
+    // In row-by-row mode this was silently fine; in batch mode we must deduplicate first.
+    // Strategy: use a Map keyed by conflict key — last occurrence wins (matches prior behavior).
+    type LeadWithVendedor = {
+      lead: typeof leads[0]
+      vendedorId: string | null
+      obs: string | null
+      tipoVendedor: string
+    }
+    const dedupMap = new Map<string, LeadWithVendedor>()
+
     // Build typed arrays for batch unnest upsert (one entry per lead, matching column order)
     const bCnpj: (string | null)[] = []
     const bCodigoPrograma: (string | null)[] = []
@@ -678,6 +690,13 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       // Existing clients routed to Paulo get tipo_vendedor = 'Exclusivo'
       const tipoVendedor = (isExistingClient && pauloId && vendedorId === pauloId) ? 'Exclusivo' : 'SDR'
 
+      // Conflict key mirrors the DB constraint: (cnpj, codigo_programa, COALESCE(nr_emenda, ''))
+      const conflictKey = `${lead.cnpj}|${lead.codigo_programa}|${lead.nr_emenda ?? ''}`
+      dedupMap.set(conflictKey, { lead, vendedorId, obs, tipoVendedor })
+    }
+
+    // Build batch arrays from deduplicated map (last-write-wins per conflict key)
+    for (const { lead, vendedorId, obs, tipoVendedor } of Array.from(dedupMap.values())) {
       bCnpj.push(lead.cnpj)
       bCodigoPrograma.push(lead.codigo_programa)
       bNomePrograma.push(lead.nome_programa)
@@ -695,6 +714,9 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       bTipoVendedor.push(tipoVendedor)
       bTelefone.push(lead.telefone || null)
       bEmail.push(lead.email || null)
+    }
+    if (dedupMap.size < leads.length) {
+      console.log(`[repo-sync] STEP 7: Deduplicated ${leads.length - dedupMap.size} duplicate leads before batch upsert`)
     }
 
     // Single batch upsert via unnest — replaces N individual round-trips with 1 query
