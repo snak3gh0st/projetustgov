@@ -52,7 +52,8 @@ const ALL_EXEC_CTE = `
       pe.dias_ate_vencimento,
       pe.ano_referencia,
       pe.dia_limite_prest_contas,
-      pe.dias_prest_contas
+      pe.dias_prest_contas,
+      pe.tecnico_id
     FROM projetos_execucao pe
     WHERE pe.nr_proposta IS NOT NULL
       AND (
@@ -87,7 +88,8 @@ const ALL_EXEC_CTE = `
       pe.dias_ate_vencimento,
       pe.ano_referencia,
       pe.dia_limite_prest_contas,
-      pe.dias_prest_contas
+      pe.dias_prest_contas,
+      pe.tecnico_id
     FROM tgov_projetos_execucao pe
     WHERE pe.nr_proposta IS NOT NULL
       AND NOT EXISTS (
@@ -120,7 +122,8 @@ const ALL_EXEC_CTE = `
       NULL AS dias_ate_vencimento,
       NULL::int AS ano_referencia,
       NULL::date AS dia_limite_prest_contas,
-      NULL::int AS dias_prest_contas
+      NULL::int AS dias_prest_contas,
+      p.tecnico_id
     FROM propostas p
     WHERE p.nr_proposta IS NOT NULL
       AND (
@@ -163,7 +166,8 @@ const ALL_EXEC_CTE = `
       NULL AS dias_ate_vencimento,
       NULL::int AS ano_referencia,
       NULL::date AS dia_limite_prest_contas,
-      NULL::int AS dias_prest_contas
+      NULL::int AS dias_prest_contas,
+      p.tecnico_id
     FROM tgov_propostas p
     WHERE p.nr_proposta IS NOT NULL
       AND NOT EXISTS (
@@ -311,6 +315,8 @@ export async function GET(request: NextRequest) {
         dia_limite_prest_contas: string | null
         dias_prest_contas: number | null
         internal_status: string | null
+        tecnico_id: string | null
+        tecnico_nome: string | null
       }[] | null
     }
 
@@ -469,9 +475,12 @@ export async function GET(request: NextRequest) {
             pe.ano_referencia,
             pe.dia_limite_prest_contas::text,
             pe.dias_prest_contas,
-            ti.status AS internal_status
+            ti.status AS internal_status,
+            pe.tecnico_id,
+            tu.nome AS tecnico_nome
           FROM filtered_table pe
           LEFT JOIN tgov_interactions ti ON ti.item_key = pe.nr_convenio AND ti.tab = 'execucao'
+          LEFT JOIN users tu ON tu.id = pe.tecnico_id
           ORDER BY pe.valor_global DESC NULLS LAST, pe.nr_convenio DESC NULLS LAST
           LIMIT ${pageSize} OFFSET ${offset}
         ) t
@@ -561,6 +570,8 @@ export async function GET(request: NextRequest) {
       diaLimitePrestContas: row.dia_limite_prest_contas ? String(row.dia_limite_prest_contas) : null,
       diasPrestContas: row.dias_prest_contas,
       internalStatus: row.internal_status ?? null,
+      tecnicoId: row.tecnico_id ?? null,
+      tecnicoNome: row.tecnico_nome ?? null,
     }))
 
     const response: TGovTabResponse & {
