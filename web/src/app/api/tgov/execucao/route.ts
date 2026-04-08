@@ -316,7 +316,6 @@ export async function GET(request: NextRequest) {
         dias_prest_contas: number | null
         internal_status: string | null
         tecnico_id: string | null
-        tecnico_nome: string | null
       }[] | null
     }
 
@@ -476,11 +475,9 @@ export async function GET(request: NextRequest) {
             pe.dia_limite_prest_contas::text,
             pe.dias_prest_contas,
             ti.status AS internal_status,
-            pe.tecnico_id,
-            tu.nome AS tecnico_nome
+            pe.tecnico_id
           FROM filtered_table pe
           LEFT JOIN tgov_interactions ti ON ti.item_key = pe.nr_convenio AND ti.tab = 'execucao'
-          LEFT JOIN users tu ON tu.id = pe.tecnico_id
           ORDER BY pe.valor_global DESC NULLS LAST, pe.nr_convenio DESC NULLS LAST
           LIMIT ${pageSize} OFFSET ${offset}
         ) t
@@ -543,7 +540,19 @@ export async function GET(request: NextRequest) {
     const comDesembolsoTotal = r?.com_desembolso_total ?? null
     const semDesembolsoTotal = r?.sem_desembolso_total ?? null
 
-    const rows: TGovExecucaoTableRow[] = (r?.table_data ?? []).map((row) => ({
+    // Lookup técnico names for paginated rows (avoids SQL join on CTE)
+    const rawRows = r?.table_data ?? []
+    const tecnicoIds = Array.from(new Set(rawRows.map(x => x.tecnico_id).filter((x): x is string => !!x)))
+    const tecnicoNameMap = new Map<string, string>()
+    if (tecnicoIds.length > 0) {
+      const nameRows = await query<{ id: string; nome: string }>(
+        `SELECT id::text AS id, nome FROM users WHERE id = ANY($1::uuid[])`,
+        [tecnicoIds]
+      )
+      for (const nr of nameRows) tecnicoNameMap.set(nr.id, nr.nome)
+    }
+
+    const rows: TGovExecucaoTableRow[] = rawRows.map((row) => ({
       numeroProposta: row.nr_proposta || row.id_proposta || row.nr_convenio || '—',
       nrConvenio: row.nr_convenio || '',
       idProposta: row.id_proposta ? String(row.id_proposta) : null,
@@ -571,7 +580,7 @@ export async function GET(request: NextRequest) {
       diasPrestContas: row.dias_prest_contas,
       internalStatus: row.internal_status ?? null,
       tecnicoId: row.tecnico_id ?? null,
-      tecnicoNome: row.tecnico_nome ?? null,
+      tecnicoNome: row.tecnico_id ? (tecnicoNameMap.get(row.tecnico_id) ?? null) : null,
     }))
 
     const response: TGovTabResponse & {

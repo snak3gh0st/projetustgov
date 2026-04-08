@@ -86,8 +86,8 @@ export async function ensureTgovTables(): Promise<void> {
   await pool.query(`CREATE INDEX IF NOT EXISTS ix_tgov_pe_data_fim ON tgov_projetos_execucao(data_fim_vigencia) WHERE data_fim_vigencia IS NOT NULL`)
 
   // Phase 20 — defensive: ensure tecnico_id columns exist on TGov tables
-  await pool.query(`ALTER TABLE tgov_propostas ADD COLUMN IF NOT EXISTS tecnico_id INT`)
-  await pool.query(`ALTER TABLE tgov_projetos_execucao ADD COLUMN IF NOT EXISTS tecnico_id INT`)
+  await pool.query(`ALTER TABLE tgov_propostas ADD COLUMN IF NOT EXISTS tecnico_id UUID REFERENCES users(id) ON DELETE SET NULL`)
+  await pool.query(`ALTER TABLE tgov_projetos_execucao ADD COLUMN IF NOT EXISTS tecnico_id UUID REFERENCES users(id) ON DELETE SET NULL`)
 
   // Phase 20 — defensive: ensure tgov_comments table exists (append-only v1)
   await pool.query(`

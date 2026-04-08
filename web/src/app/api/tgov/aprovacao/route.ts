@@ -200,7 +200,6 @@ export async function GET(request: NextRequest) {
         data_fim_vigencia: string | null
         internal_status: string | null
         tecnico_id: string | null
-        tecnico_nome: string | null
       }>(
         `${ALL_PROPOSTAS_CTE} SELECT
           p.transfer_gov_id,
@@ -221,17 +220,26 @@ export async function GET(request: NextRequest) {
           p.data_inicio_vigencia::text,
           p.data_fim_vigencia::text,
           ti.status AS internal_status,
-          p.tecnico_id,
-          tu.nome AS tecnico_nome
+          p.tecnico_id
         FROM all_propostas p
         LEFT JOIN tgov_interactions ti ON ti.item_key = p.nr_proposta AND ti.tab = 'aprovacao'
-        LEFT JOIN users tu ON tu.id = p.tecnico_id
         ${tableWhereClause}
         ORDER BY p.data_publicacao DESC NULLS LAST, p.transfer_gov_id DESC
         LIMIT ${pageSize} OFFSET ${offset}`,
         tableParams
       ),
     ])
+
+    // Lookup técnico names for the paginated rows (avoids JOIN on 904k-row CTE)
+    const tecnicoIds = Array.from(new Set(tableDataRows.map(r => r.tecnico_id).filter((x): x is string => !!x)))
+    const tecnicoNameMap = new Map<string, string>()
+    if (tecnicoIds.length > 0) {
+      const nameRows = await query<{ id: string; nome: string }>(
+        `SELECT id::text AS id, nome FROM users WHERE id = ANY($1::uuid[])`,
+        [tecnicoIds]
+      )
+      for (const r of nameRows) tecnicoNameMap.set(r.id, r.nome)
+    }
 
     const total = Number(totalRows[0]?.total) || 0
     const totalTableRows = Number(tableCountRows[0]?.total) || 0
@@ -294,7 +302,7 @@ export async function GET(request: NextRequest) {
           dataFimVigencia: r.data_fim_vigencia ? String(r.data_fim_vigencia) : null,
           internalStatus: r.internal_status ?? null,
           tecnicoId: r.tecnico_id ?? null,
-          tecnicoNome: r.tecnico_nome ?? null,
+          tecnicoNome: r.tecnico_id ? (tecnicoNameMap.get(r.tecnico_id) ?? null) : null,
         })),
         page,
         pageSize,
