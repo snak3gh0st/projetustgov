@@ -514,7 +514,7 @@ Itens resolvidos fora dessa fase (commits avulsos 2026-04-07):
 | 17. UI & Navigation | 2/2 | Complete    | 2026-03-18 |
 | **Milestone v5.0** | | | |
 | 19. TGov Dashboard | 3/3 | Complete | 2026-03-30 |
-| 20. Ajustes TGov 07/04 — Técnico + CSM | 2/4 | In Progress|  |
+| 20. Ajustes TGov 07/04 — Técnico + CSM | 3/4 | In Progress|  |
 
 ---
 *Roadmap created: 2026-02-04*
