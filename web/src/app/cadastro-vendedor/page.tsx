@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { verifySession } from '@/lib/dal'
+import { verifySession, ROLE_CAN_CREATE, type Role } from '@/lib/dal'
 import CadastroVendedorClient from './CadastroVendedorClient'
 
 export default async function CadastroVendedorPage() {
@@ -10,5 +10,7 @@ export default async function CadastroVendedorPage() {
   const USERS_PAGE_ROLES = ['gestor', 'admin', 'adm_produto', 'coord_aprovacao', 'assistente_aprovacao']
   if (!USERS_PAGE_ROLES.includes(role)) redirect('/sem-permissao')
 
-  return <CadastroVendedorClient userRole={role} />
+  const creatableRoles = ROLE_CAN_CREATE[role as Role] ?? []
+
+  return <CadastroVendedorClient userRole={role} creatableRoles={creatableRoles} />
 }
