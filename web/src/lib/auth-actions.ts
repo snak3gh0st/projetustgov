@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation'
 import { isRedirectError } from 'next/dist/client/components/redirect'
 import { AuthError } from 'next-auth'
 import { ZodError } from 'zod'
+import { ROLE_CAN_CREATE, type Role } from './dal'
 
 export async function login(
   prevState: { error?: string } | null,
@@ -121,12 +122,22 @@ export async function createUsuario(
     // Verify session and check if user is gestor
     const session = await auth()
 
-    if (!session?.user || !('role' in session.user) || (session.user.role !== 'gestor' && session.user.role !== 'adm_produto')) {
+    if (!session?.user || !('role' in session.user)) {
       return { error: 'Sem permissao para criar usuarios' }
     }
 
-    // adm_produto can only create adm_produto users
-    const assignedRole = session.user.role === 'adm_produto' ? 'adm_produto' : (formData.get('role') ?? 'vendedor')
+    const actorRole = session.user.role as Role
+    const creatableRoles = ROLE_CAN_CREATE[actorRole] ?? []
+    if (creatableRoles.length === 0) {
+      return { error: 'Sem permissao para criar usuarios' }
+    }
+
+    const formRole = formData.get('role') as string
+    if (!creatableRoles.includes(formRole as Role)) {
+      return { error: 'Sem permissao para criar usuarios com este cargo' }
+    }
+
+    const assignedRole = formData.get('role') ?? 'vendedor'
 
     // Extract and validate form data
     const rawData = {
