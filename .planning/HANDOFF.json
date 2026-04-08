@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-04-08T20:27:15.727Z",
+  "phase": "debug",
+  "phase_name": "Bug fixes & perf — situação sync + repo-sync perf",
+  "phase_dir": ".planning/debug",
+  "status": "completed",
+  "completed_tasks": [
+    {"id": 1, "name": "fix: lumiart situação desatualizada — STEP B2 em execucao-sync.ts", "status": "done", "commit": "afb954a"},
+    {"id": 2, "name": "fix: guard nr_proposta IS NOT NULL + index tgov_projetos_execucao", "status": "done", "commit": "3f2967d"},
+    {"id": 3, "name": "fix: repo-sync STEP 8 log enganoso — refresh elapsed após queue ops", "status": "done", "commit": "73bbfc1"},
+    {"id": 4, "name": "perf: repo-sync STEP 7 batch unnest — 3564 queries → 1 (225s→86s)", "status": "done", "commit": "b03decd"},
+    {"id": 5, "name": "fix: dedup leads por conflict key antes do batch upsert", "status": "done", "commit": "cf8c263"},
+    {"id": 6, "name": "feat: botão Sincronizar dispara sync-leads + sync-execucao em paralelo", "status": "done", "commit": "be72506"}
+  ],
+  "remaining_tasks": [],
+  "blockers": [],
+  "human_actions_pending": [],
+  "decisions": [
+    {"decision": "STEP B2 usa NOT EXISTS duplo (projetos_execucao + tgov_projetos_execucao)", "rationale": "Espelha exatamente a condição do branch 3 do CTE all_exec — zero risco de tocar propostas que já graduaram para convênio", "phase": "debug"},
+    {"decision": "Batch unnest com dedupMap por conflict key", "rationale": "Postgres rejeita ON CONFLICT DO UPDATE com duplicatas no mesmo statement; dedupMap last-write-wins preserva comportamento anterior", "phase": "debug"},
+    {"decision": "Promise.allSettled para sync paralelo no botão", "rationale": "Falha do execucao não bloqueia resultado dos leads", "phase": "debug"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "Verificar se há outros proponentes com situação desatualizada; investigar debug sessions abertas: admin-csv-export-forbidden, comissoes-wellington, commission-sales-flow, contacted-status-regression, duplicate-lead-cnpj",
+  "context_notes": "Sessão de bugfixes. Todos os 6 commits foram pushed para origin/master. STEP B2 confirmado: 7534 propostas atualizadas. sync-leads agora roda em 86s (era 225s). Lumiart verified OK."
+}
