@@ -27,7 +27,7 @@ const ALL_EXEC_CTE = `
   wl AS MATERIALIZED (
     SELECT nr_proposta, cnpj FROM tgov_whitelist WHERE tab IN ('ambos', 'execucao')
   ),
-  all_exec AS MATERIALIZED (
+  all_exec AS NOT MATERIALIZED (
     SELECT
       pe.nr_convenio,
       pe.id_proposta,

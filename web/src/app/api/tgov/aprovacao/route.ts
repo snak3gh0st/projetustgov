@@ -17,7 +17,7 @@ export const maxDuration = 30
  * propostas (evita duplicação caso um CNPJ migre de TGov-only para CRM).
  */
 const ALL_PROPOSTAS_CTE = `
-  WITH all_propostas AS MATERIALIZED (
+  WITH all_propostas AS NOT MATERIALIZED (
     SELECT
       p.transfer_gov_id, p.nr_proposta, p.titulo, p.situacao,
       p.valor_global, p.valor_repasse, p.valor_contrapartida,
