@@ -9,8 +9,13 @@ export default async function TGovPage({
 }) {
   const session = await verifySession()
 
-  // Role guard: gestor, admin and adm_produto may access /tgov
-  if (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto') {
+  // Role guard: gestor, admin, adm_produto and csm may access /tgov
+  if (
+    session.role !== 'gestor' &&
+    session.role !== 'admin' &&
+    session.role !== 'adm_produto' &&
+    session.role !== 'csm'
+  ) {
     redirect('/sem-permissao')
   }
 

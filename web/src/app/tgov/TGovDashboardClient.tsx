@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import TGovStatusDonut from '@/components/TGovStatusDonut'
+import CommentsThread from './CommentsThread'
+import TecnicoSelector, { type Tecnico } from './TecnicoSelector'
 import {
   BarChart as BIBarChart,
   Bar as BIBar,
@@ -263,7 +265,7 @@ interface CnpjSearchResult {
 // ---------------------------------------------------------------------------
 
 interface TGovDashboardClientProps {
-  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto'
+  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm'
   view?: 'pipeline' | 'dashboard'
 }
 
@@ -271,7 +273,7 @@ interface TGovDashboardClientProps {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function TGovDashboardClient({ userRole: _userRole, view = 'pipeline' }: TGovDashboardClientProps) {
+export default function TGovDashboardClient({ userRole, view = 'pipeline' }: TGovDashboardClientProps) {
   // Swap: default /tgov (menu "TGov Pipeline") shows BI content;
   // /tgov?view=dashboard (menu "TGov Dashboard") shows the pipeline table.
   const isDashboardView = view !== 'dashboard'
@@ -287,6 +289,23 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
   // Sidecard state
   const [selectedExecRow, setSelectedExecRow] = useState<TGovExecucaoTableRow | null>(null)
   const [selectedAprovRow, setSelectedAprovRow] = useState<TGovAprovacaoTableRow | null>(null)
+
+  // Técnicos pool (fetched once on mount)
+  const [tecnicos, setTecnicos] = useState<Tecnico[]>([])
+  useEffect(() => {
+    let active = true
+    fetch('/api/tgov/usuarios/tecnicos')
+      .then((r) => (r.ok ? r.json() : { tecnicos: [] }))
+      .then((json) => {
+        if (active && Array.isArray(json?.tecnicos)) setTecnicos(json.tecnicos)
+      })
+      .catch(() => {
+        /* silent — selector falls back to empty pool */
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   // CNPJ search state
   const [cnpjModalOpen, setCnpjModalOpen] = useState(false)
@@ -759,10 +778,22 @@ export default function TGovDashboardClient({ userRole: _userRole, view = 'pipel
 
       {/* Sidecard slide-over */}
       {selectedExecRow && (
-        <ExecucaoSidecard row={selectedExecRow} onClose={() => setSelectedExecRow(null)} />
+        <ExecucaoSidecard
+          row={selectedExecRow}
+          onClose={() => setSelectedExecRow(null)}
+          tecnicos={tecnicos}
+          currentUserRole={userRole}
+          onRowUpdate={(patch) => setSelectedExecRow((prev) => (prev ? { ...prev, ...patch } : prev))}
+        />
       )}
       {selectedAprovRow && (
-        <AprovacaoSidecard row={selectedAprovRow} onClose={() => setSelectedAprovRow(null)} />
+        <AprovacaoSidecard
+          row={selectedAprovRow}
+          onClose={() => setSelectedAprovRow(null)}
+          tecnicos={tecnicos}
+          currentUserRole={userRole}
+          onRowUpdate={(patch) => setSelectedAprovRow((prev) => (prev ? { ...prev, ...patch } : prev))}
+        />
       )}
 
       {/* CNPJ Search Modal */}
@@ -1216,10 +1247,17 @@ function ExecucaoTable({
 function ExecucaoSidecard({
   row,
   onClose,
+  tecnicos,
+  currentUserRole,
+  onRowUpdate,
 }: {
   row: TGovExecucaoTableRow
   onClose: () => void
+  tecnicos: Tecnico[]
+  currentUserRole: string
+  onRowUpdate: (patch: Partial<TGovExecucaoTableRow>) => void
 }) {
+  const execKey = row.nrConvenio || row.numeroProposta || ''
   return (
     <>
       {/* Backdrop */}
@@ -1291,6 +1329,19 @@ function ExecucaoSidecard({
             <SidecardField label="Município" value={row.municipio} />
           </SidecardSection>
 
+          {/* Responsável Técnico */}
+          <SidecardSection title="Responsável Técnico">
+            <TecnicoSelector
+              targetType="execucao"
+              targetKey={execKey}
+              currentTecnicoId={row.tecnicoId ?? null}
+              currentTecnicoNome={row.tecnicoNome ?? null}
+              tecnicos={tecnicos}
+              currentUserRole={currentUserRole}
+              onAssigned={(id, nome) => onRowUpdate({ tecnicoId: id, tecnicoNome: nome })}
+            />
+          </SidecardSection>
+
           {/* Instrumento */}
           <SidecardSection title="Instrumento">
             <SidecardField label="Nr Convênio" value={row.nrConvenio} mono />
@@ -1349,6 +1400,15 @@ function ExecucaoSidecard({
           </SidecardSection>
 
           <TGovInteractionPanel itemKey={row.nrConvenio} tab="execucao" onStatusChange={() => {}} />
+
+          {/* Comentários */}
+          <SidecardSection title="Comentários">
+            <CommentsThread
+              targetType="execucao"
+              targetKey={execKey}
+              currentUserRole={currentUserRole}
+            />
+          </SidecardSection>
         </div>
       </div>
 
@@ -1373,9 +1433,15 @@ function ExecucaoSidecard({
 function AprovacaoSidecard({
   row,
   onClose,
+  tecnicos,
+  currentUserRole,
+  onRowUpdate,
 }: {
   row: TGovAprovacaoTableRow
   onClose: () => void
+  tecnicos: Tecnico[]
+  currentUserRole: string
+  onRowUpdate: (patch: Partial<TGovAprovacaoTableRow>) => void
 }) {
   const tgovPropostaLink = buildTGovAprovacaoLink(row.transferGovId)
   return (
@@ -1432,6 +1498,19 @@ function AprovacaoSidecard({
             <SidecardField label="Município" value={row.municipio} />
           </SidecardSection>
 
+          {/* Responsável Técnico */}
+          <SidecardSection title="Responsável Técnico">
+            <TecnicoSelector
+              targetType="proposta"
+              targetKey={row.numeroProposta}
+              currentTecnicoId={row.tecnicoId ?? null}
+              currentTecnicoNome={row.tecnicoNome ?? null}
+              tecnicos={tecnicos}
+              currentUserRole={currentUserRole}
+              onAssigned={(id, nome) => onRowUpdate({ tecnicoId: id, tecnicoNome: nome })}
+            />
+          </SidecardSection>
+
           {/* Instrumento */}
           <SidecardSection title="Instrumento">
             <SidecardField label="NR Proposta" value={row.numeroProposta} mono />
@@ -1457,6 +1536,15 @@ function AprovacaoSidecard({
           </SidecardSection>
 
           <TGovInteractionPanel itemKey={row.numeroProposta} tab="aprovacao" onStatusChange={() => {}} />
+
+          {/* Comentários */}
+          <SidecardSection title="Comentários">
+            <CommentsThread
+              targetType="proposta"
+              targetKey={row.numeroProposta}
+              currentUserRole={currentUserRole}
+            />
+          </SidecardSection>
         </div>
       </div>
       <style jsx>{`
