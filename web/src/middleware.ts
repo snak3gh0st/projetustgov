@@ -55,6 +55,24 @@ export default auth((req) => {
     }
   }
 
+  if (role === 'csm') {
+    // CSM é TGov-only, mesmo isolamento de adm_produto vs CRM.
+    if (isCrmPage || isCrmHome) {
+      return Response.redirect(new URL('/tgov', req.url))
+    }
+    if (isCrmApi) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    // Mutation gate: CSM só pode escrever em /api/tgov/comments. Tudo mais bloqueado.
+    const isTgovPrivilegedMutation =
+      pathname.startsWith('/api/tgov/whitelist') ||
+      pathname.startsWith('/api/tgov/interaction') ||
+      pathname.startsWith('/api/tgov/tecnico')
+    if (isTgovPrivilegedMutation && req.method !== 'GET') {
+      return Response.json({ error: 'Forbidden: CSM is read-only on this resource' }, { status: 403 })
+    }
+  }
+
   // vendedor / coordenador / visualizador cannot access TGov
   if (role && ['vendedor', 'coordenador', 'visualizador'].includes(role) && isTGovPath) {
     if (pathname.startsWith('/api/')) {
