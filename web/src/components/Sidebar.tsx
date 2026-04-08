@@ -7,7 +7,7 @@ import { logout } from '@/lib/auth-actions'
 interface SidebarProps {
   user: {
     name?: string | null
-    role: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm'
+    role: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista'
     email?: string | null
   }
 }
@@ -96,6 +96,23 @@ export default function Sidebar({ user }: SidebarProps) {
         { href: '/tgov', label: 'TGov Pipeline', icon: 'pipeline' },
         { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
       ]
+    : user.role === 'coord_aprovacao'
+    ? [
+        { href: '/tgov', label: 'TGov Pipeline', icon: 'pipeline' },
+        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+        { href: '/cadastro-vendedor', label: 'Usuarios TGov', icon: 'vendedores' },
+      ]
+    : user.role === 'assistente_aprovacao'
+    ? [
+        { href: '/tgov', label: 'TGov Pipeline', icon: 'pipeline' },
+        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+        { href: '/cadastro-vendedor', label: 'Usuarios TGov', icon: 'vendedores' },
+      ]
+    : user.role === 'projetista'
+    ? [
+        { href: '/tgov', label: 'TGov Pipeline', icon: 'pipeline' },
+        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+      ]
     : BASE_WITH_EXECUCAO
 
   return (
@@ -160,9 +177,15 @@ export default function Sidebar({ user }: SidebarProps) {
               ? 'bg-orange-50 text-orange-600'
               : user.role === 'csm'
               ? 'bg-teal-50 text-teal-600'
+              : user.role === 'coord_aprovacao'
+              ? 'bg-sky-50 text-sky-600'
+              : user.role === 'assistente_aprovacao'
+              ? 'bg-cyan-50 text-cyan-600'
+              : user.role === 'projetista'
+              ? 'bg-violet-50 text-violet-600'
               : 'bg-green-50 text-green-600'
           }`}>
-            {user.role === 'gestor' ? 'Gestor' : user.role === 'admin' ? 'Admin' : user.role === 'coordenador' ? 'Coordenador' : user.role === 'visualizador' ? 'Visualizador' : user.role === 'adm_produto' ? 'Adm Produto' : user.role === 'csm' ? 'CSM' : 'Vendedor'}
+            {user.role === 'gestor' ? 'Gestor' : user.role === 'admin' ? 'Admin' : user.role === 'coordenador' ? 'Coordenador' : user.role === 'visualizador' ? 'Visualizador' : user.role === 'adm_produto' ? 'Adm Produto' : user.role === 'csm' ? 'CSM' : user.role === 'coord_aprovacao' ? 'Coord. Aprovação' : user.role === 'assistente_aprovacao' ? 'Assist. Aprovação' : user.role === 'projetista' ? 'Projetista' : 'Vendedor'}
           </span>
         </div>
         <form action={logout}>
