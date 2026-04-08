@@ -64,6 +64,7 @@ interface PropostaInfo {
   uf: string | null
   municipio: string | null
   nr_proposta: string | null
+  sit_proposta: string | null
 }
 
 interface ExecucaoRecord {
@@ -185,10 +186,58 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
       uf: row['UF_PROPONENTE'] || row['UF'] || null,
       municipio: fixText(row['MUNICIPIO_PROPONENTE'] || row['MUNIC_PROPONENTE'] || null) || null,
       nr_proposta: row['NR_PROPOSTA'] || null,
+      sit_proposta: fixText(row['SIT_PROPOSTA'] || row['SITUACAO_PROPOSTA'] || null) || null,
     })
   })
 
   console.log(`[execucao-sync] STEP B complete: propostaMap.size=${propostaMap.size}, cnpj_matched=${stats.osc_rows_kept}`)
+
+  // -------------------------------------------------------------------------
+  // STEP B2: UPDATE propostas.situacao para propostas sem convênio ativo
+  // Apenas linhas que NÃO existem em projetos_execucao nem tgov_projetos_execucao
+  // (espelha exatamente a condição do branch 3 do CTE all_exec)
+  // -------------------------------------------------------------------------
+  const b2IdPropostas: string[] = []
+  const b2Situacoes: string[] = []
+  for (const [idProposta, info] of Array.from(propostaMap.entries())) {
+    if (info.sit_proposta) {
+      b2IdPropostas.push(idProposta)
+      b2Situacoes.push(info.sit_proposta)
+    }
+  }
+
+  if (b2IdPropostas.length > 0) {
+    const b2Client = await pool.connect()
+    try {
+      const b2Result = await b2Client.query<{ n: string }>(
+        `WITH upd AS (
+          UPDATE propostas
+          SET situacao = updates.situacao, updated_at = NOW()
+          FROM (
+            SELECT unnest($1::text[]) AS id_proposta,
+                   unnest($2::text[]) AS situacao
+          ) AS updates
+          WHERE propostas.transfer_gov_id = updates.id_proposta
+            AND NOT EXISTS (
+              SELECT 1 FROM projetos_execucao pe
+              WHERE pe.nr_proposta = propostas.nr_proposta
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM tgov_projetos_execucao pe
+              WHERE pe.nr_proposta = propostas.nr_proposta
+            )
+          RETURNING 1
+        ) SELECT COUNT(*) AS n FROM upd`,
+        [b2IdPropostas, b2Situacoes]
+      )
+      const b2Updated = parseInt(b2Result.rows[0].n, 10)
+      console.log(`[execucao-sync] STEP B2: updated situacao for ${b2Updated} propostas sem convenio`)
+    } finally {
+      b2Client.release()
+    }
+  } else {
+    console.log('[execucao-sync] STEP B2: no propostas with SIT_PROPOSTA to update')
+  }
 
   // Memory guard after STEP B
   const memAfterB = process.memoryUsage().heapUsed / 1024 / 1024
