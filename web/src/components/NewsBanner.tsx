@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react'
 
-const NEWS_VERSION = 'v4.3'
+const NEWS_VERSION = 'v4.4'
 const NEWS_ITEMS = [
-  'Execucao: novo layout igual ao de Aprovacao — mais limpo e compacto',
-  'Execucao: status agora interativo, muda diretamente na tabela',
-  'Execucao: filtro por status adicionado na barra de filtros',
-  'Performance: carregamento drasticamente mais rapido (correcao de query critica)',
-  'Pipeline Execucao no dashboard voltou a funcionar corretamente',
+  'TGov: novo campo "Responsavel Tecnico" nos sidecards de Aprovacao e Execucao',
+  'TGov: thread de comentarios em cada proposta/projeto — historico compartilhado',
+  'Novo perfil "csm" com acesso read-only ao TGov + permissao para comentar',
+  'Performance: queries de Aprovacao e Execucao 100x mais rapidas (NOT MATERIALIZED)',
 ]
 const STORAGE_KEY = `projetus-news-dismissed-${NEWS_VERSION}`
 
