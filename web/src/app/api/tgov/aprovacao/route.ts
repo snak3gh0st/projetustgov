@@ -23,7 +23,8 @@ const ALL_PROPOSTAS_CTE = `
       p.valor_global, p.valor_repasse, p.valor_contrapartida,
       p.data_publicacao, p.data_inicio_vigencia, p.data_fim_vigencia,
       p.estado, p.municipio, p.proponente, p.proponente_cnpj,
-      p.modalidade, p.orgao_superior, p.orgao_vinculado
+      p.modalidade, p.orgao_superior, p.orgao_vinculado,
+      p.tecnico_id
     FROM propostas p
     UNION ALL
     SELECT
@@ -31,7 +32,8 @@ const ALL_PROPOSTAS_CTE = `
       p.valor_global, p.valor_repasse, p.valor_contrapartida,
       p.data_publicacao, p.data_inicio_vigencia, p.data_fim_vigencia,
       p.estado, p.municipio, p.proponente, p.proponente_cnpj,
-      p.modalidade, p.orgao_superior, p.orgao_vinculado
+      p.modalidade, p.orgao_superior, p.orgao_vinculado,
+      p.tecnico_id
     FROM tgov_propostas p
     WHERE NOT EXISTS (
       SELECT 1 FROM propostas crm WHERE crm.transfer_gov_id = p.transfer_gov_id
@@ -197,6 +199,8 @@ export async function GET(request: NextRequest) {
         data_inicio_vigencia: string | null
         data_fim_vigencia: string | null
         internal_status: string | null
+        tecnico_id: string | null
+        tecnico_nome: string | null
       }>(
         `${ALL_PROPOSTAS_CTE} SELECT
           p.transfer_gov_id,
@@ -216,9 +220,12 @@ export async function GET(request: NextRequest) {
           p.orgao_vinculado,
           p.data_inicio_vigencia::text,
           p.data_fim_vigencia::text,
-          ti.status AS internal_status
+          ti.status AS internal_status,
+          p.tecnico_id,
+          tu.nome AS tecnico_nome
         FROM all_propostas p
         LEFT JOIN tgov_interactions ti ON ti.item_key = p.nr_proposta AND ti.tab = 'aprovacao'
+        LEFT JOIN users tu ON tu.id = p.tecnico_id
         ${tableWhereClause}
         ORDER BY p.data_publicacao DESC NULLS LAST, p.transfer_gov_id DESC
         LIMIT ${pageSize} OFFSET ${offset}`,
@@ -286,6 +293,8 @@ export async function GET(request: NextRequest) {
           dataInicioVigencia: r.data_inicio_vigencia ? String(r.data_inicio_vigencia) : null,
           dataFimVigencia: r.data_fim_vigencia ? String(r.data_fim_vigencia) : null,
           internalStatus: r.internal_status ?? null,
+          tecnicoId: r.tecnico_id ?? null,
+          tecnicoNome: r.tecnico_nome ?? null,
         })),
         page,
         pageSize,
