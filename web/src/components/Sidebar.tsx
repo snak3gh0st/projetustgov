@@ -7,7 +7,7 @@ import { logout } from '@/lib/auth-actions'
 interface SidebarProps {
   user: {
     name?: string | null
-    role: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto'
+    role: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm'
     email?: string | null
   }
 }
@@ -91,6 +91,11 @@ export default function Sidebar({ user }: SidebarProps) {
         { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
         { href: '/cadastro-vendedor', label: 'Usuarios TGOV', icon: 'vendedores' },
       ]
+    : user.role === 'csm'
+    ? [
+        { href: '/tgov', label: 'TGov Pipeline', icon: 'pipeline' },
+        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+      ]
     : BASE_WITH_EXECUCAO
 
   return (
@@ -153,9 +158,11 @@ export default function Sidebar({ user }: SidebarProps) {
               ? 'bg-purple-50 text-purple-600'
               : user.role === 'adm_produto'
               ? 'bg-orange-50 text-orange-600'
+              : user.role === 'csm'
+              ? 'bg-teal-50 text-teal-600'
               : 'bg-green-50 text-green-600'
           }`}>
-            {user.role === 'gestor' ? 'Gestor' : user.role === 'admin' ? 'Admin' : user.role === 'coordenador' ? 'Coordenador' : user.role === 'visualizador' ? 'Visualizador' : user.role === 'adm_produto' ? 'Adm Produto' : 'Vendedor'}
+            {user.role === 'gestor' ? 'Gestor' : user.role === 'admin' ? 'Admin' : user.role === 'coordenador' ? 'Coordenador' : user.role === 'visualizador' ? 'Visualizador' : user.role === 'adm_produto' ? 'Adm Produto' : user.role === 'csm' ? 'CSM' : 'Vendedor'}
           </span>
         </div>
         <form action={logout}>
