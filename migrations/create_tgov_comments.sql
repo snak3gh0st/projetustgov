@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS tgov_comments (
   id           SERIAL PRIMARY KEY,
   target_type  TEXT NOT NULL CHECK (target_type IN ('proposta', 'execucao')),
   target_key   TEXT NOT NULL,
-  author_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  author_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   body         TEXT NOT NULL CHECK (length(trim(body)) > 0),
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );

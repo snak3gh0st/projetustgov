@@ -122,7 +122,7 @@ export interface TGovAprovacaoTableRow extends TGovTableRow {
   orgaoVinculado: string | null
   dataInicioVigencia: string | null
   dataFimVigencia: string | null
-  tecnicoId?: number | null
+  tecnicoId?: string | null
   tecnicoNome?: string | null
 }
 
@@ -149,7 +149,7 @@ export interface TGovExecucaoTableRow extends TGovTableRow {
   anoReferencia: number | null
   diaLimitePrestContas: string | null
   diasPrestContas: number | null
-  tecnicoId?: number | null
+  tecnicoId?: string | null
   tecnicoNome?: string | null
 }
 

@@ -6,16 +6,16 @@
 -- ============================================================================
 
 ALTER TABLE propostas
-  ADD COLUMN IF NOT EXISTS tecnico_id INT REFERENCES users(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS tecnico_id UUID REFERENCES users(id) ON DELETE SET NULL;
 
 ALTER TABLE tgov_propostas
-  ADD COLUMN IF NOT EXISTS tecnico_id INT REFERENCES users(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS tecnico_id UUID REFERENCES users(id) ON DELETE SET NULL;
 
 ALTER TABLE projetos_execucao
-  ADD COLUMN IF NOT EXISTS tecnico_id INT REFERENCES users(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS tecnico_id UUID REFERENCES users(id) ON DELETE SET NULL;
 
 ALTER TABLE tgov_projetos_execucao
-  ADD COLUMN IF NOT EXISTS tecnico_id INT REFERENCES users(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS tecnico_id UUID REFERENCES users(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS ix_propostas_tecnico_id
   ON propostas(tecnico_id) WHERE tecnico_id IS NOT NULL;
