@@ -613,34 +613,29 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     // ========================================================================
     console.log('[repo-sync] STEP 7: Upserting leads...')
 
-    const UPSERT_SQL = `
-      INSERT INTO vendedor_projetos (
-        cnpj, codigo_programa, nome_programa, link_externo, orgao_concedente,
-        uf, municipio, qualificacao, nr_emenda, parlamentar,
-        nome, valor_emenda, vendedor_id, observacoes, importado_de, tipo_vendedor,
-        telefone, email
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'auto-repo-sync',$15,$16,$17)
-      ON CONFLICT (cnpj, codigo_programa, COALESCE(nr_emenda, '')) DO UPDATE SET
-        nome_programa = EXCLUDED.nome_programa,
-        link_externo = EXCLUDED.link_externo,
-        orgao_concedente = EXCLUDED.orgao_concedente,
-        uf = COALESCE(NULLIF(vendedor_projetos.uf, ''), EXCLUDED.uf),
-        municipio = COALESCE(NULLIF(vendedor_projetos.municipio, ''), EXCLUDED.municipio),
-        qualificacao = EXCLUDED.qualificacao,
-        nr_emenda = EXCLUDED.nr_emenda,
-        parlamentar = EXCLUDED.parlamentar,
-        nome = CASE WHEN vendedor_projetos.nome = 'Sem nome' OR vendedor_projetos.nome IS NULL
-                     THEN EXCLUDED.nome ELSE vendedor_projetos.nome END,
-        valor_emenda = EXCLUDED.valor_emenda,
-        telefone = COALESCE(NULLIF(vendedor_projetos.telefone, ''), EXCLUDED.telefone),
-        email = COALESCE(NULLIF(vendedor_projetos.email, ''), EXCLUDED.email),
-        updated_at = NOW()
-      RETURNING (xmax = 0) AS was_inserted
-    `
     // Note: vendedor_id, status_contato, valor_venda, comissao_*, tipo_vendedor,
     //       observacoes, comissao_locked, comissao_bonus, closer_id are NEVER touched by the UPDATE clause.
 
     const newCnpjsNeedingContacts = new Set<string>()
+
+    // Build typed arrays for batch unnest upsert (one entry per lead, matching column order)
+    const bCnpj: (string | null)[] = []
+    const bCodigoPrograma: (string | null)[] = []
+    const bNomePrograma: (string | null)[] = []
+    const bLinkExterno: (string | null)[] = []
+    const bOrgaoConcedente: (string | null)[] = []
+    const bUf: (string | null)[] = []
+    const bMunicipio: (string | null)[] = []
+    const bQualificacao: (string | null)[] = []
+    const bNrEmenda: (string | null)[] = []
+    const bParlamentar: (string | null)[] = []
+    const bNome: (string | null)[] = []
+    const bValorEmenda: (number | null)[] = []
+    const bVendedorId: (string | null)[] = []
+    const bObservacoes: (string | null)[] = []
+    const bTipoVendedor: (string | null)[] = []
+    const bTelefone: (string | null)[] = []
+    const bEmail: (string | null)[] = []
 
     for (const lead of leads) {
       // Use nr_emenda-based key if available, otherwise fall back to codigo_programa
@@ -683,43 +678,85 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       // Existing clients routed to Paulo get tipo_vendedor = 'Exclusivo'
       const tipoVendedor = (isExistingClient && pauloId && vendedorId === pauloId) ? 'Exclusivo' : 'SDR'
 
-      const values = [
-        lead.cnpj,
-        lead.codigo_programa,
-        lead.nome_programa,
-        lead.link_externo,
-        lead.orgao_concedente,
-        lead.uf ? lead.uf.toUpperCase() : null,
-        lead.municipio,
-        lead.qualificacao,
-        lead.nr_emenda,
-        lead.parlamentar,
-        lead.nome || 'Sem nome',
-        lead.valor_emenda,
-        vendedorId,
-        obs,
-        tipoVendedor,
-        lead.telefone || null,
-        lead.email || null,
-      ]
+      bCnpj.push(lead.cnpj)
+      bCodigoPrograma.push(lead.codigo_programa)
+      bNomePrograma.push(lead.nome_programa)
+      bLinkExterno.push(lead.link_externo)
+      bOrgaoConcedente.push(lead.orgao_concedente)
+      bUf.push(lead.uf ? lead.uf.toUpperCase() : null)
+      bMunicipio.push(lead.municipio)
+      bQualificacao.push(lead.qualificacao)
+      bNrEmenda.push(lead.nr_emenda)
+      bParlamentar.push(lead.parlamentar)
+      bNome.push(lead.nome || 'Sem nome')
+      bValorEmenda.push(lead.valor_emenda ?? null)
+      bVendedorId.push(vendedorId)
+      bObservacoes.push(obs)
+      bTipoVendedor.push(tipoVendedor)
+      bTelefone.push(lead.telefone || null)
+      bEmail.push(lead.email || null)
+    }
 
-      try {
-        const result = await client.query(UPSERT_SQL, values)
+    // Single batch upsert via unnest — replaces N individual round-trips with 1 query
+    try {
+      const batchResult = await client.query<{ cnpj: string; was_inserted: boolean }>(`
+        INSERT INTO vendedor_projetos (
+          cnpj, codigo_programa, nome_programa, link_externo, orgao_concedente,
+          uf, municipio, qualificacao, nr_emenda, parlamentar,
+          nome, valor_emenda, vendedor_id, observacoes, importado_de, tipo_vendedor,
+          telefone, email
+        )
+        SELECT
+          t.cnpj, t.codigo_programa, t.nome_programa, t.link_externo, t.orgao_concedente,
+          t.uf, t.municipio, t.qualificacao, t.nr_emenda, t.parlamentar,
+          t.nome, t.valor_emenda, t.vendedor_id, t.observacoes, 'auto-repo-sync', t.tipo_vendedor,
+          t.telefone, t.email
+        FROM unnest(
+          $1::text[], $2::text[], $3::text[], $4::text[], $5::text[],
+          $6::text[], $7::text[], $8::text[], $9::text[], $10::text[],
+          $11::text[], $12::numeric[], $13::uuid[], $14::text[], $15::text[],
+          $16::text[], $17::text[]
+        ) AS t(cnpj, codigo_programa, nome_programa, link_externo, orgao_concedente,
+               uf, municipio, qualificacao, nr_emenda, parlamentar,
+               nome, valor_emenda, vendedor_id, observacoes, tipo_vendedor,
+               telefone, email)
+        ON CONFLICT (cnpj, codigo_programa, COALESCE(nr_emenda, '')) DO UPDATE SET
+          nome_programa = EXCLUDED.nome_programa,
+          link_externo = EXCLUDED.link_externo,
+          orgao_concedente = EXCLUDED.orgao_concedente,
+          uf = COALESCE(NULLIF(vendedor_projetos.uf, ''), EXCLUDED.uf),
+          municipio = COALESCE(NULLIF(vendedor_projetos.municipio, ''), EXCLUDED.municipio),
+          qualificacao = EXCLUDED.qualificacao,
+          nr_emenda = EXCLUDED.nr_emenda,
+          parlamentar = EXCLUDED.parlamentar,
+          nome = CASE WHEN vendedor_projetos.nome = 'Sem nome' OR vendedor_projetos.nome IS NULL
+                       THEN EXCLUDED.nome ELSE vendedor_projetos.nome END,
+          valor_emenda = EXCLUDED.valor_emenda,
+          telefone = COALESCE(NULLIF(vendedor_projetos.telefone, ''), EXCLUDED.telefone),
+          email = COALESCE(NULLIF(vendedor_projetos.email, ''), EXCLUDED.email),
+          updated_at = NOW()
+        RETURNING cnpj, (xmax = 0) AS was_inserted
+      `, [
+        bCnpj, bCodigoPrograma, bNomePrograma, bLinkExterno, bOrgaoConcedente,
+        bUf, bMunicipio, bQualificacao, bNrEmenda, bParlamentar,
+        bNome, bValorEmenda, bVendedorId, bObservacoes, bTipoVendedor,
+        bTelefone, bEmail,
+      ])
+
+      for (const row of batchResult.rows) {
         // xmax = 0 means INSERT (new row), xmax != 0 means UPDATE (existing row)
-        // Use actual DB result to track insert vs update — more reliable than isExisting proxy
-        const wasInserted = result.rows[0]?.was_inserted === true
-        if (wasInserted) {
+        if (row.was_inserted) {
           stats.inserted++
           // Always enqueue new CNPJs for enrichment — even if proponentes had data,
           // BrasilAPI may provide additional phone2/endereco
-          newCnpjsNeedingContacts.add(lead.cnpj)
+          newCnpjsNeedingContacts.add(row.cnpj)
         } else {
           stats.updated++
         }
-      } catch (err) {
-        console.error(`[repo-sync] Upsert error CNPJ ${lead.cnpj}: ${err}`)
-        stats.errors++
       }
+    } catch (err) {
+      console.error(`[repo-sync] Batch upsert error:`, err)
+      stats.errors = leads.length
     }
 
     console.log(`[repo-sync] Upserted: ${stats.inserted} new, ${stats.updated} updated, ${stats.errors} errors`)
