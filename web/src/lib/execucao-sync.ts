@@ -218,6 +218,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
                    unnest($2::text[]) AS situacao
           ) AS updates
           WHERE propostas.transfer_gov_id = updates.id_proposta
+            AND propostas.nr_proposta IS NOT NULL
             AND NOT EXISTS (
               SELECT 1 FROM projetos_execucao pe
               WHERE pe.nr_proposta = propostas.nr_proposta
