@@ -841,8 +841,6 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     //   4. 'no_data' retries weekly (data may appear later in Receita Federal)
     //   5. Processes until timeout — remaining stay in queue for next sync
     // ========================================================================
-    const elapsed = Date.now() - startTime
-
     // Map to store BrasilAPI contact data per CNPJ for use in STEP 9
     interface BrasilApiContactData {
       phone1: string | null
@@ -904,8 +902,9 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     console.log(`[repo-sync] STEP 8: Enrichment queue has ${cnpjsToEnrich.length} pending CNPJs`)
 
     let rateLimitHits = 0
+    const elapsedStep8 = Date.now() - startTime
 
-    if (cnpjsToEnrich.length > 0 && elapsed < 200000) {
+    if (cnpjsToEnrich.length > 0 && elapsedStep8 < 200000) {
       console.log(`[repo-sync] STEP 8: BrasilAPI enrichment starting...`)
 
       for (const { cnpj } of cnpjsToEnrich) {
@@ -1028,7 +1027,11 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       }
       console.log(`[repo-sync] STEP 8: BrasilAPI enriched: ${stats.enriched_api} | rate_limited: ${rateLimitHits}`)
     } else {
-      console.log('[repo-sync] STEP 8: Skipped (no pending CNPJs or timeout approaching)')
+      if (cnpjsToEnrich.length === 0) {
+        console.log('[repo-sync] STEP 8: Skipped (enrichment_queue empty)')
+      } else {
+        console.log(`[repo-sync] STEP 8: Skipped (timeout: elapsed=${elapsedStep8}ms >= 200000ms, ${cnpjsToEnrich.length} CNPJs remain in queue for next sync)`)
+      }
     }
 
     // ========================================================================
