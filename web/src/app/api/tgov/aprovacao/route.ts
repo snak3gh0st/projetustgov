@@ -72,6 +72,12 @@ export async function GET(request: NextRequest) {
     const staticClause = buildNrPropostaWhereClause('p.nr_proposta', mainParams, APROVACAO_NR_PROPOSTAS)
     mainConditions.push(`(${staticClause} OR EXISTS (SELECT 1 FROM tgov_whitelist tw WHERE (tw.cnpj = p.proponente_cnpj OR tw.nr_proposta = p.nr_proposta) AND tw.tab IN ('ambos','aprovacao')))`)
 
+    // projetista só vê propostas atribuídas a ele
+    if (session.role === 'projetista') {
+      mainParams.push(session.userId)
+      mainConditions.push(`p.tecnico_id = $${mainParams.length}::uuid`)
+    }
+
     if (ano) {
       mainParams.push(`${ano}-01-01`)
       mainParams.push(`${parseInt(ano, 10) + 1}-01-01`)
@@ -241,6 +247,37 @@ export async function GET(request: NextRequest) {
       for (const r of nameRows) tecnicoNameMap.set(r.id, r.nome)
     }
 
+    // Compute hasNew for each row in the page
+    const propostaKeys = tableDataRows.map(r => r.nr_proposta).filter((k): k is string => !!k)
+    const newStatusMap = new Map<string, boolean>()
+
+    if (propostaKeys.length > 0) {
+      const newRows = await query<{ proposta_key: string }>(
+        `SELECT DISTINCT pk.proposta_key
+         FROM unnest($1::text[]) AS pk(proposta_key)
+         WHERE EXISTS (
+           SELECT 1 FROM tgov_proposta_participants pp
+           WHERE pp.proposta_key = pk.proposta_key AND pp.user_id = $2
+           UNION ALL
+           SELECT 1 FROM tgov_propostas tp
+           WHERE tp.nr_proposta = pk.proposta_key AND tp.tecnico_id = $2
+         )
+         AND (
+           SELECT GREATEST(
+             (SELECT MAX(c.created_at) FROM tgov_comments c
+              WHERE c.target_type = 'proposta' AND c.target_key = pk.proposta_key),
+             (SELECT tp2.situacao_changed_at FROM tgov_propostas tp2 WHERE tp2.nr_proposta = pk.proposta_key),
+             (SELECT tp2.tecnico_assigned_at FROM tgov_propostas tp2 WHERE tp2.nr_proposta = pk.proposta_key)
+           )
+         ) > COALESCE(
+           (SELECT s.seen_at FROM tgov_proposta_seen s WHERE s.user_id = $2 AND s.proposta_key = pk.proposta_key),
+           '1970-01-01'::timestamptz
+         )`,
+        [propostaKeys, session.userId]
+      )
+      for (const r of newRows) newStatusMap.set(r.proposta_key, true)
+    }
+
     const total = Number(totalRows[0]?.total) || 0
     const totalTableRows = Number(tableCountRows[0]?.total) || 0
     const totalPages = Math.max(1, Math.ceil(totalTableRows / pageSize))
@@ -303,6 +340,7 @@ export async function GET(request: NextRequest) {
           internalStatus: r.internal_status ?? null,
           tecnicoId: r.tecnico_id ?? null,
           tecnicoNome: r.tecnico_id ? (tecnicoNameMap.get(r.tecnico_id) ?? null) : null,
+          hasNew: r.nr_proposta ? (newStatusMap.get(r.nr_proposta) ?? false) : false,
         })),
         page,
         pageSize,
