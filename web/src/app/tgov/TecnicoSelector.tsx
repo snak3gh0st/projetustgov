@@ -19,7 +19,7 @@ type Props = {
   onAssigned: (tecnicoId: string | null, tecnicoNome: string | null) => void
 }
 
-const WRITE_ROLES = ['gestor', 'admin', 'adm_produto']
+const WRITE_ROLES = ['gestor', 'admin', 'adm_produto', 'coord_aprovacao', 'assistente_aprovacao']
 function canWriteTgovClient(role: string): boolean {
   return WRITE_ROLES.includes(role)
 }
@@ -75,7 +75,7 @@ export default function TecnicoSelector({
         onChange={handleChange}
         disabled={disabled || saving}
         className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
-        title={disabled ? 'Apenas gestores podem alterar' : undefined}
+        title={disabled ? 'Apenas gestores e coordenadores de aprovação podem alterar' : undefined}
       >
         <option value="">— Não atribuído —</option>
         {tecnicos.map((t) => (
@@ -92,7 +92,7 @@ export default function TecnicoSelector({
       </select>
       {disabled && (
         <p className="text-[10px] text-gray-400 italic">
-          Apenas gestores podem alterar
+          Apenas gestores e coordenadores de aprovação podem alterar
         </p>
       )}
       {saving && <p className="text-[10px] text-gray-500">Salvando...</p>}
