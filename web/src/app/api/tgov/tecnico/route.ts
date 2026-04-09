@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 const VALID_TARGETS = ['proposta', 'execucao'] as const
 type TargetType = (typeof VALID_TARGETS)[number]
-const TECNICO_ROLES = ['adm_produto', 'gestor', 'admin'] as const
+const TECNICO_ROLES = ['adm_produto', 'gestor', 'admin', 'coord_aprovacao', 'assistente_aprovacao', 'projetista'] as const
 
 // Simple UUID v1-v5 sanity check (8-4-4-4-12 hex)
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -68,8 +68,9 @@ export async function PATCH(request: NextRequest) {
       updated += r1.length
       if (updated === 0) {
         const r2 = await query<{ nr_proposta: string }>(
-          `UPDATE tgov_propostas SET tecnico_id = $1 WHERE nr_proposta = $2 RETURNING nr_proposta`,
-          [tecnicoIdValue, target_key],
+          `UPDATE tgov_propostas SET tecnico_id = $1, tecnico_assigned_at = now(), tecnico_assigned_by = $3
+   WHERE nr_proposta = $2 RETURNING nr_proposta`,
+          [tecnicoIdValue, target_key, session.userId],
         )
         updated += r2.length
       }
@@ -96,8 +97,9 @@ export async function PATCH(request: NextRequest) {
         updated += r3.length
         if (updated === 0) {
           const r4 = await query<{ nr_proposta: string }>(
-            `UPDATE tgov_propostas SET tecnico_id = $1 WHERE nr_proposta = $2 RETURNING nr_proposta`,
-            [tecnicoIdValue, target_key],
+            `UPDATE tgov_propostas SET tecnico_id = $1, tecnico_assigned_at = now(), tecnico_assigned_by = $3
+   WHERE nr_proposta = $2 RETURNING nr_proposta`,
+            [tecnicoIdValue, target_key, session.userId],
           )
           updated += r4.length
         }
@@ -107,6 +109,15 @@ export async function PATCH(request: NextRequest) {
     if (updated === 0) {
       return NextResponse.json({ error: 'registro não encontrado' }, { status: 404 })
     }
+
+    // Auto-register assigner as participant
+    await query(
+      `INSERT INTO tgov_proposta_participants (user_id, proposta_key)
+       VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [session.userId, target_key],
+    )
+
     return NextResponse.json({ ok: true, updated })
   } catch (error) {
     console.error('[api/tgov/tecnico][PATCH] error:', error)
