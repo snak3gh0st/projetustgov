@@ -277,7 +277,7 @@ interface CnpjSearchResult {
 // ---------------------------------------------------------------------------
 
 interface TGovDashboardClientProps {
-  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'projetista'
+  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'projetista' | 'assistente_aprovacao'
   view?: 'pipeline' | 'dashboard'
 }
 
@@ -505,7 +505,7 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline' }: TGo
               Adicionar CNPJ / Proposta
             </button>
             <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
-              {(['aprovacao', 'execucao'] as TGovTab[]).filter(tab => !((userRole === 'coord_aprovacao' || userRole === 'projetista') && tab === 'execucao')).map((tab) => (
+              {(['aprovacao', 'execucao'] as TGovTab[]).filter(tab => !((userRole === 'coord_aprovacao' || userRole === 'projetista' || userRole === 'assistente_aprovacao') && tab === 'execucao')).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => handleTabSwitch(tab)}
