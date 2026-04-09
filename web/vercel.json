@@ -20,6 +20,14 @@
     {
       "path": "/api/cron/sync-tgov-only",
       "schedule": "30 14 * * *"
+    },
+    {
+      "path": "/api/cron/digest",
+      "schedule": "20 14 * * *"
+    },
+    {
+      "path": "/api/cron/digest",
+      "schedule": "0 22 * * *"
     }
   ]
 }
