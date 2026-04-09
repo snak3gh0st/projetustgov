@@ -15,6 +15,15 @@ export const ROLE_CAN_CREATE: Partial<Record<Role, Role[]>> = {
   assistente_aprovacao: ['projetista'],
 }
 
+/** Same as create - who can delete users of which roles. */
+export const ROLE_CAN_DELETE: Partial<Record<Role, Role[]>> = {
+  gestor:               ['admin', 'vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista'],
+  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista'],
+  adm_produto:          ['coord_aprovacao', 'assistente_aprovacao', 'projetista'],
+  coord_aprovacao:      ['assistente_aprovacao', 'projetista'],
+  assistente_aprovacao:  [],
+}
+
 export function canManageRole(actorRole: Role, targetRole: Role): boolean {
   return ROLE_CAN_CREATE[actorRole]?.includes(targetRole) ?? false
 }

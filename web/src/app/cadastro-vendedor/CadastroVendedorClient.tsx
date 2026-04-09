@@ -123,6 +123,24 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
     }
   }
 
+  const handleDelete = async (userId: string, userName: string) => {
+    if (!window.confirm(`Tem certeza que deseja excluir o usuário "${userName}"?`)) {
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/usuarios/${userId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json()
+        window.alert(`Erro ao excluir: ${err.error || 'Tente novamente'}`)
+        return
+      }
+      fetchUsuarios()
+    } catch {
+      window.alert('Erro ao excluir usuário. Tente novamente.')
+    }
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
@@ -235,6 +253,7 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Leads</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Digest</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -299,6 +318,18 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
                             }`}
                           >
                             {usuario.email_digest ? 'Ativo' : 'Inativo'}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        {!isGestor && !isSelf && creatableRoles.includes(usuario.role) ? (
+                          <button
+                            onClick={() => handleDelete(usuario.id, usuario.nome)}
+                            className="text-red-500 hover:text-red-700 text-xs font-medium"
+                          >
+                            Excluir
                           </button>
                         ) : (
                           <span className="text-xs text-gray-300">—</span>

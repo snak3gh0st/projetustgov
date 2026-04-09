@@ -7,19 +7,15 @@
   "crons": [
     {
       "path": "/api/cron/sync-leads",
-      "schedule": "30 12 * * *"
-    },
-    {
-      "path": "/api/cron/sync-leads",
-      "schedule": "0 18 * * *"
+      "schedule": "15 12 * * *"
     },
     {
       "path": "/api/cron/sync-execucao",
-      "schedule": "0 13 * * *"
+      "schedule": "45 12 * * *"
     },
     {
       "path": "/api/cron/sync-tgov-only",
-      "schedule": "30 14 * * *"
+      "schedule": "0 13 * * *"
     },
     {
       "path": "/api/cron/digest",

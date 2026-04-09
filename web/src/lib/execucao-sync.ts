@@ -219,20 +219,12 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
           ) AS updates
           WHERE propostas.transfer_gov_id = updates.id_proposta
             AND propostas.nr_proposta IS NOT NULL
-            AND NOT EXISTS (
-              SELECT 1 FROM projetos_execucao pe
-              WHERE pe.nr_proposta = propostas.nr_proposta
-            )
-            AND NOT EXISTS (
-              SELECT 1 FROM tgov_projetos_execucao pe
-              WHERE pe.nr_proposta = propostas.nr_proposta
-            )
           RETURNING 1
         ) SELECT COUNT(*) AS n FROM upd`,
         [b2IdPropostas, b2Situacoes]
       )
       const b2Updated = parseInt(b2Result.rows[0].n, 10)
-      console.log(`[execucao-sync] STEP B2: updated situacao for ${b2Updated} propostas sem convenio`)
+      console.log(`[execucao-sync] STEP B2: updated situacao for ${b2Updated} propostas`)
     } finally {
       b2Client.release()
     }
