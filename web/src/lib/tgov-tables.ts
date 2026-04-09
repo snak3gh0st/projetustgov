@@ -103,5 +103,35 @@ export async function ensureTgovTables(): Promise<void> {
   `)
   await pool.query(`CREATE INDEX IF NOT EXISTS ix_tgov_comments_target ON tgov_comments(target_type, target_key, created_at DESC)`)
 
+  // Spec 2 — notification tables: participants & seen tracking
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tgov_proposta_participants (
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      proposta_key TEXT NOT NULL,
+      first_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (user_id, proposta_key)
+    )
+  `)
+  await pool.query(`CREATE INDEX IF NOT EXISTS ix_tgov_proposta_participants_user ON tgov_proposta_participants(user_id)`)
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tgov_proposta_seen (
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      proposta_key TEXT NOT NULL,
+      seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (user_id, proposta_key)
+    )
+  `)
+  await pool.query(`CREATE INDEX IF NOT EXISTS ix_tgov_proposta_seen_user ON tgov_proposta_seen(user_id)`)
+
+  // Spec 2 — add timestamp tracking columns to tgov_propostas
+  await pool.query(`ALTER TABLE tgov_propostas ADD COLUMN IF NOT EXISTS situacao_changed_at TIMESTAMPTZ`)
+  await pool.query(`ALTER TABLE tgov_propostas ADD COLUMN IF NOT EXISTS tecnico_assigned_at TIMESTAMPTZ`)
+  await pool.query(`ALTER TABLE tgov_propostas ADD COLUMN IF NOT EXISTS tecnico_assigned_by UUID REFERENCES users(id) ON DELETE SET NULL`)
+
+  // Spec 2 — enable RLS on notification tables
+  await pool.query(`ALTER TABLE tgov_proposta_participants ENABLE ROW LEVEL SECURITY`)
+  await pool.query(`ALTER TABLE tgov_proposta_seen ENABLE ROW LEVEL SECURITY`)
+
   tablesEnsured = true
 }
