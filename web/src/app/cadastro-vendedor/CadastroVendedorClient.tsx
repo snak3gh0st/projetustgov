@@ -10,6 +10,7 @@ interface Usuario {
   email: string
   role: 'gestor' | 'coordenador' | 'visualizador' | 'vendedor' | 'adm_produto' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista'
   active: boolean
+  email_digest?: boolean
   created_at: string
   lead_count: number
   is_self: boolean
@@ -233,6 +234,7 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Cargo</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Leads</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Digest</th>
                 </tr>
               </thead>
               <tbody>
@@ -274,6 +276,33 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
                         }`}>
                           {usuario.active ? 'Ativo' : 'Inativo'}
                         </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {['adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista'].includes(usuario.role) ? (
+                          <button
+                            onClick={async () => {
+                              const newVal = !usuario.email_digest
+                              setUsuarios(prev => prev.map(u => u.id === usuario.id ? { ...u, email_digest: newVal } : u))
+                              try {
+                                const res = await fetch(`/api/usuarios/${usuario.id}/digest`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ enabled: newVal }),
+                                })
+                                if (!res.ok) fetchUsuarios()
+                              } catch { fetchUsuarios() }
+                            }}
+                            className={`text-xs px-2 py-1 rounded font-medium transition-colors ${
+                              usuario.email_digest
+                                ? 'bg-green-50 text-green-600 hover:bg-green-100'
+                                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                            }`}
+                          >
+                            {usuario.email_digest ? 'Ativo' : 'Inativo'}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
                       </td>
                     </tr>
                   )

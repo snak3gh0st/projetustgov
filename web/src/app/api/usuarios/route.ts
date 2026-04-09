@@ -29,11 +29,12 @@ export async function GET() {
             u.email,
             u.role,
             u.active,
+            u.email_digest,
             u.created_at,
             COUNT(vp.id)::int AS lead_count
           FROM users u
           LEFT JOIN vendedor_projetos vp ON u.id = vp.vendedor_id
-          GROUP BY u.id, u.nome, u.email, u.role, u.active, u.created_at
+          GROUP BY u.id, u.nome, u.email, u.role, u.active, u.email_digest, u.created_at
           ORDER BY u.nome
         `
         : `
@@ -43,12 +44,13 @@ export async function GET() {
             u.email,
             u.role,
             u.active,
+            u.email_digest,
             u.created_at,
             COUNT(vp.id)::int AS lead_count
           FROM users u
           LEFT JOIN vendedor_projetos vp ON u.id = vp.vendedor_id
           WHERE u.role = ANY($1::text[])
-          GROUP BY u.id, u.nome, u.email, u.role, u.active, u.created_at
+          GROUP BY u.id, u.nome, u.email, u.role, u.active, u.email_digest, u.created_at
           ORDER BY u.nome
         `,
       isGestor ? [] : [managedRoles]
