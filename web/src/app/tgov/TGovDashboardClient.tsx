@@ -126,9 +126,7 @@ function TGovInteractionPanel({
   const [saved, setSaved] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
-
-  // projetista só pode comentar, não alterar status
-  if (currentUserRole === 'projetista') return null
+  const isProjetista = currentUserRole === 'projetista'
 
   useEffect(() => {
     let cancelled = false
@@ -148,6 +146,9 @@ function TGovInteractionPanel({
     load()
     return () => { cancelled = true }
   }, [itemKey, tab])
+
+  // projetista só pode comentar, não alterar status
+  if (isProjetista) return null
 
   async function handleSave() {
     setSaving(true)
