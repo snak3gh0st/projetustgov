@@ -97,6 +97,15 @@ export async function POST(request: NextRequest) {
     )
 
     const created = rows[0]
+
+    // Auto-register commenter as participant
+    await query(
+      `INSERT INTO tgov_proposta_participants (user_id, proposta_key)
+       VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [session.userId, target_key],
+    )
+
     const authorRows = await query<{ nome: string | null }>(
       `SELECT nome FROM users WHERE id = $1`,
       [created.author_id],
