@@ -133,5 +133,8 @@ export async function ensureTgovTables(): Promise<void> {
   await pool.query(`ALTER TABLE tgov_proposta_participants ENABLE ROW LEVEL SECURITY`)
   await pool.query(`ALTER TABLE tgov_proposta_seen ENABLE ROW LEVEL SECURITY`)
 
+  // Spec 3 — Email digest opt-in column
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_digest BOOLEAN NOT NULL DEFAULT false`)
+
   tablesEnsured = true
 }
