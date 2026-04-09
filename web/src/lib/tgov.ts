@@ -105,6 +105,8 @@ export interface TGovTableRow {
   situacao: string
   /** Internal CRM status (from tgov_interactions, not from TransferênciaGov). */
   internalStatus?: string | null
+  /** True when there are unseen notifications for this proposal. */
+  hasNew?: boolean
 }
 
 /** Extended row for the Aprovacao tab with proposal details. */

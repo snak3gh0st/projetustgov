@@ -113,16 +113,22 @@ function TGovInteractionPanel({
   itemKey,
   tab,
   onStatusChange,
+  currentUserRole,
 }: {
   itemKey: string
   tab: 'aprovacao' | 'execucao'
   onStatusChange: (s: string) => void
+  currentUserRole?: string
 }) {
   const [status, setStatus] = useState<TGovInteractionStatus | ''>('')
   const [obs, setObs] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  // projetista só pode comentar, não alterar status
+  if (currentUserRole === 'projetista') return null
 
   useEffect(() => {
     let cancelled = false
@@ -145,19 +151,23 @@ function TGovInteractionPanel({
 
   async function handleSave() {
     setSaving(true)
+    setSaveError(null)
     try {
       const res = await fetch(`/api/tgov/interaction/${encodeURIComponent(itemKey)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: status || null, obs, tab }),
       })
-      if (!res.ok) throw new Error('Save failed')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || `HTTP ${res.status}`)
+      }
       const data = await res.json()
       setSaved(true)
       onStatusChange(data.status ?? '')
       setTimeout(() => setSaved(false), 2000)
-    } catch {
-      // ignore for now
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Erro ao salvar')
     } finally {
       setSaving(false)
     }
@@ -213,6 +223,7 @@ function TGovInteractionPanel({
           {saving ? 'Salvando...' : 'Salvar'}
         </button>
         {saved && <span className="text-xs text-green-600 font-medium">Salvo!</span>}
+        {saveError && <span className="text-xs text-red-600">{saveError}</span>}
       </div>
     </div>
   )
@@ -265,7 +276,7 @@ interface CnpjSearchResult {
 // ---------------------------------------------------------------------------
 
 interface TGovDashboardClientProps {
-  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm'
+  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'projetista'
   view?: 'pipeline' | 'dashboard'
 }
 
@@ -493,7 +504,7 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline' }: TGo
               Adicionar CNPJ / Proposta
             </button>
             <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
-              {(['aprovacao', 'execucao'] as TGovTab[]).map((tab) => (
+              {(['aprovacao', 'execucao'] as TGovTab[]).filter(tab => !((userRole === 'coord_aprovacao' || userRole === 'projetista') && tab === 'execucao')).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => handleTabSwitch(tab)}
@@ -1107,9 +1118,25 @@ function AprovacaoTable({
             <tr
               key={`${row.numeroProposta}-${idx}`}
               className="hover:bg-blue-50/50 transition-colors cursor-pointer"
-              onClick={() => onRowClick(row)}
+              onClick={() => {
+                if (row.hasNew && row.numeroProposta) {
+                  fetch('/api/tgov/seen', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ proposta_key: row.numeroProposta }),
+                  }).catch(() => {})
+                }
+                onRowClick(row)
+              }}
             >
-              <td className="px-5 py-2.5 text-gray-700 font-mono text-xs">{row.numeroProposta || '—'}</td>
+              <td className="px-5 py-2.5 text-gray-700 font-mono text-xs">
+                {row.numeroProposta || '—'}
+                {row.hasNew && (
+                  <span className="ml-1.5 inline-block px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 rounded">
+                    NOVO
+                  </span>
+                )}
+              </td>
               <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">{formatDate(row.data)}</td>
               <td className="px-4 py-2.5 text-gray-500 font-mono text-xs whitespace-nowrap">{formatCnpj(row.cnpj) || '—'}</td>
               <td className="px-4 py-2.5 text-gray-700">
@@ -1187,7 +1214,16 @@ function ExecucaoTable({
               <tr
                 key={`${row.nrConvenio}-${idx}`}
                 className="hover:bg-blue-50/50 transition-colors cursor-pointer"
-                onClick={() => onRowClick(row)}
+                onClick={() => {
+                  if (row.hasNew && row.numeroProposta) {
+                    fetch('/api/tgov/seen', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ proposta_key: row.numeroProposta }),
+                    }).catch(() => {})
+                  }
+                  onRowClick(row)
+                }}
               >
                 <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">
                   <a
@@ -1200,6 +1236,11 @@ function ExecucaoTable({
                   >
                     {row.nrConvenio || '—'}
                   </a>
+                  {row.hasNew && (
+                    <span className="ml-1.5 inline-block px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 rounded">
+                      NOVO
+                    </span>
+                  )}
                 </td>
                 <td className="px-3 py-2.5 text-gray-500 text-xs tabular-nums">{row.anoInstrumento || '—'}</td>
                 <td className="px-3 py-2.5 text-xs tabular-nums whitespace-nowrap text-gray-600">
@@ -1399,7 +1440,7 @@ function ExecucaoSidecard({
             <SidecardCurrency label="Ingresso Contrapartida" value={row.ingressoContrapartida} />
           </SidecardSection>
 
-          <TGovInteractionPanel itemKey={row.nrConvenio} tab="execucao" onStatusChange={() => {}} />
+          <TGovInteractionPanel itemKey={row.nrConvenio} tab="execucao" onStatusChange={() => {}} currentUserRole={currentUserRole} />
 
           {/* Comentários */}
           <SidecardSection title="Comentários">
@@ -1535,7 +1576,7 @@ function AprovacaoSidecard({
             <SidecardCurrency label="Valor Contrapartida" value={row.valorContrapartida} />
           </SidecardSection>
 
-          <TGovInteractionPanel itemKey={row.numeroProposta} tab="aprovacao" onStatusChange={() => {}} />
+          <TGovInteractionPanel itemKey={row.numeroProposta} tab="aprovacao" onStatusChange={() => {}} currentUserRole={currentUserRole} />
 
           {/* Comentários */}
           <SidecardSection title="Comentários">
