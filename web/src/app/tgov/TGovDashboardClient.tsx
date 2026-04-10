@@ -756,21 +756,21 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
               <ExecucaoTable
                 rows={data?.table.rows as TGovExecucaoTableRow[] | undefined}
                 loading={loading}
-                onRowClick={setSelectedExecRow}
+                onRowClick={(row) => setSelectedExecRow(prev => prev?.nrConvenio === row.nrConvenio ? null : row)}
                 selectedKey={selectedExecRow?.nrConvenio}
               />
             ) : activeTab === 'execucao' ? (
               <ExecucaoTable
                 rows={data?.table.rows as TGovExecucaoTableRow[] | undefined}
                 loading={loading}
-                onRowClick={setSelectedExecRow}
+                onRowClick={(row) => setSelectedExecRow(prev => prev?.nrConvenio === row.nrConvenio ? null : row)}
                 selectedKey={selectedExecRow?.nrConvenio}
               />
             ) : (
               <AprovacaoTable
                 rows={data?.table.rows as TGovAprovacaoTableRow[] | undefined}
                 loading={loading}
-                onRowClick={setSelectedAprovRow}
+                onRowClick={(row) => setSelectedAprovRow(prev => prev?.numeroProposta === row.numeroProposta ? null : row)}
                 selectedKey={selectedAprovRow?.numeroProposta}
               />
             )}
