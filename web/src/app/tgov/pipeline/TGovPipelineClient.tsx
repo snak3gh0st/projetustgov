@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { TGOV_STATUS_ORDER, tgovStatusSortKey, APROVACAO_ONLY_ROLES, EXECUCAO_ONLY_ROLES } from '@/lib/tgov'
 
@@ -35,9 +35,7 @@ const TAB_LABELS: Record<PipelineTab, string> = {
 }
 
 function getApiUrl(tab: PipelineTab): string {
-  if (tab === 'aprovacao') return '/api/tgov/aprovacao?page=1&page_size=1'
-  if (tab === 'execucao') return '/api/tgov/execucao?mode=execucao&page=1&page_size=1'
-  return '/api/tgov/execucao?mode=prestacao_contas&page=1&page_size=1'
+  return `/api/tgov/pipeline?tab=${tab}`
 }
 
 function getDashboardUrl(tab: PipelineTab, situacao: string): string {
@@ -129,9 +127,11 @@ export default function TGovPipelineClient({ userRole }: { userRole: string }) {
     execucao:         { counts: {}, total: 0, loaded: false, error: null },
     prestacao_contas: { counts: {}, total: 0, loaded: false, error: null },
   })
+  const inFlightRef = useRef<Set<PipelineTab>>(new Set())
 
   const loadTab = useCallback(async (tab: PipelineTab) => {
-    if (tabData[tab].loaded) return
+    if (tabData[tab].loaded || inFlightRef.current.has(tab)) return
+    inFlightRef.current.add(tab)
     try {
       const res = await fetch(getApiUrl(tab))
       if (!res.ok) throw new Error('Falha ao carregar dados')
@@ -151,6 +151,8 @@ export default function TGovPipelineClient({ userRole }: { userRole: string }) {
         ...prev,
         [tab]: { ...prev[tab], loaded: true, error: e instanceof Error ? e.message : 'Erro' },
       }))
+    } finally {
+      inFlightRef.current.delete(tab)
     }
   }, [tabData])
 
