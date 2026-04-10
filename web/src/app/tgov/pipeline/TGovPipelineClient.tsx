@@ -46,9 +46,9 @@ export default function TGovPipelineClient({ userRole }: { userRole: string }) {
         const data = await res.json()
         const statusMap: StatusCounts = {}
         let tot = 0
-        ;(data.byStatus ?? []).forEach((b: { situacao: string; cnt: number }) => {
-          statusMap[b.situacao] = b.cnt
-          tot += b.cnt
+        ;(data.byStatus ?? []).forEach((b: { status: string; count: number }) => {
+          statusMap[b.status] = b.count
+          tot += b.count
         })
         setCounts(statusMap)
         setTotal(tot)

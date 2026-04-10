@@ -8,7 +8,7 @@ interface Usuario {
   id: string
   nome: string
   email: string
-  role: 'gestor' | 'coordenador' | 'visualizador' | 'vendedor' | 'adm_produto' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista'
+  role: 'gestor' | 'coordenador' | 'visualizador' | 'vendedor' | 'adm_produto' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'projetista_execucao'
   active: boolean
   email_digest?: boolean
   created_at: string
@@ -25,6 +25,9 @@ const ROLE_LABELS: Record<string, string> = {
   coord_aprovacao: 'Coord. Aprovação',
   assistente_aprovacao: 'Assist. Aprovação',
   projetista: 'Projetista',
+  coord_execucao: 'Coord. Execução',
+  assistente_execucao: 'Assist. Execução',
+  projetista_execucao: 'Projetista Exec.',
 }
 
 const ROLE_BADGE_CLASSES: Record<string, string> = {
@@ -36,6 +39,9 @@ const ROLE_BADGE_CLASSES: Record<string, string> = {
   coord_aprovacao: 'bg-sky-50 text-sky-600',
   assistente_aprovacao: 'bg-cyan-50 text-cyan-600',
   projetista: 'bg-violet-50 text-violet-600',
+  coord_execucao: 'bg-emerald-50 text-emerald-600',
+  assistente_execucao: 'bg-teal-50 text-teal-600',
+  projetista_execucao: 'bg-green-50 text-green-600',
 }
 
 const ROLE_SELECT_BG: Record<string, string> = {
@@ -47,6 +53,9 @@ const ROLE_SELECT_BG: Record<string, string> = {
   coord_aprovacao: 'bg-sky-50 text-sky-700 border-sky-200',
   assistente_aprovacao: 'bg-cyan-50 text-cyan-700 border-cyan-200',
   projetista: 'bg-violet-50 text-violet-700 border-violet-200',
+  coord_execucao: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  assistente_execucao: 'bg-teal-50 text-teal-700 border-teal-200',
+  projetista_execucao: 'bg-green-50 text-green-700 border-green-200',
 }
 
 const ROLE_OPTIONS: { value: string; label: string }[] = [
@@ -58,6 +67,9 @@ const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: 'coord_aprovacao', label: 'Coord. Aprovação' },
   { value: 'assistente_aprovacao', label: 'Assist. Aprovação' },
   { value: 'projetista', label: 'Projetista' },
+  { value: 'coord_execucao', label: 'Coord. Execução' },
+  { value: 'assistente_execucao', label: 'Assist. Execução' },
+  { value: 'projetista_execucao', label: 'Projetista Exec.' },
 ]
 
 function SubmitButton() {
