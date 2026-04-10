@@ -13,26 +13,45 @@ const _inflight = new Set<PipelineTab>()
 const _cache = new Map<PipelineTab, { counts: StatusCounts; total: number }>()
 
 // ── Status visual config ────────────────────────────────────────────────────
-const TGOV_STATUS_CONFIG: Record<string, { bar: string; color: string; label: string }> = {
-  'Cadastrada':                                { bar: 'bg-gray-400',    color: 'text-gray-600',    label: 'Cadastrada' },
-  'Em Análise':                               { bar: 'bg-yellow-500',  color: 'text-yellow-600',  label: 'Em Análise' },
+// Short labels + colors for each situação returned by TransfereGov API.
+// Keys must match exactly the situacao string from the database.
+const STATUS_CFG: Record<string, { bar: string; color: string; label: string }> = {
+  // ── Aprovação stage (from /api/tgov/pipeline?tab=aprovacao) ──
+  'Proposta/Plano de Trabalho Cadastrados':                                    { bar: 'bg-slate-400',   color: 'text-slate-600',   label: 'Cadastrados' },
+  'Proposta/Plano de Trabalho em Análise':                                     { bar: 'bg-yellow-500',  color: 'text-yellow-700',  label: 'Em Análise' },
+  'Proposta/Plano de Trabalho em Complementação':                              { bar: 'bg-amber-500',   color: 'text-amber-700',   label: 'Em Complementação' },
+  'Proposta/Plano de Trabalho Enviado para Análise':                           { bar: 'bg-orange-500',  color: 'text-orange-700',  label: 'Enviado p/ Análise' },
+  'Proposta/Plano de Trabalho Complementado em Análise':                       { bar: 'bg-sky-500',     color: 'text-sky-700',     label: 'Compl. em Análise' },
+  'Proposta/Plano de Trabalho Complementado Enviado para Análise':             { bar: 'bg-blue-500',    color: 'text-blue-700',    label: 'Compl. Enviado' },
+  'Proposta/Plano de Trabalho Aprovados':                                      { bar: 'bg-green-500',   color: 'text-green-700',   label: 'Aprovados' },
+  'Proposta Aprovada e Plano de Trabalho em Análise':                          { bar: 'bg-indigo-500',  color: 'text-indigo-700',  label: 'Aprov. em Análise' },
+  'Proposta Aprovada e Plano de Trabalho em Complementação':                   { bar: 'bg-violet-500',  color: 'text-violet-700',  label: 'Aprov. em Compl.' },
+  'Proposta Aprovada e Plano de Trabalho Complementado Enviado para Análise':  { bar: 'bg-purple-500',  color: 'text-purple-700',  label: 'Aprov. Compl. Env.' },
+  // Generic aprovação (older format)
+  'Cadastrada':                                { bar: 'bg-slate-400',   color: 'text-slate-600',   label: 'Cadastrada' },
+  'Em Análise':                               { bar: 'bg-yellow-500',  color: 'text-yellow-700',  label: 'Em Análise' },
   'Aprovada':                                  { bar: 'bg-green-500',   color: 'text-green-600',   label: 'Aprovada' },
-  'Aprovada / Aguardando Assinatura':          { bar: 'bg-green-400',   color: 'text-green-500',   label: 'Aguard. Assinatura' },
-  'Aprovada / Aguardando Empenho':             { bar: 'bg-green-400',   color: 'text-green-500',   label: 'Aguard. Empenho' },
-  'Aguardando Assinatura do Convenio':         { bar: 'bg-blue-400',    color: 'text-blue-500',    label: 'Assin. Convênio' },
+  'Aprovada / Aguardando Assinatura':          { bar: 'bg-green-400',   color: 'text-green-600',   label: 'Aguard. Assinatura' },
+  'Aprovada / Aguardando Empenho':             { bar: 'bg-green-400',   color: 'text-green-600',   label: 'Aguard. Empenho' },
+  'Aguardando Assinatura do Convenio':         { bar: 'bg-blue-400',    color: 'text-blue-600',    label: 'Assin. Convênio' },
+  // ── Execução stage ──
   'Em Execução':                               { bar: 'bg-blue-500',    color: 'text-blue-700',    label: 'Em Execução' },
   'Em execução':                               { bar: 'bg-blue-500',    color: 'text-blue-700',    label: 'Em Execução' },
-  'Aguardando Prestação de Contas':            { bar: 'bg-orange-500',  color: 'text-orange-600',  label: 'Aguard. PC' },
-  'Prestação de Contas enviada para Análise':  { bar: 'bg-orange-400',  color: 'text-orange-500',  label: 'PC enviada' },
-  'Prestação de contas enviada para análise':  { bar: 'bg-orange-400',  color: 'text-orange-500',  label: 'PC enviada' },
-  'Prestação de Contas em Complementação':     { bar: 'bg-amber-500',   color: 'text-amber-600',   label: 'PC Complementação' },
-  'Prestação de Contas em Análise':            { bar: 'bg-amber-400',   color: 'text-amber-500',   label: 'PC em Análise' },
-  'Prestação de Contas Comprovada':            { bar: 'bg-teal-500',    color: 'text-teal-600',    label: 'PC Comprovada' },
-  'Prestação de Contas Aprovada':              { bar: 'bg-teal-500',    color: 'text-teal-700',    label: 'PC Aprovada' },
-  'Prestação de Contas Concluída':             { bar: 'bg-teal-600',    color: 'text-teal-700',    label: 'PC Concluída' },
+  // ── Prestação de Contas stage ──
+  'Aguardando Prestação de Contas':            { bar: 'bg-orange-500',  color: 'text-orange-700',  label: 'Aguard. PC' },
+  'Prestação de Contas enviada para Análise':  { bar: 'bg-orange-400',  color: 'text-orange-600',  label: 'PC Enviada' },
+  'Prestação de contas enviada para análise':  { bar: 'bg-orange-400',  color: 'text-orange-600',  label: 'PC Enviada' },
+  'Prestação de Contas em Complementação':     { bar: 'bg-amber-500',   color: 'text-amber-700',   label: 'PC Complementação' },
+  'Prestação de Contas em Análise':            { bar: 'bg-amber-400',   color: 'text-amber-600',   label: 'PC em Análise' },
+  'Prestação de Contas Comprovada':            { bar: 'bg-teal-500',    color: 'text-teal-700',    label: 'PC Comprovada' },
+  'Prestação de Contas Aprovada':              { bar: 'bg-teal-600',    color: 'text-teal-700',    label: 'PC Aprovada' },
+  'Prestação de Contas Concluída':             { bar: 'bg-emerald-600', color: 'text-emerald-700', label: 'PC Concluída' },
   'Prestação de Contas Rejeitada':             { bar: 'bg-red-500',     color: 'text-red-600',     label: 'PC Rejeitada' },
 }
-const DEFAULT_CONFIG = { bar: 'bg-gray-300', color: 'text-gray-500', label: '' }
+
+function getCfg(situacao: string) {
+  return STATUS_CFG[situacao] ?? { bar: 'bg-gray-400', color: 'text-gray-600', label: situacao.replace(/Proposta\/Plano de Trabalho\s*/i, '').replace(/Proposta Aprovada e Plano de Trabalho\s*/i, 'Aprov. ') }
+}
 
 // ── Tab config ──────────────────────────────────────────────────────────────
 const TAB_LABELS: Record<PipelineTab, string> = {
@@ -60,21 +79,15 @@ function getVisibleTabs(userRole: string): PipelineTab[] {
   return ['aprovacao', 'execucao', 'prestacao_contas']
 }
 
-function getCfg(situacao: string) {
-  return TGOV_STATUS_CONFIG[situacao] ?? { ...DEFAULT_CONFIG, label: situacao }
-}
-
-// ── Pipeline Section (matches CRM PipelineSection layout) ───────────────────
+// ── Pipeline Section ────────────────────────────────────────────────────────
 function PipelineSection({
   title,
-  subtitle,
   total,
   counts,
   tab,
   onCardClick,
 }: {
   title: string
-  subtitle: string
   total: number
   counts: StatusCounts
   tab: PipelineTab
@@ -89,57 +102,63 @@ function PipelineSection({
   if (orderedStatuses.length === 0) {
     return (
       <div className="space-y-3">
-        <div className="flex flex-col gap-1">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">{title}</p>
-          <p className="text-sm text-gray-500">{subtitle}</p>
-        </div>
-        <div className="text-sm text-gray-400">Nenhuma proposta encontrada.</div>
+        <SectionHeader title={title} total={0} />
+        <div className="text-sm text-gray-400 py-8 text-center">Nenhuma proposta encontrada.</div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-1">
-        <p className="text-xs text-gray-500 uppercase tracking-wider">{title}</p>
-        <p className="text-sm text-gray-500">{subtitle}</p>
-        <p className="text-xs text-gray-400">{total.toLocaleString('pt-BR')} propostas</p>
-      </div>
+    <div className="space-y-4">
+      <SectionHeader title={title} total={total} />
 
-      <div className={`grid grid-cols-2 gap-3 ${orderedStatuses.length > 6 ? 'md:grid-cols-3 xl:grid-cols-9' : 'md:grid-cols-6'}`}>
+      {/* Cards — max 5 cols to keep labels readable */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {orderedStatuses.map((situacao, idx) => {
           const count = counts[situacao] ?? 0
           const pct = total > 0 ? (count / total) * 100 : 0
           const cfg = getCfg(situacao)
           const prevCount = idx > 0 ? (counts[orderedStatuses[idx - 1]] ?? 0) : null
-          const conversionRate = prevCount && prevCount > 0 ? ((count / prevCount) * 100).toFixed(0) : null
+          const convRate = prevCount && prevCount > 0 ? ((count / prevCount) * 100).toFixed(0) : null
 
           return (
             <div
               key={`${tab}-${situacao}`}
               role="button"
+              tabIndex={0}
               onClick={() => onCardClick(situacao)}
-              className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+              onKeyDown={e => e.key === 'Enter' && onCardClick(situacao)}
+              className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md hover:border-gray-300 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             >
               <div className={`h-1.5 ${cfg.bar}`} />
               <div className="p-4">
+                {/* Count + percentage */}
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className={`text-3xl font-bold ${cfg.color}`}>{count.toLocaleString('pt-BR')}</span>
-                  <span className="text-xs text-gray-400 font-medium">{pct.toFixed(0)}%</span>
+                  <span className={`text-3xl font-bold tabular-nums ${cfg.color}`}>
+                    {count.toLocaleString('pt-BR')}
+                  </span>
+                  <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
+                    {pct.toFixed(0)}%
+                  </span>
                 </div>
 
-                <p className="text-sm font-medium text-gray-700 mt-1">{cfg.label}</p>
+                {/* Short label */}
+                <p className="text-sm font-medium text-gray-700 mt-1.5 leading-snug">
+                  {cfg.label}
+                </p>
 
-                <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                {/* Progress bar */}
+                <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                   <div
                     className={`h-full ${cfg.bar} rounded-full transition-all`}
                     style={{ width: `${Math.min(Math.max(pct, 2), 100)}%` }}
                   />
                 </div>
 
-                {conversionRate && Number(conversionRate) <= 100 && (
-                  <p className="text-[10px] text-gray-400 mt-1.5">
-                    {conversionRate}% de {getCfg(orderedStatuses[idx - 1]).label}
+                {/* Conversion rate (short label) */}
+                {convRate && Number(convRate) <= 200 && (
+                  <p className="text-[10px] text-gray-400 mt-1.5 truncate">
+                    {convRate}% de {getCfg(orderedStatuses[idx - 1]).label}
                   </p>
                 )}
               </div>
@@ -148,13 +167,16 @@ function PipelineSection({
         })}
       </div>
 
-      {/* Flow diagram — matches CRM horizontal arrow strip */}
+      {/* Flow diagram — horizontal arrow strip */}
       <div className="hidden md:flex items-center justify-center gap-1 py-1">
         {orderedStatuses.map((situacao, idx) => {
           const cfg = getCfg(situacao)
           return (
             <div key={`flow-${tab}-${situacao}`} className="flex items-center gap-1 flex-1">
-              <div className={`h-2 ${cfg.bar} rounded-full flex-1 transition-all opacity-80`} style={{ minWidth: '8px' }} />
+              <div
+                className={`h-2 ${cfg.bar} rounded-full flex-1 transition-all opacity-80`}
+                style={{ minWidth: '8px' }}
+              />
               {idx < orderedStatuses.length - 1 && (
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-gray-300 flex-shrink-0">
                   <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -164,6 +186,18 @@ function PipelineSection({
           )
         })}
       </div>
+    </div>
+  )
+}
+
+function SectionHeader({ title, total }: { title: string; total: number }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">{title}</p>
+      <p className="text-sm text-gray-500">Propostas por situação</p>
+      {total > 0 && (
+        <p className="text-xs text-gray-400">{total.toLocaleString('pt-BR')} propostas</p>
+      )}
     </div>
   )
 }
@@ -215,7 +249,7 @@ export default function TGovPipelineClient({ userRole }: { userRole: string }) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-lg font-semibold text-gray-900">TGov Pipeline</h1>
@@ -253,7 +287,6 @@ export default function TGovPipelineClient({ userRole }: { userRole: string }) {
         ) : (
           <PipelineSection
             title={TAB_LABELS[activeTab]}
-            subtitle={`Propostas por situação`}
             total={current.total}
             counts={current.counts}
             tab={activeTab}
