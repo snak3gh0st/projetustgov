@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.0
-milestone_name: — Projetos em Execucao
+milestone: v5.0
+milestone_name: — TGov Dashboard — In Progress
 status: executing
-stopped_at: Completed 20-04 (UI sidecard técnico + comentários + CSM sidebar) — UAT pending no build deployado
-last_updated: "2026-04-07T00:00:00.000Z"
-last_activity: 2026-04-07 -- Plan 20-04 complete (Phase 20 fechada, UAT diferido)
+stopped_at: Completed 21-01 — Foundation RBAC for execution roles
+last_updated: "2026-04-10T14:17:20Z"
+last_activity: 2026-04-10 -- Plan 21-01 complete (RBAC execution roles wired through all layers)
 progress:
-  total_phases: 6
+  total_phases: 3
   completed_phases: 2
   total_plans: 11
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State: PROJETUS — v5.0 TGov Dashboard
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Inteligencia pos-venda para gestores identificarem clientes qualificados com projetos em execucao no TransferenciaGov.
-**Current focus:** Phase 20 — tgov-ajustes-0704
+**Current focus:** Phase 21 — tgov-ajustes-0904
 
 ## Current Position
 
-Phase: 20 (tgov-ajustes-0704) — COMPLETE (UAT pending)
-Plan: 4 of 4 — DONE
-Status: Phase 20 closed; UAT (gestor + CSM) será rodado contra build deployado
-Last activity: 2026-04-07 -- Plan 20-04 complete (UI sidecard + perf fixes pós-wave)
+Phase: 21 (tgov-ajustes-0904) — EXECUTING
+Plan: 2 of 4 (Plan 01 complete)
+Status: Executing Phase 21 — Plan 01 done
+Last activity: 2026-04-10 -- Plan 21-01 complete (RBAC execution roles)
 
 Progress (v5.0): [███░░░░░░░] 100%
 
@@ -56,6 +56,7 @@ Progress (v5.0): [███░░░░░░░] 100%
 | 20-tgov-ajustes-0704 | 02 | ~10 min | 4 | 7 |
 | 20-tgov-ajustes-0704 | 03 | ~3 min | 5 | 5 |
 | 20-tgov-ajustes-0704 | 04 | ~45 min | 4+2perf | 8 |
+| 21-tgov-ajustes-0904 | 01 | ~10 min | 2 | 6 |
 
 *Updated after each plan completion*
 
@@ -105,6 +106,9 @@ Progress (v5.0): [███░░░░░░░] 100%
 | NOT MATERIALIZED nos CTEs all_propostas/all_exec (Plan 20-04 perf fix) | Postgres materializava CTE referenciada uma única vez; hint força inlining e desbloqueia push-down — speedup 100x (5s → 54ms) |
 | dal.ts role union estendido com 'csm' (Plan 20-04) | next-auth.d.ts já tinha do 20-01 mas dal.ts duplicava o union — pages com guard `role==='csm'` falhavam build TS |
 | UAT do Plan 20-04 diferido para build deployado (Plan 20-04) | Decisão do usuário: fechar plan e validar gestor+CSM contra produção em vez de ambiente local |
+| APROVACAO_ONLY_ROLES e EXECUCAO_ONLY_ROLES exportados de tgov.ts (Plan 21-01) | Centraliza constantes de grupos de roles para tab isolation em TGovDashboardClient e page.tsx compartilharem fonte única |
+| projetista_execucao isolado por tecnico_id no execucao API (Plan 21-01) | Espelha o padrão de isolamento do projetista na aprovacao — projetista_execucao só vê registros atribuídos a ele |
+| Tab filter bidirecional em TGovDashboardClient (Plan 21-01) | Roles aprovacao-only não viam aba execucao; roles execucao-only agora também não veem aba aprovacao — isolamento simétrico |
 
 ### Quick Tasks Completed
 

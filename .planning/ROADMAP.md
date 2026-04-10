@@ -2,7 +2,7 @@
 
 ## Overview
 
-PROJETUS delivers 100% reliable automated extraction of Transfer Gov data through focused milestone delivery. **Milestone v1.0** (Phases 1-5) established the complete ETL pipeline, operational monitoring, client qualification, and data dashboard. **Milestone v2.0** (Phases 6-9) transformed the Streamlit dashboard into a premium Sigma-branded sales tool. **Milestone v3.0** (Phases 10-13) built a full CRM de Vendas on Next.js — auth per vendedor, lead assignment, pipeline kanban, contact tracking, and commission control. **Milestone v4.0** (Phases 14-17) adds a read-only post-sale intelligence tab for gestores showing active OSC grant projects with financial execution metrics, aggregated by CNPJ and linked to existing CRM contacts.
+PROJETUS entrega inteligência pós-venda para gestores identificarem clientes qualificados com projetos em execução no TransferênciaGov. **Milestone v1.0** (Phases 1–5) estabeleceu o pipeline ETL completo, monitoramento operacional, qualificação de clientes e data dashboard em Streamlit. **Milestone v2.0** (Phases 6–9) transformou o dashboard em uma ferramenta de vendas com branding Sigma premium — supersedida pela migração para Next.js. **Milestone v3.0** (Phases 10–13) construiu um CRM de Vendas completo em Next.js: auth por vendedor, atribuição de leads, pipeline kanban, rastreamento de contatos e controle de comissões. **Milestone v4.0** (Phases 14–18) adicionou a aba de inteligência pós-venda `/execucao` para gestores — ETL de convenios OSC, agrupamento por CNPJ com métricas financeiras, tags de classificação e distribuição automática de leads. **Milestone v5.0** (Phases 19–20) entregou o TGov Dashboard com abas Aprovação e Execução, designação de técnico responsável, perfil CSM e sistema de comentários.
 
 ## Phases
 
@@ -13,42 +13,54 @@ PROJETUS delivers 100% reliable automated extraction of Transfer Gov data throug
 Decimal phases appear between their surrounding integers in numeric order.
 
 <details>
-<summary>Milestone v1.0 — Complete (Phases 1-5)</summary>
+<summary>Milestone v1.0 — Complete (Phases 1–5)</summary>
 
-- [x] **Phase 1: Foundation** - Complete ETL pipeline with zero data loss guarantee
-- [x] **Phase 2: Operational Maturity** - Advanced monitoring, reconciliation, configuration management
-- [x] **Phase 4: Client Qualification** - Intuitive interface for clients to find and contact the most valuable proponents
-- [x] **Phase 5: Data Dashboard** - Streamlit dashboard for visualizing extracted Transfer Gov data
-- [ ] **Phase 3: Production Excellence** - Optional enhancements triggered by operational need
-
-</details>
-
-<details>
-<summary>Milestone v2.0 — Dashboard Premium Redesign (Phases 6-9) — Superseded</summary>
-
-- [x] **Phase 6: Visual Foundation & Component System** - Sigma-branded dark theme, glassmorphic cards, CSS injection, typography
-- [x] **Phase 7: Data Visualization & Charts** - Interactive Plotly charts with Sigma branding for trends, geographic, value distribution
-- [x] **Phase 8: Lead Profile & Enhanced Navigation** - Dedicated lead deep-dive page, global search, visual ranking, streamlined navigation
-- [ ] **Phase 9: Polish & Production Readiness** - Mobile responsive, loading states, animations, consistent styling across all pages
+- [x] **Phase 1: Foundation** - Pipeline ETL completo com garantia de zero data loss
+- [x] **Phase 2: Operational Maturity** - Monitoramento avançado, reconciliação, gestão de configuração
+- [x] **Phase 4: Client Qualification** - Interface intuitiva para qualificação de proponentes
+- [x] **Phase 5: Data Dashboard** - Dashboard Streamlit para visualização dos dados extraídos
+- [ ] **Phase 3: Production Excellence** - Melhorias opcionais disparadas por necessidade operacional
 
 </details>
 
 <details>
-<summary>Milestone v3.0 — CRM de Vendas (Phases 10-13) — Complete</summary>
+<summary>Milestone v2.0 — Dashboard Premium Redesign (Phases 6–9) — Supersedido</summary>
 
-- [x] **Phase 10: Auth & CRM Foundation** - Role-based auth (gestor/vendedor), CRM tables, protected routes
-- [x] **Phase 11: Lead Management & Contact Tracking** - Lead assignment, contact notes timeline, status tracking
-- [ ] **Phase 12: Pipeline Kanban** - Visual kanban board with drag-and-drop status columns
-- [x] **Phase 13: Comissoes** - Commission tracking and calculation per vendedor
+- [x] **Phase 6: Visual Foundation & Component System** - Dark theme Sigma, glassmorphic cards, CSS injection, tipografia
+- [x] **Phase 7: Data Visualization & Charts** - Gráficos Plotly interativos com branding Sigma
+- [x] **Phase 8: Lead Profile & Enhanced Navigation** - Página de perfil de lead, busca global, ranking visual
+- [x] **Phase 9: Polish & Production Readiness** - Supersedido pela migração Next.js
 
 </details>
 
-### Milestone v4.0 — Projetos em Execucao
+<details>
+<summary>Milestone v3.0 — CRM de Vendas (Phases 10–13) — Complete</summary>
 
-- [x] **Phase 14: Data Audit & Foundation** - Validate data integrity before building, create projetos_execucao table (completed 2026-03-18)
-- [x] **Phase 15: ETL Sync & Validation** - Streaming sync of convenio + proposta CSVs into projetos_execucao (completed 2026-03-18)
-- [x] **Phase 16: API & Business Logic** - Role-guarded API route with CNPJ-grouped financial aggregation (completed 2026-03-18)
-- [x] **Phase 17: UI & Navigation** - /execucao page with KPI cards, grouped table, slide-over, sidebar entry (completed 2026-03-18)
+- [x] **Phase 10: Auth & CRM Foundation** - Auth baseada em roles (gestor/vendedor), tabelas CRM, rotas protegidas
+- [x] **Phase 11: Lead Management & Contact Tracking** - Atribuição de leads, timeline de contatos, rastreamento de status
+- [ ] **Phase 12: Pipeline Kanban** - Board visual com drag-and-drop por colunas de status (não iniciado)
+- [x] **Phase 13: Comissoes** - Rastreamento e cálculo de comissões por vendedor
+
+</details>
+
+<details>
+<summary>Milestone v4.0 — Projetos em Execução (Phases 14–18) — Complete</summary>
+
+- [x] **Phase 14: Data Audit & Foundation** - Auditoria de integridade + criação de projetos_execucao (2026-03-18)
+- [x] **Phase 15: ETL Sync & Validation** - Sync streaming de convenio + proposta CSVs (2026-03-18)
+- [x] **Phase 16: API & Business Logic** - Rota guarded por role com agrupamento CNPJ + lógica de alertas (2026-03-18)
+- [x] **Phase 17: UI & Navigation** - Página /execucao com KPIs, tabela agrupada, slide-over, sidebar (2026-03-18)
+- [x] **Phase 18: Lead Distribution** - Distribuição automática de leads execucao com round-robin e roteamento para coordenador (2026-03-30)
+
+</details>
+
+### Milestone v5.0 — TGov Dashboard — In Progress
+
+- [x] **Phase 19: TGov Dashboard** - Página gestor-only `/tgov` com abas Aprovação/Execução, donut de situação, KPIs, tabela paginada e filtros (2026-03-30)
+- [x] **Phase 20: Ajustes TGov 07/04 — Técnico + CSM** - Designação de técnico responsável, perfil CSM, sistema de comentários tgov_comments, helpers RBAC centralizados (2026-04-08)
+- [ ] **Phase 21: Ajustes TGov 09/04 — BI, Pipeline, Execução/PC Split, Novos Roles** - Nav TGOV BI + TGOV Pipeline (kanban estilo CRM), split Execução em Execução/Prestação de Contas, novos roles coord_execucao/assistente_execucao/projetista_execucao, isolamento de perfis, bugfixes aprovação
+
+---
 
 ## Phase Details
 
@@ -57,22 +69,6 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 1: Foundation
 **Goal**: Deliver working end-to-end pipeline that extracts 4 files from Transfer Gov daily at 9am, processes with validation, loads to PostgreSQL with relationships, and alerts on failures. Zero data loss guarantee through comprehensive validation and atomic transactions.
-
-**Depends on**: Nothing (first phase)
-
-**Requirements**: EXTR-01, EXTR-02, EXTR-03, EXTR-04, EXTR-05, EXTR-06, ETL-01, ETL-02, ETL-03, ETL-04, ETL-05, ETL-06, DB-01, DB-02, DB-03, DB-04, DB-05, DB-06, DB-07, SCHED-01, MON-01, MON-02, MON-05, MON-07
-
-**Success Criteria** (what must be TRUE):
-  1. System downloads 4 files (propostas, apoiadores, emendas, programas) from Transfer Gov without manual intervention
-  2. Downloaded files are stored raw before processing (enables reprocessing if parser fails)
-  3. Parser detects encoding automatically and converts to UTF-8 (Portuguese characters render correctly)
-  4. Data validation fails loudly if schema changes (no silent data corruption)
-  5. PostgreSQL contains all extracted data with correct relationships (propostas ↔ apoiadores ↔ emendas)
-  6. System runs automatically at 9am daily via scheduler
-  7. Telegram alert sent after each execution (success with row counts, or error with stack trace)
-  8. Health check endpoint returns status of last execution (external monitoring can verify system is alive)
-  9. Re-running extraction does not duplicate data (idempotent operations via unique constraints)
-  10. If validation fails at any stage, entire transaction rolls back (atomic operations, no partial data)
 
 **Status**: Complete (2026-02-05)
 
@@ -84,21 +80,7 @@ Plans:
 - [x] 01-05-PLAN.md — Scheduler, monitoring, health check
 
 ### Phase 2: Operational Maturity
-**Goal**: Add advanced monitoring, reconciliation checks, configuration management, and data lineage tracking. System becomes easier to debug, adapt to source changes, and audit for compliance. Delivers full confidence in data accuracy and maintainability.
-
-**Depends on**: Phase 1
-
-**Requirements**: MON-03, MON-04, MON-06
-
-**Success Criteria** (what must be TRUE):
-  1. Email alerts sent as backup if Telegram fails (multi-channel alerting ensures notifications always reach users)
-  2. Alert triggered if volume varies >10% vs previous day (detects incomplete extractions early)
-  3. Alert triggered if scheduler didn't run at expected time (detects system outages immediately)
-  4. Reconciliation check compares source row count vs DB inserts (verifies zero data loss)
-  5. Data lineage tracks source file, extraction timestamp, and pipeline version per record (audit trail for compliance)
-  6. Configuration externalized to YAML files (column mappings and validation rules not hardcoded)
-  7. Dry-run mode previews extraction without writing to database (safe testing of parser changes)
-  8. Full upsert logic implemented with ON CONFLICT DO UPDATE (handles changing data gracefully)
+**Goal**: Add advanced monitoring, reconciliation checks, configuration management, and data lineage tracking. System becomes easier to debug, adapt to source changes, and audit for compliance.
 
 **Status**: Complete (2026-02-05)
 
@@ -109,24 +91,7 @@ Plans:
 - [x] 02-04-PLAN.md — Dry-Run Mode & Health Check API
 
 ### Phase 3: Production Excellence
-**Goal**: Add advanced capabilities for self-healing, performance optimization, and data quality monitoring. Only build when operational pain justifies complexity investment. This phase is triggered by need, not pre-scheduled.
-
-**Depends on**: Phase 2
-
-**Requirements**: SCHED-02, SCHED-03
-
-**Success Criteria** (what must be TRUE):
-  1. Data quality dashboard shows completeness percentage, freshness, and row counts vs baseline (visual monitoring replaces tedious SQL queries)
-  2. Anomaly detection alerts on unexpected patterns (volume drops, schema drift, suspicious data)
-  3. Checkpoint tracking allows resumption from last successful step if execution fails mid-run (automatic recovery without manual intervention)
-  4. Idempotency fully guaranteed across all operations (running twice produces identical result)
-  5. Parallel processing implemented if runtime exceeds 30 minutes (performance optimization for scale)
-
-**Trigger conditions:**
-- Dashboard: When users actively monitor data and SQL queries for metrics become tedious
-- Anomaly Detection: When 3+ months of historical baseline data exists
-- Auto Recovery: When manual intervention becomes bottleneck (>5% of runs fail)
-- Parallel Processing: When runtime exceeds 30 minutes (unlikely at 11 proposals/day)
+**Goal**: Add advanced capabilities for self-healing, performance optimization, and data quality monitoring. Only build when operational pain justifies complexity investment.
 
 **Status**: Not started (triggered by operational need)
 
@@ -134,40 +99,17 @@ Plans:
 - [ ] TBD when operational need emerges
 
 ### Phase 4: Client Qualification
-**Goal**: Create an intuitive interface that makes it easy for clients to discover and contact the most valuable proponents (those with fewer projects and new to the system). The interface should highlight proponent value metrics and streamline the qualification workflow.
-
-**Depends on**: Phase 1 (needs data in PostgreSQL)
-
-**Success Criteria** (what must be TRUE):
-  1. Proponents are ranked by value metrics (fewer active projects = higher value, new/virgin proponents = highest value)
-  2. Client can easily search and filter proponents by value criteria
-  3. Contact information is prominently displayed for each proponent
-  4. Interface is intuitive enough for non-technical clients to use without training
-  5. Value metrics are clearly explained (why fewer projects = more valuable)
-  6. Client can save/export their qualified proponent list
-  7. Interface performs well with the current data volume
-  8. Technology choice (Streamlit vs alternatives) is validated for client UX needs
+**Goal**: Create an intuitive interface that makes it easy for clients to discover and contact the most valuable proponents.
 
 **Status**: Complete (2026-02-08)
 
 Plans:
-- [x] 04-01-PLAN.md — Proponente data model + ETL extraction (dimension table, CNPJ dedup, OSC classification, aggregations)
+- [x] 04-01-PLAN.md — Proponente data model + ETL extraction
 - [x] 04-02-PLAN.md — Qualification dashboard page (ranked table, filters, KPIs, CSV export)
-- [x] 04-03-PLAN.md — Human verification of complete qualification feature
+- [x] 04-03-PLAN.md — Human verification
 
 ### Phase 5: Data Dashboard
-**Goal**: Build a Streamlit dashboard that visualizes all extracted Transfer Gov data — propostas, programas, apoiadores, and emendas — with row counts, extraction history, data freshness, and drill-down views. Provides operational visibility without writing SQL queries.
-
-**Depends on**: Phase 4 (can build on qualification interface foundation)
-
-**Success Criteria** (what must be TRUE):
-  1. Dashboard displays row counts per entity table (programas, propostas, apoiadores, emendas)
-  2. Extraction history shows last 30 days of pipeline runs with status (success/partial/failed)
-  3. Data tables are browsable with search, sort, and filter capabilities
-  4. Dashboard shows data freshness (last extraction date and time)
-  5. Propostas can be explored with related programas, apoiadores, and emendas
-  6. Dashboard is deployable on Railway alongside the existing API service
-  7. Portuguese characters render correctly throughout the dashboard
+**Goal**: Build a Streamlit dashboard that visualizes all extracted Transfer Gov data with row counts, extraction history, data freshness, and drill-down views.
 
 **Status**: Complete (2026-02-08)
 
@@ -175,76 +117,28 @@ Plans:
 - [x] 05-01-PLAN.md — Dashboard foundation: Streamlit app structure, DB queries, shared components, home overview page
 - [x] 05-02-PLAN.md — Entity pages: Propostas, Programas, Apoiadores, Emendas with cross-filtering and CSV export
 - [x] 05-03-PLAN.md — Extraction history page and Railway deployment configuration
-- [x] 05-04-PLAN.md — Human verification of complete dashboard
+- [x] 05-04-PLAN.md — Human verification
 
 </details>
 
 <details>
-<summary>Milestone v2.0 — Dashboard Premium Redesign — Superseded</summary>
+<summary>Milestone v2.0 — Dashboard Premium Redesign — Supersedido (Next.js)</summary>
 
 ### Phase 6: Visual Foundation & Component System
-**Goal**: Establish Sigma-branded dark theme foundation with CSS injection infrastructure and reusable glassmorphic components. Creates premium visual identity and component system used by all subsequent phases.
-
-**Depends on**: Phase 5 (builds on existing Streamlit dashboard)
-
-**Requirements**: VIS-01, VIS-02, VIS-03, VIS-04, VIS-05, VIS-06
-
-**Success Criteria** (what must be TRUE):
-  1. Dark theme applied globally with Sigma brand colors (background #050B1F, text #E8F4FD, accent #00D4FF)
-  2. Custom CSS loaded from external file at app entry point (no inline CSS strings scattered across pages)
-  3. Space Grotesk and Inter fonts loaded from Google Fonts and applied to headings and body text
-  4. Glassmorphic card component created with semi-transparent background, backdrop-filter blur, and neon border
-  5. Premium KPI cards display large numbers with labels, delta indicators, and subtle glow on hover
-  6. Consistent color system established for value badges (green/blue/amber/gray), status indicators, and severity levels
-  7. Component wrappers tested on existing Home page (metrics replaced with glassmorphic cards)
-
 **Status**: Complete (2026-02-09)
 
 Plans:
-- [x] 06-01-PLAN.md — CSS foundation: config.toml dark theme, external CSS files (fonts, theme, components), CSS loader in entry point
-- [x] 06-02-PLAN.md — Component wrappers (cards, KPI, badges) + Home page integration + visual verification
+- [x] 06-01-PLAN.md — CSS foundation: config.toml dark theme, external CSS files, CSS loader
+- [x] 06-02-PLAN.md — Component wrappers (cards, KPI, badges) + Home page integration
 
 ### Phase 7: Data Visualization & Charts
-**Goal**: Integrate interactive Plotly charts with Sigma brand theming for geographic distribution, value analysis, and trend visualization. Establishes themed chart wrapper used across dashboard.
-
-**Depends on**: Phase 6 (requires dark theme colors and card components)
-
-**Requirements**: CHART-01, CHART-02, CHART-03, CHART-04, CHART-05
-
-**Success Criteria** (what must be TRUE):
-  1. Plotly dark theme wrapper created with Sigma brand colors and transparent backgrounds
-  2. Geographic heatmap shows proponents by estado with value-based color coding
-  3. Value distribution chart displays histogram of proponent value tiers across dataset
-  4. Trend chart visualizes propostas/emendas over time with monthly/yearly view toggle
-  5. KPI sparklines render mini trend lines inside metric cards showing recent evolution
-  6. All charts use consistent Sigma branding (colors, fonts, backgrounds match dark theme)
-  7. Charts integrated into Home and Qualificacao pages with glassmorphic card wrappers
-
 **Status**: Complete (2026-02-10)
 
 Plans:
-- [x] 07-01-PLAN.md — Plotly theme wrapper, chart functions (choropleth, distribution, trend, sparkline), data queries, GeoJSON setup
-- [x] 07-02-PLAN.md — Chart integration into Home and Qualificacao pages + visual verification
+- [x] 07-01-PLAN.md — Plotly theme wrapper, chart functions (choropleth, distribution, trend, sparkline)
+- [x] 07-02-PLAN.md — Chart integration into Home and Qualificacao pages
 
 ### Phase 8: Lead Profile & Enhanced Navigation
-**Goal**: Build dedicated lead profile page for deep-dive proponent research and implement global search with enhanced navigation. Delivers core sales workflow optimization.
-
-**Depends on**: Phase 7 (uses glassmorphic cards and charts for lead profile)
-
-**Requirements**: LEAD-01, LEAD-02, LEAD-03, LEAD-04, LEAD-05, LEAD-06, NAV-01, NAV-02, NAV-03, NAV-04
-
-**Success Criteria** (what must be TRUE):
-  1. Dedicated lead profile page shows single proponent with all data organized in tabs (emendas, propostas, convenios, historico)
-  2. Global search bar visible on every page accepts CNPJ or nome and navigates to lead profile
-  3. Lead profile prominently displays contact info (email, telefone, endereco)
-  4. Lead profile shows value assessment summary (tier, total emendas value, propostas count, convenios)
-  5. Lead profile displays related ministerios and programas associations
-  6. Quick actions available from profile (export lead data, copy CNPJ, navigate to related entities)
-  7. Qualificacao page enhanced with visual ranking cards instead of raw table and clear value tier indicators
-  8. Sidebar navigation styled with Sigma branding (logo, styled nav items)
-  9. Breadcrumb or context indicator shows which lead/entity is currently selected
-  10. All entity pages (Propostas, Programas, Apoiadores, Emendas) updated with consistent premium styling
-
 **Status**: Complete (2026-02-10)
 
 Plans:
@@ -252,41 +146,18 @@ Plans:
 - [x] 08-02-PLAN.md — Lead profile page with tabs, KPIs, contact info, quick actions
 - [x] 08-03-PLAN.md — Global search bar, sidebar branding, breadcrumb component
 - [x] 08-04-PLAN.md — Qualificacao ranking cards, entity page premium styling
-- [x] 08-05-PLAN.md — Visual verification of complete Phase 8
+- [x] 08-05-PLAN.md — Visual verification
 
 ### Phase 9: Polish & Production Readiness
-**Goal**: Apply final polish layer across all pages — mobile responsiveness, loading states, empty states, animations, and consistent styling. Ensures premium experience on all devices and edge cases.
-
-**Depends on**: Phase 8 (applies polish to complete feature set)
-
-**Requirements**: POL-01, POL-02, POL-03, POL-04, POL-05, POL-06
-
 **Status**: Superseded (Streamlit replaced by Next.js migration)
-
-Plans:
-- [ ] 09-01-PLAN.md — N/A (superseded by Next.js)
 
 </details>
 
 <details>
-<summary>Milestone v3.0 — CRM de Vendas — Complete</summary>
+<summary>Milestone v3.0 — CRM de Vendas — Complete (exceto Phase 12)</summary>
 
 ### Phase 10: Auth & CRM Foundation
-**Goal**: Establish authentication system with role-based access (gestor vs vendedor), create CRM database tables, and protect all existing API routes. Gestor sees all leads, vendedor sees only assigned leads.
-
-**Depends on**: Existing Next.js app (pages: /, /leads, /lead/[cnpj])
-
-**Requirements**: AUTH-01, AUTH-02, AUTH-03, AUTH-04, PLAT-01, PLAT-02, PLAT-03
-
-**Success Criteria** (what must be TRUE):
-  1. Vendedor can log in with email and password
-  2. Gestor can create and edit vendedor accounts
-  3. JWT-based session persists across browser refreshes
-  4. Vendedor sees only leads assigned to them (gestor sees all)
-  5. All API routes require authentication (return 401 if no valid token)
-  6. CRM tables created: users, lead_assignments, contact_notes, commissions
-  7. Existing pages (Pipeline, Leads, Lead Profile) work behind auth
-  8. Login page with Sigma branding matches existing dark theme
+**Goal**: Auth baseada em roles (gestor/vendedor), tabelas CRM, rotas protegidas. Gestor vê todos os leads, vendedor vê apenas os atribuídos.
 
 **Status**: Complete (2026-02-12)
 
@@ -296,45 +167,19 @@ Plans:
 - [x] 10-03-PLAN.md — DAL with role-based filtering, protect API routes, gestor vendedor management
 
 ### Phase 11: Lead Management & Contact Tracking
-**Goal**: Enable gestor to assign leads to vendedores, track contact history per lead, and manage contact status. Vendedores can register notes, update contact info, and see timeline of interactions.
-
-**Depends on**: Phase 10 (requires auth + CRM tables)
-
-**Requirements**: LEAD-01, LEAD-02, LEAD-03, LEAD-04, CONT-01, CONT-02, CONT-03, CONT-04
-
-**Success Criteria** (what must be TRUE):
-  1. Gestor can assign a lead to a specific vendedor from the lead list or profile
-  2. System detects and alerts when same lead would be assigned to two vendedores
-  3. Lead shows visible "CLIENTE EXISTENTE" flag when already in client base
-  4. Lead shows direct link to programa de trabalho on TransferênciaGov
-  5. Vendedor can register contact note (date, type, observation)
-  6. Contact history visible as timeline on lead profile
-  7. Contact status tracking: "Nao contactado", "Aguardando retorno", "Em conversa", "Fechado"
-  8. Vendedor can edit contact data (phone, email) on lead profile
+**Goal**: Gestor atribui leads a vendedores, vendedores registram notas de contato, sistema detecta duplicatas.
 
 **Status**: Complete (2026-02-12)
 
 Plans:
-- [x] 11-01-PLAN.md — Schema updates: existing_clients table, contact_notes activation, 5th status "Nao Contatado"
+- [x] 11-01-PLAN.md — Schema updates: existing_clients table, contact_notes, 5th status "Nao Contatado"
 - [x] 11-02-PLAN.md — Lead assignment UI and API with duplicate detection
 - [x] 11-03-PLAN.md — Priority indicators, parlamentar repositioning, existing client flags
 - [x] 11-04-PLAN.md — Contact notes timeline component and visualizador role
 - [x] 11-05-PLAN.md — Contact edit UI gap closure (phone/email inline editing)
 
 ### Phase 12: Pipeline Kanban
-**Goal**: Build visual kanban board for sales pipeline with drag-and-drop between 4 status columns. Vendedor drags leads through stages; gestor can filter by vendedor, UF, or tier.
-
-**Depends on**: Phase 11 (requires lead assignments + contact status)
-
-**Requirements**: PIPE-01, PIPE-02, PIPE-03, PIPE-04
-
-**Success Criteria** (what must be TRUE):
-  1. Visual kanban board with 4 columns: Novo -> Contactado -> Em negociacao -> Fechado
-  2. Vendedor can drag leads between columns to update status
-  3. Each kanban card shows: nome, CNPJ, valor emenda, tier, vendedor assigned
-  4. Pipeline filterable by vendedor, UF, and valor tier
-  5. Kanban updates persist immediately to database
-  6. Responsive layout works on desktop and tablet
+**Goal**: Board visual com drag-and-drop entre 4 colunas de status. Vendedor arrasta leads entre etapas; gestor filtra por vendedor, UF ou tier.
 
 **Status**: Not started
 
@@ -342,18 +187,7 @@ Plans:
 - [ ] TBD (plan with `/gsd:plan-phase 12`)
 
 ### Phase 13: Comissoes
-**Goal**: Implement commission tracking and calculation per vendedor. When lead is marked "Fechado", commission is calculated based on configurable percentage. Gestor sees global report, vendedor sees their own dashboard.
-
-**Depends on**: Phase 12 (requires pipeline with "Fechado" status)
-
-**Requirements**: COM-01, COM-02, COM-03, COM-04
-
-**Success Criteria** (what must be TRUE):
-  1. Vendedor automatically linked to lead commission when status changes to "Fechado"
-  2. Commission percentage configurable by gestor (default + per-lead exceptions)
-  3. Commission report filterable by vendedor and date period
-  4. Vendedor dashboard shows their leads, pipeline stats, and accumulated commissions
-  5. Commission calculated over contract/emenda value
+**Goal**: Rastreamento e cálculo de comissões por vendedor. Quando lead é marcado "Fechado", comissão é calculada com percentual configurável.
 
 **Status**: Complete (2026-02-14)
 
@@ -363,109 +197,78 @@ Plans:
 
 </details>
 
-### Milestone v4.0 — Projetos em Execucao
+<details>
+<summary>Milestone v4.0 — Projetos em Execução — Complete</summary>
 
 ### Phase 14: Data Audit & Foundation
-**Goal**: Validate data integrity before writing a single line of ETL or API code, and create the dedicated projetos_execucao table. This phase eliminates the highest-risk unknowns — NULL proposta_id join gaps and CNPJ zero-padding mismatches — so they cannot be baked silently into the architecture.
+**Goal**: Validar integridade dos dados antes de qualquer linha de ETL ou API, e criar a tabela projetos_execucao com colunas NUMERIC(18,2).
 
-**Depends on**: Existing DB (convenios, propostas, proponentes tables populated by prior ETL)
-
-**Requirements**: DATA-07, DATA-03
-
-**Success Criteria** (what must be TRUE):
-  1. A one-time diagnostic query determines the count of convenios with situacao "em execucao" that have NULL proposta_id, and the gap-handling strategy (LEFT JOIN with miss logging) is confirmed in writing before any ETL is built
-  2. A one-time diagnostic query determines whether any CNPJ values in proponentes are shorter than 14 characters; if any exist, a one-time LPAD migration is applied so all join conditions operate on normalized CNPJs
-  3. The projetos_execucao table exists in Supabase with NUMERIC(18,2) for all financial columns, UNIQUE constraint on nr_convenio, and indexes on cnpj and situacao
-  4. The UPSERT conflict key (nr_convenio) and the list of fields the sync must never overwrite are documented before Phase 15 begins
-
-**Plans**: 2 plans
+**Status**: Complete (2026-03-18)
 
 Plans:
-- [x] 14-01-PLAN.md — Data audit diagnostics: NULL proposta_id count, CNPJ padding check, LPAD migration if needed, gap strategy documentation
-- [x] 14-02-PLAN.md — Create projetos_execucao table with NUMERIC(18,2) columns, UNIQUE(nr_convenio), indexes, UPSERT policy documentation
+- [x] 14-01-PLAN.md — Data audit diagnostics: NULL proposta_id count, CNPJ padding check, gap strategy documentation
+- [x] 14-02-PLAN.md — Create projetos_execucao table with NUMERIC(18,2) columns, UNIQUE(nr_convenio), indexes
 
 ### Phase 15: ETL Sync & Validation
-**Goal**: Build and validate the streaming sync that populates projetos_execucao from the two government CSV sources. Validate against real data before any API or UI code is written — an empty table hides correctness problems in GROUP BY logic.
+**Goal**: Sync streaming dos CSVs do governo (187MB proposta + 15MB convenio) para projetos_execucao, com filtro OSC-only e join por id_proposta.
 
-**Depends on**: Phase 14 (table must exist; audit results determine join strategy)
-
-**Requirements**: DATA-01, DATA-02, DATA-04, DATA-05, DATA-06
-
-**Success Criteria** (what must be TRUE):
-  1. A one-off test script (not the cron) populates projetos_execucao with real rows from siconv_convenio.csv.zip and siconv_proposta.csv.zip; row count matches the expected "em execucao + OSC" universe verified by a direct SQL count on the source tables
-  2. The sync streams the 187MB proposta CSV with an OSC-only filter, building an in-memory id_proposta Map, without hitting Vercel memory limits (if Map exceeds limits, the two-pass fallback is implemented instead)
-  3. UPSERT uses ON CONFLICT (nr_convenio) DO UPDATE; running the sync twice produces identical row counts with no duplicates
-  4. Sync stats logged to cron_sync_log include join_miss_count (convenios that had no matching proposta row) so data loss is visible, not silent
-  5. A dedicated cron endpoint /api/cron/sync-execucao exists with maxDuration=300 and its own vercel.json entry, separate from the lead sync cron
-
-**Plans**: 2 plans
+**Status**: Complete (2026-03-18)
 
 Plans:
-- [x] 15-01-PLAN.md — Export helpers, create execucao-sync.ts with streaming proposta+convenio ETL, in-memory join, UPSERT
-- [x] 15-02-PLAN.md — One-off test script with row count validation, cron endpoint /api/cron/sync-execucao, vercel.json entry
+- [x] 15-01-PLAN.md — Export helpers, execucao-sync.ts with streaming proposta+convenio ETL, in-memory join, UPSERT
+- [x] 15-02-PLAN.md — One-off test script, cron endpoint /api/cron/sync-execucao, vercel.json entry
 
 ### Phase 16: API & Business Logic
-**Goal**: Build the role-guarded API route that serves projetos_execucao data aggregated by CNPJ with all financial columns, contact data joins, and confirmed alert logic. The alert business rule must be confirmed with the client at the start of this phase before any query is written.
+**Goal**: Rota guarded por role servindo projetos_execucao agrupado por CNPJ com métricas financeiras e lógica de alertas confirmada com cliente.
 
-**Depends on**: Phase 15 (real rows in projetos_execucao required to validate GROUP BY logic and contact joins)
-
-**Requirements**: FIN-01, FIN-02, FIN-03, FIN-04, FIN-05, FIN-06
-
-**Success Criteria** (what must be TRUE):
-  1. A gestor or coordenador calling GET /api/execucao receives a JSON response with CNPJs grouped and all financial columns (desembolso, saldo_em_conta, pct_execucao, dias_em_execucao, data_fim_vigencia) cast to NUMERIC — no floating-point precision artifacts
-  2. A vendedor calling GET /api/execucao directly (bypassing the UI) receives HTTP 401; the role guard is enforced independently on the API route via getApiSession(), not only by UI redirection
-  3. The alert condition for "desembolso negativo" is confirmed with the client by inspecting known-problematic convenios in the DB; the alert field in the API response uses a named constant derived from the confirmed business rule, not a guess
-  4. The API response includes a contact_present boolean per CNPJ derived from LEFT JOIN on lead_contacts (and vendedor_projetos as fallback), enabling the UI to show a contact indicator badge without a second fetch
-  5. Dias em execucao and tempo restante are computed in SQL (not JavaScript) so the frontend receives ready-to-display integers
-
-**Plans**: 2 plans
+**Status**: Complete (2026-03-18)
 
 Plans:
-- [x] 16-01-PLAN.md — GET /api/execucao with role guard, GROUP BY CNPJ query, weighted pct_execucao, SQL-computed dias, contact EXISTS, filter params + CNPJ detail endpoint for slide-over
-- [x] 16-02-PLAN.md — Alert business rule client confirmation checkpoint, named constants update, alert_only filter alignment
+- [x] 16-01-PLAN.md — GET /api/execucao with role guard, GROUP BY CNPJ query, weighted pct_execucao, SQL-computed dias, contact EXISTS
+- [x] 16-02-PLAN.md — Alert business rule client confirmation, named constants, alert_only filter
 
 ### Phase 17: UI & Navigation
-**Goal**: Build the /execucao page and sidebar entry that surfaces the data layer to gestores. Build UI last — after the data layer is validated — to avoid UX iteration on a broken foundation. All component patterns are direct copies of existing pages.
+**Goal**: Página /execucao com KPI cards, tabela agrupada, slide-over por CNPJ, entry no sidebar, e timestamp de freshness.
 
-**Depends on**: Phase 16 (API contract must be stable before UI is built against it)
-
-**Requirements**: AGR-01, AGR-02, AGR-03, AGR-04, UI-01, UI-02, UI-03, UI-04
-
-**Success Criteria** (what must be TRUE):
-  1. A gestor navigating to /execucao sees a list of CNPJs with their count of active fomentos as the primary big number, plus KPI cards at the top showing total clientes qualificados, total fomentos, and valor total em execucao
-  2. Clicking a CNPJ row opens a slide-over with full financial detail: desembolso, saldo em conta, % execucao progress bar, data fim vigencia, dias em execucao, and a contact indicator if the CNPJ exists in lead_contacts
-  3. Projects with the client-confirmed alert condition are visually highlighted (distinct border or badge) so a gestor can immediately identify problematic projects without reading every row
-  4. A vendedor navigating to /execucao is redirected to a "sem permissao" page (not the login page); the /execucao nav entry does not appear in the sidebar for vendedor role
-  5. The page shows a data freshness timestamp from cron_sync_log so the gestor knows when the data was last updated
-
-**Plans**: 2 plans
+**Status**: Complete (2026-03-18)
 
 Plans:
-- [ ] 17-01-PLAN.md — API extension ({ rows, last_synced }), /sem-permissao page, /execucao page with server role guard, ExecucaoClient with KPIs, table, filters, alert highlighting
-- [ ] 17-02-PLAN.md — ExecucaoSlideOver with per-convenio detail, progress bar, contact badge, urgency coloring + Sidebar nav entry for gestor/coordenador
+- [x] 17-01-PLAN.md — API extension, /sem-permissao page, ExecucaoClient with KPIs, table, filters, alert highlighting
+- [x] 17-02-PLAN.md — ExecucaoSlideOver com detalhe por convenio, barra de progresso, contact badge, Sidebar nav entry
 
-### Milestone v5.0 — TGov Dashboard
+### Phase 18: Lead Distribution
+**Goal**: Distribuição automática de leads de execução para vendedores via round-robin, com roteamento prioritário para coordenador quando o CNPJ já é cliente existente. Advisory lock previne double-assignment em chamadas concorrentes.
+
+**Depends on**: Phase 17 (leads execucao populados via /api/execucao)
+
+**Status**: Complete (2026-03-30)
+
+Plans:
+- [x] 18-01-PLAN.md — distribute-execucao.ts: advisory lock + client routing + round-robin; POST /api/execucao/distribute
+- [x] 18-02-PLAN.md — UI de distribuição no painel gestor + verification
+
+</details>
+
+### Milestone v5.0 — TGov Dashboard — Complete
 
 ### Phase 19: TGov Dashboard
-**Goal**: Build a gestor-only `/tgov` analytics page that reproduces the key Power BI approval and execution views inside the app. The page provides `Aprovacao` and `Execucao` tabs, each with a situacao donut chart, a total KPI card, a paginated detail table (25 rows, numbered pagination), and shared filters for Ano, Tipo, Status, and UF. Inline table filters for Proponente and Numero Proposta affect only the table, not the KPI/donut.
+**Goal**: Página gestor-only `/tgov` que reproduz as principais visões Power BI de aprovação e execução dentro do app. Abas Aprovação e Execução com donut de situação, KPI card, tabela paginada (25 rows, paginação numerada) e filtros compartilhados (Ano, Tipo, Status, UF). Filtros inline de tabela (Proponente, Número Proposta) afetam apenas a tabela.
 
-**Depends on**: Phase 17 (execucao data layer), Phase 16 (projetos_execucao populated)
+**Depends on**: Phase 17 (projetos_execucao populado), Phase 16 (dados execucao na API)
 
-**Requirements**: TGOV-01, TGOV-02, TGOV-03, TGOV-04, TGOV-05
-
-**Plans**: 3 plans
+**Status**: Complete (2026-03-30)
 
 Plans:
 - [x] 19-01-PLAN.md — Shared TGov contracts (tgov.ts) and DB-backed verification harness
-- [x] 19-02-PLAN.md — API endpoints: /api/tgov/aprovacao and /api/tgov/execucao with SQL aggregates + pagination
-- [x] 19-03-PLAN.md — UI: /tgov page with tabs, donut chart, KPI card, paginated table, sidebar entry
+- [x] 19-02-PLAN.md — API endpoints: /api/tgov/aprovacao e /api/tgov/execucao com SQL aggregates + pagination
+- [x] 19-03-PLAN.md — UI: /tgov page com tabs, donut chart, KPI card, tabela paginada, sidebar entry
 
 ### Phase 20: Ajustes TGov 07/04 — Técnico Responsável + Perfil CSM
-**Goal**: Atender lista "AJUSTES TGOV 07/04" — criar sistema de designação manual de técnico responsável (em propostas e execuções TGov, pool = adm_produto/gestor/admin) e novo perfil CSM (read-only TGov + comentários). Inclui criar do zero um sistema de comentários TGov (`tgov_comments`) com thread no sidecard do cliente.
+**Goal**: Criar sistema de designação manual de técnico responsável (propostas e execuções TGov, pool = adm_produto/gestor/admin) e novo perfil CSM (read-only TGov + comentários). Sistema de comentários `tgov_comments` com thread no sidecard.
 
-**Depends on**: Phase 19 (TGov dashboard + sidecard existente)
+**Depends on**: Phase 19 (TGov dashboard + sidecards existentes)
 
-**Plans**: 4 plans
+**Status**: Complete (2026-04-08)
 
 Plans:
 - [x] 20-01-PLAN.md — SQL migrations (tecnico_id em 4 tabelas + tgov_comments) + tipos TS (next-auth role csm, tgov.ts, tgov-tables.ts)
@@ -473,66 +276,88 @@ Plans:
 - [x] 20-03-PLAN.md — Endpoints novos: /api/tgov/comments (GET/POST), /api/tgov/tecnico (PATCH), /api/tgov/usuarios/tecnicos (GET) + join tecnico nos CTEs aprovacao/execucao
 - [x] 20-04-PLAN.md — Frontend: CommentsThread + TecnicoSelector, integração nos 2 sidecards, sidebar oculta CRM pra csm
 
-**Out of scope**: Pipeline coordenação Paulo+Philipe (pulado), round-robin automático, edição/deleção de comentários, notificações.
+**Out of scope**: Pipeline coordenação Paulo+Philipe, round-robin automático, edição/deleção de comentários, notificações.
 
-Itens resolvidos fora dessa fase (commits avulsos 2026-04-07):
-- Bug média valor projeto (AVG → SUM/COUNT)
-- Cores pizza aprovação (complementação = atenção)
-- Cores coluna situação (5 tiers semânticos)
+---
+
+### Phase 21: Ajustes TGov 09/04 — BI, Pipeline, Execução/PC Split, Novos Roles
+**Goal**: Reestruturar navegação TGov (renomear "TGov Pipeline" → "TGov BI", adicionar novo "TGov Pipeline" com kanban estilo CRM), split da aba Execução em Execução + Prestação de Contas, novos roles RBAC (coord_execucao, assistente_execucao, projetista_execucao) com isolamento completo de perfis, e bugfixes na aba Aprovação (CSS, SituacaoBadge, contador de comentários).
+
+**Depends on**: Phase 20 (técnico, CSM, comentários tgov_comments)
+
+**Status**: In Progress
+
+Plans:
+- [ ] 21-01-PLAN.md — RBAC: novos roles em validations.ts + page.tsx + middleware; isolamento de abas por role
+- [ ] 21-02-PLAN.md — Sidebar: renomear TGov BI + novo item TGov Pipeline; nova rota /tgov/pipeline com TGovPipelineSection
+- [ ] 21-03-PLAN.md — Split Execução/PC: nova aba Prestação de Contas, split API execucao/route.ts, paginação independente
+- [ ] 21-04-PLAN.md — Bugfixes Aprovação: CSS bordas tabela, SituacaoBadge na coluna SITUAÇÃO, ícone contador de comentários
+
+**Out of scope**: Notificações, edição de comentários, qualquer mudança fora do módulo TGov.
+
+---
+
+## Quick Tasks Completed (60 total)
+
+Tarefas pontuais executadas fora de fases formais — bugs, ajustes de UX e pequenas features. Ver `.planning/quick/` para detalhes de cada uma.
+
+**Seleção das mais relevantes:**
+
+| ID | Descrição | Data | Commit |
+|----|-----------|------|--------|
+| 260318-ook | Delete import sheets tab from dashboard | 2026-03-18 | 1fe0798 |
+| 260318-re1 | Add in-app news notification with v4.0 updates | 2026-03-18 | f451ebb |
+| 260320-d8f | Add Valor Convenio column, propostas priority colors, slide-over summary | 2026-03-20 | 8a05d1d |
+| 260320-dj7 | Add 5 execution classification tags (Autossuficiente, Iniciante, Desembolso, Lobby, Rendimento) | 2026-03-20 | 7bb3bc7 |
+| 260320-hgb | BrasilAPI enrichment in execucao-sync + Em Execucao tab on leads page | 2026-03-20 | c4103fd |
+| 260321 | Add CRM status column to /execucao from vendedor_projetos | 2026-03-25 | 1ad08b2 |
+| 260322 | Tighten Rendimento tag eligibility and 5-proposal maturity boundary | 2026-03-25 | fd21fa2 |
+| 260323 | Separate Pipeline Aprovação vs Pipeline Execução on home dashboard | 2026-03-25 | 0377b2c |
+| 260401-e9r | Filter TGov aprovacao and execucao tabs to Projetus proposals whitelist (246 IDs) | 2026-04-01 | e3c7025 |
+| 260401-kvp | Restringir visões do ADM Produto: Pipeline TGov, Usuários TGov e TGov Dashboard | 2026-04-01 | 07eeeab |
+
+---
 
 ## Progress
 
 **Execution Order:**
-- **Milestone v1.0**: Phases 1 -> 2 -> 4 -> 5 (complete), Phase 3 (optional, triggered by need)
-- **Milestone v2.0**: Phases 6 -> 7 -> 8 (complete), Phase 9 (superseded by Next.js)
-- **Milestone v3.0**: Phases 10 -> 11 -> 12 -> 13
-- **Milestone v4.0**: Phases 14 -> 15 -> 16 -> 17
-- **Milestone v5.0**: Phase 19
+- **Milestone v1.0**: Phases 1 → 2 → 4 → 5 (complete), Phase 3 (optional)
+- **Milestone v2.0**: Phases 6 → 7 → 8 (complete), Phase 9 (superseded)
+- **Milestone v3.0**: Phases 10 → 11 → 13 (complete), Phase 12 (not started)
+- **Milestone v4.0**: Phases 14 → 15 → 16 → 17 → 18 (complete)
+- **Milestone v5.0**: Phases 19 → 20 (complete)
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
+| Phase | Plans | Status | Concluído |
+|-------|-------|--------|-----------|
 | **Milestone v1.0** | | | |
-| 1. Foundation | 5/5 | Complete | 2026-02-05 |
-| 2. Operational Maturity | 4/4 | Complete | 2026-02-05 |
-| 4. Client Qualification | 3/3 | Complete | 2026-02-08 |
-| 5. Data Dashboard | 4/4 | Complete | 2026-02-08 |
-| 3. Production Excellence | 0/TBD | Optional | - |
+| 1. Foundation | 5/5 | ✅ Complete | 2026-02-05 |
+| 2. Operational Maturity | 4/4 | ✅ Complete | 2026-02-05 |
+| 4. Client Qualification | 3/3 | ✅ Complete | 2026-02-08 |
+| 5. Data Dashboard | 4/4 | ✅ Complete | 2026-02-08 |
+| 3. Production Excellence | 0/TBD | ⏸ Optional | — |
 | **Milestone v2.0** | | | |
-| 6. Visual Foundation & Component System | 2/2 | Complete | 2026-02-09 |
-| 7. Data Visualization & Charts | 3/3 | Complete | 2026-02-10 |
-| 8. Lead Profile & Enhanced Navigation | 5/5 | Complete | 2026-02-10 |
-| 9. Polish & Production Readiness | - | Superseded | - |
+| 6. Visual Foundation & Component System | 2/2 | ✅ Complete | 2026-02-09 |
+| 7. Data Visualization & Charts | 3/3 | ✅ Complete | 2026-02-10 |
+| 8. Lead Profile & Enhanced Navigation | 5/5 | ✅ Complete | 2026-02-10 |
+| 9. Polish & Production Readiness | — | ⛔ Superseded | — |
 | **Milestone v3.0** | | | |
-| 10. Auth & CRM Foundation | 3/3 | Complete | 2026-02-12 |
-| 11. Lead Management & Contact Tracking | 5/5 | Complete | 2026-02-12 |
-| 12. Pipeline Kanban | 0/TBD | Not started | - |
-| 13. Comissoes | 2/2 | Complete | 2026-02-14 |
+| 10. Auth & CRM Foundation | 3/3 | ✅ Complete | 2026-02-12 |
+| 11. Lead Management & Contact Tracking | 5/5 | ✅ Complete | 2026-02-12 |
+| 12. Pipeline Kanban | 0/TBD | 🔲 Not started | — |
+| 13. Comissoes | 2/2 | ✅ Complete | 2026-02-14 |
 | **Milestone v4.0** | | | |
-| 14. Data Audit & Foundation | 2/2 | Complete    | 2026-03-18 |
-| 15. ETL Sync & Validation | 2/2 | Complete    | 2026-03-18 |
-| 16. API & Business Logic | 2/2 | Complete   | 2026-03-18 |
-| 17. UI & Navigation | 2/2 | Complete    | 2026-03-18 |
+| 14. Data Audit & Foundation | 2/2 | ✅ Complete | 2026-03-18 |
+| 15. ETL Sync & Validation | 2/2 | ✅ Complete | 2026-03-18 |
+| 16. API & Business Logic | 2/2 | ✅ Complete | 2026-03-18 |
+| 17. UI & Navigation | 2/2 | ✅ Complete | 2026-03-18 |
+| 18. Lead Distribution | 2/2 | ✅ Complete | 2026-03-30 |
 | **Milestone v5.0** | | | |
-| 19. TGov Dashboard | 3/3 | Complete | 2026-03-30 |
-| 20. Ajustes TGov 07/04 — Técnico + CSM | 4/4 | Complete   | 2026-04-08 |
+| 19. TGov Dashboard | 3/3 | ✅ Complete | 2026-03-30 |
+| 20. Ajustes TGov 07/04 — Técnico + CSM | 4/4 | ✅ Complete | 2026-04-08 |
+
+**Resumo:** 20 phases planejadas — 17 completas, 1 opcional (Phase 3), 1 supersedida (Phase 9), 1 não iniciada (Phase 12)
 
 ---
-*Roadmap created: 2026-02-04*
-*Milestone v1.0 depth: quick (5 phases)*
-*Milestone v1.0 coverage: 29/29 v1 requirements mapped*
 
-*Milestone v2.0 added: 2026-02-09*
-*Milestone v2.0 depth: quick (4 phases)*
-*Milestone v2.0 coverage: 27/27 v2.0 requirements mapped*
-
-*Milestone v3.0 added: 2026-02-11*
-*Milestone v3.0 depth: quick (4 phases)*
-*Milestone v3.0 coverage: 21/21 v3.0 requirements mapped*
-
-*Milestone v4.0 added: 2026-03-18*
-*Milestone v4.0 depth: standard (4 phases)*
-*Milestone v4.0 coverage: 21/21 v4.0 requirements mapped*
-
-*Milestone v5.0 added: 2026-03-30*
-*Milestone v5.0 depth: standard (1 phase)*
-*Milestone v5.0 coverage: 5/5 v5.0 requirements mapped*
+*Roadmap criado: 2026-02-04*
+*Última atualização: 2026-04-08 — adicionado Phase 18 (Lead Distribution), Milestone v5.0 Phase 20 marcada completa, quick tasks atualizadas para 60 total*
