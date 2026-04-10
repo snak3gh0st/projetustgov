@@ -214,11 +214,21 @@ export async function GET(request: NextRequest) {
     const pageSize = Math.min(TGOV_MAX_PAGE_SIZE, Math.max(1, parseInt(searchParams.get('page_size') ?? String(TGOV_PAGE_SIZE), 10)))
     const offset = (page - 1) * pageSize
 
+    const mode = searchParams.get('mode') ?? 'execucao' // 'execucao' | 'prestacao_contas'
+
     // ---------------------------------------------------------------------------
     // Build main filter conditions (affect totals + table)
     // ---------------------------------------------------------------------------
     const params: unknown[] = []
     const mainConditions: string[] = []
+
+    // Split filter: execucao vs prestacao_contas mode
+    if (mode === 'execucao') {
+      mainConditions.push(`LOWER(pe.situacao) = 'em execução'`)
+    } else if (mode === 'prestacao_contas') {
+      mainConditions.push(`pe.situacao ILIKE '%Prestação de Contas%'`)
+    }
+    // If neither (shouldn't happen), no mode filter applied — shows all execução data
 
     // Build nr_proposta IN clause for both branches of all_exec CTE
     const nrPropostaClausePe = buildNrPropostaWhereClause('pe.nr_proposta', params, EXECUCAO_NR_PROPOSTAS)

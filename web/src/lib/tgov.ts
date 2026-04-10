@@ -34,7 +34,7 @@ export const DEFAULT_TGOV_TAB: TGovTab = 'aprovacao'
 // Tab
 // ---------------------------------------------------------------------------
 
-export type TGovTab = 'aprovacao' | 'execucao'
+export type TGovTab = 'aprovacao' | 'execucao' | 'prestacao_contas'
 
 // ---------------------------------------------------------------------------
 // Main shared filters (preserved across tab switches)
