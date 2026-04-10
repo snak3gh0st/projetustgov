@@ -89,7 +89,7 @@ export async function GET() {
           COALESCE(tp.tecnico_assigned_at, '1970-01-01'::timestamptz)
         ) > COALESCE(s.seen_at, '1970-01-01'::timestamptz)
       )
-      SELECT proposta_key, titulo, event_type, latest_at::text AS event_at
+      SELECT proposta_key, titulo, event_type, latest_at::text AS event_at, comment_author_nome, comment_body
       FROM activities
       WHERE latest_at IS NOT NULL
       ORDER BY latest_at DESC
