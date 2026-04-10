@@ -7,6 +7,11 @@ import { ensureTgovTables } from '@/lib/tgov-tables'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
+// Server-side cache: avoids rescanning propostas on every request.
+// Key: `${tab}:${userId|global}` — projetista_execucao is scoped to user.
+const _cache = new Map<string, { data: { byStatus: { status: string; count: number }[] }; expiresAt: number }>()
+const CACHE_TTL = 3 * 60 * 1000 // 3 minutes
+
 /**
  * Lightweight pipeline stats endpoint.
  * Returns only byStatus counts — no table rows, no BI charts.
@@ -25,6 +30,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const tab = searchParams.get('tab') ?? 'aprovacao'
+
+    // Cache lookup — projetista_execucao scoped to userId, everyone else shares
+    const cacheKey = `${tab}:${session.role === 'projetista_execucao' ? session.userId : 'global'}`
+    const cached = _cache.get(cacheKey)
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json(cached.data)
+    }
 
     const params: unknown[] = []
     let byStatusRows: { situacao: string; cnt: number }[] = []
@@ -135,7 +147,10 @@ export async function GET(request: NextRequest) {
       count: Number(r.cnt),
     }))
 
-    return NextResponse.json({ byStatus })
+    const responseData = { byStatus }
+    _cache.set(cacheKey, { data: responseData, expiresAt: Date.now() + CACHE_TTL })
+
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error('Pipeline stats error:', error)
     return NextResponse.json({ error: 'Failed to fetch pipeline stats' }, { status: 500 })
