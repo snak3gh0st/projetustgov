@@ -23,6 +23,7 @@
 import { getPool } from '@/lib/db'
 import { buildStructuredLeadScopeSql } from '@/lib/crm-scope'
 import { cleanCNPJ, parseBRNumber, fixText, downloadAndStreamCSV, formatPhone } from '@/lib/repo-sync'
+import { APROVACAO_NR_PROPOSTAS } from '@/lib/tgov'
 
 // ---------------------------------------------------------------------------
 // Internal utility
@@ -152,7 +153,9 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     WHERE cnpj IS NOT NULL AND cnpj != ''
   `)
   const projetusCnpjSet = new Set(clientCnpjResult.rows.map(r => r.cnpj))
-  console.log(`[execucao-sync] STEP A: loaded ${projetusCnpjSet.size} unique Projetus client CNPJs from DB`)
+  // Aprovação proposals that may exist in `propostas` table but aren't CRM clients
+  const aprovacaoNrSet = new Set(Array.from(APROVACAO_NR_PROPOSTAS).map(nr => nr.replace(/^0+/, '')))
+  console.log(`[execucao-sync] STEP A: loaded ${projetusCnpjSet.size} unique Projetus client CNPJs from DB, ${aprovacaoNrSet.size} aprovação NRs`)
 
   // -------------------------------------------------------------------------
   // STEP B: Stream siconv_proposta.csv.zip — build propostaMap filtered
@@ -175,8 +178,11 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     const cnpj = cleanCNPJ(rawCnpj)
     if (!cnpj) return
 
-    // Filter by Projetus client CNPJs — only keep proposals from known clients
-    if (!projetusCnpjSet.has(cnpj)) return
+    // Filter by Projetus client CNPJs OR aprovação hardcoded list
+    const nrPropostaRaw = (row['NR_PROPOSTA'] || '').replace(/^0+/, '') || null
+    const isCrmClient = projetusCnpjSet.has(cnpj)
+    const isAprovacao = nrPropostaRaw != null && aprovacaoNrSet.has(nrPropostaRaw)
+    if (!isCrmClient && !isAprovacao) return
 
     stats.osc_rows_kept++
     propostaMap.set(row['ID_PROPOSTA'], {
