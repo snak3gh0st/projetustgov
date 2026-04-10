@@ -5,7 +5,7 @@ import TGovDashboardClient from './TGovDashboardClient'
 export default async function TGovPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; highlight?: string; status?: string; tab?: string }>
+  searchParams: Promise<{ view?: string; highlight?: string; status?: string; tab?: string; scrollTo?: string }>
 }) {
   const session = await verifySession()
 
@@ -25,7 +25,7 @@ export default async function TGovPage({
     redirect('/sem-permissao')
   }
 
-  const { view, highlight, status, tab } = await searchParams
+  const { view, highlight, status, tab, scrollTo } = await searchParams
   const resolvedView = view === 'dashboard' ? 'dashboard' : 'pipeline'
   const validTab = tab === 'execucao' || tab === 'prestacao_contas' || tab === 'aprovacao' ? tab : undefined
 
@@ -34,6 +34,7 @@ export default async function TGovPage({
       userRole={session.role}
       view={resolvedView}
       highlight={highlight}
+      scrollTo={scrollTo}
       initialStatus={status}
       initialTabParam={validTab}
     />

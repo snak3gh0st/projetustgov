@@ -15,7 +15,9 @@ export async function GET() {
     const userId = session.userId
     const role = session.role
 
-    // Proposals linked to this user: participant OR tecnico_id
+    // adm_produto sees ALL TGov proposals; others see only linked ones
+    const seeAll = role === 'adm_produto'
+
     const items = await query<{
       proposta_key: string
       titulo: string | null
@@ -23,9 +25,12 @@ export async function GET() {
       event_at: string
     }>(`
       WITH linked AS (
-        SELECT proposta_key FROM tgov_proposta_participants WHERE user_id = $1
-        UNION
-        SELECT nr_proposta AS proposta_key FROM tgov_propostas WHERE tecnico_id = $1 AND nr_proposta IS NOT NULL
+        ${seeAll
+          ? `SELECT nr_proposta AS proposta_key FROM tgov_propostas WHERE nr_proposta IS NOT NULL`
+          : `SELECT proposta_key FROM tgov_proposta_participants WHERE user_id = $1
+             UNION
+             SELECT nr_proposta AS proposta_key FROM tgov_propostas WHERE tecnico_id = $1 AND nr_proposta IS NOT NULL`
+        }
       ),
       activities AS (
         SELECT

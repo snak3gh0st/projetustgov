@@ -283,6 +283,8 @@ interface TGovDashboardClientProps {
   userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'projetista' | 'assistente_aprovacao' | 'coord_execucao' | 'assistente_execucao' | 'projetista_execucao'
   view?: 'pipeline' | 'dashboard'
   highlight?: string
+  /** Scroll to a section after sidecard opens (e.g. 'comments') */
+  scrollTo?: string
   /** Pre-set status filter (from pipeline card click) */
   initialStatus?: string
   /** Pre-set tab (from pipeline card click) */
@@ -293,7 +295,7 @@ interface TGovDashboardClientProps {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function TGovDashboardClient({ userRole, view = 'pipeline', highlight, initialStatus, initialTabParam }: TGovDashboardClientProps) {
+export default function TGovDashboardClient({ userRole, view = 'pipeline', highlight, scrollTo, initialStatus, initialTabParam }: TGovDashboardClientProps) {
   // Swap: default /tgov (menu "TGov Pipeline") shows BI content;
   // /tgov?view=dashboard (menu "TGov Dashboard") shows the pipeline table.
   const isDashboardView = view !== 'dashboard'
@@ -354,7 +356,14 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
     } else {
       setSelectedExecRow(row as TGovExecucaoTableRow)
     }
-  }, [highlight, data])
+    // Scroll to comments section if requested
+    if (scrollTo === 'comments') {
+      setTimeout(() => {
+        const el = document.getElementById('sidecard-comments')
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 400)
+    }
+  }, [highlight, scrollTo, data])
   const [addedInSession, setAddedInSession] = useState<Set<string>>(new Set())
 
   // ---------------------------------------------------------------------------
@@ -748,18 +757,21 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                 rows={data?.table.rows as TGovExecucaoTableRow[] | undefined}
                 loading={loading}
                 onRowClick={setSelectedExecRow}
+                selectedKey={selectedExecRow?.nrConvenio}
               />
             ) : activeTab === 'execucao' ? (
               <ExecucaoTable
                 rows={data?.table.rows as TGovExecucaoTableRow[] | undefined}
                 loading={loading}
                 onRowClick={setSelectedExecRow}
+                selectedKey={selectedExecRow?.nrConvenio}
               />
             ) : (
               <AprovacaoTable
                 rows={data?.table.rows as TGovAprovacaoTableRow[] | undefined}
                 loading={loading}
                 onRowClick={setSelectedAprovRow}
+                selectedKey={selectedAprovRow?.numeroProposta}
               />
             )}
           </div>
@@ -1125,8 +1137,10 @@ function AprovacaoTable({
   rows,
   loading,
   onRowClick,
+  selectedKey,
 }: {
   rows: TGovAprovacaoTableRow[] | undefined
+  selectedKey?: string | null
   loading: boolean
   onRowClick: (row: TGovAprovacaoTableRow) => void
 }) {
@@ -1164,10 +1178,12 @@ function AprovacaoTable({
         {loading ? (
           <SkeletonRows cols={8} />
         ) : sorted && sorted.length > 0 ? (
-          sorted.map((row, idx) => (
+          sorted.map((row, idx) => {
+            const isSelected = selectedKey === row.numeroProposta
+            return (
             <tr
               key={`${row.numeroProposta}-${idx}`}
-              className="hover:bg-blue-50/50 transition-colors cursor-pointer"
+              className={`transition-colors cursor-pointer ${isSelected ? 'bg-blue-50 border-l-2 border-l-blue-500' : 'hover:bg-blue-50/50'}`}
               onClick={() => {
                 if (row.hasNew && row.numeroProposta) {
                   fetch('/api/tgov/seen', {
@@ -1216,7 +1232,7 @@ function AprovacaoTable({
                 </svg>
               </td>
             </tr>
-          ))
+          )})
         ) : (
           <EmptyRow cols={8} />
         )}
@@ -1233,8 +1249,10 @@ function ExecucaoTable({
   rows,
   loading,
   onRowClick,
+  selectedKey,
 }: {
   rows: TGovExecucaoTableRow[] | undefined
+  selectedKey?: string | null
   loading: boolean
   onRowClick: (row: TGovExecucaoTableRow) => void
 }) {
@@ -1276,10 +1294,11 @@ function ExecucaoTable({
         ) : sorted && sorted.length > 0 ? (
           sorted.map((row, idx) => {
             const hasDesembolso = row.valorDesembolsado !== null && row.valorDesembolsado > 0
+            const isSelected = selectedKey === row.nrConvenio
             return (
               <tr
                 key={`${row.nrConvenio}-${idx}`}
-                className="hover:bg-blue-50/50 transition-colors cursor-pointer"
+                className={`transition-colors cursor-pointer ${isSelected ? 'bg-blue-50 border-l-2 border-l-blue-500' : 'hover:bg-blue-50/50'}`}
                 onClick={() => {
                   if (row.hasNew && row.numeroProposta) {
                     fetch('/api/tgov/seen', {
@@ -1509,13 +1528,15 @@ function ExecucaoSidecard({
           <TGovInteractionPanel itemKey={row.nrConvenio} tab="execucao" onStatusChange={() => {}} currentUserRole={currentUserRole} />
 
           {/* Comentários */}
-          <SidecardSection title="Comentários">
-            <CommentsThread
-              targetType="execucao"
-              targetKey={execKey}
-              currentUserRole={currentUserRole}
-            />
-          </SidecardSection>
+          <div id="sidecard-comments">
+            <SidecardSection title="Comentários">
+              <CommentsThread
+                targetType="execucao"
+                targetKey={execKey}
+                currentUserRole={currentUserRole}
+              />
+            </SidecardSection>
+          </div>
         </div>
       </div>
 
@@ -1645,13 +1666,15 @@ function AprovacaoSidecard({
           <TGovInteractionPanel itemKey={row.numeroProposta} tab="aprovacao" onStatusChange={() => {}} currentUserRole={currentUserRole} />
 
           {/* Comentários */}
-          <SidecardSection title="Comentários">
-            <CommentsThread
-              targetType="proposta"
-              targetKey={row.numeroProposta}
-              currentUserRole={currentUserRole}
-            />
-          </SidecardSection>
+          <div id="sidecard-comments">
+            <SidecardSection title="Comentários">
+              <CommentsThread
+                targetType="proposta"
+                targetKey={row.numeroProposta}
+                currentUserRole={currentUserRole}
+              />
+            </SidecardSection>
+          </div>
         </div>
       </div>
       <style jsx>{`
@@ -2168,31 +2191,42 @@ function EmptyRow({ cols }: { cols: number }) {
 
 function SituacaoBadge({ situacao }: { situacao: string }) {
   const colorMap: Record<string, string> = {
-    // 🔴 Ação urgente — vermelho/laranja
-    'Prestação de Contas em Complementação': 'bg-orange-200 text-orange-900 ring-1 ring-orange-400',
-    'Prestação de Contas Rejeitada': 'bg-red-200 text-red-900 ring-1 ring-red-400',
-    'Reprovado': 'bg-red-200 text-red-900',
-    'Inadimplente': 'bg-red-200 text-red-900 ring-1 ring-red-400',
-    // 🟡 Aguardando ação — amarelo/âmbar
-    'Aguardando Envio do Plano de Trabalho': 'bg-amber-100 text-amber-800',
-    'Aguardando Análise': 'bg-amber-100 text-amber-800',
-    'Aguardando Prestação de Contas': 'bg-amber-100 text-amber-800',
-    'Em Análise': 'bg-amber-100 text-amber-800',
-    'Prestação de Contas em Análise': 'bg-amber-100 text-amber-800',
-    'Prestação de Contas enviada para Análise': 'bg-amber-100 text-amber-800',
-    'Prestação de contas enviada para análise': 'bg-amber-100 text-amber-800',
-    // 🔵 Aprovado / em andamento — azul
-    'Aprovado': 'bg-blue-100 text-blue-700',
-    'Em Execução': 'bg-blue-100 text-blue-700',
-    'Em execução': 'bg-blue-100 text-blue-700',
-    // 🟢 Concluído com sucesso — verde
-    'Concluído': 'bg-emerald-100 text-emerald-700',
-    'Prestação de Contas Concluída': 'bg-emerald-100 text-emerald-700',
-    'Prestação de Contas Comprovada': 'bg-emerald-100 text-emerald-700',
-    'Prestação de Contas Aprovada': 'bg-emerald-100 text-emerald-700',
-    // ⚪ Neutro — cinza
-    'Cancelado': 'bg-gray-100 text-gray-600',
-    'Sem Situação': 'bg-gray-100 text-gray-500',
+    // ── Aprovação (Proposta / Plano de Trabalho) ──
+    'Proposta/Plano de Trabalho Cadastrados':                                    'bg-slate-100 text-slate-700',
+    'Proposta/Plano de Trabalho em Análise':                                     'bg-yellow-100 text-yellow-800',
+    'Proposta/Plano de Trabalho em Complementação':                              'bg-amber-100 text-amber-800',
+    'Proposta/Plano de Trabalho Enviado para Análise':                           'bg-orange-100 text-orange-800',
+    'Proposta/Plano de Trabalho Complementado em Análise':                       'bg-sky-100 text-sky-700',
+    'Proposta/Plano de Trabalho Complementado Enviado para Análise':             'bg-blue-100 text-blue-700',
+    'Proposta/Plano de Trabalho Aprovados':                                      'bg-green-100 text-green-700',
+    'Proposta Aprovada e Plano de Trabalho em Análise':                          'bg-indigo-100 text-indigo-700',
+    'Proposta Aprovada e Plano de Trabalho em Complementação':                   'bg-violet-100 text-violet-700',
+    'Proposta Aprovada e Plano de Trabalho Complementado Enviado para Análise':  'bg-purple-100 text-purple-700',
+    // ── Execução ──
+    'Cadastrada':                                'bg-slate-100 text-slate-700',
+    'Em Análise':                                'bg-yellow-100 text-yellow-800',
+    'Aprovada':                                  'bg-green-100 text-green-700',
+    'Aprovada / Aguardando Assinatura':          'bg-green-100 text-green-700',
+    'Aprovada / Aguardando Empenho':             'bg-green-100 text-green-700',
+    'Aguardando Assinatura do Convenio':         'bg-blue-100 text-blue-700',
+    'Em Execução':                               'bg-blue-100 text-blue-700',
+    'Em execução':                               'bg-blue-100 text-blue-700',
+    'Aguardando Prestação de Contas':            'bg-orange-100 text-orange-800',
+    'Prestação de Contas enviada para Análise':  'bg-orange-100 text-orange-700',
+    'Prestação de contas enviada para análise':  'bg-orange-100 text-orange-700',
+    'Prestação de Contas em Complementação':     'bg-amber-100 text-amber-800 ring-1 ring-amber-400',
+    'Prestação de Contas em Análise':            'bg-amber-100 text-amber-700',
+    'Prestação de Contas Comprovada':            'bg-teal-100 text-teal-700',
+    'Prestação de Contas Aprovada':              'bg-teal-100 text-teal-700',
+    'Prestação de Contas Concluída':             'bg-emerald-100 text-emerald-700',
+    'Prestação de Contas Rejeitada':             'bg-red-200 text-red-900 ring-1 ring-red-400',
+    // ── Genéricos ──
+    'Aprovado':         'bg-green-100 text-green-700',
+    'Concluído':        'bg-emerald-100 text-emerald-700',
+    'Reprovado':        'bg-red-200 text-red-900',
+    'Inadimplente':     'bg-red-200 text-red-900 ring-1 ring-red-400',
+    'Cancelado':        'bg-gray-100 text-gray-600',
+    'Sem Situação':     'bg-gray-100 text-gray-500',
   }
   const cls = colorMap[situacao] ?? 'bg-gray-100 text-gray-600'
   return (

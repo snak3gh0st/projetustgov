@@ -48,14 +48,15 @@ export default function NotificationBell() {
 
   const totalCount = (data?.count ?? 0) + (data?.stale?.length ?? 0)
 
-  const handleItemClick = async (propostaKey: string) => {
+  const handleItemClick = async (propostaKey: string, eventType?: string) => {
     await fetch('/api/tgov/seen', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ proposta_key: propostaKey }),
     }).catch(() => {})
     setOpen(false)
-    window.location.href = `/tgov?highlight=${encodeURIComponent(propostaKey)}`
+    const url = `/tgov?highlight=${encodeURIComponent(propostaKey)}${eventType === 'comment' ? '&scrollTo=comments' : ''}`
+    window.location.href = url
   }
 
   function timeAgo(dateStr: string): string {
@@ -100,7 +101,7 @@ export default function NotificationBell() {
                 {data?.items.map(item => (
                   <button
                     key={item.propostaKey}
-                    onClick={() => handleItemClick(item.propostaKey)}
+                    onClick={() => handleItemClick(item.propostaKey, item.eventType)}
                     className="w-full text-left px-3 py-2.5 hover:bg-blue-50 border-b border-gray-50 transition-colors"
                   >
                     <div className="flex items-center gap-2">
