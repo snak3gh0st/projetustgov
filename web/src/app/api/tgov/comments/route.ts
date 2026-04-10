@@ -106,6 +106,19 @@ export async function POST(request: NextRequest) {
       [session.userId, target_key],
     )
 
+    // Also register the assigned tecnico as participant so they always receive
+    // notifications when someone else (e.g. adm_produto) comments on their proposal
+    if (target_type === 'proposta') {
+      await query(
+        `INSERT INTO tgov_proposta_participants (user_id, proposta_key)
+         SELECT tecnico_id, $1
+         FROM tgov_propostas
+         WHERE nr_proposta = $1 AND tecnico_id IS NOT NULL AND tecnico_id <> $2
+         ON CONFLICT DO NOTHING`,
+        [target_key, session.userId],
+      )
+    }
+
     const authorRows = await query<{ nome: string | null }>(
       `SELECT nome FROM users WHERE id = $1`,
       [created.author_id],
