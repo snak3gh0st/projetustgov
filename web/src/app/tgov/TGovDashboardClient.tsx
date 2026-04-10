@@ -1154,7 +1154,7 @@ function AprovacaoTable({
           <th className="px-3 py-2.5 w-8"></th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-gray-50">
+      <tbody className="divide-y divide-gray-100">
         {loading ? (
           <SkeletonRows cols={7} />
         ) : sorted && sorted.length > 0 ? (
@@ -1248,7 +1248,7 @@ function ExecucaoTable({
           <th className="px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide w-8"></th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-gray-50">
+      <tbody className="divide-y divide-gray-100">
         {loading ? (
           <SkeletonRows cols={10} />
         ) : sorted && sorted.length > 0 ? (

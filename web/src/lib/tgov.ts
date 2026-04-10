@@ -130,6 +130,8 @@ export interface TGovAprovacaoTableRow extends TGovTableRow {
   dataFimVigencia: string | null
   tecnicoId?: string | null
   tecnicoNome?: string | null
+  /** Number of comments on this proposal (from tgov_comments). */
+  commentCount?: number
 }
 
 /** Extended row for the Execucao tab with financial and detail columns. */
