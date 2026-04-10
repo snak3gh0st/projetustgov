@@ -15,8 +15,12 @@ export async function GET() {
     const userId = session.userId
     const role = session.role
 
-    // adm_produto sees ALL TGov proposals; others see only linked ones
+    // adm_produto and coord/assistente roles see ALL TGov proposals (they have supervisory scope)
     const seeAll = role === 'adm_produto'
+      || role === 'coord_aprovacao'
+      || role === 'assistente_aprovacao'
+      || role === 'coord_execucao'
+      || role === 'assistente_execucao'
 
     const items = await query<{
       proposta_key: string
@@ -41,7 +45,9 @@ export async function GET() {
           ? `SELECT nr_proposta AS proposta_key FROM all_props`
           : `SELECT proposta_key FROM tgov_proposta_participants WHERE user_id = $1
              UNION
-             SELECT nr_proposta AS proposta_key FROM tgov_propostas WHERE tecnico_id = $1 AND nr_proposta IS NOT NULL`
+             SELECT nr_proposta AS proposta_key FROM tgov_propostas WHERE tecnico_id = $1 AND nr_proposta IS NOT NULL
+             UNION
+             SELECT nr_proposta AS proposta_key FROM propostas WHERE tecnico_id = $1 AND nr_proposta IS NOT NULL`
         }
       ),
       activities AS (

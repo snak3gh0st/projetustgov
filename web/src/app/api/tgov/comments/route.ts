@@ -107,12 +107,21 @@ export async function POST(request: NextRequest) {
     )
 
     // Also register the assigned tecnico as participant so they always receive
-    // notifications when someone else (e.g. adm_produto) comments on their proposal
+    // notifications when someone else (e.g. adm_produto) comments on their proposal.
+    // Check both storage tables: tgov_propostas (TGov-only) and propostas (CRM).
     if (target_type === 'proposta') {
       await query(
         `INSERT INTO tgov_proposta_participants (user_id, proposta_key)
          SELECT tecnico_id, $1
          FROM tgov_propostas
+         WHERE nr_proposta = $1 AND tecnico_id IS NOT NULL AND tecnico_id <> $2
+         ON CONFLICT DO NOTHING`,
+        [target_key, session.userId],
+      )
+      await query(
+        `INSERT INTO tgov_proposta_participants (user_id, proposta_key)
+         SELECT tecnico_id, $1
+         FROM propostas
          WHERE nr_proposta = $1 AND tecnico_id IS NOT NULL AND tecnico_id <> $2
          ON CONFLICT DO NOTHING`,
         [target_key, session.userId],
