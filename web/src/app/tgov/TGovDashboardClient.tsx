@@ -34,6 +34,8 @@ import {
   type TGovStatusBucket,
   APROVACAO_NR_PROPOSTAS,
   EXECUCAO_NR_PROPOSTAS,
+  APROVACAO_ONLY_ROLES,
+  EXECUCAO_ONLY_ROLES,
 } from '@/lib/tgov'
 
 // ---------------------------------------------------------------------------
@@ -291,7 +293,11 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
   // Swap: default /tgov (menu "TGov Pipeline") shows BI content;
   // /tgov?view=dashboard (menu "TGov Dashboard") shows the pipeline table.
   const isDashboardView = view !== 'dashboard'
-  const [activeTab, setActiveTab] = useState<TGovTab>(DEFAULT_TGOV_TAB)
+  // Execution roles should start on execucao tab
+  const initialTab: TGovTab = (EXECUCAO_ONLY_ROLES as readonly string[]).includes(userRole)
+    ? 'execucao'
+    : DEFAULT_TGOV_TAB
+  const [activeTab, setActiveTab] = useState<TGovTab>(initialTab)
   const [mainFilters, setMainFilters] = useState<TGovMainFilters>(DEFAULT_MAIN_FILTERS)
   const [tableFilters, setTableFilters] = useState<TGovTableFilters>(DEFAULT_TABLE_FILTERS)
   const [page, setPage] = useState(1)
@@ -365,7 +371,12 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
         params.set('page', String(pg))
         params.set('page_size', String(ps))
 
-        const res = await fetch(`/api/tgov/${tab}?${params.toString()}`)
+        // Map tab to API path and mode param
+        const apiPath = tab === 'prestacao_contas' ? 'execucao' : tab
+        const modeParam = tab === 'prestacao_contas' ? '&mode=prestacao_contas'
+                        : tab === 'execucao' ? '&mode=execucao'
+                        : ''
+        const res = await fetch(`/api/tgov/${apiPath}?${params.toString()}${modeParam}`)
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))
           throw new Error(body?.error ?? `HTTP ${res.status}`)
@@ -405,7 +416,9 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
   function handleTabSwitch(tab: TGovTab) {
     setActiveTab(tab)
     setTableFilters(DEFAULT_TABLE_FILTERS)
-    setMainFilters(tab === 'execucao' ? DEFAULT_EXECUCAO_MAIN_FILTERS : DEFAULT_MAIN_FILTERS)
+    setMainFilters(tab === 'execucao' || tab === 'prestacao_contas'
+      ? DEFAULT_EXECUCAO_MAIN_FILTERS
+      : DEFAULT_MAIN_FILTERS)
     setPage(1)
     setSelectedExecRow(null)
     setSelectedAprovRow(null)
@@ -422,7 +435,7 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
   }
 
   function handleResetFilters() {
-    setMainFilters(activeTab === 'execucao' ? DEFAULT_EXECUCAO_MAIN_FILTERS : DEFAULT_MAIN_FILTERS)
+    setMainFilters(activeTab === 'execucao' || activeTab === 'prestacao_contas' ? DEFAULT_EXECUCAO_MAIN_FILTERS : DEFAULT_MAIN_FILTERS)
     setTableFilters(DEFAULT_TABLE_FILTERS)
     setPage(1)
   }
@@ -469,7 +482,7 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
   // Render
   // ---------------------------------------------------------------------------
 
-  const tabLabel = activeTab === 'aprovacao' ? 'Aprovação' : 'Execução'
+  const tabLabel = activeTab === 'aprovacao' ? 'Aprovação' : activeTab === 'execucao' ? 'Execução' : 'Prestação de Contas'
   const totalPages = data?.table.totalPages ?? 1
   const totalRows = data?.table.totalRows ?? 0
 
@@ -521,24 +534,27 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
               Adicionar CNPJ / Proposta
             </button>
             <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
-              {(['aprovacao', 'execucao'] as TGovTab[]).filter(tab =>
-                // Aprovação-only roles cannot see execução tab
-                !((userRole === 'coord_aprovacao' || userRole === 'projetista' || userRole === 'assistente_aprovacao') && tab === 'execucao') &&
-                // Execução-only roles cannot see aprovação tab
-                !((userRole === 'coord_execucao' || userRole === 'assistente_execucao' || userRole === 'projetista_execucao') && tab === 'aprovacao')
-              ).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => handleTabSwitch(tab)}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                    activeTab === tab
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {tab === 'aprovacao' ? 'Aprovação' : 'Execução'}
-                </button>
-              ))}
+              {(['aprovacao', 'execucao', 'prestacao_contas'] as TGovTab[])
+                .filter(tab => {
+                  const isAprovacaoRole = (APROVACAO_ONLY_ROLES as readonly string[]).includes(userRole)
+                  const isExecucaoRole = (EXECUCAO_ONLY_ROLES as readonly string[]).includes(userRole)
+                  if (isAprovacaoRole && tab !== 'aprovacao') return false
+                  if (isExecucaoRole && tab === 'aprovacao') return false
+                  return true
+                })
+                .map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => handleTabSwitch(tab)}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      activeTab === tab
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {tab === 'aprovacao' ? 'Aprovação' : tab === 'execucao' ? 'Execução' : 'Prestação de Contas'}
+                  </button>
+                ))}
             </div>
           </div>
         </div>
@@ -622,7 +638,7 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                 )}
               </p>
               <p className="mt-1 text-sm text-gray-400">
-                {activeTab === 'aprovacao' ? 'propostas' : 'projetos'} com os filtros aplicados
+                {activeTab === 'aprovacao' ? 'propostas' : 'projetos/convênios'} com os filtros aplicados
               </p>
             </div>
           </div>
@@ -722,7 +738,13 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
           </div>
 
           <div className="overflow-x-auto">
-            {activeTab === 'execucao' ? (
+            {activeTab === 'prestacao_contas' ? (
+              <ExecucaoTable
+                rows={data?.table.rows as TGovExecucaoTableRow[] | undefined}
+                loading={loading}
+                onRowClick={setSelectedExecRow}
+              />
+            ) : activeTab === 'execucao' ? (
               <ExecucaoTable
                 rows={data?.table.rows as TGovExecucaoTableRow[] | undefined}
                 loading={loading}
@@ -780,7 +802,7 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
       </div>
 
       {/* BI Summary — only on dashboard view */}
-      {isDashboardView && activeTab === 'execucao' && !loading && data && data.total > 0 && (
+      {isDashboardView && (activeTab === 'execucao' || activeTab === 'prestacao_contas') && !loading && data && data.total > 0 && (
         <ExecucaoBISummary
           rows={data.table.rows as TGovExecucaoTableRow[]}
           total={data.total}
