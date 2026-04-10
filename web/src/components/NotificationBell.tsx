@@ -55,7 +55,7 @@ export default function NotificationBell() {
       body: JSON.stringify({ proposta_key: propostaKey }),
     }).catch(() => {})
     setOpen(false)
-    const url = `/tgov?highlight=${encodeURIComponent(propostaKey)}${eventType === 'comment' ? '&scrollTo=comments' : ''}`
+    const url = `/tgov?view=dashboard&highlight=${encodeURIComponent(propostaKey)}${eventType === 'comment' ? '&scrollTo=comments' : ''}`
     window.location.href = url
   }
 
