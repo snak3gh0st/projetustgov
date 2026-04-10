@@ -24,9 +24,21 @@ export async function GET() {
       event_type: string
       event_at: string
     }>(`
-      WITH linked AS (
+      WITH all_props AS (
+        SELECT nr_proposta, titulo, situacao_changed_at, tecnico_assigned_at
+        FROM tgov_propostas
+        WHERE nr_proposta IS NOT NULL
+        UNION ALL
+        SELECT nr_proposta, titulo, NULL::timestamptz AS situacao_changed_at, NULL::timestamptz AS tecnico_assigned_at
+        FROM propostas
+        WHERE nr_proposta IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM tgov_propostas tp2 WHERE tp2.nr_proposta = propostas.nr_proposta
+          )
+      ),
+      linked AS (
         ${seeAll
-          ? `SELECT nr_proposta AS proposta_key FROM tgov_propostas WHERE nr_proposta IS NOT NULL`
+          ? `SELECT nr_proposta AS proposta_key FROM all_props`
           : `SELECT proposta_key FROM tgov_proposta_participants WHERE user_id = $1
              UNION
              SELECT nr_proposta AS proposta_key FROM tgov_propostas WHERE tecnico_id = $1 AND nr_proposta IS NOT NULL`
@@ -53,7 +65,7 @@ export async function GET() {
           END AS event_type,
           tp.titulo
         FROM linked l
-        LEFT JOIN tgov_propostas tp ON tp.nr_proposta = l.proposta_key
+        LEFT JOIN all_props tp ON tp.nr_proposta = l.proposta_key
         LEFT JOIN tgov_proposta_seen s ON s.user_id = $1 AND s.proposta_key = l.proposta_key
         WHERE GREATEST(
           COALESCE((SELECT MAX(c.created_at) FROM tgov_comments c
