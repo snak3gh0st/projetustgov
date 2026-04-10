@@ -758,6 +758,7 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                 loading={loading}
                 onRowClick={(row) => setSelectedExecRow(prev => prev?.nrConvenio === row.nrConvenio ? null : row)}
                 selectedKey={selectedExecRow?.nrConvenio}
+                mode="prestacao_contas"
               />
             ) : activeTab === 'execucao' ? (
               <ExecucaoTable
@@ -765,6 +766,7 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                 loading={loading}
                 onRowClick={(row) => setSelectedExecRow(prev => prev?.nrConvenio === row.nrConvenio ? null : row)}
                 selectedKey={selectedExecRow?.nrConvenio}
+                mode="execucao"
               />
             ) : (
               <AprovacaoTable
@@ -1250,11 +1252,13 @@ function ExecucaoTable({
   loading,
   onRowClick,
   selectedKey,
+  mode = 'execucao',
 }: {
   rows: TGovExecucaoTableRow[] | undefined
   selectedKey?: string | null
   loading: boolean
   onRowClick: (row: TGovExecucaoTableRow) => void
+  mode?: 'execucao' | 'prestacao_contas'
 }) {
   const [sortCol, setSortCol] = useState('nrConvenio')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
@@ -1284,7 +1288,11 @@ function ExecucaoTable({
           <SortableTh label="Proponente" col="proponente" className="text-left px-3" {...thProps} />
           <SortableTh label="UF" col="uf" className="text-left px-3" {...thProps} />
           <SortableTh label="Situação" col="situacao" className="text-left px-3" {...thProps} />
-          <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Desembolso</th>
+          {mode === 'prestacao_contas' ? (
+            <SortableTh label="Prazo PC" col="diasPrestContas" className="text-left px-3 whitespace-nowrap" {...thProps} />
+          ) : (
+            <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Desembolso</th>
+          )}
           <th className="px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide w-8"></th>
         </tr>
       </thead>
@@ -1340,16 +1348,38 @@ function ExecucaoTable({
                 </td>
                 <td className="px-3 py-2.5 text-gray-500 text-xs">{row.uf || '—'}</td>
                 <td className="px-3 py-2.5"><SituacaoBadge situacao={row.situacao} /></td>
-                <td className="px-3 py-2.5 text-center">
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                    hasDesembolso
-                      ? 'bg-green-50 text-green-700'
-                      : 'bg-red-50 text-red-600'
-                  }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${hasDesembolso ? 'bg-green-500' : 'bg-red-400'}`} />
-                    {hasDesembolso ? 'Sim' : 'Não'}
-                  </span>
-                </td>
+                {mode === 'prestacao_contas' ? (() => {
+                  const limiteDate = row.diaLimitePrestContas ? new Date(row.diaLimitePrestContas + 'T00:00:00') : null
+                  const isAtraso = limiteDate ? limiteDate < new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00') : null
+                  return (
+                    <td className="px-3 py-2.5 text-center">
+                      {isAtraso === null ? (
+                        <span className="text-gray-400 text-xs">—</span>
+                      ) : isAtraso ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-600">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                          Atraso
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                          Em tempo
+                        </span>
+                      )}
+                    </td>
+                  )
+                })() : (
+                  <td className="px-3 py-2.5 text-center">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                      hasDesembolso
+                        ? 'bg-green-50 text-green-700'
+                        : 'bg-red-50 text-red-600'
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${hasDesembolso ? 'bg-green-500' : 'bg-red-400'}`} />
+                      {hasDesembolso ? 'Sim' : 'Não'}
+                    </span>
+                  </td>
+                )}
                 <td className="px-3 py-2.5 text-gray-300">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
