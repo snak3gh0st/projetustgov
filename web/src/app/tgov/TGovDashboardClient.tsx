@@ -303,8 +303,10 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
   const initialTab: TGovTab = initialTabParam
     ?? ((EXECUCAO_ONLY_ROLES as readonly string[]).includes(userRole) ? 'execucao' : DEFAULT_TGOV_TAB)
   const [activeTab, setActiveTab] = useState<TGovTab>(initialTab)
+  const isExecTab = initialTabParam === 'execucao' || initialTabParam === 'prestacao_contas'
+  const baseFilters = isExecTab ? DEFAULT_EXECUCAO_MAIN_FILTERS : DEFAULT_MAIN_FILTERS
   const [mainFilters, setMainFilters] = useState<TGovMainFilters>(
-    initialStatus ? { ...DEFAULT_MAIN_FILTERS, status: initialStatus } : DEFAULT_MAIN_FILTERS
+    initialStatus ? { ...baseFilters, status: initialStatus } : baseFilters
   )
   const [tableFilters, setTableFilters] = useState<TGovTableFilters>(DEFAULT_TABLE_FILTERS)
   const [page, setPage] = useState(1)
