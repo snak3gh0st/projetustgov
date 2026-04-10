@@ -5,11 +5,11 @@ import TGovDashboardClient from './TGovDashboardClient'
 export default async function TGovPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>
+  searchParams: Promise<{ view?: string; highlight?: string }>
 }) {
   const session = await verifySession()
 
-  // Role guard: gestor, admin, adm_produto, csm, coord_aprovacao, projetista and assistente_aprovacao may access /tgov
+  // Role guard: all TGov roles (aprovação + execução) may access /tgov
   if (
     session.role !== 'gestor' &&
     session.role !== 'admin' &&
@@ -17,13 +17,16 @@ export default async function TGovPage({
     session.role !== 'csm' &&
     session.role !== 'coord_aprovacao' &&
     session.role !== 'projetista' &&
-    session.role !== 'assistente_aprovacao'
+    session.role !== 'assistente_aprovacao' &&
+    session.role !== 'coord_execucao' &&
+    session.role !== 'assistente_execucao' &&
+    session.role !== 'projetista_execucao'
   ) {
     redirect('/sem-permissao')
   }
 
-  const { view } = await searchParams
+  const { view, highlight } = await searchParams
   const resolvedView = view === 'dashboard' ? 'dashboard' : 'pipeline'
 
-  return <TGovDashboardClient userRole={session.role} view={resolvedView} />
+  return <TGovDashboardClient userRole={session.role} view={resolvedView} highlight={highlight} />
 }

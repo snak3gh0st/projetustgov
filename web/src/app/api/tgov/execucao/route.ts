@@ -192,6 +192,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    // Roles de Aprovação não devem acessar a API de execução
+    const APROVACAO_ONLY = ['coord_aprovacao', 'assistente_aprovacao', 'projetista']
+    if (APROVACAO_ONLY.includes(session.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     // Garante existência das tabelas TGov-only (defensivo, idempotente)
     await ensureTgovTables()
 
@@ -244,6 +250,12 @@ export async function GET(request: NextRequest) {
         SELECT 1 FROM vendedor_projetos vp
         WHERE REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = pe.cnpj
       )`)
+    }
+
+    // projetista_execucao can only see records assigned to them via tecnico_id
+    if (session.role === 'projetista_execucao') {
+      params.push(session.userId)
+      mainConditions.push(`pe.tecnico_id = $${params.length}::uuid`)
     }
 
     const mainWhere = mainConditions.length > 0 ? `WHERE ${mainConditions.join(' AND ')}` : ''

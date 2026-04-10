@@ -127,6 +127,7 @@ function TGovInteractionPanel({
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const isProjetista = currentUserRole === 'projetista'
+  const isAssistenteAprovacao = currentUserRole === 'assistente_aprovacao'
 
   useEffect(() => {
     let cancelled = false
@@ -277,15 +278,16 @@ interface CnpjSearchResult {
 // ---------------------------------------------------------------------------
 
 interface TGovDashboardClientProps {
-  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'projetista' | 'assistente_aprovacao'
+  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'projetista' | 'assistente_aprovacao' | 'coord_execucao' | 'assistente_execucao' | 'projetista_execucao'
   view?: 'pipeline' | 'dashboard'
+  highlight?: string
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export default function TGovDashboardClient({ userRole, view = 'pipeline' }: TGovDashboardClientProps) {
+export default function TGovDashboardClient({ userRole, view = 'pipeline', highlight }: TGovDashboardClientProps) {
   // Swap: default /tgov (menu "TGov Pipeline") shows BI content;
   // /tgov?view=dashboard (menu "TGov Dashboard") shows the pipeline table.
   const isDashboardView = view !== 'dashboard'
@@ -328,6 +330,20 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline' }: TGo
   // Track which nr_propostas are already in whitelist (for duplicate indication)
   const [whitelistNrPropostas, setWhitelistNrPropostas] = useState<Set<string>>(new Set())
   // Track proposals added in this modal session (optimistic UI)
+
+  // Highlight: open sidecard when navigating from notification
+  useEffect(() => {
+    if (!highlight || !data) return
+    // Try finding in current tab data
+    const arr = (data as any).aprovacao ?? (data as any).execucao ?? []
+    const row = arr.find((r: any) => r.nrProposta === highlight)
+    if (!row) return
+    if ('situacao' in row) {
+      setSelectedAprovRow(row as TGovAprovacaoTableRow)
+    } else {
+      setSelectedExecRow(row as TGovExecucaoTableRow)
+    }
+  }, [highlight, data])
   const [addedInSession, setAddedInSession] = useState<Set<string>>(new Set())
 
   // ---------------------------------------------------------------------------
@@ -505,7 +521,12 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline' }: TGo
               Adicionar CNPJ / Proposta
             </button>
             <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
-              {(['aprovacao', 'execucao'] as TGovTab[]).filter(tab => !((userRole === 'coord_aprovacao' || userRole === 'projetista' || userRole === 'assistente_aprovacao') && tab === 'execucao')).map((tab) => (
+              {(['aprovacao', 'execucao'] as TGovTab[]).filter(tab =>
+                // Aprovação-only roles cannot see execução tab
+                !((userRole === 'coord_aprovacao' || userRole === 'projetista' || userRole === 'assistente_aprovacao') && tab === 'execucao') &&
+                // Execução-only roles cannot see aprovação tab
+                !((userRole === 'coord_execucao' || userRole === 'assistente_execucao' || userRole === 'projetista_execucao') && tab === 'aprovacao')
+              ).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => handleTabSwitch(tab)}
