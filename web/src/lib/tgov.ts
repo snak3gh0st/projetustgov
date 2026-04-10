@@ -14,6 +14,10 @@
 // Constants
 // ---------------------------------------------------------------------------
 
+/** Role groups for tab isolation: aprovação roles cannot access execução tab and vice-versa. */
+export const APROVACAO_ONLY_ROLES = ['coord_aprovacao', 'assistente_aprovacao', 'projetista'] as const
+export const EXECUCAO_ONLY_ROLES = ['coord_execucao', 'assistente_execucao', 'projetista_execucao'] as const
+
 /** Default number of rows per page in the TGov detail table. */
 export const TGOV_PAGE_SIZE = 25
 

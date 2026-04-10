@@ -4,24 +4,28 @@ import { auth } from '@/lib/auth'
 import { query } from '@/lib/db'
 import { redirect } from 'next/navigation'
 
-export type Role = 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista'
+export type Role = 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'projetista_execucao'
 
 /** Who can create/manage users of which roles. Single source of truth. */
 export const ROLE_CAN_CREATE: Partial<Record<Role, Role[]>> = {
-  gestor:               ['admin', 'vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista'],
-  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista'],
-  adm_produto:          ['coord_aprovacao', 'assistente_aprovacao', 'projetista'],
+  gestor:               ['admin', 'vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'projetista_execucao'],
+  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'projetista_execucao'],
+  adm_produto:          ['coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'projetista_execucao'],
   coord_aprovacao:      ['assistente_aprovacao', 'projetista'],
   assistente_aprovacao: ['projetista'],
+  coord_execucao:       ['assistente_execucao', 'projetista_execucao'],
+  assistente_execucao:  ['projetista_execucao'],
 }
 
 /** Same as create - who can delete users of which roles. */
 export const ROLE_CAN_DELETE: Partial<Record<Role, Role[]>> = {
-  gestor:               ['admin', 'vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista'],
-  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista'],
-  adm_produto:          ['coord_aprovacao', 'assistente_aprovacao', 'projetista'],
+  gestor:               ['admin', 'vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'projetista_execucao'],
+  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'projetista_execucao'],
+  adm_produto:          ['coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'projetista_execucao'],
   coord_aprovacao:      ['assistente_aprovacao', 'projetista'],
-  assistente_aprovacao:  [],
+  assistente_aprovacao: [],
+  coord_execucao:       ['assistente_execucao', 'projetista_execucao'],
+  assistente_execucao:  [],
 }
 
 export function canManageRole(actorRole: Role, targetRole: Role): boolean {
@@ -80,17 +84,23 @@ export function canModifyData(role: string): boolean {
 
 /** TGov reads (aprovação, execução, busca-cnpj, whitelist GET, interaction GET, comments GET). */
 export function canReadTgov(role: string | undefined): boolean {
-  return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'csm' || role === 'coord_aprovacao' || role === 'assistente_aprovacao' || role === 'projetista'
+  return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'csm'
+      || role === 'coord_aprovacao' || role === 'assistente_aprovacao' || role === 'projetista'
+      || role === 'coord_execucao' || role === 'assistente_execucao' || role === 'projetista_execucao'
 }
 
 /** TGov mutations privilegiadas (whitelist write, interaction PATCH, tecnico assignment). NÃO inclui CSM nem projetista. */
 export function canWriteTgov(role: string | undefined): boolean {
-  return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'coord_aprovacao' || role === 'assistente_aprovacao'
+  return role === 'gestor' || role === 'admin' || role === 'adm_produto'
+      || role === 'coord_aprovacao' || role === 'assistente_aprovacao'
+      || role === 'coord_execucao' || role === 'assistente_execucao'
 }
 
 /** Quem pode escrever comentários TGov (inclui CSM, coord_aprovacao, projetista). */
 export function canCommentTgov(role: string | undefined): boolean {
-  return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'csm' || role === 'coord_aprovacao' || role === 'assistente_aprovacao' || role === 'projetista'
+  return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'csm'
+      || role === 'coord_aprovacao' || role === 'assistente_aprovacao' || role === 'projetista'
+      || role === 'coord_execucao' || role === 'assistente_execucao' || role === 'projetista_execucao'
 }
 
 // Helper: check if user has admin-level access (full control)
