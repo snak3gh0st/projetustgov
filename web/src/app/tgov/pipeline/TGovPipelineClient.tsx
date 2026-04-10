@@ -66,9 +66,9 @@ function getApiUrl(tab: PipelineTab): string {
 
 function getDashboardUrl(tab: PipelineTab, situacao: string): string {
   const s = encodeURIComponent(situacao)
-  if (tab === 'aprovacao') return `/tgov?status=${s}`
-  if (tab === 'execucao') return `/tgov?tab=execucao&status=${s}`
-  return `/tgov?tab=prestacao_contas&status=${s}`
+  if (tab === 'aprovacao') return `/tgov?view=dashboard&status=${s}`
+  if (tab === 'execucao') return `/tgov?view=dashboard&tab=execucao&status=${s}`
+  return `/tgov?view=dashboard&tab=prestacao_contas&status=${s}`
 }
 
 function getVisibleTabs(userRole: string): PipelineTab[] {

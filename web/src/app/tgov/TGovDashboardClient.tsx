@@ -283,22 +283,27 @@ interface TGovDashboardClientProps {
   userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'projetista' | 'assistente_aprovacao' | 'coord_execucao' | 'assistente_execucao' | 'projetista_execucao'
   view?: 'pipeline' | 'dashboard'
   highlight?: string
+  /** Pre-set status filter (from pipeline card click) */
+  initialStatus?: string
+  /** Pre-set tab (from pipeline card click) */
+  initialTabParam?: TGovTab
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export default function TGovDashboardClient({ userRole, view = 'pipeline', highlight }: TGovDashboardClientProps) {
+export default function TGovDashboardClient({ userRole, view = 'pipeline', highlight, initialStatus, initialTabParam }: TGovDashboardClientProps) {
   // Swap: default /tgov (menu "TGov Pipeline") shows BI content;
   // /tgov?view=dashboard (menu "TGov Dashboard") shows the pipeline table.
   const isDashboardView = view !== 'dashboard'
-  // Execution roles should start on execucao tab
-  const initialTab: TGovTab = (EXECUCAO_ONLY_ROLES as readonly string[]).includes(userRole)
-    ? 'execucao'
-    : DEFAULT_TGOV_TAB
+  // Tab priority: URL param > role-based default
+  const initialTab: TGovTab = initialTabParam
+    ?? ((EXECUCAO_ONLY_ROLES as readonly string[]).includes(userRole) ? 'execucao' : DEFAULT_TGOV_TAB)
   const [activeTab, setActiveTab] = useState<TGovTab>(initialTab)
-  const [mainFilters, setMainFilters] = useState<TGovMainFilters>(DEFAULT_MAIN_FILTERS)
+  const [mainFilters, setMainFilters] = useState<TGovMainFilters>(
+    initialStatus ? { ...DEFAULT_MAIN_FILTERS, status: initialStatus } : DEFAULT_MAIN_FILTERS
+  )
   const [tableFilters, setTableFilters] = useState<TGovTableFilters>(DEFAULT_TABLE_FILTERS)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(TGOV_PAGE_SIZE)
