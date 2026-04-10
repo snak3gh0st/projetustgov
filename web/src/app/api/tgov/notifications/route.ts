@@ -29,13 +29,14 @@ export async function GET() {
       event_at: string
       comment_author_nome: string | null
       comment_body: string | null
+      tab: string | null
     }>(`
       WITH all_props AS (
-        SELECT nr_proposta, titulo, situacao_changed_at, tecnico_assigned_at
+        SELECT nr_proposta, titulo, situacao_changed_at, tecnico_assigned_at, 'execucao' AS tab
         FROM tgov_propostas
         WHERE nr_proposta IS NOT NULL
         UNION ALL
-        SELECT nr_proposta, titulo, NULL::timestamptz AS situacao_changed_at, NULL::timestamptz AS tecnico_assigned_at
+        SELECT nr_proposta, titulo, NULL::timestamptz AS situacao_changed_at, NULL::timestamptz AS tecnico_assigned_at, 'aprovacao' AS tab
         FROM propostas
         WHERE nr_proposta IS NOT NULL
           AND NOT EXISTS (
@@ -72,6 +73,7 @@ export async function GET() {
             ELSE 'assignment'
           END AS event_type,
           tp.titulo,
+          tp.tab,
           (SELECT u.nome FROM tgov_comments c
            LEFT JOIN users u ON u.id = c.author_id
            WHERE c.target_type = 'proposta' AND c.target_key = l.proposta_key
@@ -89,7 +91,7 @@ export async function GET() {
           COALESCE(tp.tecnico_assigned_at, '1970-01-01'::timestamptz)
         ) > COALESCE(s.seen_at, '1970-01-01'::timestamptz)
       )
-      SELECT proposta_key, titulo, event_type, latest_at::text AS event_at, comment_author_nome, comment_body
+      SELECT proposta_key, titulo, event_type, latest_at::text AS event_at, comment_author_nome, comment_body, tab
       FROM activities
       WHERE latest_at IS NOT NULL
       ORDER BY latest_at DESC
@@ -158,6 +160,7 @@ export async function GET() {
         eventAt: r.event_at,
         commentAuthorNome: r.comment_author_nome ?? null,
         commentBody: r.comment_body ? r.comment_body.slice(0, 120) : null,
+        tab: r.tab ?? null,
       })),
       stale: stale.map(r => ({
         propostaKey: r.proposta_key,

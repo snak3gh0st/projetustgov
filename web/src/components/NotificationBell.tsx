@@ -9,6 +9,7 @@ interface NotificationItem {
   eventAt: string
   commentAuthorNome: string | null
   commentBody: string | null
+  tab: string | null
 }
 
 interface StaleItem {
@@ -50,14 +51,15 @@ export default function NotificationBell() {
 
   const totalCount = (data?.count ?? 0) + (data?.stale?.length ?? 0)
 
-  const handleItemClick = async (propostaKey: string, eventType?: string) => {
+  const handleItemClick = async (propostaKey: string, eventType?: string, tab?: string | null) => {
     await fetch('/api/tgov/seen', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ proposta_key: propostaKey }),
     }).catch(() => {})
     setOpen(false)
-    const url = `/tgov?view=dashboard&highlight=${encodeURIComponent(propostaKey)}${eventType === 'comment' ? '&scrollTo=comments' : ''}`
+    const tabParam = tab ? `&tab=${encodeURIComponent(tab)}` : ''
+    const url = `/tgov?view=dashboard&highlight=${encodeURIComponent(propostaKey)}${tabParam}${eventType === 'comment' ? '&scrollTo=comments' : ''}`
     window.location.href = url
   }
 
@@ -103,7 +105,7 @@ export default function NotificationBell() {
                 {data?.items.map(item => (
                   <button
                     key={item.propostaKey}
-                    onClick={() => handleItemClick(item.propostaKey, item.eventType)}
+                    onClick={() => handleItemClick(item.propostaKey, item.eventType, item.tab)}
                     className="w-full text-left px-3 py-2.5 hover:bg-blue-50 border-b border-gray-50 transition-colors"
                   >
                     <div className="flex items-start gap-2">

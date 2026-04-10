@@ -346,19 +346,26 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
   const [whitelistNrPropostas, setWhitelistNrPropostas] = useState<Set<string>>(new Set())
   // Track proposals added in this modal session (optimistic UI)
 
-  // Highlight: open sidecard when navigating from notification
+  // Highlight: when navigating from a notification, pre-filter table so the
+  // proposal is always on page 1 regardless of pagination.
+  useEffect(() => {
+    if (!highlight) return
+    setTableFilters(prev => ({ ...prev, numeroProposta: highlight }))
+    setPage(1)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlight])
+
+  // Highlight: open sidecard once data loads with the filtered proposal
   useEffect(() => {
     if (!highlight || !data) return
-    // Try finding in current tab data
-    const arr = (data as any).aprovacao ?? (data as any).execucao ?? []
-    const row = arr.find((r: any) => r.nrProposta === highlight)
+    const rows = data.table?.rows ?? []
+    const row = rows.find((r: any) => r.numeroProposta === highlight)
     if (!row) return
-    if ('situacao' in row) {
-      setSelectedAprovRow(row as TGovAprovacaoTableRow)
-    } else {
+    if ('nrConvenio' in row) {
       setSelectedExecRow(row as TGovExecucaoTableRow)
+    } else {
+      setSelectedAprovRow(row as TGovAprovacaoTableRow)
     }
-    // Scroll to comments section if requested
     if (scrollTo === 'comments') {
       setTimeout(() => {
         const el = document.getElementById('sidecard-comments')
