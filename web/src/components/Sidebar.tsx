@@ -71,9 +71,9 @@ export default function Sidebar({ user }: SidebarProps) {
   const navItems = (user.role === 'gestor' || user.role === 'admin')
     ? [
         ...BASE_WITH_EXECUCAO,
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
         { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
         { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
         { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
         { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
         { href: '/cadastro-vendedor', label: 'Usuarios', icon: 'vendedores' },
@@ -88,56 +88,56 @@ export default function Sidebar({ user }: SidebarProps) {
     ? BASE_NAV_ITEMS.filter((item) => item.href !== '/monitorar')
     : user.role === 'adm_produto'
     ? [
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
         { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
         { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
         { href: '/cadastro-vendedor', label: 'Usuarios TGOV', icon: 'vendedores' },
       ]
     : user.role === 'csm'
     ? [
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
         { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
         { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
       ]
     : user.role === 'coord_aprovacao'
     ? [
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
         { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
         { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
         { href: '/cadastro-vendedor', label: 'Usuarios TGov', icon: 'vendedores' },
       ]
     : user.role === 'assistente_aprovacao'
     ? [
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
         { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
         { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
         { href: '/cadastro-vendedor', label: 'Usuarios TGov', icon: 'vendedores' },
       ]
     : user.role === 'projetista'
     ? [
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
         { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
         { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
       ]
     : user.role === 'coord_execucao'
     ? [
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
         { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
         { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
         { href: '/cadastro-vendedor', label: 'Usuarios TGov', icon: 'vendedores' },
       ]
     : user.role === 'assistente_execucao'
     ? [
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
         { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
         { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
         { href: '/cadastro-vendedor', label: 'Usuarios TGov', icon: 'vendedores' },
       ]
     : user.role === 'projetista_execucao'
     ? [
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
         { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
         { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
       ]
     : BASE_WITH_EXECUCAO
 
