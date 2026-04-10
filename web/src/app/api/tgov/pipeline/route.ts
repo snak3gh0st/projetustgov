@@ -31,31 +31,33 @@ export async function GET(request: NextRequest) {
 
     if (tab === 'aprovacao') {
       // ---- Aprovação: propostas whitelist ----
+      // Materialize the whitelist first (small set), then join — avoids correlated EXISTS per row
       const staticClause = buildNrPropostaWhereClause('p.nr_proposta', params, APROVACAO_NR_PROPOSTAS)
       byStatusRows = await query<{ situacao: string; cnt: number }>(
-        `WITH all_propostas AS NOT MATERIALIZED (
-          SELECT p.nr_proposta, p.situacao, p.proponente_cnpj
-          FROM propostas p
-          UNION ALL
-          SELECT p.nr_proposta, p.situacao, p.proponente_cnpj
-          FROM tgov_propostas p
-          WHERE NOT EXISTS (
-            SELECT 1 FROM propostas crm WHERE crm.transfer_gov_id = p.transfer_gov_id
+        `WITH
+          wl AS MATERIALIZED (
+            SELECT cnpj, nr_proposta FROM tgov_whitelist
+            WHERE tab IN ('ambos', 'aprovacao')
+          ),
+          matched AS MATERIALIZED (
+            SELECT p.situacao
+            FROM propostas p
+            WHERE ${staticClause}
+               OR EXISTS (SELECT 1 FROM wl WHERE wl.cnpj = p.proponente_cnpj OR wl.nr_proposta = p.nr_proposta)
+            UNION ALL
+            SELECT p.situacao
+            FROM tgov_propostas p
+            WHERE (
+              ${staticClause.replace(/p\.nr_proposta/g, 'p.nr_proposta')}
+              OR EXISTS (SELECT 1 FROM wl WHERE wl.cnpj = p.proponente_cnpj OR wl.nr_proposta = p.nr_proposta)
+            )
+            AND NOT EXISTS (SELECT 1 FROM propostas crm WHERE crm.transfer_gov_id = p.transfer_gov_id)
           )
-        )
         SELECT
-          COALESCE(p.situacao, 'Sem Situação') AS situacao,
+          COALESCE(situacao, 'Sem Situação') AS situacao,
           COUNT(*)::int AS cnt
-        FROM all_propostas p
-        WHERE (
-          ${staticClause}
-          OR EXISTS (
-            SELECT 1 FROM tgov_whitelist tw
-            WHERE (tw.cnpj = p.proponente_cnpj OR tw.nr_proposta = p.nr_proposta)
-              AND tw.tab IN ('ambos','aprovacao')
-          )
-        )
-        GROUP BY p.situacao
+        FROM matched
+        GROUP BY situacao
         ORDER BY COUNT(*) DESC`,
         params
       )

@@ -1,8 +1,12 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { TGOV_STATUS_ORDER, tgovStatusSortKey, APROVACAO_ONLY_ROLES, EXECUCAO_ONLY_ROLES } from '@/lib/tgov'
+
+// Module-level: survives React StrictMode unmount/remount cycles
+const _inflight = new Set<PipelineTab>()
+const _cache = new Map<PipelineTab, { counts: StatusCounts; total: number }>()
 
 const TGOV_PIPELINE_CONFIG: Record<string, { bar: string; color: string }> = {
   'Cadastrada':                                          { bar: 'bg-gray-300',    color: 'text-gray-500'   },
@@ -122,16 +126,15 @@ export default function TGovPipelineClient({ userRole }: { userRole: string }) {
   const router = useRouter()
   const visibleTabs = getVisibleTabs(userRole)
   const [activeTab, setActiveTab] = useState<PipelineTab>(visibleTabs[0])
-  const [tabData, setTabData] = useState<Record<PipelineTab, { counts: StatusCounts; total: number; loaded: boolean; error: string | null }>>({
-    aprovacao:        { counts: {}, total: 0, loaded: false, error: null },
-    execucao:         { counts: {}, total: 0, loaded: false, error: null },
-    prestacao_contas: { counts: {}, total: 0, loaded: false, error: null },
-  })
-  const inFlightRef = useRef<Set<PipelineTab>>(new Set())
+  const [tabData, setTabData] = useState<Record<PipelineTab, { counts: StatusCounts; total: number; loaded: boolean; error: string | null }>>(() => ({
+    aprovacao:        _cache.has('aprovacao')        ? { ..._cache.get('aprovacao')!,        loaded: true,  error: null } : { counts: {}, total: 0, loaded: false, error: null },
+    execucao:         _cache.has('execucao')         ? { ..._cache.get('execucao')!,         loaded: true,  error: null } : { counts: {}, total: 0, loaded: false, error: null },
+    prestacao_contas: _cache.has('prestacao_contas') ? { ..._cache.get('prestacao_contas')!, loaded: true,  error: null } : { counts: {}, total: 0, loaded: false, error: null },
+  }))
 
   const loadTab = useCallback(async (tab: PipelineTab) => {
-    if (tabData[tab].loaded || inFlightRef.current.has(tab)) return
-    inFlightRef.current.add(tab)
+    if (tabData[tab].loaded || _inflight.has(tab)) return
+    _inflight.add(tab)
     try {
       const res = await fetch(getApiUrl(tab))
       if (!res.ok) throw new Error('Falha ao carregar dados')
@@ -142,6 +145,7 @@ export default function TGovPipelineClient({ userRole }: { userRole: string }) {
         statusMap[b.status] = b.count
         tot += b.count
       })
+      _cache.set(tab, { counts: statusMap, total: tot })
       setTabData(prev => ({
         ...prev,
         [tab]: { counts: statusMap, total: tot, loaded: true, error: null },
@@ -152,7 +156,7 @@ export default function TGovPipelineClient({ userRole }: { userRole: string }) {
         [tab]: { ...prev[tab], loaded: true, error: e instanceof Error ? e.message : 'Erro' },
       }))
     } finally {
-      inFlightRef.current.delete(tab)
+      _inflight.delete(tab)
     }
   }, [tabData])
 
