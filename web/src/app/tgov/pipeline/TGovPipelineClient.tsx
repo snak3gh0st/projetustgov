@@ -24,10 +24,19 @@ const STATUS_CFG: Record<string, { bar: string; color: string; label: string }> 
   'Proposta/Plano de Trabalho Complementado em Análise':                       { bar: 'bg-sky-500',     color: 'text-sky-700',     label: 'Compl. em Análise' },
   'Proposta/Plano de Trabalho Complementado Enviado para Análise':             { bar: 'bg-blue-500',    color: 'text-blue-700',    label: 'Compl. Enviado' },
   'Proposta/Plano de Trabalho Aprovados':                                      { bar: 'bg-green-500',   color: 'text-green-700',   label: 'Aprovados' },
+  'Proposta/Plano de Trabalho Rejeitados':                                     { bar: 'bg-red-500',     color: 'text-red-700',     label: 'Rejeitados' },
+  'Proposta/Plano de Trabalho Rejeitados por Impedimento técnico':             { bar: 'bg-red-700',     color: 'text-red-800',     label: 'Rejeit. Impedimento' },
   'Proposta Aprovada e Plano de Trabalho em Análise':                          { bar: 'bg-indigo-500',  color: 'text-indigo-700',  label: 'Aprov. em Análise' },
   'Proposta Aprovada e Plano de Trabalho em Complementação':                   { bar: 'bg-violet-500',  color: 'text-violet-700',  label: 'Aprov. em Compl.' },
   'Proposta Aprovada e Plano de Trabalho Complementado Enviado para Análise':  { bar: 'bg-purple-500',  color: 'text-purple-700',  label: 'Aprov. Compl. Env.' },
-  // Generic aprovação (older format)
+  'Proposta Aprovada e Plano de Trabalho Complementado em Análise':            { bar: 'bg-purple-400',  color: 'text-purple-600',  label: 'Aprov. Compl. Análise' },
+  'Proposta Aprovada/Aguardando Plano de Trabalho':                            { bar: 'bg-lime-500',    color: 'text-lime-700',    label: 'Aprov. Aguard. PT' },
+  'Proposta Eliminada em Chamamento Público':                                  { bar: 'bg-rose-500',    color: 'text-rose-700',    label: 'Eliminada CP' },
+  // Análise preliminar
+  'Enviada para Análise Preliminar':           { bar: 'bg-yellow-400',  color: 'text-yellow-600',  label: 'Análise Preliminar' },
+  'Classificada em Análise Preliminar':        { bar: 'bg-teal-400',    color: 'text-teal-600',    label: 'Class. Preliminar' },
+  'Eliminada em Análise Preliminar':           { bar: 'bg-rose-400',    color: 'text-rose-600',    label: 'Elim. Preliminar' },
+  // Generic aprovação (older/misc format)
   'Cadastrada':                                { bar: 'bg-slate-400',   color: 'text-slate-600',   label: 'Cadastrada' },
   'Em Análise':                               { bar: 'bg-yellow-500',  color: 'text-yellow-700',  label: 'Em Análise' },
   'Aprovada':                                  { bar: 'bg-green-500',   color: 'text-green-600',   label: 'Aprovada' },
@@ -35,11 +44,8 @@ const STATUS_CFG: Record<string, { bar: string; color: string; label: string }> 
   'Aprovada / Aguardando Assinatura':          { bar: 'bg-green-400',   color: 'text-green-600',   label: 'Aguard. Assinatura' },
   'Aprovada / Aguardando Empenho':             { bar: 'bg-green-400',   color: 'text-green-600',   label: 'Aguard. Empenho' },
   'Aguardando Assinatura do Convenio':         { bar: 'bg-blue-400',    color: 'text-blue-600',    label: 'Assin. Convênio' },
-  'Aguardando Análise':                        { bar: 'bg-yellow-400',  color: 'text-yellow-600',  label: 'Aguard. Análise' },
-  'Aguardando Envio do Plano de Trabalho':     { bar: 'bg-orange-400',  color: 'text-orange-600',  label: 'Aguard. PT' },
-  'Reprovado':                                 { bar: 'bg-red-500',     color: 'text-red-700',     label: 'Reprovado' },
+  'Regularizada':                              { bar: 'bg-blue-500',    color: 'text-blue-700',    label: 'Regularizada' },
   'Cancelado':                                 { bar: 'bg-gray-500',    color: 'text-gray-700',    label: 'Cancelado' },
-  'Concluído':                                 { bar: 'bg-emerald-500', color: 'text-emerald-700', label: 'Concluído' },
   'Inadimplente':                              { bar: 'bg-red-600',     color: 'text-red-800',     label: 'Inadimplente' },
   // ── Execução stage ──
   'Em Execução':                               { bar: 'bg-blue-500',    color: 'text-blue-700',    label: 'Em Execução' },
@@ -51,9 +57,12 @@ const STATUS_CFG: Record<string, { bar: string; color: string; label: string }> 
   'Prestação de Contas em Complementação':     { bar: 'bg-amber-500',   color: 'text-amber-700',   label: 'PC Complementação' },
   'Prestação de Contas em Análise':            { bar: 'bg-amber-400',   color: 'text-amber-600',   label: 'PC em Análise' },
   'Prestação de Contas Comprovada':            { bar: 'bg-teal-500',    color: 'text-teal-700',    label: 'PC Comprovada' },
+  'Prestação de Contas Comprovada em Análise': { bar: 'bg-teal-400',    color: 'text-teal-600',    label: 'PC Comprov. Análise' },
   'Prestação de Contas Aprovada':              { bar: 'bg-teal-600',    color: 'text-teal-700',    label: 'PC Aprovada' },
+  'Prestação de Contas Aprovada com Ressalvas':{ bar: 'bg-teal-300',    color: 'text-teal-600',    label: 'PC Aprov. Ressalvas' },
   'Prestação de Contas Concluída':             { bar: 'bg-emerald-600', color: 'text-emerald-700', label: 'PC Concluída' },
   'Prestação de Contas Rejeitada':             { bar: 'bg-red-500',     color: 'text-red-600',     label: 'PC Rejeitada' },
+  'Prestação de Contas Iniciada Por Antecipação': { bar: 'bg-orange-300', color: 'text-orange-600', label: 'PC Antecipada' },
 }
 
 function getCfg(situacao: string) {
