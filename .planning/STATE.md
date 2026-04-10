@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — TGov Dashboard — In Progress
 status: executing
-stopped_at: Completed 21-02 — Sidebar TGov BI/Pipeline rename + /tgov/pipeline kanban
-last_updated: "2026-04-10T00:10:00Z"
-last_activity: 2026-04-10 -- Plan 21-02 complete (Sidebar restructuring + pipeline kanban page)
+stopped_at: Completed 21-03 (Execucao/PC tab split + RBAC isolation)
+last_updated: "2026-04-10T14:28:00Z"
+last_activity: 2026-04-10 -- Plan 21-03 complete (Prestacao de Contas tab split + three-tab RBAC)
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State: PROJETUS — v5.0 TGov Dashboard
@@ -60,6 +60,7 @@ Progress (v5.0): [███░░░░░░░] 100%
 | 21-tgov-ajustes-0904 | 02 | ~10 min | 2 | 3 |
 
 *Updated after each plan completion*
+| Phase 21-tgov-ajustes-0904 P03 | 10 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -112,6 +113,8 @@ Progress (v5.0): [███░░░░░░░] 100%
 | Tab filter bidirecional em TGovDashboardClient (Plan 21-01) | Roles aprovacao-only não viam aba execucao; roles execucao-only agora também não veem aba aprovacao — isolamento simétrico |
 | Sidebar label "TGov BI" (→/tgov) coexiste com "TGov Pipeline" (→/tgov/pipeline) em todas as branches de roles TGov (Plan 21-02) | Separação visual entre view analytics vs funnel kanban — ambos itens visíveis para todos os 10 roles TGov |
 | TGOV_STATUS_ORDER é Record<string,number> — usar Object.keys() para iterar e merge com statuses da API (Plan 21-02) | Evita .filter() em objeto — compatível com statuses não listados que chegam via API |
+| prestacao_contas tab mapeia para /api/tgov/execucao?mode=prestacao_contas (Plan 21-03) | Reutiliza rota execucao com filtro ILIKE — evita nova rota; mode param escolhe entre LOWER(situacao)='em execução' vs ILIKE '%Prestação de Contas%' |
+| EXECUCAO_ONLY_ROLES inicializam na aba execucao (não aprovacao) (Plan 21-03) | initialTab computado dinamicamente via EXECUCAO_ONLY_ROLES.includes(userRole) — evita redirecionamento manual pós-montagem |
 
 ### Quick Tasks Completed
 
