@@ -27,6 +27,8 @@ export async function GET() {
       titulo: string | null
       event_type: string
       event_at: string
+      comment_author_nome: string | null
+      comment_body: string | null
     }>(`
       WITH all_props AS (
         SELECT nr_proposta, titulo, situacao_changed_at, tecnico_assigned_at
@@ -69,7 +71,14 @@ export async function GET() {
             THEN 'situacao'
             ELSE 'assignment'
           END AS event_type,
-          tp.titulo
+          tp.titulo,
+          (SELECT u.nome FROM tgov_comments c
+           LEFT JOIN users u ON u.id = c.author_id
+           WHERE c.target_type = 'proposta' AND c.target_key = l.proposta_key
+           ORDER BY c.created_at DESC LIMIT 1) AS comment_author_nome,
+          (SELECT c.body FROM tgov_comments c
+           WHERE c.target_type = 'proposta' AND c.target_key = l.proposta_key
+           ORDER BY c.created_at DESC LIMIT 1) AS comment_body
         FROM linked l
         LEFT JOIN all_props tp ON tp.nr_proposta = l.proposta_key
         LEFT JOIN tgov_proposta_seen s ON s.user_id = $1 AND s.proposta_key = l.proposta_key
@@ -147,6 +156,8 @@ export async function GET() {
         titulo: r.titulo,
         eventType: r.event_type,
         eventAt: r.event_at,
+        commentAuthorNome: r.comment_author_nome ?? null,
+        commentBody: r.comment_body ? r.comment_body.slice(0, 120) : null,
       })),
       stale: stale.map(r => ({
         propostaKey: r.proposta_key,

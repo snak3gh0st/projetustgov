@@ -7,6 +7,8 @@ interface NotificationItem {
   titulo: string | null
   eventType: 'comment' | 'situacao' | 'assignment'
   eventAt: string
+  commentAuthorNome: string | null
+  commentBody: string | null
 }
 
 interface StaleItem {
@@ -104,19 +106,41 @@ export default function NotificationBell() {
                     onClick={() => handleItemClick(item.propostaKey, item.eventType)}
                     className="w-full text-left px-3 py-2.5 hover:bg-blue-50 border-b border-gray-50 transition-colors"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
-                      <span className="text-xs font-medium text-gray-800 truncate">
-                        {item.propostaKey}
-                      </span>
-                      <span className="text-[10px] text-gray-400 ml-auto flex-shrink-0">
-                        {timeAgo(item.eventAt)}
-                      </span>
+                    <div className="flex items-start gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-1" />
+                      <div className="flex-1 min-w-0">
+                        {item.eventType === 'comment' && item.commentAuthorNome ? (
+                          <>
+                            <div className="flex items-baseline justify-between gap-1">
+                              <span className="text-xs font-medium text-gray-800 truncate">
+                                <span className="text-blue-600">{item.commentAuthorNome}</span>
+                                {' comentou em '}
+                                <span className="font-semibold">{item.propostaKey}</span>
+                              </span>
+                              <span className="text-[10px] text-gray-400 flex-shrink-0">{timeAgo(item.eventAt)}</span>
+                            </div>
+                            {item.commentBody && (
+                              <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">
+                                &ldquo;{item.commentBody}&rdquo;
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-baseline justify-between gap-1">
+                              <span className="text-xs font-medium text-gray-800 truncate">
+                                {item.propostaKey}
+                              </span>
+                              <span className="text-[10px] text-gray-400 flex-shrink-0">{timeAgo(item.eventAt)}</span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5 truncate">
+                              {EVENT_LABELS[item.eventType] || item.eventType}
+                              {item.titulo ? ` — ${item.titulo}` : ''}
+                            </p>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-0.5 ml-4 truncate">
-                      {EVENT_LABELS[item.eventType] || item.eventType}
-                      {item.titulo ? ` — ${item.titulo}` : ''}
-                    </p>
                   </button>
                 ))}
 
