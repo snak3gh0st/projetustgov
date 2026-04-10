@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — TGov Dashboard — In Progress
 status: executing
-stopped_at: Completed 21-03 (Execucao/PC tab split + RBAC isolation)
-last_updated: "2026-04-10T14:28:00Z"
-last_activity: 2026-04-10 -- Plan 21-03 complete (Prestacao de Contas tab split + three-tab RBAC)
+stopped_at: Completed 20-04 (UI sidecard + perf fixes pós-wave) — Phase 20 fechada, UAT pendente no build deployado
+last_updated: "2026-04-10T14:36:55.374Z"
+last_activity: 2026-04-10
 progress:
-  total_phases: 3
-  completed_phases: 2
-  total_plans: 11
-  completed_plans: 10
+  total_phases: 18
+  completed_phases: 9
+  total_plans: 41
+  completed_plans: 36
 ---
 
 # Project State: PROJETUS — v5.0 TGov Dashboard
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 ## Current Position
 
-Phase: 21 (tgov-ajustes-0904) — EXECUTING
-Plan: 2 of 4 (Plan 01 complete)
+Phase: 21
+Plan: Not started
 Status: Executing Phase 21 — Plan 01 done
-Last activity: 2026-04-10 -- Plan 21-01 complete (RBAC execution roles)
+Last activity: 2026-04-10
 
 Progress (v5.0): [███░░░░░░░] 100%
 
@@ -61,6 +61,7 @@ Progress (v5.0): [███░░░░░░░] 100%
 
 *Updated after each plan completion*
 | Phase 21-tgov-ajustes-0904 P03 | 10 | 2 tasks | 3 files |
+| Phase 21-tgov-ajustes-0904 P04 | 8 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
