@@ -58,7 +58,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 19: TGov Dashboard** - Página gestor-only `/tgov` com abas Aprovação/Execução, donut de situação, KPIs, tabela paginada e filtros (2026-03-30)
 - [x] **Phase 20: Ajustes TGov 07/04 — Técnico + CSM** - Designação de técnico responsável, perfil CSM, sistema de comentários tgov_comments, helpers RBAC centralizados (2026-04-08)
-- [ ] **Phase 21: Ajustes TGov 09/04 — BI, Pipeline, Execução/PC Split, Novos Roles** - Nav TGOV BI + TGOV Pipeline (kanban estilo CRM), split Execução em Execução/Prestação de Contas, novos roles coord_execucao/assistente_execucao/projetista_execucao, isolamento de perfis, bugfixes aprovação
+- [x] **Phase 21: Ajustes TGov 09/04 — BI, Pipeline, Execução/PC Split, Novos Roles** - Nav TGOV BI + TGOV Pipeline (kanban estilo CRM), split Execução em Execução/Prestação de Contas, novos roles coord_execucao/assistente_execucao/projetista_execucao, isolamento de perfis, bugfixes aprovação (completed 2026-04-10)
 
 ---
 
