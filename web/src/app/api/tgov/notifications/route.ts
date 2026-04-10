@@ -36,10 +36,10 @@ export async function GET() {
         SELECT
           l.proposta_key,
           GREATEST(
-            (SELECT MAX(c.created_at) FROM tgov_comments c
-             WHERE c.target_type = 'proposta' AND c.target_key = l.proposta_key),
-            tp.situacao_changed_at,
-            tp.tecnico_assigned_at
+            COALESCE((SELECT MAX(c.created_at) FROM tgov_comments c
+             WHERE c.target_type = 'proposta' AND c.target_key = l.proposta_key), '1970-01-01'::timestamptz),
+            COALESCE(tp.situacao_changed_at, '1970-01-01'::timestamptz),
+            COALESCE(tp.tecnico_assigned_at, '1970-01-01'::timestamptz)
           ) AS latest_at,
           CASE
             WHEN (SELECT MAX(c.created_at) FROM tgov_comments c
@@ -56,10 +56,10 @@ export async function GET() {
         LEFT JOIN tgov_propostas tp ON tp.nr_proposta = l.proposta_key
         LEFT JOIN tgov_proposta_seen s ON s.user_id = $1 AND s.proposta_key = l.proposta_key
         WHERE GREATEST(
-          (SELECT MAX(c.created_at) FROM tgov_comments c
-           WHERE c.target_type = 'proposta' AND c.target_key = l.proposta_key),
-          tp.situacao_changed_at,
-          tp.tecnico_assigned_at
+          COALESCE((SELECT MAX(c.created_at) FROM tgov_comments c
+           WHERE c.target_type = 'proposta' AND c.target_key = l.proposta_key), '1970-01-01'::timestamptz),
+          COALESCE(tp.situacao_changed_at, '1970-01-01'::timestamptz),
+          COALESCE(tp.tecnico_assigned_at, '1970-01-01'::timestamptz)
         ) > COALESCE(s.seen_at, '1970-01-01'::timestamptz)
       )
       SELECT proposta_key, titulo, event_type, latest_at::text AS event_at
@@ -74,31 +74,52 @@ export async function GET() {
     let stale: { proposta_key: string; titulo: string | null; tecnico_nome: string | null; assigned_at: string; hours: number }[] = []
 
     if (canSeeStale) {
+      // adm_produto (seeAll) sees all proposals without needing a participant row
+      const staleQuery = seeAll
+        ? `
+          SELECT
+            tp.nr_proposta AS proposta_key,
+            tp.titulo,
+            u.nome AS tecnico_nome,
+            tp.tecnico_assigned_at::text AS assigned_at,
+            EXTRACT(EPOCH FROM (now() - tp.tecnico_assigned_at))::int / 3600 AS hours
+          FROM tgov_propostas tp
+          LEFT JOIN users u ON u.id = tp.tecnico_id
+          LEFT JOIN tgov_proposta_seen s
+            ON s.user_id = tp.tecnico_id AND s.proposta_key = tp.nr_proposta
+          WHERE tp.tecnico_id IS NOT NULL
+            AND tp.tecnico_assigned_at < now() - interval '24 hours'
+            AND (s.seen_at IS NULL OR s.seen_at < tp.tecnico_assigned_at)
+          ORDER BY tp.tecnico_assigned_at ASC
+          LIMIT 20
+        `
+        : `
+          SELECT
+            tp.nr_proposta AS proposta_key,
+            tp.titulo,
+            u.nome AS tecnico_nome,
+            tp.tecnico_assigned_at::text AS assigned_at,
+            EXTRACT(EPOCH FROM (now() - tp.tecnico_assigned_at))::int / 3600 AS hours
+          FROM tgov_propostas tp
+          JOIN tgov_proposta_participants pp
+            ON pp.proposta_key = tp.nr_proposta AND pp.user_id = $1
+          LEFT JOIN users u ON u.id = tp.tecnico_id
+          LEFT JOIN tgov_proposta_seen s
+            ON s.user_id = tp.tecnico_id AND s.proposta_key = tp.nr_proposta
+          WHERE tp.tecnico_id IS NOT NULL
+            AND tp.tecnico_assigned_at < now() - interval '24 hours'
+            AND (s.seen_at IS NULL OR s.seen_at < tp.tecnico_assigned_at)
+          ORDER BY tp.tecnico_assigned_at ASC
+          LIMIT 20
+        `
+
       stale = await query<{
         proposta_key: string
         titulo: string | null
         tecnico_nome: string | null
         assigned_at: string
         hours: number
-      }>(`
-        SELECT
-          tp.nr_proposta AS proposta_key,
-          tp.titulo,
-          u.nome AS tecnico_nome,
-          tp.tecnico_assigned_at::text AS assigned_at,
-          EXTRACT(EPOCH FROM (now() - tp.tecnico_assigned_at))::int / 3600 AS hours
-        FROM tgov_propostas tp
-        JOIN tgov_proposta_participants pp
-          ON pp.proposta_key = tp.nr_proposta AND pp.user_id = $1
-        LEFT JOIN users u ON u.id = tp.tecnico_id
-        LEFT JOIN tgov_proposta_seen s
-          ON s.user_id = tp.tecnico_id AND s.proposta_key = tp.nr_proposta
-        WHERE tp.tecnico_id IS NOT NULL
-          AND tp.tecnico_assigned_at < now() - interval '24 hours'
-          AND (s.seen_at IS NULL OR s.seen_at < tp.tecnico_assigned_at)
-        ORDER BY tp.tecnico_assigned_at ASC
-        LIMIT 20
-      `, [userId])
+      }>(staleQuery, seeAll ? [] : [userId])
     }
 
     return NextResponse.json({
