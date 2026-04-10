@@ -4,34 +4,37 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { TGOV_STATUS_ORDER, tgovStatusSortKey, APROVACAO_ONLY_ROLES, EXECUCAO_ONLY_ROLES } from '@/lib/tgov'
 
+// ── Types ───────────────────────────────────────────────────────────────────
+type PipelineTab = 'aprovacao' | 'execucao' | 'prestacao_contas'
+type StatusCounts = Record<string, number>
+
 // Module-level: survives React StrictMode unmount/remount cycles
 const _inflight = new Set<PipelineTab>()
 const _cache = new Map<PipelineTab, { counts: StatusCounts; total: number }>()
 
-const TGOV_PIPELINE_CONFIG: Record<string, { bar: string; color: string }> = {
-  'Cadastrada':                                          { bar: 'bg-gray-300',    color: 'text-gray-500'   },
-  'Em Análise':                                         { bar: 'bg-yellow-400',  color: 'text-yellow-600' },
-  'Aprovada':                                           { bar: 'bg-green-400',   color: 'text-green-600'  },
-  'Aprovada / Aguardando Assinatura':                   { bar: 'bg-green-300',   color: 'text-green-500'  },
-  'Aprovada / Aguardando Empenho':                      { bar: 'bg-green-300',   color: 'text-green-500'  },
-  'Aguardando Assinatura do Convenio':                  { bar: 'bg-blue-300',    color: 'text-blue-500'   },
-  'Em Execução':                                        { bar: 'bg-blue-500',    color: 'text-blue-700'   },
-  'Em execução':                                        { bar: 'bg-blue-500',    color: 'text-blue-700'   },
-  'Aguardando Prestação de Contas':                     { bar: 'bg-orange-400',  color: 'text-orange-600' },
-  'Prestação de Contas enviada para Análise':           { bar: 'bg-orange-300',  color: 'text-orange-500' },
-  'Prestação de contas enviada para análise':           { bar: 'bg-orange-300',  color: 'text-orange-500' },
-  'Prestação de Contas em Complementação':              { bar: 'bg-amber-400',   color: 'text-amber-600'  },
-  'Prestação de Contas em Análise':                     { bar: 'bg-amber-300',   color: 'text-amber-500'  },
-  'Prestação de Contas Comprovada':                     { bar: 'bg-teal-400',    color: 'text-teal-600'   },
-  'Prestação de Contas Aprovada':                       { bar: 'bg-teal-500',    color: 'text-teal-700'   },
-  'Prestação de Contas Concluída':                      { bar: 'bg-teal-500',    color: 'text-teal-700'   },
-  'Prestação de Contas Rejeitada':                      { bar: 'bg-red-400',     color: 'text-red-600'    },
+// ── Status visual config ────────────────────────────────────────────────────
+const TGOV_STATUS_CONFIG: Record<string, { bar: string; color: string; label: string }> = {
+  'Cadastrada':                                { bar: 'bg-gray-400',    color: 'text-gray-600',    label: 'Cadastrada' },
+  'Em Análise':                               { bar: 'bg-yellow-500',  color: 'text-yellow-600',  label: 'Em Análise' },
+  'Aprovada':                                  { bar: 'bg-green-500',   color: 'text-green-600',   label: 'Aprovada' },
+  'Aprovada / Aguardando Assinatura':          { bar: 'bg-green-400',   color: 'text-green-500',   label: 'Aguard. Assinatura' },
+  'Aprovada / Aguardando Empenho':             { bar: 'bg-green-400',   color: 'text-green-500',   label: 'Aguard. Empenho' },
+  'Aguardando Assinatura do Convenio':         { bar: 'bg-blue-400',    color: 'text-blue-500',    label: 'Assin. Convênio' },
+  'Em Execução':                               { bar: 'bg-blue-500',    color: 'text-blue-700',    label: 'Em Execução' },
+  'Em execução':                               { bar: 'bg-blue-500',    color: 'text-blue-700',    label: 'Em Execução' },
+  'Aguardando Prestação de Contas':            { bar: 'bg-orange-500',  color: 'text-orange-600',  label: 'Aguard. PC' },
+  'Prestação de Contas enviada para Análise':  { bar: 'bg-orange-400',  color: 'text-orange-500',  label: 'PC enviada' },
+  'Prestação de contas enviada para análise':  { bar: 'bg-orange-400',  color: 'text-orange-500',  label: 'PC enviada' },
+  'Prestação de Contas em Complementação':     { bar: 'bg-amber-500',   color: 'text-amber-600',   label: 'PC Complementação' },
+  'Prestação de Contas em Análise':            { bar: 'bg-amber-400',   color: 'text-amber-500',   label: 'PC em Análise' },
+  'Prestação de Contas Comprovada':            { bar: 'bg-teal-500',    color: 'text-teal-600',    label: 'PC Comprovada' },
+  'Prestação de Contas Aprovada':              { bar: 'bg-teal-500',    color: 'text-teal-700',    label: 'PC Aprovada' },
+  'Prestação de Contas Concluída':             { bar: 'bg-teal-600',    color: 'text-teal-700',    label: 'PC Concluída' },
+  'Prestação de Contas Rejeitada':             { bar: 'bg-red-500',     color: 'text-red-600',     label: 'PC Rejeitada' },
 }
-const DEFAULT_CONFIG = { bar: 'bg-gray-200', color: 'text-gray-500' }
+const DEFAULT_CONFIG = { bar: 'bg-gray-300', color: 'text-gray-500', label: '' }
 
-type PipelineTab = 'aprovacao' | 'execucao' | 'prestacao_contas'
-type StatusCounts = Record<string, number>
-
+// ── Tab config ──────────────────────────────────────────────────────────────
 const TAB_LABELS: Record<PipelineTab, string> = {
   aprovacao: 'Aprovação',
   execucao: 'Execução',
@@ -57,14 +60,23 @@ function getVisibleTabs(userRole: string): PipelineTab[] {
   return ['aprovacao', 'execucao', 'prestacao_contas']
 }
 
-function KanbanGrid({
-  counts,
+function getCfg(situacao: string) {
+  return TGOV_STATUS_CONFIG[situacao] ?? { ...DEFAULT_CONFIG, label: situacao }
+}
+
+// ── Pipeline Section (matches CRM PipelineSection layout) ───────────────────
+function PipelineSection({
+  title,
+  subtitle,
   total,
+  counts,
   tab,
   onCardClick,
 }: {
-  counts: StatusCounts
+  title: string
+  subtitle: string
   total: number
+  counts: StatusCounts
   tab: PipelineTab
   onCardClick: (situacao: string) => void
 }) {
@@ -75,53 +87,88 @@ function KanbanGrid({
     .sort((a, b) => tgovStatusSortKey(a) - tgovStatusSortKey(b))
 
   if (orderedStatuses.length === 0) {
-    return <div className="text-sm text-gray-400">Nenhuma proposta encontrada.</div>
+    return (
+      <div className="space-y-3">
+        <div className="flex flex-col gap-1">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">{title}</p>
+          <p className="text-sm text-gray-500">{subtitle}</p>
+        </div>
+        <div className="text-sm text-gray-400">Nenhuma proposta encontrada.</div>
+      </div>
+    )
   }
 
-  const gridCols = orderedStatuses.length > 6
-    ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4'
-    : 'grid-cols-2 md:grid-cols-3'
-
   return (
-    <div className={`grid ${gridCols} gap-3`}>
-      {orderedStatuses.map((situacao, idx) => {
-        const cnt = counts[situacao] ?? 0
-        const pct = total > 0 ? ((cnt / total) * 100).toFixed(1) : '0.0'
-        const pctNum = total > 0 ? (cnt / total) * 100 : 0
-        const cfg = TGOV_PIPELINE_CONFIG[situacao] ?? DEFAULT_CONFIG
-        const prevSituacao = idx > 0 ? orderedStatuses[idx - 1] : null
-        const prevCnt = prevSituacao ? (counts[prevSituacao] ?? 0) : null
-        const conversionRate = prevCnt && prevCnt > 0
-          ? `${((cnt / prevCnt) * 100).toFixed(0)}% de ${prevSituacao}`
-          : null
+    <div className="space-y-3">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs text-gray-500 uppercase tracking-wider">{title}</p>
+        <p className="text-sm text-gray-500">{subtitle}</p>
+        <p className="text-xs text-gray-400">{total.toLocaleString('pt-BR')} propostas</p>
+      </div>
 
-        return (
-          <div
-            key={`${tab}-${situacao}`}
-            onClick={() => onCardClick(situacao)}
-            className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md cursor-pointer transition-shadow"
-          >
-            <div className={`h-1.5 ${cfg.bar}`} />
-            <div className="p-4">
-              <div className={`text-3xl font-bold ${cfg.color}`}>
-                {cnt.toLocaleString('pt-BR')}
+      <div className={`grid grid-cols-2 gap-3 ${orderedStatuses.length > 6 ? 'md:grid-cols-3 xl:grid-cols-9' : 'md:grid-cols-6'}`}>
+        {orderedStatuses.map((situacao, idx) => {
+          const count = counts[situacao] ?? 0
+          const pct = total > 0 ? (count / total) * 100 : 0
+          const cfg = getCfg(situacao)
+          const prevCount = idx > 0 ? (counts[orderedStatuses[idx - 1]] ?? 0) : null
+          const conversionRate = prevCount && prevCount > 0 ? ((count / prevCount) * 100).toFixed(0) : null
+
+          return (
+            <div
+              key={`${tab}-${situacao}`}
+              role="button"
+              onClick={() => onCardClick(situacao)}
+              className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+            >
+              <div className={`h-1.5 ${cfg.bar}`} />
+              <div className="p-4">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className={`text-3xl font-bold ${cfg.color}`}>{count.toLocaleString('pt-BR')}</span>
+                  <span className="text-xs text-gray-400 font-medium">{pct.toFixed(0)}%</span>
+                </div>
+
+                <p className="text-sm font-medium text-gray-700 mt-1">{cfg.label}</p>
+
+                <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${cfg.bar} rounded-full transition-all`}
+                    style={{ width: `${Math.min(Math.max(pct, 2), 100)}%` }}
+                  />
+                </div>
+
+                {conversionRate && Number(conversionRate) <= 100 && (
+                  <p className="text-[10px] text-gray-400 mt-1.5">
+                    {conversionRate}% de {getCfg(orderedStatuses[idx - 1]).label}
+                  </p>
+                )}
               </div>
-              <div className="text-xs text-gray-400 mt-0.5">{pct}% do total</div>
-              <div className="text-sm font-medium text-gray-700 mt-2 leading-tight">{situacao}</div>
-              <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className={`h-full ${cfg.bar} rounded-full`} style={{ width: `${pctNum}%` }} />
-              </div>
-              {conversionRate && (
-                <div className="text-[10px] text-gray-400 mt-1.5 truncate">{conversionRate}</div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Flow diagram — matches CRM horizontal arrow strip */}
+      <div className="hidden md:flex items-center justify-center gap-1 py-1">
+        {orderedStatuses.map((situacao, idx) => {
+          const cfg = getCfg(situacao)
+          return (
+            <div key={`flow-${tab}-${situacao}`} className="flex items-center gap-1 flex-1">
+              <div className={`h-2 ${cfg.bar} rounded-full flex-1 transition-all opacity-80`} style={{ minWidth: '8px' }} />
+              {idx < orderedStatuses.length - 1 && (
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-gray-300 flex-shrink-0">
+                  <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               )}
             </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }
 
+// ── Main component ──────────────────────────────────────────────────────────
 export default function TGovPipelineClient({ userRole }: { userRole: string }) {
   const router = useRouter()
   const visibleTabs = getVisibleTabs(userRole)
@@ -169,12 +216,11 @@ export default function TGovPipelineClient({ userRole }: { userRole: string }) {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Header */}
         <div className="mb-6">
           <h1 className="text-lg font-semibold text-gray-900">TGov Pipeline</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {current.loaded && !current.error
-              ? `${current.total.toLocaleString('pt-BR')} propostas · clique numa situação para filtrar`
-              : 'Carregando...'}
+            Clique numa situação para filtrar no dashboard
           </p>
         </div>
 
@@ -205,9 +251,11 @@ export default function TGovPipelineClient({ userRole }: { userRole: string }) {
             <div className="text-sm text-red-500">{current.error}</div>
           </div>
         ) : (
-          <KanbanGrid
-            counts={current.counts}
+          <PipelineSection
+            title={TAB_LABELS[activeTab]}
+            subtitle={`Propostas por situação`}
             total={current.total}
+            counts={current.counts}
             tab={activeTab}
             onCardClick={situacao => router.push(getDashboardUrl(activeTab, situacao))}
           />
