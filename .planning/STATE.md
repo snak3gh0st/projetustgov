@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 Phase: 21
 Plan: Not started
 Status: Executing Phase 21 — Plan 01 done
-Last activity: 2026-04-10
+Last activity: 2026-04-10 - Completed quick task 260410-kmx: Ultima coluna prestacao de contas Atraso/Em tempo
 
 Progress (v5.0): [███░░░░░░░] 100%
 
@@ -131,6 +131,7 @@ Progress (v5.0): [███░░░░░░░] 100%
 | 260323 | Separate Pipeline Aprovação vs Pipeline Execução on home dashboard | 2026-03-25 | 0377b2c | [260323-criar-pipeline-de-execucao-podendo-ficar](./quick/260323-criar-pipeline-de-execucao-podendo-ficar/) |
 | 260401-e9r | Filter TGov aprovacao and execucao tabs to Projetus proposals whitelist (246 IDs) | 2026-04-01 | e3c7025 | [260401-e9r-tgov-execucao-projetus-proposals-filter](./quick/260401-e9r-tgov-execucao-projetus-proposals-filter/) |
 | 260401-kvp | Restringir visoes do ADM Produto: apenas Pipeline TGOV, Usuarios TGOV e TGOV Dashboard | 2026-04-01 | 07eeeab | [260401-kvp-restringir-visoes-do-adm-produto-apenas-](./quick/260401-kvp-restringir-visoes-do-adm-produto-apenas-/) |
+| 260410-kmx | Ultima coluna prestacao de contas: Atraso/Em tempo baseado em Limite PC | 2026-04-10 | 9bd8b04 | [260410-kmx-ultima-coluna-da-prestacao-de-contas-tgo](./quick/260410-kmx-ultima-coluna-da-prestacao-de-contas-tgo/) |
 
 ### Blockers / Concerns
 
