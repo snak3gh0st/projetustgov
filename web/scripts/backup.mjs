@@ -16,8 +16,11 @@ if (!dbUrl) {
   process.exit(1)
 }
 
+// Strip sslmode from URL so pg-connection-string doesn't override our ssl config
+const cleanUrl = dbUrl.replace(/[?&]sslmode=[^&]*/g, (m) => m.startsWith('?') ? '?' : '')
+
 const pool = new pg.Pool({
-  connectionString: dbUrl,
+  connectionString: cleanUrl,
   max: 2,
   ssl: { rejectUnauthorized: false },
   connectionTimeoutMillis: 15000,
