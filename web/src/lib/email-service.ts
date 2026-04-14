@@ -12,7 +12,7 @@ import {
   participantAddedEmail,
 } from './email-templates'
 
-const FROM = process.env.DIGEST_FROM_EMAIL || 'noreply@projetus.com.br'
+const FROM = process.env.DIGEST_FROM_EMAIL || 'Projetus <noreply@projetus.org>'
 
 const TGOV_ROLES = [
   'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao',
@@ -26,7 +26,7 @@ const CRM_ROLES = [
 ]
 
 function appUrl(): string {
-  return process.env.NEXTAUTH_URL || 'https://projetus.sigmaintel.com.br'
+  return process.env.NEXTAUTH_URL || 'https://projetus.org'
 }
 
 async function getResend() {
