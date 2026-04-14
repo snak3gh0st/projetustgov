@@ -29,7 +29,8 @@
 // sync-execucao). Pode ser disparado manualmente como gestor.
 // ============================================================================
 
-import { getPool } from '@/lib/db'
+import { getPool, query } from '@/lib/db'
+import { sendSituacaoChangeNotification } from './email-service'
 import { cleanCNPJ, parseBRNumber, fixText, downloadAndStreamCSV } from '@/lib/repo-sync'
 import { EXECUCAO_NR_PROPOSTAS, APROVACAO_NR_PROPOSTAS } from '@/lib/tgov'
 import { ensureTgovTables } from '@/lib/tgov-tables'
@@ -329,6 +330,21 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
     const propBefore = await client.query<{ n: string }>('SELECT COUNT(*) AS n FROM tgov_propostas')
     const propBeforeN = parseInt(propBefore.rows[0].n, 10)
 
+    // Capture existing situacoes to detect changes during the UPSERT run
+    const transferGovIds = propostaRows.map(r => r.transfer_gov_id)
+    const oldSituacaoMap = new Map<string, string | null>()
+    if (transferGovIds.length > 0) {
+      const existing = await client.query<{ transfer_gov_id: string; situacao: string | null }>(
+        `SELECT transfer_gov_id, situacao FROM tgov_propostas WHERE transfer_gov_id = ANY($1::text[])`,
+        [transferGovIds],
+      )
+      for (const row of existing.rows) {
+        oldSituacaoMap.set(row.transfer_gov_id, row.situacao)
+      }
+    }
+
+    const situacaoChanges: Array<{ nrProposta: string; titulo: string | null; oldSituacao: string; newSituacao: string }> = []
+
     const PROP_UPSERT_SQL = `
       INSERT INTO tgov_propostas (
         transfer_gov_id, nr_proposta, titulo,
@@ -346,6 +362,11 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
         valor_contrapartida = EXCLUDED.valor_contrapartida,
         data_publicacao     = EXCLUDED.data_publicacao,
         situacao            = EXCLUDED.situacao,
+        situacao_changed_at = CASE
+          WHEN tgov_propostas.situacao IS DISTINCT FROM EXCLUDED.situacao
+          THEN NOW()
+          ELSE tgov_propostas.situacao_changed_at
+        END,
         estado              = EXCLUDED.estado,
         municipio           = EXCLUDED.municipio,
         proponente          = EXCLUDED.proponente,
@@ -375,6 +396,15 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
           r.orgao_superior,
           r.orgao_vinculado,
         ])
+        const oldSituacao = oldSituacaoMap.get(r.transfer_gov_id)
+        if (oldSituacao !== undefined && oldSituacao !== r.situacao && r.nr_proposta) {
+          situacaoChanges.push({
+            nrProposta: r.nr_proposta,
+            titulo: r.titulo,
+            oldSituacao: oldSituacao ?? '—',
+            newSituacao: r.situacao ?? '—',
+          })
+        }
       } catch (err) {
         stats.errors++
         console.error(`[tgov-only-sync] tgov_propostas UPSERT error for ${r.transfer_gov_id}:`, err)
@@ -385,6 +415,31 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
     const propAfterN = parseInt(propAfter.rows[0].n, 10)
     stats.propostas_inserted = Math.max(0, propAfterN - propBeforeN)
     stats.propostas_updated = propostaRows.length - stats.propostas_inserted
+
+    // Fire-and-forget situacao change notifications
+    if (situacaoChanges.length > 0) {
+      console.log(`[tgov-only-sync] ${situacaoChanges.length} situacao change(s) detected, dispatching notifications`)
+      for (const change of situacaoChanges) {
+        try {
+          const participants = await query<{ user_id: string }>(
+            `SELECT user_id FROM tgov_proposta_participants WHERE proposta_key = $1`,
+            [change.nrProposta],
+          )
+          if (participants.length > 0) {
+            sendSituacaoChangeNotification({
+              recipientIds: participants.map(p => p.user_id),
+              actorId: '00000000-0000-0000-0000-000000000000', // sync has no human actor; no recipient will match this
+              propostaNr: change.nrProposta,
+              propostaTitulo: change.titulo,
+              oldStatus: change.oldSituacao,
+              newStatus: change.newSituacao,
+            }).catch(err => console.error('[tgov-only-sync] situacao notification failed', err))
+          }
+        } catch (err) {
+          console.error('[tgov-only-sync] situacao notification gather failed', err)
+        }
+      }
+    }
 
     // -----------------------------------------------------------------------
     // STEP E: UPSERT into tgov_projetos_execucao
