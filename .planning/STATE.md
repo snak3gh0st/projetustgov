@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — TGov Dashboard — In Progress
 status: executing
-stopped_at: Completed 20-04 (UI sidecard + perf fixes pós-wave) — Phase 20 fechada, UAT pendente no build deployado
-last_updated: "2026-04-10T14:36:55.374Z"
-last_activity: 2026-04-10
+stopped_at: Completed quick 260414-jby — contact CSV export restricted to gestor/admin
+last_updated: "2026-04-14T00:00:00.000Z"
+last_activity: 2026-04-14
 progress:
   total_phases: 18
   completed_phases: 9
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 Phase: 21
 Plan: Not started
 Status: Executing Phase 21 — Plan 01 done
-Last activity: 2026-04-10 - Completed quick task 260410-kmx: Ultima coluna prestacao de contas Atraso/Em tempo
+Last activity: 2026-04-14 - Completed quick task 260414-jby: Contact CSV export restricted to gestor/admin only (coordenador loses leads-export access)
 
 Progress (v5.0): [███░░░░░░░] 100%
 
@@ -132,6 +132,7 @@ Progress (v5.0): [███░░░░░░░] 100%
 | 260401-e9r | Filter TGov aprovacao and execucao tabs to Projetus proposals whitelist (246 IDs) | 2026-04-01 | e3c7025 | [260401-e9r-tgov-execucao-projetus-proposals-filter](./quick/260401-e9r-tgov-execucao-projetus-proposals-filter/) |
 | 260401-kvp | Restringir visoes do ADM Produto: apenas Pipeline TGOV, Usuarios TGOV e TGOV Dashboard | 2026-04-01 | 07eeeab | [260401-kvp-restringir-visoes-do-adm-produto-apenas-](./quick/260401-kvp-restringir-visoes-do-adm-produto-apenas-/) |
 | 260410-kmx | Ultima coluna prestacao de contas: Atraso/Em tempo baseado em Limite PC | 2026-04-10 | 9bd8b04 | [260410-kmx-ultima-coluna-da-prestacao-de-contas-tgo](./quick/260410-kmx-ultima-coluna-da-prestacao-de-contas-tgo/) |
+| 260414-jby | Contact CSV export restricted to gestor/admin (coordenador loses /api/leads/export-pendentes); centralized canExportContacts helper | 2026-04-14 | b189d32 | [260414-jby-exportar-contatos-qualquer-uma-somente-p](./quick/260414-jby-exportar-contatos-qualquer-uma-somente-p/) |
 
 ### Blockers / Concerns
 
@@ -163,6 +164,6 @@ Progress (v5.0): [███░░░░░░░] 100%
 
 ## Session Continuity
 
-Last session: 2026-04-07
-Stopped at: Completed 20-04 (UI sidecard + perf fixes pós-wave) — Phase 20 fechada, UAT pendente no build deployado
-Resume file: .planning/phases/20-tgov-ajustes-0704/20-04-SUMMARY.md
+Last session: 2026-04-14
+Stopped at: Completed quick 260414-jby — contact CSV export restricted to gestor/admin
+Resume file: .planning/quick/260414-jby-exportar-contatos-qualquer-uma-somente-p/260414-jby-SUMMARY.md
