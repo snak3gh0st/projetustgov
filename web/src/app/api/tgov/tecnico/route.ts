@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession, canWriteTgov } from '@/lib/dal'
+import { sendAssignmentNotification } from '@/lib/email-service'
 
 export const dynamic = 'force-dynamic'
 
@@ -117,6 +118,39 @@ export async function PATCH(request: NextRequest) {
        ON CONFLICT DO NOTHING`,
       [session.userId, target_key],
     )
+
+    // Fire-and-forget email notification for actual proposta assignments
+    if (tecnicoIdValue && target_type === 'proposta') {
+      try {
+        const assignees = await query<{ nome: string }>(
+          `SELECT nome FROM users WHERE id = $1`,
+          [tecnicoIdValue],
+        )
+        const participants = await query<{ user_id: string }>(
+          `SELECT user_id FROM tgov_proposta_participants WHERE proposta_key = $1`,
+          [target_key],
+        )
+        const propostaMeta = await query<{ titulo: string | null }>(
+          `SELECT titulo FROM tgov_propostas WHERE nr_proposta = $1
+           UNION ALL
+           SELECT NULL AS titulo FROM propostas WHERE nr_proposta = $1
+           LIMIT 1`,
+          [target_key],
+        )
+        const recipientIds = Array.from(new Set([tecnicoIdValue, ...participants.map(p => p.user_id)]))
+
+        sendAssignmentNotification({
+          recipientIds,
+          actorId: session.userId,
+          assigneeId: tecnicoIdValue,
+          assigneeName: assignees[0]?.nome ?? 'Técnico',
+          propostaNr: target_key,
+          propostaTitulo: propostaMeta[0]?.titulo ?? null,
+        }).catch(err => console.error('[tecnico] notification failed', err))
+      } catch (err) {
+        console.error('[tecnico] recipient gather failed', err)
+      }
+    }
 
     return NextResponse.json({ ok: true, updated })
   } catch (error) {
