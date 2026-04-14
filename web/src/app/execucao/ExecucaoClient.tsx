@@ -663,17 +663,20 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
             }
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                const params = new URLSearchParams()
-                if (statusFilter) params.set('status', statusFilter)
-                if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
-                window.open(`/api/execucao/export?${params}`, '_blank')
-              }}
-              className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
-            >
-              Exportar CSV
-            </button>
+            {/* mirrors canExportContacts() in dal.ts — admin-tier only */}
+            {(userRole === 'gestor' || userRole === 'admin') && (
+              <button
+                onClick={() => {
+                  const params = new URLSearchParams()
+                  if (statusFilter) params.set('status', statusFilter)
+                  if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
+                  window.open(`/api/execucao/export?${params}`, '_blank')
+                }}
+                className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                Exportar CSV
+              </button>
+            )}
             {visibleCount < sortedRows.length && (
               <button
                 onClick={() => setVisibleCount(c => Math.min(c + PAGE_SIZE, sortedRows.length))}

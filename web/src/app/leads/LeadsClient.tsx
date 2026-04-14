@@ -424,19 +424,20 @@ export default function LeadsClient() {
         )}
       </div>
 
-      <div className="flex gap-2 justify-end">
-        {(sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador') && (
+      {/* mirrors canExportContacts() in dal.ts — admin-tier only */}
+      {(sessionUser?.role === 'gestor' || sessionUser?.role === 'admin') && (
+        <div className="flex gap-2 justify-end">
           <button
             onClick={exportPendentesCSV}
             className="px-3 py-1.5 rounded-lg border border-orange-200 text-orange-600 hover:bg-orange-50 transition-colors text-xs"
           >
             Exportar Pendentes CSV
           </button>
-        )}
-        <button onClick={exportCSV} className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-xs">
-          Exportar CSV
-        </button>
-      </div>
+          <button onClick={exportCSV} className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-xs">
+            Exportar CSV
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
