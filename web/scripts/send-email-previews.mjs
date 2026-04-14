@@ -96,29 +96,29 @@ const propostaCard = (nr, titulo) => { const t = titulo ? `<div style="font-fami
 const commentQuote = (author, snippet) => `<div style="background:${BG_SUBTLE};border-left:3px solid ${BRAND};border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;"><div style="font-family:${FONT_BODY};font-size:11px;font-weight:600;color:${BRAND};margin-bottom:6px;">${escapeHtml(author)}</div><div style="font-family:${FONT_BODY};font-size:14px;color:${TEXT_DARK};line-height:1.6;white-space:pre-wrap;">${escapeHtml(snippet)}</div></div>`
 
 function welcomeEmail({ nome, email, loginUrl }) {
-  return { subject: '[PREVIEW v3] Projetus — Sua conta foi criada', html: baseLayout('Bem-vindo ao Projetus', `${heading(`Bem-vindo(a), ${nome.split(' ')[0]}`)}${paragraph(`Sua conta no <strong>Projetus</strong> foi criada. Você já pode acessar a plataforma.`)}<div style="margin:24px 0;">${infoRow('Email de acesso', email)}</div>${muted(`A senha foi definida pelo administrador e deve ter sido comunicada separadamente.`)}${button(loginUrl, 'Acessar o sistema')}`) }
+  return { subject: '[PREVIEW FINAL] Projetus — Sua conta foi criada', html: baseLayout('Bem-vindo ao Projetus', `${heading(`Bem-vindo(a), ${nome.split(' ')[0]}`)}${paragraph(`Sua conta no <strong>Projetus</strong> foi criada. Você já pode acessar a plataforma.`)}<div style="margin:24px 0;">${infoRow('Email de acesso', email)}</div>${muted(`A senha foi definida pelo administrador e deve ter sido comunicada separadamente.`)}${button(loginUrl, 'Acessar o sistema')}`) }
 }
 
 function passwordResetEmail({ nome, newPassword, loginUrl }) {
-  return { subject: '[PREVIEW v3] Projetus — Sua senha foi alterada', html: baseLayout('Senha alterada', `${heading('Senha alterada')}${paragraph(`Olá <strong>${escapeHtml(nome)}</strong>, sua senha no Projetus foi alterada por um administrador.`)}${passwordBox(newPassword)}${muted('Recomendamos fazer login e trocar para uma senha pessoal assim que possível.')}${button(loginUrl, 'Fazer login')}`) }
+  return { subject: '[PREVIEW FINAL] Projetus — Sua senha foi alterada', html: baseLayout('Senha alterada', `${heading('Senha alterada')}${paragraph(`Olá <strong>${escapeHtml(nome)}</strong>, sua senha no Projetus foi alterada por um administrador.`)}${passwordBox(newPassword)}${muted('Recomendamos fazer login e trocar para uma senha pessoal assim que possível.')}${button(loginUrl, 'Fazer login')}`) }
 }
 
 function commentNotificationEmail({ nome, commenterName, propostaNr, propostaTitulo, snippet, propostaUrl }) {
-  return { subject: `[PREVIEW v3] Projetus — Novo comentário na proposta ${propostaNr}`, html: baseLayout('Novo comentário', `${heading('Novo comentário')}${paragraph(`Olá <strong>${escapeHtml(nome)}</strong>, <strong>${escapeHtml(commenterName)}</strong> comentou em uma proposta que você acompanha.`)}${propostaCard(propostaNr, propostaTitulo)}${commentQuote(commenterName, snippet)}${button(propostaUrl, 'Ver proposta')}`) }
+  return { subject: `[PREVIEW FINAL] Projetus — Novo comentário na proposta ${propostaNr}`, html: baseLayout('Novo comentário', `${heading('Novo comentário')}${paragraph(`Olá <strong>${escapeHtml(nome)}</strong>, <strong>${escapeHtml(commenterName)}</strong> comentou em uma proposta que você acompanha.`)}${propostaCard(propostaNr, propostaTitulo)}${commentQuote(commenterName, snippet)}${button(propostaUrl, 'Ver proposta')}`) }
 }
 
 function situacaoChangeEmail({ nome, propostaNr, propostaTitulo, oldStatus, newStatus, propostaUrl }) {
-  return { subject: `[PREVIEW v3] Projetus — Situação atualizada (${propostaNr})`, html: baseLayout('Situação atualizada', `${heading('Situação atualizada')}${paragraph(`Olá <strong>${escapeHtml(nome)}</strong>, uma proposta que você acompanha mudou de situação.`)}${propostaCard(propostaNr, propostaTitulo)}${statusChange(oldStatus, newStatus)}${button(propostaUrl, 'Ver proposta')}`) }
+  return { subject: `[PREVIEW FINAL] Projetus — Situação atualizada (${propostaNr})`, html: baseLayout('Situação atualizada', `${heading('Situação atualizada')}${paragraph(`Olá <strong>${escapeHtml(nome)}</strong>, uma proposta que você acompanha mudou de situação.`)}${propostaCard(propostaNr, propostaTitulo)}${statusChange(oldStatus, newStatus)}${button(propostaUrl, 'Ver proposta')}`) }
 }
 
 function assignmentEmail({ nome, assigneeName, isAssignee, propostaNr, propostaTitulo, propostaUrl }) {
   const headline = isAssignee ? 'Você foi atribuído(a)' : 'Técnico atribuído'
   const lead = isAssignee ? `Olá <strong>${escapeHtml(nome)}</strong>, você foi atribuído(a) como técnico(a) responsável por uma proposta.` : `Olá <strong>${escapeHtml(nome)}</strong>, <strong>${escapeHtml(assigneeName)}</strong> foi atribuído(a) como técnico(a) responsável.`
-  return { subject: `[PREVIEW v3] Projetus — Técnico atribuído (${propostaNr})`, html: baseLayout('Técnico atribuído', `${heading(headline)}${paragraph(lead)}${propostaCard(propostaNr, propostaTitulo)}<div style="margin:16px 0;">${infoRow('Técnico responsável', assigneeName)}</div>${button(propostaUrl, 'Ver proposta')}`) }
+  return { subject: `[PREVIEW FINAL] Projetus — Técnico atribuído (${propostaNr})`, html: baseLayout('Técnico atribuído', `${heading(headline)}${paragraph(lead)}${propostaCard(propostaNr, propostaTitulo)}<div style="margin:16px 0;">${infoRow('Técnico responsável', assigneeName)}</div>${button(propostaUrl, 'Ver proposta')}`) }
 }
 
 function participantAddedEmail({ nome, propostaNr, propostaTitulo, propostaUrl }) {
-  return { subject: `[PREVIEW v3] Projetus — Você foi adicionado à proposta ${propostaNr}`, html: baseLayout('Novo participante', `${heading('Você foi adicionado(a)')}${paragraph(`Olá <strong>${escapeHtml(nome)}</strong>, você foi adicionado(a) como participante de uma proposta.`)}${propostaCard(propostaNr, propostaTitulo)}${muted('A partir de agora você receberá notificações sobre atualizações nessa proposta — novos comentários, mudanças de situação e atribuições.')}${button(propostaUrl, 'Ver proposta')}`) }
+  return { subject: `[PREVIEW FINAL] Projetus — Você foi adicionado à proposta ${propostaNr}`, html: baseLayout('Novo participante', `${heading('Você foi adicionado(a)')}${paragraph(`Olá <strong>${escapeHtml(nome)}</strong>, você foi adicionado(a) como participante de uma proposta.`)}${propostaCard(propostaNr, propostaTitulo)}${muted('A partir de agora você receberá notificações sobre atualizações nessa proposta — novos comentários, mudanças de situação e atribuições.')}${button(propostaUrl, 'Ver proposta')}`) }
 }
 
 // ———————————————————————————————————————————————————————————————
