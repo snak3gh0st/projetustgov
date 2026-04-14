@@ -9,6 +9,7 @@ import { isRedirectError } from 'next/dist/client/components/redirect'
 import { AuthError } from 'next-auth'
 import { ZodError } from 'zod'
 import { ROLE_CAN_CREATE, type Role } from './dal'
+import { sendWelcomeEmail } from './email-service'
 
 export async function login(
   prevState: { error?: string } | null,
@@ -102,6 +103,10 @@ export async function createVendedor(
       [validatedData.nome, validatedData.email, passwordHash, 'vendedor']
     )
 
+    // Fire-and-forget welcome email
+    sendWelcomeEmail({ nome: validatedData.nome, email: validatedData.email })
+      .catch(err => console.error('[createVendedor] welcome email failed', err))
+
     return { success: true }
   } catch (error) {
     console.error('Create vendedor error:', error)
@@ -167,6 +172,10 @@ export async function createUsuario(
       `INSERT INTO users (nome, email, password_hash, role) VALUES ($1, $2, $3, $4)`,
       [validatedData.nome, validatedData.email, passwordHash, validatedData.role]
     )
+
+    // Fire-and-forget welcome email
+    sendWelcomeEmail({ nome: validatedData.nome, email: validatedData.email })
+      .catch(err => console.error('[createUsuario] welcome email failed', err))
 
     return { success: true }
   } catch (error) {
