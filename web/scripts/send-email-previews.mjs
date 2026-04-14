@@ -35,8 +35,8 @@ if (!recipient || !recipient.includes('@')) {
 }
 
 const FROM = process.env.DIGEST_FROM_EMAIL || 'Projetus <noreply@projetus.org>'
-const LOGIN_URL = 'https://projetus.org/login'
-const PROPOSTA_URL = 'https://projetus.org/tgov?nr=123456%2F2025'
+const LOGIN_URL = 'https://projetus.vercel.app/login'
+const PROPOSTA_URL = 'https://projetus.vercel.app/tgov?nr=123456%2F2025'
 
 // ———————————————————————————————————————————————————————————————
 // 2. Inline the template builders (ESM cannot import .ts directly)
@@ -80,7 +80,7 @@ function baseLayout(title, bodyHtml) {
 <tr><td style="padding:32px 40px 40px;font-family:${FONT_BODY};font-size:15px;line-height:1.65;color:${TEXT_BODY};">${bodyHtml}</td></tr>
 </table>
 <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;margin-top:16px;"><tr><td style="font-family:${FONT_BODY};font-size:11px;color:${TEXT_FAINT};text-align:center;line-height:1.5;">
-Este email foi enviado automaticamente pelo <a href="https://projetus.org" style="color:${BRAND};text-decoration:none;">Projetus</a>.<br>Se você não reconhece esta mensagem, pode ignorá-la com segurança.
+Este email foi enviado automaticamente pelo <a href="https://projetus.vercel.app" style="color:${BRAND};text-decoration:none;">Projetus</a>.<br>Se você não reconhece esta mensagem, pode ignorá-la com segurança.
 </td></tr></table>
 </td></tr></table></body></html>`
 }

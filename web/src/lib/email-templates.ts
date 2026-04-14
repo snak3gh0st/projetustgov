@@ -62,7 +62,7 @@ function baseLayout(title: string, bodyHtml: string): string {
         <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;margin-top:16px;">
           <tr>
             <td style="font-family:${FONT_BODY};font-size:11px;color:${TEXT_FAINT};text-align:center;line-height:1.5;">
-              Este email foi enviado automaticamente pelo <a href="https://projetus.org" style="color:${BRAND};text-decoration:none;">Projetus</a>.<br>
+              Este email foi enviado automaticamente pelo <a href="https://projetus.vercel.app" style="color:${BRAND};text-decoration:none;">Projetus</a>.<br>
               Se você não reconhece esta mensagem, pode ignorá-la com segurança.
             </td>
           </tr>

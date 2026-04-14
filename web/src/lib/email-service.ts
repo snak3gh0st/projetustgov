@@ -26,7 +26,8 @@ const CRM_ROLES = [
 ]
 
 function appUrl(): string {
-  return process.env.NEXTAUTH_URL || 'https://projetus.org'
+  // projetus.org aponta para o WordPress institucional; o CRM roda em projetus.vercel.app
+  return process.env.NEXTAUTH_URL || 'https://projetus.vercel.app'
 }
 
 async function getResend() {
