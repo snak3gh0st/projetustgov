@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession, canReadTgov, canCommentTgov } from '@/lib/dal'
+import { sendCommentNotification } from '@/lib/email-service'
 
 export const dynamic = 'force-dynamic'
 
@@ -132,6 +133,36 @@ export async function POST(request: NextRequest) {
       `SELECT nome FROM users WHERE id = $1`,
       [created.author_id],
     )
+
+    // Fire-and-forget email notification — only for proposta comments
+    if (target_type === 'proposta') {
+      try {
+        const participants = await query<{ user_id: string }>(
+          `SELECT user_id FROM tgov_proposta_participants WHERE proposta_key = $1`,
+          [target_key],
+        )
+        const propostaMeta = await query<{ titulo: string | null }>(
+          `SELECT titulo FROM tgov_propostas WHERE nr_proposta = $1
+           UNION ALL
+           SELECT NULL AS titulo FROM propostas WHERE nr_proposta = $1
+           LIMIT 1`,
+          [target_key],
+        )
+        const recipientIds = participants.map(p => p.user_id)
+
+        sendCommentNotification({
+          recipientIds,
+          commenterId: session.userId,
+          commenterName: authorRows[0]?.nome ?? 'Alguém',
+          propostaNr: target_key,
+          propostaTitulo: propostaMeta[0]?.titulo ?? null,
+          snippet: text.trim(),
+        }).catch(err => console.error('[comments] notification failed', err))
+      } catch (err) {
+        console.error('[comments] recipient gather failed', err)
+      }
+    }
+
     return NextResponse.json(
       { comment: { ...created, author_nome: authorRows[0]?.nome ?? null } },
       { status: 201 },
