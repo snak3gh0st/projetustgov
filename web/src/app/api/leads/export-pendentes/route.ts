@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { getApiSession } from '@/lib/dal'
+import { getApiSession, canExportContacts } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (session.role !== 'gestor' && session.role !== 'coordenador') {
+    if (!canExportContacts(session.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

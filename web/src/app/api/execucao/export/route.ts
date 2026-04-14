@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { getApiSession } from '@/lib/dal'
+import { getApiSession, canExportContacts } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,6 +10,9 @@ export async function GET(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    if (!canExportContacts(session.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
@@ -18,16 +21,6 @@ export async function GET(request: NextRequest) {
     const conditions: string[] = ['1=1']
     const params: unknown[] = []
     let pi = 1
-
-    if (session.role === 'vendedor') {
-      conditions.push(`EXISTS (
-        SELECT 1 FROM vendedor_projetos vp_owner
-        WHERE REGEXP_REPLACE(vp_owner.cnpj, '[^0-9]', '', 'g') = a.cnpj
-          AND vp_owner.vendedor_id = $${pi++}
-        LIMIT 1
-      )`)
-      params.push(session.userId)
-    }
 
     if (status) {
       conditions.push(`cs.crm_status = $${pi++}`)

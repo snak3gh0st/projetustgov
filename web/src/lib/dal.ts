@@ -108,6 +108,17 @@ export function isAdmin(role: string): boolean {
   return role === 'gestor'
 }
 
+/**
+ * Contact CSV export gate — admin-tier only.
+ * Tito and Philipe (role 'gestor' or 'admin') are the only users who may
+ * download bulk contact data (email/telefone/nome_pessoa) across leads.
+ * DO NOT loosen this without explicit product approval — see
+ * .planning/quick/260414-jby-exportar-contatos-qualquer-uma-somente-p/.
+ */
+export function canExportContacts(role: string | undefined | null): boolean {
+  return role === 'gestor' || role === 'admin'
+}
+
 // Helper: verify vendedor has access to a specific lead
 export async function verifyLeadAccess(cnpj: string, userId: string, role: string): Promise<boolean> {
   // Gestor and visualizador have access to all leads
