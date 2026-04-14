@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession, canReadTgov, canCommentTgov } from '@/lib/dal'
-import { sendCommentNotification } from '@/lib/email-service'
+import { sendCommentNotification, sendParticipantAddedNotification } from '@/lib/email-service'
 
 export const dynamic = 'force-dynamic'
 
@@ -111,22 +111,48 @@ export async function POST(request: NextRequest) {
     // notifications when someone else (e.g. adm_produto) comments on their proposal.
     // Check both storage tables: tgov_propostas (TGov-only) and propostas (CRM).
     if (target_type === 'proposta') {
-      await query(
+      const addedFromTgov = await query<{ user_id: string }>(
         `INSERT INTO tgov_proposta_participants (user_id, proposta_key)
          SELECT tecnico_id, $1
          FROM tgov_propostas
          WHERE nr_proposta = $1 AND tecnico_id IS NOT NULL AND tecnico_id <> $2
-         ON CONFLICT DO NOTHING`,
+         ON CONFLICT DO NOTHING
+         RETURNING user_id`,
         [target_key, session.userId],
       )
-      await query(
+      const addedFromCrm = await query<{ user_id: string }>(
         `INSERT INTO tgov_proposta_participants (user_id, proposta_key)
          SELECT tecnico_id, $1
          FROM propostas
          WHERE nr_proposta = $1 AND tecnico_id IS NOT NULL AND tecnico_id <> $2
-         ON CONFLICT DO NOTHING`,
+         ON CONFLICT DO NOTHING
+         RETURNING user_id`,
         [target_key, session.userId],
       )
+
+      // Fire participant-added notification for each newly-added participant
+      const newlyAdded = [...addedFromTgov, ...addedFromCrm].map(r => r.user_id)
+      if (newlyAdded.length > 0) {
+        try {
+          const propostaMeta = await query<{ titulo: string | null }>(
+            `SELECT titulo FROM tgov_propostas WHERE nr_proposta = $1
+             UNION ALL
+             SELECT NULL AS titulo FROM propostas WHERE nr_proposta = $1
+             LIMIT 1`,
+            [target_key],
+          )
+          for (const userId of newlyAdded) {
+            sendParticipantAddedNotification({
+              recipientId: userId,
+              actorId: session.userId,
+              propostaNr: target_key,
+              propostaTitulo: propostaMeta[0]?.titulo ?? null,
+            }).catch(err => console.error('[comments] participant-added notification failed', err))
+          }
+        } catch (err) {
+          console.error('[comments] participant-added gather failed', err)
+        }
+      }
     }
 
     const authorRows = await query<{ nome: string | null }>(
