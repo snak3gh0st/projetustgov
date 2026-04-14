@@ -85,11 +85,95 @@ function SubmitButton() {
   )
 }
 
+function ResetPasswordModal({
+  user,
+  onClose,
+  onSuccess,
+}: {
+  user: { id: string; nome: string; email: string }
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const [password, setPassword] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSubmit = async () => {
+    if (password.length < 6) return
+    const confirmed = window.confirm(
+      `Confirma resetar a senha de ${user.nome}? Um email com a nova senha será enviado.`
+    )
+    if (!confirmed) return
+
+    setSubmitting(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/usuarios/${user.id}/reset-password`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error((json as { error?: string }).error || 'Falha ao resetar senha')
+      onSuccess()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao resetar senha')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl">
+        <h3 className="text-lg font-heading font-bold text-gray-900 mb-1">
+          Resetar senha de {user.nome}
+        </h3>
+        <p className="text-sm text-gray-500 mb-5">{user.email}</p>
+
+        <input
+          type="text"
+          autoFocus
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Mínimo 6 caracteres"
+          className="w-full bg-gray-50 border border-gray-300 text-gray-800 px-4 py-3 rounded-lg focus:border-[#0072F7] focus:outline-none transition-colors mb-3"
+        />
+
+        {error && (
+          <p className="text-sm text-red-500 mb-3">{error}</p>
+        )}
+
+        <div className="flex gap-3 justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={password.length < 6 || submitting}
+            className="px-4 py-2 text-sm font-medium text-white bg-[#0072F7] hover:bg-[#0058C4] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? 'Enviando...' : 'Confirmar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function CadastroVendedorClient({ userRole, creatableRoles }: { userRole: string; creatableRoles: string[] }) {
   const roleOptions = ROLE_OPTIONS.filter(o => creatableRoles.includes(o.value))
   const [state, formAction] = useFormState(createUsuario, null)
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [loading, setLoading] = useState(true)
+  const [resetTarget, setResetTarget] = useState<{ id: string; nome: string; email: string } | null>(null)
+  const [resetToast, setResetToast] = useState<string | null>(null)
 
   const fetchUsuarios = useCallback(() => {
     setLoading(true)
@@ -336,16 +420,29 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
                         )}
                       </td>
                       <td className="py-3 px-4">
-                        {!isGestor && !isSelf && creatableRoles.includes(usuario.role) ? (
-                          <button
-                            onClick={() => handleDelete(usuario.id, usuario.nome)}
-                            className="text-red-500 hover:text-red-700 text-xs font-medium"
-                          >
-                            Excluir
-                          </button>
-                        ) : (
-                          <span className="text-xs text-gray-300">—</span>
-                        )}
+                        <div className="flex gap-2 items-center">
+                          {(userRole === 'admin' || userRole === 'gestor') && !isSelf && (
+                            <button
+                              type="button"
+                              onClick={() => setResetTarget({ id: usuario.id, nome: usuario.nome, email: usuario.email })}
+                              className="text-xs font-medium px-2 py-1 rounded bg-amber-50 text-amber-600 hover:bg-amber-100"
+                            >
+                              Resetar senha
+                            </button>
+                          )}
+                          {!isGestor && !isSelf && creatableRoles.includes(usuario.role) ? (
+                            <button
+                              onClick={() => handleDelete(usuario.id, usuario.nome)}
+                              className="text-red-500 hover:text-red-700 text-xs font-medium"
+                            >
+                              Excluir
+                            </button>
+                          ) : (
+                            (!((userRole === 'admin' || userRole === 'gestor') && !isSelf)) && (
+                              <span className="text-xs text-gray-300">—</span>
+                            )
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -355,6 +452,24 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
           </div>
         )}
       </div>
+
+      {resetTarget && (
+        <ResetPasswordModal
+          user={resetTarget}
+          onClose={() => setResetTarget(null)}
+          onSuccess={() => {
+            const email = resetTarget.email
+            setResetTarget(null)
+            setResetToast(`Senha resetada. Email enviado para ${email}.`)
+            setTimeout(() => setResetToast(null), 4000)
+          }}
+        />
+      )}
+      {resetToast && (
+        <div className="fixed bottom-6 right-6 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg z-50 text-sm">
+          {resetToast}
+        </div>
+      )}
     </div>
   )
 }
