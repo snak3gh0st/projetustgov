@@ -1208,7 +1208,7 @@ function AprovacaoTable({
             return (
             <tr
               key={`${row.numeroProposta}-${idx}`}
-              className={`transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-blue-50/50'}`}
+              className={`transition-colors cursor-pointer ${isSelected ? 'bg-blue-50 border-l-2 border-l-blue-500' : 'hover:bg-blue-50/50'}`}
               onClick={() => {
                 if (row.hasNew && row.numeroProposta) {
                   fetch('/api/tgov/seen', {
@@ -1220,7 +1220,7 @@ function AprovacaoTable({
                 onRowClick(row)
               }}
             >
-              <td className={`py-2.5 text-gray-700 font-mono text-xs ${isSelected ? 'pl-3 border-l-4 border-l-blue-500' : 'px-5'}`}>
+              <td className="px-5 py-2.5 text-gray-700 font-mono text-xs">
                 {row.numeroProposta || '—'}
                 {row.hasNew && (
                   <span className="ml-1.5 inline-block px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 rounded">
@@ -1329,7 +1329,7 @@ function ExecucaoTable({
             return (
               <tr
                 key={`${row.nrConvenio}-${idx}`}
-                className={`transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-blue-50/50'}`}
+                className={`transition-colors cursor-pointer ${isSelected ? 'bg-blue-50 border-l-2 border-l-blue-500' : 'hover:bg-blue-50/50'}`}
                 onClick={() => {
                   if (row.hasNew && row.numeroProposta) {
                     fetch('/api/tgov/seen', {
@@ -1341,7 +1341,7 @@ function ExecucaoTable({
                   onRowClick(row)
                 }}
               >
-                <td className={`py-2.5 font-mono text-xs whitespace-nowrap ${isSelected ? 'pl-2 border-l-4 border-l-blue-500' : 'px-4'}`}>
+                <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">
                   <a
                     href={buildTGovExecucaoLink(row.idProposta)}
                     target="_blank"
