@@ -1255,7 +1255,7 @@ function AprovacaoTable({
           <SortableTh label="CNPJ" col="cnpj" className="text-left px-4" {...thProps} />
           <SortableTh label="Proponente" col="proponente" className="text-left px-4" {...thProps} />
           <SortableTh label="Vencimento" col="vencimento" className="text-left px-4" {...thProps} />
-          <th className="px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide text-center w-12">Coments.</th>
+          <SortableTh label="Tecnico" col="tecnicoNome" className="text-left px-3" {...thProps} />
           <th className="px-3 py-2.5 w-8"></th>
         </tr>
       </thead>
@@ -1294,21 +1294,8 @@ function AprovacaoTable({
                 {row.proponente || '—'}
               </td>
               <td className="px-4 py-2.5"><VencimentoBadge vencimento={row.vencimento} /></td>
-              <td className="px-3 py-2.5 text-center" onClick={(e) => { e.stopPropagation(); onRowClick(row) }}>
-                {(row.commentCount ?? 0) > 0 ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 cursor-pointer">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                    <span className="font-medium">{row.commentCount}</span>
-                  </span>
-                ) : (
-                  <span className="text-gray-200">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  </span>
-                )}
+              <td className="px-3 py-2.5 text-xs text-gray-600 truncate max-w-[120px]">
+                {row.tecnicoNome || <span className="text-gray-300">—</span>}
               </td>
               <td className="px-3 py-2.5 text-gray-300">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
