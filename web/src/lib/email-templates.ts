@@ -7,10 +7,8 @@
 //   Magenta:            #FD225C (sigma-magenta)
 //   Purple:             #7A4BAC (sigma-purple)
 //   Blue:               #0072F7 (sigma-neon, primary CTA)
-// The real logo (public/logo.png) is embedded as base64 data URI for
-// self-contained rendering without external hosting.
 
-import { PROJETUS_LOGO_DATA_URI } from './email-logo'
+const LOGO_URL = 'https://projetus.vercel.app/logo.png'
 
 const BRAND = '#0072F7'
 const BRAND_MAGENTA = '#FD225C'
@@ -47,7 +45,7 @@ function baseLayout(title: string, bodyHtml: string): string {
           </tr>
           <tr>
             <td style="padding:36px 40px 20px;text-align:center;">
-              <img src="${PROJETUS_LOGO_DATA_URI}" alt="Projete" width="180" style="display:inline-block;width:180px;height:auto;max-width:180px;">
+              <img src="${LOGO_URL}" alt="Projete" width="180" style="display:inline-block;width:180px;height:auto;max-width:180px;">
               <div style="font-family:${FONT_BODY};font-size:12px;color:${TEXT_FAINT};margin-top:10px;font-weight:400;letter-spacing:0.2px;">CRM &amp; TGov</div>
               <div style="font-family:${FONT_BODY};font-size:10px;color:${BRAND};margin-top:8px;letter-spacing:0.3px;">powered by <strong style="font-weight:600;">SigmaIntel</strong></div>
             </td>
@@ -278,6 +276,10 @@ export interface DigestItem {
   titulo: string | null
   eventType: string
   eventAt: string
+  concedente: string | null
+  proponente: string | null
+  situacao: string | null
+  transferGovId: string | null
 }
 
 export interface DigestStale {
@@ -285,6 +287,40 @@ export interface DigestStale {
   titulo: string | null
   tecnicoNome: string | null
   hoursWithoutAccess: number
+  concedente: string | null
+  proponente: string | null
+  transferGovId: string | null
+}
+
+const TGOV_URL = 'https://discricionarias.transferegov.sistema.gov.br/voluntarias/ConsultarProposta/ResultadoDaConsultaDePropostaDetalharProposta.do?idProposta='
+
+function digestRow(label: string, value: string | null): string {
+  if (!value) return ''
+  return `<div style="padding:6px 0;border-bottom:1px solid ${BORDER};">
+    <span style="font-family:${FONT_BODY};font-size:11px;font-weight:500;color:${TEXT_FAINT};text-transform:uppercase;letter-spacing:0.7px;">${label}:</span>
+    <span style="font-family:${FONT_BODY};font-size:13px;color:${TEXT_DARK};font-weight:500;margin-left:6px;">${escapeHtml(value)}</span>
+  </div>`
+}
+
+function digestPropostaCard(item: DigestItem | DigestStale, appUrl: string, isStale = false): string {
+  const tgovLink = item.transferGovId
+    ? `<a href="${TGOV_URL}${encodeURIComponent(item.transferGovId)}" style="display:inline-block;padding:7px 14px;background:${BG_SUBTLE};border:1px solid ${BORDER};border-radius:8px;color:${TEXT_BODY};font-family:${FONT_BODY};font-size:12px;font-weight:500;text-decoration:none;margin-right:8px;">Ver no TransfereGov</a>`
+    : ''
+  const internalLink = `<a href="${appUrl}/tgov/${encodeURIComponent(item.propostaKey)}" style="display:inline-block;padding:7px 14px;background:${BRAND};border-radius:8px;color:#fff;font-family:${FONT_BODY};font-size:12px;font-weight:600;text-decoration:none;">Ver no Projetus</a>`
+
+  const eventBadge = 'eventType' in item
+    ? `<div style="margin-top:8px;"><span style="font-size:12px;color:${isStale ? '#B45309' : BRAND};font-weight:600;">${isStale ? '⚠ Sem acesso há +24h' : escapeHtml(EVENT_LABELS[item.eventType] || item.eventType)}</span><span style="font-size:12px;color:${TEXT_FAINT};"> · ${timeAgo(item.eventAt)}</span></div>`
+    : `<div style="margin-top:8px;"><span style="font-size:12px;color:#B45309;font-weight:600;">⚠ Sem acesso há ${(item as DigestStale).hoursWithoutAccess}h</span>${(item as DigestStale).tecnicoNome ? `<span style="font-size:12px;color:${TEXT_FAINT};"> · ${escapeHtml((item as DigestStale).tecnicoNome!)}</span>` : ''}</div>`
+
+  return `<div style="background:${BG_SUBTLE};border:1px solid ${BORDER};border-radius:10px;padding:16px 18px;margin-bottom:12px;">
+    <div style="font-family:${FONT_HEADING};font-size:15px;font-weight:700;color:${TEXT_DARK};margin-bottom:8px;">N° ${escapeHtml(item.propostaKey)}</div>
+    ${item.titulo ? `<div style="font-size:13px;color:${TEXT_MUTED};margin-bottom:8px;line-height:1.4;">${escapeHtml(item.titulo)}</div>` : ''}
+    ${digestRow('Concedente', item.concedente)}
+    ${digestRow('Proponente', item.proponente)}
+    ${'situacao' in item ? digestRow('Situação', (item as DigestItem).situacao) : ''}
+    ${eventBadge}
+    <div style="margin-top:12px;">${tgovLink}${internalLink}</div>
+  </div>`
 }
 
 export function digestEmail(opts: {
@@ -295,36 +331,21 @@ export function digestEmail(opts: {
 }): { subject: string; html: string } {
   const total = opts.items.length + opts.stale.length
 
-  const itemsHtml = opts.items.map(item => `
-    <div style="padding:12px 0;border-bottom:1px solid ${BORDER};">
-      <span style="font-family:${FONT_HEADING};font-size:14px;font-weight:600;color:${TEXT_DARK};">${escapeHtml(item.propostaKey)}</span>
-      ${item.titulo ? `<div style="font-size:13px;color:${TEXT_MUTED};margin-top:2px;">${escapeHtml(item.titulo)}</div>` : ''}
-      <div style="margin-top:4px;">
-        <span style="font-size:12px;color:${BRAND};font-weight:500;">${escapeHtml(EVENT_LABELS[item.eventType] || item.eventType)}</span>
-        <span style="font-size:12px;color:${TEXT_FAINT};"> · ${timeAgo(item.eventAt)}</span>
-      </div>
-    </div>
-  `).join('')
+  const itemsHtml = opts.items.map(item => digestPropostaCard(item, opts.appUrl)).join('')
 
   const staleHtml = opts.stale.length > 0 ? `
-    <div style="margin-top:24px;">
-      <div style="font-family:${FONT_HEADING};font-size:12px;font-weight:600;color:#B45309;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px;">⚠ Sem acesso há +24h</div>
-      ${opts.stale.map(item => `
-        <div style="padding:12px 0;border-bottom:1px solid #FEF3C7;">
-          <span style="font-family:${FONT_HEADING};font-size:14px;font-weight:600;color:${TEXT_DARK};">${escapeHtml(item.propostaKey)}</span>
-          ${item.titulo ? `<div style="font-size:13px;color:${TEXT_MUTED};margin-top:2px;">${escapeHtml(item.titulo)}</div>` : ''}
-          <div style="font-size:12px;color:#B45309;margin-top:4px;">${escapeHtml(item.tecnicoNome || 'Técnico')} não acessou (${item.hoursWithoutAccess}h)</div>
-        </div>
-      `).join('')}
+    <div style="margin-top:8px;">
+      <div style="font-family:${FONT_HEADING};font-size:12px;font-weight:600;color:#B45309;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px;">Propostas sem acesso há +24h</div>
+      ${opts.stale.map(item => digestPropostaCard(item, opts.appUrl, true)).join('')}
     </div>
   ` : ''
 
   const body = `
     ${heading('Resumo de atividades')}
     ${paragraph(`Olá <strong>${escapeHtml(opts.nome.split(' ')[0])}</strong>, você tem <strong>${total}</strong> proposta${total !== 1 ? 's' : ''} com novidades.`)}
-    <div style="margin-top:16px;">${itemsHtml}</div>
+    <div style="margin-top:20px;">${itemsHtml}</div>
     ${staleHtml}
-    ${button(`${opts.appUrl}/tgov`, 'Acessar TGov Dashboard')}
+    ${muted('Para efetuar complementações ou acompanhar suas propostas, acesse o Transferegov e consulte as abas de Requisitos.')}
   `
 
   return {

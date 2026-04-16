@@ -16,6 +16,10 @@ export async function getNotificationsForUser(userId: string, role: string): Pro
     titulo: string | null
     event_type: string
     event_at: string
+    concedente: string | null
+    proponente: string | null
+    situacao: string | null
+    transfer_gov_id: string | null
   }>(`
     WITH linked AS (
       SELECT proposta_key FROM tgov_proposta_participants WHERE user_id = $1
@@ -41,7 +45,11 @@ export async function getNotificationsForUser(userId: string, role: string): Pro
           THEN 'situacao'
           ELSE 'assignment'
         END AS event_type,
-        tp.titulo
+        tp.titulo,
+        tp.orgao_superior AS concedente,
+        tp.proponente,
+        tp.situacao,
+        tp.transfer_gov_id
       FROM linked l
       LEFT JOIN tgov_propostas tp ON tp.nr_proposta = l.proposta_key
       LEFT JOIN tgov_proposta_seen s ON s.user_id = $1 AND s.proposta_key = l.proposta_key
@@ -52,7 +60,8 @@ export async function getNotificationsForUser(userId: string, role: string): Pro
         tp.tecnico_assigned_at
       ) > COALESCE(s.seen_at, '1970-01-01'::timestamptz)
     )
-    SELECT proposta_key, titulo, event_type, latest_at::text AS event_at
+    SELECT proposta_key, titulo, event_type, latest_at::text AS event_at,
+           concedente, proponente, situacao, transfer_gov_id
     FROM activities
     WHERE latest_at IS NOT NULL
     ORDER BY latest_at DESC
@@ -67,15 +76,19 @@ export async function getNotificationsForUser(userId: string, role: string): Pro
       proposta_key: string
       titulo: string | null
       tecnico_nome: string | null
-      assigned_at: string
       hours: number
+      concedente: string | null
+      proponente: string | null
+      transfer_gov_id: string | null
     }>(`
       SELECT
         tp.nr_proposta AS proposta_key,
         tp.titulo,
         u.nome AS tecnico_nome,
-        tp.tecnico_assigned_at::text AS assigned_at,
-        EXTRACT(EPOCH FROM (now() - tp.tecnico_assigned_at))::int / 3600 AS hours
+        EXTRACT(EPOCH FROM (now() - tp.tecnico_assigned_at))::int / 3600 AS hours,
+        tp.orgao_superior AS concedente,
+        tp.proponente,
+        tp.transfer_gov_id
       FROM tgov_propostas tp
       JOIN tgov_proposta_participants pp
         ON pp.proposta_key = tp.nr_proposta AND pp.user_id = $1
@@ -93,8 +106,10 @@ export async function getNotificationsForUser(userId: string, role: string): Pro
       propostaKey: r.proposta_key,
       titulo: r.titulo,
       tecnicoNome: r.tecnico_nome,
-      assignedAt: r.assigned_at,
       hoursWithoutAccess: r.hours,
+      concedente: r.concedente,
+      proponente: r.proponente,
+      transferGovId: r.transfer_gov_id,
     }))
   }
 
@@ -104,6 +119,10 @@ export async function getNotificationsForUser(userId: string, role: string): Pro
       titulo: r.titulo,
       eventType: r.event_type,
       eventAt: r.event_at,
+      concedente: r.concedente,
+      proponente: r.proponente,
+      situacao: r.situacao,
+      transferGovId: r.transfer_gov_id,
     })),
     stale,
   }
