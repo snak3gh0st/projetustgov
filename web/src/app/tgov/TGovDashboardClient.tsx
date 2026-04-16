@@ -192,6 +192,9 @@ function TGovInteractionPanel({
         throw new Error(err.error || `HTTP ${res.status}`)
       }
       const data = await res.json()
+      // Sync state from server response (confirms what was actually persisted)
+      setVencimento(data.vencimento ?? '')
+      setObs(data.obs ?? '')
       setSaved(true)
       if (tab === 'aprovacao') {
         onSave({ vencimento: data.vencimento ?? null })
