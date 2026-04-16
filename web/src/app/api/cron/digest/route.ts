@@ -47,12 +47,18 @@ export async function GET(request: NextRequest) {
 
       const html = buildDigestHtml(user.nome, data)
 
-      await resend.emails.send({
+      const { error: sendError } = await resend.emails.send({
         from: fromEmail,
         to: user.email,
         subject: 'TGov — Resumo de atividades',
         html,
       })
+
+      if (sendError) {
+        console.error(`[cron/digest] resend error for ${user.email}:`, sendError)
+        skipped++
+        continue
+      }
 
       sent++
     }
