@@ -207,6 +207,7 @@ export async function GET(request: NextRequest) {
         internal_status: string | null
         tecnico_id: string | null
         comment_count: number
+        vencimento: string | null
       }>(
         `${ALL_PROPOSTAS_CTE} SELECT
           p.transfer_gov_id,
@@ -229,7 +230,8 @@ export async function GET(request: NextRequest) {
           ti.status AS internal_status,
           p.tecnico_id,
           (SELECT COUNT(*)::int FROM tgov_comments c
-           WHERE c.target_key = p.nr_proposta AND c.target_type = 'proposta') AS comment_count
+           WHERE c.target_key = p.nr_proposta AND c.target_type = 'proposta') AS comment_count,
+          ti.vencimento::text AS vencimento
         FROM all_propostas p
         LEFT JOIN tgov_interactions ti ON ti.item_key = p.nr_proposta AND ti.tab = 'aprovacao'
         ${tableWhereClause}
@@ -345,6 +347,7 @@ export async function GET(request: NextRequest) {
           tecnicoNome: r.tecnico_id ? (tecnicoNameMap.get(r.tecnico_id) ?? null) : null,
           hasNew: r.nr_proposta ? (newStatusMap.get(r.nr_proposta) ?? false) : false,
           commentCount: r.comment_count ?? 0,
+          vencimento: r.vencimento ?? null,
         })),
         page,
         pageSize,

@@ -132,6 +132,8 @@ export interface TGovAprovacaoTableRow extends TGovTableRow {
   tecnicoNome?: string | null
   /** Number of comments on this proposal (from tgov_comments). */
   commentCount?: number
+  /** Expiry date for the proposal (from tgov_interactions). ISO date string or null. */
+  vencimento?: string | null
 }
 
 /** Extended row for the Execucao tab with financial and detail columns. */
