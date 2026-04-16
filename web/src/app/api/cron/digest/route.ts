@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       const appUrl = process.env.NEXTAUTH_URL || 'https://projetus.vercel.app'
       const { subject, html } = digestEmail({ nome: user.nome, items: data.items, stale: data.stale, appUrl })
 
-      const { error: sendError } = await resend.emails.send({
+      const { data: sendData, error: sendError } = await resend.emails.send({
         from: fromEmail,
         to: user.email,
         subject,
@@ -57,11 +57,12 @@ export async function GET(request: NextRequest) {
       })
 
       if (sendError) {
-        console.error(`[cron/digest] resend error for ${user.email}:`, sendError)
+        console.error(`[cron/digest] resend error for ${user.email}:`, JSON.stringify(sendError))
         skipped++
         continue
       }
 
+      console.log(`[cron/digest] queued id=${sendData?.id} to=${user.email}`)
       sent++
     }
 
