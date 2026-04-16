@@ -10,6 +10,7 @@ import {
   situacaoChangeEmail,
   assignmentEmail,
   participantAddedEmail,
+  diligenciaEmail,
 } from './email-templates'
 
 const FROM = process.env.DIGEST_FROM_EMAIL || 'Projetus <noreply@projetus.org>'
@@ -17,6 +18,7 @@ const FROM = process.env.DIGEST_FROM_EMAIL || 'Projetus <noreply@projetus.org>'
 const TGOV_ROLES = [
   'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao',
   'projetista', 'coord_execucao', 'assistente_execucao', 'projetista_execucao',
+  'coord_prestacao', 'assistente_prestacao',
   'gestor', 'admin', // gestor/admin see both worlds
 ]
 
@@ -179,4 +181,31 @@ export async function sendParticipantAddedNotification(params: {
     propostaUrl,
   })
   await sendOne(u.email, subject, html)
+}
+
+export async function sendDiligenciaEmail(params: {
+  recipientIds: string[]
+  numeroProposta: string
+  ministerio: string
+  proponente: string
+  cnpj: string
+  situacao: string
+  comentario: string
+}): Promise<void> {
+  const users = filterTgov(await loadUsers(params.recipientIds))
+  const propostaUrl = `${appUrl()}/tgov?nr=${encodeURIComponent(params.numeroProposta)}`
+
+  for (const u of users) {
+    const { subject, html } = diligenciaEmail({
+      nome: u.nome,
+      numeroProposta: params.numeroProposta,
+      ministerio: params.ministerio,
+      proponente: params.proponente,
+      cnpj: params.cnpj,
+      situacao: params.situacao,
+      comentario: params.comentario,
+      propostaUrl,
+    })
+    await sendOne(u.email, subject, html)
+  }
 }

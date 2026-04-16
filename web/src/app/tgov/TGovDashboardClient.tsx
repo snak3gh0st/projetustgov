@@ -36,6 +36,7 @@ import {
   EXECUCAO_NR_PROPOSTAS,
   APROVACAO_ONLY_ROLES,
   EXECUCAO_ONLY_ROLES,
+  PRESTACAO_ONLY_ROLES,
 } from '@/lib/tgov'
 
 // ---------------------------------------------------------------------------
@@ -351,7 +352,9 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
   const isDashboardView = view !== 'dashboard'
   // Tab priority: URL param > role-based default
   const initialTab: TGovTab = initialTabParam
-    ?? ((EXECUCAO_ONLY_ROLES as readonly string[]).includes(userRole) ? 'execucao' : DEFAULT_TGOV_TAB)
+    ?? ((PRESTACAO_ONLY_ROLES as readonly string[]).includes(userRole) ? 'prestacao_contas'
+      : (EXECUCAO_ONLY_ROLES as readonly string[]).includes(userRole) ? 'execucao'
+      : DEFAULT_TGOV_TAB)
   const [activeTab, setActiveTab] = useState<TGovTab>(initialTab)
   const isExecTab = initialTabParam === 'execucao' || initialTabParam === 'prestacao_contas'
   const baseFilters = isExecTab ? DEFAULT_EXECUCAO_MAIN_FILTERS : DEFAULT_MAIN_FILTERS
@@ -616,8 +619,10 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                 .filter(tab => {
                   const isAprovacaoRole = (APROVACAO_ONLY_ROLES as readonly string[]).includes(userRole)
                   const isExecucaoRole = (EXECUCAO_ONLY_ROLES as readonly string[]).includes(userRole)
+                  const isPrestacaoRole = (PRESTACAO_ONLY_ROLES as readonly string[]).includes(userRole)
                   if (isAprovacaoRole && tab !== 'aprovacao') return false
                   if (isExecucaoRole && tab === 'aprovacao') return false
+                  if (isPrestacaoRole && tab !== 'prestacao_contas') return false
                   return true
                 })
                 .map((tab) => (

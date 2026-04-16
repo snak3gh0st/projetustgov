@@ -255,6 +255,38 @@ export function participantAddedEmail(opts: {
   return { subject: `Projetus — Você foi adicionado à proposta ${opts.propostaNr}`, html: baseLayout('Novo participante', body) }
 }
 
+// ——— Template: Diligencia ———
+export function diligenciaEmail(opts: {
+  nome: string
+  numeroProposta: string
+  ministerio: string
+  proponente: string
+  cnpj: string
+  situacao: string
+  comentario: string
+  propostaUrl: string
+}): { subject: string; html: string } {
+  const cnpjFormatted = opts.cnpj.length === 14
+    ? opts.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+    : opts.cnpj
+
+  const body = `
+    ${heading('Diligencia')}
+    ${paragraph(`Ola <strong>${escapeHtml(opts.nome)}</strong>, uma proposta requer a sua atencao.`)}
+    ${propostaCard(opts.numeroProposta, null)}
+    <div style="margin:16px 0;">
+      ${infoRow('Numero da Proposta', opts.numeroProposta)}
+      ${infoRow('Ministerio', opts.ministerio)}
+      ${infoRow('Proponente', opts.proponente)}
+      ${infoRow('CNPJ', cnpjFormatted)}
+      ${infoRow('Situacao', opts.situacao)}
+      ${infoRow('Comentario', opts.comentario)}
+    </div>
+    ${button(opts.propostaUrl, 'Ver proposta')}
+  `
+  return { subject: `Projetus — Diligencia (${opts.numeroProposta})`, html: baseLayout('Diligencia', body) }
+}
+
 // ——— Template: Daily Digest ———
 
 const EVENT_LABELS: Record<string, string> = {
