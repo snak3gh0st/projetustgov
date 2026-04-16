@@ -134,12 +134,12 @@ function VencimentoBadge({ vencimento }: { vencimento: string | null | undefined
 function TGovInteractionPanel({
   itemKey,
   tab,
-  onStatusChange,
+  onSave,
   currentUserRole,
 }: {
   itemKey: string
   tab: 'aprovacao' | 'execucao'
-  onStatusChange: (s: string) => void
+  onSave: (patch: { status?: string; vencimento?: string | null }) => void
   currentUserRole?: string
 }) {
   const [status, setStatus] = useState<TGovInteractionStatus | ''>('')
@@ -193,7 +193,11 @@ function TGovInteractionPanel({
       }
       const data = await res.json()
       setSaved(true)
-      onStatusChange(data.status ?? '')
+      if (tab === 'aprovacao') {
+        onSave({ vencimento: data.vencimento ?? null })
+      } else {
+        onSave({ status: data.status ?? '' })
+      }
       setTimeout(() => setSaved(false), 2000)
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Erro ao salvar')
@@ -932,7 +936,18 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
           onClose={() => setSelectedAprovRow(null)}
           tecnicos={tecnicos}
           currentUserRole={userRole}
-          onRowUpdate={(patch) => setSelectedAprovRow((prev) => (prev ? { ...prev, ...patch } : prev))}
+          onRowUpdate={(patch) => {
+            setSelectedAprovRow((prev) => (prev ? { ...prev, ...patch } : prev))
+            setData((prev) => prev ? {
+              ...prev,
+              table: {
+                ...prev.table,
+                rows: (prev.table.rows as TGovAprovacaoTableRow[]).map((r) =>
+                  r.numeroProposta === selectedAprovRow?.numeroProposta ? { ...r, ...patch } : r
+                ),
+              },
+            } : prev)
+          }}
         />
       )}
 
@@ -1237,14 +1252,13 @@ function AprovacaoTable({
           <SortableTh label="CNPJ" col="cnpj" className="text-left px-4" {...thProps} />
           <SortableTh label="Proponente" col="proponente" className="text-left px-4" {...thProps} />
           <SortableTh label="Vencimento" col="vencimento" className="text-left px-4" {...thProps} />
-          <SortableTh label="Status" col="internalStatus" className="text-left px-4 whitespace-nowrap" {...thProps} />
           <th className="px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide text-center w-12">Coments.</th>
           <th className="px-3 py-2.5 w-8"></th>
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-100">
         {loading ? (
-          <SkeletonRows cols={8} />
+          <SkeletonRows cols={7} />
         ) : sorted && sorted.length > 0 ? (
           sorted.map((row, idx) => {
             const isSelected = selectedKey === row.numeroProposta
@@ -1277,7 +1291,6 @@ function AprovacaoTable({
                 {row.proponente || '—'}
               </td>
               <td className="px-4 py-2.5"><VencimentoBadge vencimento={row.vencimento} /></td>
-              <td className="px-4 py-2.5"><InternalStatusBadge status={row.internalStatus} /></td>
               <td className="px-3 py-2.5 text-center" onClick={(e) => { e.stopPropagation(); onRowClick(row) }}>
                 {(row.commentCount ?? 0) > 0 ? (
                   <span className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 cursor-pointer">
@@ -1621,7 +1634,7 @@ function ExecucaoSidecard({
             <SidecardCurrency label="Ingresso Contrapartida" value={row.ingressoContrapartida} />
           </SidecardSection>
 
-          <TGovInteractionPanel itemKey={row.nrConvenio} tab="execucao" onStatusChange={() => {}} currentUserRole={currentUserRole} />
+          <TGovInteractionPanel itemKey={row.nrConvenio} tab="execucao" onSave={() => {}} currentUserRole={currentUserRole} />
 
           {/* Comentários */}
           <div id="sidecard-comments">
@@ -1759,7 +1772,7 @@ function AprovacaoSidecard({
             <SidecardCurrency label="Valor Contrapartida" value={row.valorContrapartida} />
           </SidecardSection>
 
-          <TGovInteractionPanel itemKey={row.numeroProposta} tab="aprovacao" onStatusChange={() => {}} currentUserRole={currentUserRole} />
+          <TGovInteractionPanel itemKey={row.numeroProposta} tab="aprovacao" onSave={(patch) => onRowUpdate({ vencimento: patch.vencimento ?? undefined })} currentUserRole={currentUserRole} />
 
           {/* Comentários */}
           <div id="sidecard-comments">
