@@ -66,6 +66,16 @@ interface PropostaInfo {
   municipio: string | null
   nr_proposta: string | null
   sit_proposta: string | null
+  /** True when this proposal is in APROVACAO_NR_PROPOSTAS — uses UPSERT in STEP B2 */
+  is_aprovacao: boolean
+  /** Extra fields populated only when is_aprovacao=true, for INSERT into propostas */
+  valor_global: number | null
+  valor_repasse: number | null
+  valor_contrapartida: number | null
+  data_publicacao: string | null
+  modalidade: string | null
+  orgao_superior: string | null
+  orgao_vinculado: string | null
 }
 
 interface ExecucaoRecord {
@@ -193,28 +203,81 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
       municipio: fixText(row['MUNICIPIO_PROPONENTE'] || row['MUNIC_PROPONENTE'] || null) || null,
       nr_proposta: row['NR_PROPOSTA'] || null,
       sit_proposta: fixText(row['SIT_PROPOSTA'] || row['SITUACAO_PROPOSTA'] || null) || null,
+      is_aprovacao: isAprovacao,
+      // Extra fields for UPSERT path (APROVACAO proposals only — negligible memory overhead)
+      valor_global: isAprovacao ? parseBRNumber(row['VL_GLOBAL_PROP'] || null) : null,
+      valor_repasse: isAprovacao ? parseBRNumber(row['VL_REPASSE_PROP'] || null) : null,
+      valor_contrapartida: isAprovacao ? parseBRNumber(row['VL_CONTRAPARTIDA_PROP'] || null) : null,
+      data_publicacao: isAprovacao
+        ? (parseBRDate(row['DIA_PROPOSTA'] || row['DIA_PROP'] || null) || null)
+        : null,
+      modalidade: isAprovacao ? (fixText(row['MODALIDADE'] || null) || null) : null,
+      orgao_superior: isAprovacao ? (fixText(row['DESC_ORGAO_SUP'] || null) || null) : null,
+      orgao_vinculado: isAprovacao ? (fixText(row['DESC_ORGAO'] || null) || null) : null,
     })
   })
 
   console.log(`[execucao-sync] STEP B complete: propostaMap.size=${propostaMap.size}, cnpj_matched=${stats.osc_rows_kept}`)
 
   // -------------------------------------------------------------------------
-  // STEP B2: UPDATE propostas.situacao para propostas sem convênio ativo
-  // Apenas linhas que NÃO existem em projetos_execucao nem tgov_projetos_execucao
-  // (espelha exatamente a condição do branch 3 do CTE all_exec)
+  // STEP B2: Sync propostas.situacao from siconv_proposta.csv
+  //
+  // Two sub-steps:
+  //   B2a — UPDATE existing rows for all CRM + APROVACAO proposals in propostaMap
+  //   B2b — UPSERT for APROVACAO_NR_PROPOSTAS proposals specifically:
+  //         if the row doesn't exist in propostas yet (e.g. import script ran
+  //         before the government published the proposal in the CSV), INSERT it
+  //         so that it appears in the TGOV Aprovação tab with the correct situacao.
+  //         Without this UPSERT, these proposals remain invisible or show stale
+  //         situacao forever because no other code path creates the propostas row.
   // -------------------------------------------------------------------------
   const b2IdPropostas: string[] = []
   const b2Situacoes: string[] = []
+  // APROVACAO-specific arrays for UPSERT path (B2b)
+  const b2aTransferGovIds: string[] = []
+  const b2aNrPropostas: string[] = []
+  const b2aSituacoes: string[] = []
+  const b2aCnpjs: string[] = []
+  const b2aProponentes: (string | null)[] = []
+  const b2aTitulos: (string | null)[] = []
+  const b2aEstados: (string | null)[] = []
+  const b2aMunicipios: (string | null)[] = []
+  const b2aValoresGlobal: (number | null)[] = []
+  const b2aValoresRepasse: (number | null)[] = []
+  const b2aValoresContrapartida: (number | null)[] = []
+  const b2aDataPublicacao: (string | null)[] = []
+  const b2aModalidades: (string | null)[] = []
+  const b2aOrgaosSuperior: (string | null)[] = []
+  const b2aOrgaosVinculado: (string | null)[] = []
+
   for (const [idProposta, info] of Array.from(propostaMap.entries())) {
     if (info.sit_proposta) {
       b2IdPropostas.push(idProposta)
       b2Situacoes.push(info.sit_proposta)
     }
+    if (info.is_aprovacao && info.sit_proposta && info.nr_proposta) {
+      b2aTransferGovIds.push(idProposta)
+      b2aNrPropostas.push(info.nr_proposta)
+      b2aSituacoes.push(info.sit_proposta)
+      b2aCnpjs.push(info.cnpj)
+      b2aProponentes.push(info.nome_proponente)
+      b2aTitulos.push(info.objeto)
+      b2aEstados.push(info.uf)
+      b2aMunicipios.push(info.municipio)
+      b2aValoresGlobal.push(info.valor_global)
+      b2aValoresRepasse.push(info.valor_repasse)
+      b2aValoresContrapartida.push(info.valor_contrapartida)
+      b2aDataPublicacao.push(info.data_publicacao)
+      b2aModalidades.push(info.modalidade)
+      b2aOrgaosSuperior.push(info.orgao_superior)
+      b2aOrgaosVinculado.push(info.orgao_vinculado)
+    }
   }
 
-  if (b2IdPropostas.length > 0) {
-    const b2Client = await pool.connect()
-    try {
+  const b2Client = await pool.connect()
+  try {
+    // B2a: UPDATE existing propostas rows (CRM + APROVACAO)
+    if (b2IdPropostas.length > 0) {
       const b2Result = await b2Client.query<{ n: string }>(
         `WITH upd AS (
           UPDATE propostas
@@ -230,12 +293,89 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
         [b2IdPropostas, b2Situacoes]
       )
       const b2Updated = parseInt(b2Result.rows[0].n, 10)
-      console.log(`[execucao-sync] STEP B2: updated situacao for ${b2Updated} propostas`)
-    } finally {
-      b2Client.release()
+      console.log(`[execucao-sync] STEP B2a: updated situacao for ${b2Updated} propostas`)
+    } else {
+      console.log('[execucao-sync] STEP B2a: no propostas with SIT_PROPOSTA to update')
     }
-  } else {
-    console.log('[execucao-sync] STEP B2: no propostas with SIT_PROPOSTA to update')
+
+    // B2b: UPSERT for APROVACAO_NR_PROPOSTAS — ensures missing rows get created
+    // This covers the case where the proposal appeared in the CSV after the one-time
+    // import-aprovacao-propostas.mjs script ran, leaving no row in propostas.
+    if (b2aTransferGovIds.length > 0) {
+      const b2bResult = await b2Client.query<{ inserted: string; updated: string }>(
+        `WITH upserted AS (
+          INSERT INTO propostas (
+            transfer_gov_id, nr_proposta, situacao, proponente_cnpj,
+            proponente, titulo, estado, municipio,
+            valor_global, valor_repasse, valor_contrapartida,
+            data_publicacao, modalidade, orgao_superior, orgao_vinculado,
+            updated_at
+          )
+          SELECT
+            unnest($1::text[]),  -- transfer_gov_id
+            unnest($2::text[]),  -- nr_proposta
+            unnest($3::text[]),  -- situacao
+            unnest($4::text[]),  -- proponente_cnpj
+            unnest($5::text[]),  -- proponente
+            unnest($6::text[]),  -- titulo
+            unnest($7::text[]),  -- estado
+            unnest($8::text[]),  -- municipio
+            unnest($9::float8[]),  -- valor_global
+            unnest($10::float8[]), -- valor_repasse
+            unnest($11::float8[]), -- valor_contrapartida
+            unnest($12::date[]),   -- data_publicacao
+            unnest($13::text[]),   -- modalidade
+            unnest($14::text[]),   -- orgao_superior
+            unnest($15::text[]),   -- orgao_vinculado
+            NOW()
+          ON CONFLICT (transfer_gov_id) DO UPDATE SET
+            nr_proposta         = EXCLUDED.nr_proposta,
+            situacao            = EXCLUDED.situacao,
+            proponente_cnpj     = EXCLUDED.proponente_cnpj,
+            proponente          = COALESCE(EXCLUDED.proponente, propostas.proponente),
+            titulo              = COALESCE(EXCLUDED.titulo, propostas.titulo),
+            estado              = COALESCE(EXCLUDED.estado, propostas.estado),
+            municipio           = COALESCE(EXCLUDED.municipio, propostas.municipio),
+            valor_global        = COALESCE(EXCLUDED.valor_global, propostas.valor_global),
+            valor_repasse       = COALESCE(EXCLUDED.valor_repasse, propostas.valor_repasse),
+            valor_contrapartida = COALESCE(EXCLUDED.valor_contrapartida, propostas.valor_contrapartida),
+            data_publicacao     = COALESCE(EXCLUDED.data_publicacao, propostas.data_publicacao),
+            modalidade          = COALESCE(EXCLUDED.modalidade, propostas.modalidade),
+            orgao_superior      = COALESCE(EXCLUDED.orgao_superior, propostas.orgao_superior),
+            orgao_vinculado     = COALESCE(EXCLUDED.orgao_vinculado, propostas.orgao_vinculado),
+            updated_at          = NOW()
+          RETURNING (xmax = 0)::int AS was_inserted
+        )
+        SELECT
+          COUNT(*) FILTER (WHERE was_inserted = 1)::text AS inserted,
+          COUNT(*) FILTER (WHERE was_inserted = 0)::text AS updated
+        FROM upserted`,
+        [
+          b2aTransferGovIds,
+          b2aNrPropostas,
+          b2aSituacoes,
+          b2aCnpjs,
+          b2aProponentes,
+          b2aTitulos,
+          b2aEstados,
+          b2aMunicipios,
+          b2aValoresGlobal,
+          b2aValoresRepasse,
+          b2aValoresContrapartida,
+          b2aDataPublicacao,
+          b2aModalidades,
+          b2aOrgaosSuperior,
+          b2aOrgaosVinculado,
+        ]
+      )
+      const inserted = parseInt(b2bResult.rows[0]?.inserted ?? '0', 10)
+      const updated = parseInt(b2bResult.rows[0]?.updated ?? '0', 10)
+      console.log(`[execucao-sync] STEP B2b: upserted ${b2aTransferGovIds.length} APROVACAO proposals (inserted=${inserted}, updated=${updated})`)
+    } else {
+      console.log('[execucao-sync] STEP B2b: no APROVACAO proposals to upsert')
+    }
+  } finally {
+    b2Client.release()
   }
 
   // Memory guard after STEP B
