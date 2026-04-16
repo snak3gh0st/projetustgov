@@ -1781,7 +1781,7 @@ function AprovacaoSidecard({
             <SidecardCurrency label="Valor Contrapartida" value={row.valorContrapartida} />
           </SidecardSection>
 
-          <TGovInteractionPanel itemKey={row.numeroProposta} tab="aprovacao" onSave={(patch) => onRowUpdate({ vencimento: patch.vencimento ?? undefined })} currentUserRole={currentUserRole} />
+          <TGovInteractionPanel itemKey={row.numeroProposta} tab="aprovacao" onSave={(patch) => onRowUpdate({ vencimento: patch.vencimento })} currentUserRole={currentUserRole} />
 
           {/* Comentários */}
           <div id="sidecard-comments">
