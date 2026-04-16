@@ -108,6 +108,26 @@ function InternalStatusBadge({ status }: { status: string | null | undefined }) 
 }
 
 // ---------------------------------------------------------------------------
+// VencimentoBadge — shows formatted date + Vencida/Em tempo badge
+// ---------------------------------------------------------------------------
+
+function VencimentoBadge({ vencimento }: { vencimento: string | null | undefined }) {
+  if (!vencimento) return <span className="text-xs text-gray-400">—</span>
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const vDate = new Date(vencimento + 'T00:00:00') // parse as local date
+  const isVencida = vDate < today
+  const formatted = vDate.toLocaleDateString('pt-BR')
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="text-xs text-gray-600">{formatted}</span>
+      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isVencida ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+        {isVencida ? 'Vencida' : 'Em tempo'}
+      </span>
+    </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // TGovInteractionPanel — CRM status + obs editor inside sidecards
 // ---------------------------------------------------------------------------
 
@@ -124,6 +144,7 @@ function TGovInteractionPanel({
 }) {
   const [status, setStatus] = useState<TGovInteractionStatus | ''>('')
   const [obs, setObs] = useState('')
+  const [vencimento, setVencimento] = useState<string>('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -141,6 +162,7 @@ function TGovInteractionPanel({
         if (!cancelled) {
           setStatus((data.status as TGovInteractionStatus) ?? '')
           setObs(data.obs ?? '')
+          setVencimento(data.vencimento ?? '')
         }
       } catch {
         if (!cancelled) setLoadError('Erro ao carregar')
@@ -157,10 +179,13 @@ function TGovInteractionPanel({
     setSaving(true)
     setSaveError(null)
     try {
+      const body = tab === 'aprovacao'
+        ? { vencimento: vencimento || null, obs, tab }
+        : { status: status || null, obs, tab }
       const res = await fetch(`/api/tgov/interaction/${encodeURIComponent(itemKey)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: status || null, obs, tab }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -183,26 +208,44 @@ function TGovInteractionPanel({
 
       {loadError && <p className="text-xs text-red-500">{loadError}</p>}
 
-      {/* Status selector */}
-      <div>
-        <p className="text-xs text-gray-500 mb-1.5">Status</p>
-        <div className="flex flex-wrap gap-1.5">
-          {TGOV_INTERACTION_STATUSES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setStatus(s)}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                status === s
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'
-              }`}
-            >
-              {s}
-            </button>
-          ))}
+      {tab === 'aprovacao' ? (
+        /* Vencimento date picker for aprovacao tab */
+        <div>
+          <p className="text-xs text-gray-500 mb-1.5">Vencimento</p>
+          <input
+            type="date"
+            value={vencimento}
+            onChange={(e) => setVencimento(e.target.value)}
+            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+          />
+          {vencimento && (
+            <div className="mt-1.5">
+              <VencimentoBadge vencimento={vencimento} />
+            </div>
+          )}
         </div>
-      </div>
+      ) : (
+        /* Status selector for execucao tab */
+        <div>
+          <p className="text-xs text-gray-500 mb-1.5">Status</p>
+          <div className="flex flex-wrap gap-1.5">
+            {TGOV_INTERACTION_STATUSES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setStatus(s)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  status === s
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Obs textarea */}
       <div>
@@ -1193,7 +1236,7 @@ function AprovacaoTable({
           <SortableTh label="Data" col="data" className="text-left px-4" {...thProps} />
           <SortableTh label="CNPJ" col="cnpj" className="text-left px-4" {...thProps} />
           <SortableTh label="Proponente" col="proponente" className="text-left px-4" {...thProps} />
-          <SortableTh label="Situação" col="situacao" className="text-left px-4" {...thProps} />
+          <SortableTh label="Vencimento" col="vencimento" className="text-left px-4" {...thProps} />
           <SortableTh label="Status" col="internalStatus" className="text-left px-4 whitespace-nowrap" {...thProps} />
           <th className="px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide text-center w-12">Coments.</th>
           <th className="px-3 py-2.5 w-8"></th>
@@ -1233,7 +1276,7 @@ function AprovacaoTable({
               <td className="px-4 py-2.5 text-gray-700">
                 {row.proponente || '—'}
               </td>
-              <td className="px-4 py-2.5"><SituacaoBadge situacao={row.situacao} /></td>
+              <td className="px-4 py-2.5"><VencimentoBadge vencimento={row.vencimento} /></td>
               <td className="px-4 py-2.5"><InternalStatusBadge status={row.internalStatus} /></td>
               <td className="px-3 py-2.5 text-center" onClick={(e) => { e.stopPropagation(); onRowClick(row) }}>
                 {(row.commentCount ?? 0) > 0 ? (
@@ -1660,8 +1703,8 @@ function AprovacaoSidecard({
 
         {/* Content */}
         <div className="px-6 py-5 space-y-6">
-          {/* Status */}
-          <SituacaoBadge situacao={row.situacao} />
+          {/* Vencimento */}
+          <VencimentoBadge vencimento={row.vencimento} />
 
           {/* Titulo */}
           {row.titulo && (
