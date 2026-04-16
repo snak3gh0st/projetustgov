@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: — TGov Dashboard — In Progress
 status: executing
-stopped_at: Completed quick 260414-jby — contact CSV export restricted to gestor/admin
-last_updated: "2026-04-14T00:00:00.000Z"
-last_activity: 2026-04-14
+stopped_at: Completed quick 260416-eoq — removed projetista_execucao from TGov execution access
+last_updated: "2026-04-16T00:00:00.000Z"
+last_activity: 2026-04-16
 progress:
   total_phases: 18
   completed_phases: 9
@@ -133,6 +133,7 @@ Progress (v5.0): [███░░░░░░░] 100%
 | 260401-kvp | Restringir visoes do ADM Produto: apenas Pipeline TGOV, Usuarios TGOV e TGOV Dashboard | 2026-04-01 | 07eeeab | [260401-kvp-restringir-visoes-do-adm-produto-apenas-](./quick/260401-kvp-restringir-visoes-do-adm-produto-apenas-/) |
 | 260410-kmx | Ultima coluna prestacao de contas: Atraso/Em tempo baseado em Limite PC | 2026-04-10 | 9bd8b04 | [260410-kmx-ultima-coluna-da-prestacao-de-contas-tgo](./quick/260410-kmx-ultima-coluna-da-prestacao-de-contas-tgo/) |
 | 260414-jby | Contact CSV export restricted to gestor/admin (coordenador loses /api/leads/export-pendentes); centralized canExportContacts helper | 2026-04-14 | b189d32 | [260414-jby-exportar-contatos-qualquer-uma-somente-p](./quick/260414-jby-exportar-contatos-qualquer-uma-somente-p/) |
+| 260416-eoq | Remove projetista_execucao from TGov execution access — EXECUCAO_ONLY_ROLES, canReadTgov, canCommentTgov, page guard, API route, client types, pipeline page, Sidebar nav | 2026-04-16 | d45d8ad | [260416-eoq-remove-projetista-from-tgov-execution-on](./quick/260416-eoq-remove-projetista-from-tgov-execution-on/) |
 
 ### Blockers / Concerns
 
