@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 Phase: 21
 Plan: Not started
 Status: Executing Phase 21 — Plan 01 done
-Last activity: 2026-04-14 - Completed quick task 260414-jby: Contact CSV export restricted to gestor/admin only (coordenador loses leads-export access)
+Last activity: 2026-04-16 - Completed quick task 260416-fep: TGOV Aprovacao campo vencimento com date picker
 
 Progress (v5.0): [███░░░░░░░] 100%
 
@@ -134,6 +134,7 @@ Progress (v5.0): [███░░░░░░░] 100%
 | 260410-kmx | Ultima coluna prestacao de contas: Atraso/Em tempo baseado em Limite PC | 2026-04-10 | 9bd8b04 | [260410-kmx-ultima-coluna-da-prestacao-de-contas-tgo](./quick/260410-kmx-ultima-coluna-da-prestacao-de-contas-tgo/) |
 | 260414-jby | Contact CSV export restricted to gestor/admin (coordenador loses /api/leads/export-pendentes); centralized canExportContacts helper | 2026-04-14 | b189d32 | [260414-jby-exportar-contatos-qualquer-uma-somente-p](./quick/260414-jby-exportar-contatos-qualquer-uma-somente-p/) |
 | 260416-eoq | Remove projetista_execucao from TGov execution access — EXECUCAO_ONLY_ROLES, canReadTgov, canCommentTgov, page guard, API route, client types, pipeline page, Sidebar nav | 2026-04-16 | d45d8ad | [260416-eoq-remove-projetista-from-tgov-execution-on](./quick/260416-eoq-remove-projetista-from-tgov-execution-on/) |
+| 260416-fep | TGOV Aprovacao: substituir campo Situação por Vencimento com date picker; badge Vencida/Em tempo baseado na data | 2026-04-16 | c459ec3 | [260416-fep-tgov-aprovacao-campo-vencimento-calendar](./quick/260416-fep-tgov-aprovacao-campo-vencimento-calendar/) |
 
 ### Blockers / Concerns
 
