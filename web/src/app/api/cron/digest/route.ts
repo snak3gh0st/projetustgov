@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     // Dynamic import to avoid build errors when resend is not yet installed
     const { Resend } = await import('resend')
     const resend = new Resend(process.env.RESEND_API_KEY)
-    const fromEmail = process.env.DIGEST_FROM_EMAIL || 'noreply@projetus.com.br'
+    const fromEmail = process.env.DIGEST_FROM_EMAIL || 'Projetus <noreply@projetus.org>'
 
     // Get all opted-in TGov users
     const users = await query<{
