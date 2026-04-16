@@ -135,6 +135,7 @@ Progress (v5.0): [███░░░░░░░] 100%
 | 260414-jby | Contact CSV export restricted to gestor/admin (coordenador loses /api/leads/export-pendentes); centralized canExportContacts helper | 2026-04-14 | b189d32 | [260414-jby-exportar-contatos-qualquer-uma-somente-p](./quick/260414-jby-exportar-contatos-qualquer-uma-somente-p/) |
 | 260416-eoq | Remove projetista_execucao from TGov execution access — EXECUCAO_ONLY_ROLES, canReadTgov, canCommentTgov, page guard, API route, client types, pipeline page, Sidebar nav | 2026-04-16 | d45d8ad | [260416-eoq-remove-projetista-from-tgov-execution-on](./quick/260416-eoq-remove-projetista-from-tgov-execution-on/) |
 | 260416-fep | TGOV Aprovacao: substituir campo Situação por Vencimento com date picker; badge Vencida/Em tempo baseado na data | 2026-04-16 | c459ec3 | [260416-fep-tgov-aprovacao-campo-vencimento-calendar](./quick/260416-fep-tgov-aprovacao-campo-vencimento-calendar/) |
+| 260416-gmd | Clear tgov_comments on major phase transitions; replace Coments column with Tecnico; add coord_prestacao/assistente_prestacao roles; diligenciaEmail template | 2026-04-16 | 619b92c | [260416-gmd-tgov-area-zerar-comentarios-ao-mudar-sit](./quick/260416-gmd-tgov-area-zerar-comentarios-ao-mudar-sit/) |
 
 ### Blockers / Concerns
 
@@ -166,6 +167,6 @@ Progress (v5.0): [███░░░░░░░] 100%
 
 ## Session Continuity
 
-Last session: 2026-04-14
-Stopped at: Completed quick 260414-jby — contact CSV export restricted to gestor/admin
-Resume file: .planning/quick/260414-jby-exportar-contatos-qualquer-uma-somente-p/260414-jby-SUMMARY.md
+Last session: 2026-04-16
+Stopped at: Completed quick 260416-gmd — TGov comment clearing on phase transitions + PC Coordenacao roles
+Resume file: .planning/quick/260416-gmd-tgov-area-zerar-comentarios-ao-mudar-sit/260416-gmd-SUMMARY.md
