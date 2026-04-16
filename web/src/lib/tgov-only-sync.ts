@@ -63,6 +63,33 @@ interface PropostaInfo {
   nr_proposta: string | null
 }
 
+/**
+ * Returns true when a situacao transition crosses a major phase boundary:
+ *   - aprovacao-phase keywords → execucao-phase keywords
+ *   - execucao-phase keywords  → prestacao_contas-phase keywords
+ *
+ * Used to decide whether tgov_comments should be cleared for a proposal.
+ */
+function isMajorPhaseTransition(oldSituacao: string, newSituacao: string): boolean {
+  const old = oldSituacao.toLowerCase()
+  const next = newSituacao.toLowerCase()
+
+  const isAprovacaoPhase = (s: string) =>
+    s.includes('aprovado') || s.includes('aguardando análise') || s.includes('aguardando analise') ||
+    s.includes('em análise') || s.includes('em analise') || s.includes('aguardando envio') ||
+    s.includes('reprovado') || s.includes('complementação') || s.includes('complementacao')
+
+  const isExecucaoPhase = (s: string) =>
+    s.includes('em execução') || s.includes('em execucao')
+
+  const isPrestacaoPhase = (s: string) =>
+    s.includes('prestação de contas') || s.includes('prestacao de contas') ||
+    s.includes('aguardando prestação') || s.includes('aguardando prestacao')
+
+  return (isAprovacaoPhase(old) && isExecucaoPhase(next)) ||
+         (isExecucaoPhase(old) && isPrestacaoPhase(next))
+}
+
 function parseBRDate(val: string | null | undefined): string | null {
   if (!val || !val.trim()) return null
   const trimmed = val.trim()
@@ -437,6 +464,23 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
           }
         } catch (err) {
           console.error('[tgov-only-sync] situacao notification gather failed', err)
+        }
+
+        // Clear tgov_comments and tgov_interactions.obs for major phase transitions
+        if (isMajorPhaseTransition(change.oldSituacao, change.newSituacao)) {
+          try {
+            await query(
+              `DELETE FROM tgov_comments WHERE target_key = $1 AND target_type = 'proposta'`,
+              [change.nrProposta],
+            )
+            await query(
+              `UPDATE tgov_interactions SET obs = NULL WHERE item_key = $1`,
+              [change.nrProposta],
+            )
+            console.log(`[tgov-only-sync] cleared comments for ${change.nrProposta} (${change.oldSituacao} -> ${change.newSituacao})`)
+          } catch (err) {
+            console.error('[tgov-only-sync] comment clear failed for', change.nrProposta, err)
+          }
         }
       }
     }
