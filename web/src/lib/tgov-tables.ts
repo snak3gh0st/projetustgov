@@ -96,7 +96,7 @@ export async function ensureTgovTables(): Promise<void> {
       id SERIAL PRIMARY KEY,
       target_type TEXT NOT NULL CHECK (target_type IN ('proposta','execucao')),
       target_key TEXT NOT NULL,
-      author_id INT NOT NULL,
+      author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       body TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )

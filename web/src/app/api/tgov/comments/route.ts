@@ -163,18 +163,37 @@ export async function POST(request: NextRequest) {
     // Fire-and-forget email notification — only for proposta comments
     if (target_type === 'proposta') {
       try {
-        const participants = await query<{ user_id: string }>(
-          `SELECT user_id FROM tgov_proposta_participants WHERE proposta_key = $1`,
-          [target_key],
-        )
-        const propostaMeta = await query<{ titulo: string | null }>(
-          `SELECT titulo FROM tgov_propostas WHERE nr_proposta = $1
-           UNION ALL
-           SELECT NULL AS titulo FROM propostas WHERE nr_proposta = $1
-           LIMIT 1`,
-          [target_key],
-        )
-        const recipientIds = participants.map(p => p.user_id)
+        // Collect notification recipients from two sources:
+        // 1. All registered participants (anyone who commented or was assigned as tecnico)
+        // 2. All active supervisory-tier TGov users (adm_produto, coord_*, assistente_*, gestor, admin)
+        //    — guarantees notifications always reach the supervisory tier even on a proposal's
+        //    first comment when the participants table may only contain the commenter.
+        const [participants, supervisors, propostaMeta] = await Promise.all([
+          query<{ user_id: string }>(
+            `SELECT user_id FROM tgov_proposta_participants WHERE proposta_key = $1`,
+            [target_key],
+          ),
+          query<{ id: string }>(
+            `SELECT id FROM users
+             WHERE active = true
+               AND email IS NOT NULL
+               AND role IN ('adm_produto','coord_aprovacao','assistente_aprovacao','coord_execucao','assistente_execucao','gestor','admin')`,
+            [],
+          ),
+          query<{ titulo: string | null }>(
+            `SELECT titulo FROM tgov_propostas WHERE nr_proposta = $1
+             UNION ALL
+             SELECT NULL AS titulo FROM propostas WHERE nr_proposta = $1
+             LIMIT 1`,
+            [target_key],
+          ),
+        ])
+
+        // Deduplicate recipient IDs from both sources
+        const recipientIds = Array.from(new Set([
+          ...participants.map(p => p.user_id),
+          ...supervisors.map(s => s.id),
+        ]))
 
         sendCommentNotification({
           recipientIds,
