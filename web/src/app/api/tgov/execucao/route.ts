@@ -262,12 +262,6 @@ export async function GET(request: NextRequest) {
       )`)
     }
 
-    // projetista_execucao can only see records assigned to them via tecnico_id
-    if (session.role === 'projetista_execucao') {
-      params.push(session.userId)
-      mainConditions.push(`pe.tecnico_id = $${params.length}::uuid`)
-    }
-
     const mainWhere = mainConditions.length > 0 ? `WHERE ${mainConditions.join(' AND ')}` : ''
 
     // ---------------------------------------------------------------------------

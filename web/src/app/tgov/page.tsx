@@ -19,8 +19,7 @@ export default async function TGovPage({
     session.role !== 'projetista' &&
     session.role !== 'assistente_aprovacao' &&
     session.role !== 'coord_execucao' &&
-    session.role !== 'assistente_execucao' &&
-    session.role !== 'projetista_execucao'
+    session.role !== 'assistente_execucao'
   ) {
     redirect('/sem-permissao')
   }

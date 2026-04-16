@@ -86,7 +86,7 @@ export function canModifyData(role: string): boolean {
 export function canReadTgov(role: string | undefined): boolean {
   return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'csm'
       || role === 'coord_aprovacao' || role === 'assistente_aprovacao' || role === 'projetista'
-      || role === 'coord_execucao' || role === 'assistente_execucao' || role === 'projetista_execucao'
+      || role === 'coord_execucao' || role === 'assistente_execucao'
 }
 
 /** TGov mutations privilegiadas (whitelist write, interaction PATCH, tecnico assignment). NÃO inclui CSM nem projetista. */
@@ -100,7 +100,7 @@ export function canWriteTgov(role: string | undefined): boolean {
 export function canCommentTgov(role: string | undefined): boolean {
   return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'csm'
       || role === 'coord_aprovacao' || role === 'assistente_aprovacao' || role === 'projetista'
-      || role === 'coord_execucao' || role === 'assistente_execucao' || role === 'projetista_execucao'
+      || role === 'coord_execucao' || role === 'assistente_execucao'
 }
 
 // Helper: check if user has admin-level access (full control)
