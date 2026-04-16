@@ -136,8 +136,6 @@ export default function Sidebar({ user }: SidebarProps) {
     : user.role === 'projetista_execucao'
     ? [
         { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
-        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
       ]
     : BASE_WITH_EXECUCAO
 

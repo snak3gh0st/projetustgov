@@ -280,7 +280,7 @@ interface CnpjSearchResult {
 // ---------------------------------------------------------------------------
 
 interface TGovDashboardClientProps {
-  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'projetista' | 'assistente_aprovacao' | 'coord_execucao' | 'assistente_execucao' | 'projetista_execucao'
+  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'projetista' | 'assistente_aprovacao' | 'coord_execucao' | 'assistente_execucao'
   view?: 'pipeline' | 'dashboard'
   highlight?: string
   /** Scroll to a section after sidecard opens (e.g. 'comments') */
@@ -318,6 +318,9 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
   // Sidecard state
   const [selectedExecRow, setSelectedExecRow] = useState<TGovExecucaoTableRow | null>(null)
   const [selectedAprovRow, setSelectedAprovRow] = useState<TGovAprovacaoTableRow | null>(null)
+  // Last clicked row key — persists after sidecard closes, clears on new click
+  const [lastClickedExecKey, setLastClickedExecKey] = useState<string | null>(null)
+  const [lastClickedAprovKey, setLastClickedAprovKey] = useState<string | null>(null)
 
   // Técnicos pool (fetched once on mount)
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([])
@@ -445,6 +448,8 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
     setPage(1)
     setSelectedExecRow(null)
     setSelectedAprovRow(null)
+    setLastClickedExecKey(null)
+    setLastClickedAprovKey(null)
   }
 
   function handleMainFilterChange(key: keyof TGovMainFilters, value: string) {
@@ -765,24 +770,33 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
               <ExecucaoTable
                 rows={data?.table.rows as TGovExecucaoTableRow[] | undefined}
                 loading={loading}
-                onRowClick={(row) => setSelectedExecRow(prev => prev?.nrConvenio === row.nrConvenio ? null : row)}
-                selectedKey={selectedExecRow?.nrConvenio}
+                onRowClick={(row) => {
+                  setLastClickedExecKey(row.nrConvenio)
+                  setSelectedExecRow(prev => prev?.nrConvenio === row.nrConvenio ? null : row)
+                }}
+                selectedKey={lastClickedExecKey}
                 mode="prestacao_contas"
               />
             ) : activeTab === 'execucao' ? (
               <ExecucaoTable
                 rows={data?.table.rows as TGovExecucaoTableRow[] | undefined}
                 loading={loading}
-                onRowClick={(row) => setSelectedExecRow(prev => prev?.nrConvenio === row.nrConvenio ? null : row)}
-                selectedKey={selectedExecRow?.nrConvenio}
+                onRowClick={(row) => {
+                  setLastClickedExecKey(row.nrConvenio)
+                  setSelectedExecRow(prev => prev?.nrConvenio === row.nrConvenio ? null : row)
+                }}
+                selectedKey={lastClickedExecKey}
                 mode="execucao"
               />
             ) : (
               <AprovacaoTable
                 rows={data?.table.rows as TGovAprovacaoTableRow[] | undefined}
                 loading={loading}
-                onRowClick={(row) => setSelectedAprovRow(prev => prev?.numeroProposta === row.numeroProposta ? null : row)}
-                selectedKey={selectedAprovRow?.numeroProposta}
+                onRowClick={(row) => {
+                  setLastClickedAprovKey(row.numeroProposta)
+                  setSelectedAprovRow(prev => prev?.numeroProposta === row.numeroProposta ? null : row)
+                }}
+                selectedKey={lastClickedAprovKey}
               />
             )}
           </div>
@@ -1194,7 +1208,7 @@ function AprovacaoTable({
             return (
             <tr
               key={`${row.numeroProposta}-${idx}`}
-              className={`transition-colors cursor-pointer ${isSelected ? 'bg-blue-50 border-l-2 border-l-blue-500' : 'hover:bg-blue-50/50'}`}
+              className={`transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-blue-50/50'}`}
               onClick={() => {
                 if (row.hasNew && row.numeroProposta) {
                   fetch('/api/tgov/seen', {
@@ -1206,7 +1220,7 @@ function AprovacaoTable({
                 onRowClick(row)
               }}
             >
-              <td className="px-5 py-2.5 text-gray-700 font-mono text-xs">
+              <td className={`py-2.5 text-gray-700 font-mono text-xs ${isSelected ? 'pl-3 border-l-4 border-l-blue-500' : 'px-5'}`}>
                 {row.numeroProposta || '—'}
                 {row.hasNew && (
                   <span className="ml-1.5 inline-block px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 rounded">
@@ -1315,7 +1329,7 @@ function ExecucaoTable({
             return (
               <tr
                 key={`${row.nrConvenio}-${idx}`}
-                className={`transition-colors cursor-pointer ${isSelected ? 'bg-blue-50 border-l-2 border-l-blue-500' : 'hover:bg-blue-50/50'}`}
+                className={`transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-blue-50/50'}`}
                 onClick={() => {
                   if (row.hasNew && row.numeroProposta) {
                     fetch('/api/tgov/seen', {
@@ -1327,7 +1341,7 @@ function ExecucaoTable({
                   onRowClick(row)
                 }}
               >
-                <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">
+                <td className={`py-2.5 font-mono text-xs whitespace-nowrap ${isSelected ? 'pl-2 border-l-4 border-l-blue-500' : 'px-4'}`}>
                   <a
                     href={buildTGovExecucaoLink(row.idProposta)}
                     target="_blank"

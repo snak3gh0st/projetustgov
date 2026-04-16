@@ -9,7 +9,7 @@ export default async function TGovPipelinePage() {
   const ALLOWED_ROLES = [
     'gestor', 'admin', 'adm_produto', 'csm',
     'coord_aprovacao', 'assistente_aprovacao', 'projetista',
-    'coord_execucao', 'assistente_execucao', 'projetista_execucao',
+    'coord_execucao', 'assistente_execucao',
   ]
   if (!ALLOWED_ROLES.includes(session.role)) {
     redirect('/sem-permissao')
