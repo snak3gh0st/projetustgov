@@ -29,18 +29,8 @@ export async function getNotificationsForUser(userId: string, role: string): Pro
     activities AS (
       SELECT
         l.proposta_key,
-        GREATEST(
-          (SELECT MAX(c.created_at) FROM tgov_comments c
-           WHERE c.target_type = 'proposta' AND c.target_key = l.proposta_key),
-          tp.situacao_changed_at,
-          tp.tecnico_assigned_at
-        ) AS latest_at,
+        GREATEST(tp.situacao_changed_at, tp.tecnico_assigned_at) AS latest_at,
         CASE
-          WHEN (SELECT MAX(c.created_at) FROM tgov_comments c
-                WHERE c.target_type = 'proposta' AND c.target_key = l.proposta_key)
-               >= GREATEST(COALESCE(tp.situacao_changed_at, '1970-01-01'),
-                           COALESCE(tp.tecnico_assigned_at, '1970-01-01'))
-          THEN 'comment'
           WHEN tp.situacao_changed_at >= COALESCE(tp.tecnico_assigned_at, '1970-01-01')
           THEN 'situacao'
           ELSE 'assignment'
@@ -53,12 +43,8 @@ export async function getNotificationsForUser(userId: string, role: string): Pro
       FROM linked l
       LEFT JOIN tgov_propostas tp ON tp.nr_proposta = l.proposta_key
       LEFT JOIN tgov_proposta_seen s ON s.user_id = $1 AND s.proposta_key = l.proposta_key
-      WHERE GREATEST(
-        (SELECT MAX(c.created_at) FROM tgov_comments c
-         WHERE c.target_type = 'proposta' AND c.target_key = l.proposta_key),
-        tp.situacao_changed_at,
-        tp.tecnico_assigned_at
-      ) > COALESCE(s.seen_at, '1970-01-01'::timestamptz)
+      WHERE GREATEST(tp.situacao_changed_at, tp.tecnico_assigned_at)
+            > COALESCE(s.seen_at, '1970-01-01'::timestamptz)
     )
     SELECT proposta_key, titulo, event_type, latest_at::text AS event_at,
            concedente, proponente, situacao, transfer_gov_id
