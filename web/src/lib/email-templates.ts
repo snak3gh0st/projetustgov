@@ -256,3 +256,79 @@ export function participantAddedEmail(opts: {
   `
   return { subject: `Projetus — Você foi adicionado à proposta ${opts.propostaNr}`, html: baseLayout('Novo participante', body) }
 }
+
+// ——— Template: Daily Digest ———
+
+const EVENT_LABELS: Record<string, string> = {
+  comment: 'Novo comentário',
+  situacao: 'Situação atualizada',
+  assignment: 'Técnico atribuído',
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const hours = Math.floor(diff / 3_600_000)
+  if (hours < 1) return 'agora'
+  if (hours < 24) return `${hours}h atrás`
+  return `${Math.floor(hours / 24)}d atrás`
+}
+
+export interface DigestItem {
+  propostaKey: string
+  titulo: string | null
+  eventType: string
+  eventAt: string
+}
+
+export interface DigestStale {
+  propostaKey: string
+  titulo: string | null
+  tecnicoNome: string | null
+  hoursWithoutAccess: number
+}
+
+export function digestEmail(opts: {
+  nome: string
+  items: DigestItem[]
+  stale: DigestStale[]
+  appUrl: string
+}): { subject: string; html: string } {
+  const total = opts.items.length + opts.stale.length
+
+  const itemsHtml = opts.items.map(item => `
+    <div style="padding:12px 0;border-bottom:1px solid ${BORDER};">
+      <span style="font-family:${FONT_HEADING};font-size:14px;font-weight:600;color:${TEXT_DARK};">${escapeHtml(item.propostaKey)}</span>
+      ${item.titulo ? `<div style="font-size:13px;color:${TEXT_MUTED};margin-top:2px;">${escapeHtml(item.titulo)}</div>` : ''}
+      <div style="margin-top:4px;">
+        <span style="font-size:12px;color:${BRAND};font-weight:500;">${escapeHtml(EVENT_LABELS[item.eventType] || item.eventType)}</span>
+        <span style="font-size:12px;color:${TEXT_FAINT};"> · ${timeAgo(item.eventAt)}</span>
+      </div>
+    </div>
+  `).join('')
+
+  const staleHtml = opts.stale.length > 0 ? `
+    <div style="margin-top:24px;">
+      <div style="font-family:${FONT_HEADING};font-size:12px;font-weight:600;color:#B45309;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px;">⚠ Sem acesso há +24h</div>
+      ${opts.stale.map(item => `
+        <div style="padding:12px 0;border-bottom:1px solid #FEF3C7;">
+          <span style="font-family:${FONT_HEADING};font-size:14px;font-weight:600;color:${TEXT_DARK};">${escapeHtml(item.propostaKey)}</span>
+          ${item.titulo ? `<div style="font-size:13px;color:${TEXT_MUTED};margin-top:2px;">${escapeHtml(item.titulo)}</div>` : ''}
+          <div style="font-size:12px;color:#B45309;margin-top:4px;">${escapeHtml(item.tecnicoNome || 'Técnico')} não acessou (${item.hoursWithoutAccess}h)</div>
+        </div>
+      `).join('')}
+    </div>
+  ` : ''
+
+  const body = `
+    ${heading('Resumo de atividades')}
+    ${paragraph(`Olá <strong>${escapeHtml(opts.nome.split(' ')[0])}</strong>, você tem <strong>${total}</strong> proposta${total !== 1 ? 's' : ''} com novidades.`)}
+    <div style="margin-top:16px;">${itemsHtml}</div>
+    ${staleHtml}
+    ${button(`${opts.appUrl}/tgov`, 'Acessar TGov Dashboard')}
+  `
+
+  return {
+    subject: `TGov — ${total} proposta${total !== 1 ? 's' : ''} com novidades`,
+    html: baseLayout('Resumo de atividades', body),
+  }
+}

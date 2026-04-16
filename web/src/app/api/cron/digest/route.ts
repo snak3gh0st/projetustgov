@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { getNotificationsForUser, buildDigestHtml } from '@/lib/digest-email'
+import { getNotificationsForUser } from '@/lib/digest-email'
+import { digestEmail } from '@/lib/email-templates'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -45,12 +46,13 @@ export async function GET(request: NextRequest) {
         continue
       }
 
-      const html = buildDigestHtml(user.nome, data)
+      const appUrl = process.env.NEXTAUTH_URL || 'https://projetus.vercel.app'
+      const { subject, html } = digestEmail({ nome: user.nome, items: data.items, stale: data.stale, appUrl })
 
       const { error: sendError } = await resend.emails.send({
         from: fromEmail,
         to: user.email,
-        subject: 'TGov — Resumo de atividades',
+        subject,
         html,
       })
 

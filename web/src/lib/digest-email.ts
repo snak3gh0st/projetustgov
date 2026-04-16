@@ -1,30 +1,11 @@
 import { query } from './db'
-
-interface NotificationItem {
-  propostaKey: string
-  titulo: string | null
-  eventType: string
-  eventAt: string
-}
-
-interface StaleItem {
-  propostaKey: string
-  titulo: string | null
-  tecnicoNome: string | null
-  assignedAt: string
-  hoursWithoutAccess: number
-}
+import { digestEmail, type DigestItem, type DigestStale } from './email-templates'
 
 export interface DigestData {
-  items: NotificationItem[]
-  stale: StaleItem[]
+  items: DigestItem[]
+  stale: DigestStale[]
 }
 
-const EVENT_LABELS: Record<string, string> = {
-  comment: 'Novo comentário',
-  situacao: 'Situação atualizada',
-  assignment: 'Técnico atribuído',
-}
 
 /**
  * Get unseen notifications for a user (same logic as GET /api/tgov/notifications).
@@ -79,7 +60,7 @@ export async function getNotificationsForUser(userId: string, role: string): Pro
   `, [userId])
 
   const canSeeStale = ['coord_aprovacao', 'assistente_aprovacao', 'adm_produto', 'gestor', 'admin'].includes(role)
-  let stale: StaleItem[] = []
+  let stale: DigestStale[] = []
 
   if (canSeeStale) {
     const rows = await query<{
@@ -128,93 +109,8 @@ export async function getNotificationsForUser(userId: string, role: string): Pro
   }
 }
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const hours = Math.floor(diff / 3_600_000)
-  if (hours < 1) return 'agora'
-  if (hours < 24) return `${hours}h atrás`
-  return `${Math.floor(hours / 24)}d atrás`
-}
+const APP_URL = process.env.NEXTAUTH_URL || 'https://projetus.vercel.app'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : 'http://localhost:3000'
-
-/**
- * Build HTML email for the digest.
- */
-export function buildDigestHtml(
-  userName: string,
-  data: DigestData,
-): string {
-  const itemsHtml = data.items.map(item => `
-    <tr>
-      <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;">
-        <strong style="color:#1a1a1a;font-size:14px;">${item.propostaKey}</strong>
-        ${item.titulo ? `<br><span style="color:#666;font-size:13px;">${item.titulo}</span>` : ''}
-        <br><span style="color:#0072F7;font-size:12px;">${EVENT_LABELS[item.eventType] || item.eventType}</span>
-        <span style="color:#999;font-size:12px;"> · ${timeAgo(item.eventAt)}</span>
-      </td>
-    </tr>
-  `).join('')
-
-  const staleHtml = data.stale.length > 0 ? `
-    <tr><td style="padding:16px 0 8px;"><strong style="color:#b45309;font-size:14px;">⚠️ Sem acesso há +24h</strong></td></tr>
-    ${data.stale.map(item => `
-      <tr>
-        <td style="padding:8px 0;border-bottom:1px solid #fef3c7;">
-          <strong style="color:#1a1a1a;font-size:14px;">${item.propostaKey}</strong>
-          ${item.titulo ? `<br><span style="color:#666;font-size:13px;">${item.titulo}</span>` : ''}
-          <br><span style="color:#b45309;font-size:12px;">${item.tecnicoNome || 'Técnico'} não acessou (${item.hoursWithoutAccess}h)</span>
-        </td>
-      </tr>
-    `).join('')}
-  ` : ''
-
-  const totalCount = data.items.length + data.stale.length
-
-  return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:24px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;border:1px solid #e5e5e5;overflow:hidden;">
-        <!-- Header -->
-        <tr><td style="background:#0072F7;padding:24px;text-align:center;">
-          <span style="color:#fff;font-size:20px;font-weight:bold;">Projetus CRM</span>
-        </td></tr>
-        <!-- Body -->
-        <tr><td style="padding:24px;">
-          <p style="color:#1a1a1a;font-size:16px;margin:0 0 8px;">Olá ${userName},</p>
-          <p style="color:#666;font-size:14px;margin:0 0 24px;">📋 ${totalCount} proposta${totalCount !== 1 ? 's' : ''} com novidades</p>
-
-          ${data.items.length > 0 ? `
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr><td style="padding:0 0 8px;"><strong style="color:#1a1a1a;font-size:14px;">Novas atividades</strong></td></tr>
-            ${itemsHtml}
-          </table>
-          ` : ''}
-
-          ${staleHtml ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">${staleHtml}</table>` : ''}
-
-          <!-- CTA -->
-          <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;">
-            <tr><td align="center">
-              <a href="${APP_URL}/tgov" style="display:inline-block;background:#0072F7;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">
-                Acessar TGov Dashboard
-              </a>
-            </td></tr>
-          </table>
-        </td></tr>
-        <!-- Footer -->
-        <tr><td style="padding:16px 24px;background:#fafafa;border-top:1px solid #e5e5e5;text-align:center;">
-          <span style="color:#999;font-size:11px;">Enviado por Projetus CRM · Powered by <a href="https://sigmaintel.io" style="color:#0072F7;text-decoration:none;">SigmaIntel</a></span>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`
+export function buildDigestHtml(userName: string, data: DigestData): string {
+  return digestEmail({ nome: userName, items: data.items, stale: data.stale, appUrl: APP_URL }).html
 }
