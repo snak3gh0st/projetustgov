@@ -60,7 +60,7 @@ function baseLayout(title: string, bodyHtml: string): string {
         <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;margin-top:16px;">
           <tr>
             <td style="font-family:${FONT_BODY};font-size:11px;color:${TEXT_FAINT};text-align:center;line-height:1.5;">
-              Este email foi enviado automaticamente pelo <a href="https://projetus.vercel.app" style="color:${BRAND};text-decoration:none;">Projetus</a>.<br>
+              Este email foi enviado automaticamente pelo <a href="https://projetus.vercel.app" style="color:${BRAND};text-decoration:none;">PROJETUS</a>.<br>
               Se você não reconhece esta mensagem, pode ignorá-la com segurança.
             </td>
           </tr>
@@ -153,26 +153,26 @@ function escapeHtml(s: string): string {
 export function welcomeEmail(opts: { nome: string; email: string; loginUrl: string }): { subject: string; html: string } {
   const body = `
     ${heading(`Bem-vindo(a), ${opts.nome.split(' ')[0]}`)}
-    ${paragraph(`Sua conta no <strong>Projetus</strong> foi criada. Você já pode acessar a plataforma.`)}
+    ${paragraph(`Sua conta no <strong>PROJETUS</strong> foi criada. Você já pode acessar a plataforma.`)}
     <div style="margin:24px 0;">
       ${infoRow('Email de acesso', opts.email)}
     </div>
     ${muted(`A senha foi definida pelo administrador e deve ter sido comunicada separadamente.`)}
     ${button(opts.loginUrl, 'Acessar o sistema')}
   `
-  return { subject: 'Projetus — Sua conta foi criada', html: baseLayout('Bem-vindo ao Projetus', body) }
+  return { subject: 'PROJETUS — Sua conta foi criada', html: baseLayout('Bem-vindo ao PROJETUS', body) }
 }
 
 // ——— Template: Password Reset ———
 export function passwordResetEmail(opts: { nome: string; newPassword: string; loginUrl: string }): { subject: string; html: string } {
   const body = `
     ${heading('Senha alterada')}
-    ${paragraph(`Olá <strong>${escapeHtml(opts.nome)}</strong>, sua senha no Projetus foi alterada por um administrador.`)}
+    ${paragraph(`Olá <strong>${escapeHtml(opts.nome)}</strong>, sua senha no PROJETUS foi alterada por um administrador.`)}
     ${passwordBox(opts.newPassword)}
     ${muted('Recomendamos fazer login e trocar para uma senha pessoal assim que possível.')}
     ${button(opts.loginUrl, 'Fazer login')}
   `
-  return { subject: 'Projetus — Sua senha foi alterada', html: baseLayout('Senha alterada', body) }
+  return { subject: 'PROJETUS — Sua senha foi alterada', html: baseLayout('Senha alterada', body) }
 }
 
 // ——— Template: New Comment ———
@@ -191,7 +191,7 @@ export function commentNotificationEmail(opts: {
     ${commentQuote(opts.commenterName, opts.snippet)}
     ${button(opts.propostaUrl, 'Ver proposta')}
   `
-  return { subject: `Projetus — Novo comentário na proposta ${opts.propostaNr}`, html: baseLayout('Novo comentário', body) }
+  return { subject: `PROJETUS — Novo comentário na proposta ${opts.propostaNr}`, html: baseLayout('Novo comentário', body) }
 }
 
 // ——— Template: Situacao Change ———
@@ -210,7 +210,7 @@ export function situacaoChangeEmail(opts: {
     ${statusChange(opts.oldStatus, opts.newStatus)}
     ${button(opts.propostaUrl, 'Ver proposta')}
   `
-  return { subject: `Projetus — Situação atualizada (${opts.propostaNr})`, html: baseLayout('Situação atualizada', body) }
+  return { subject: `PROJETUS — Situação atualizada (${opts.propostaNr})`, html: baseLayout('Situação atualizada', body) }
 }
 
 // ——— Template: Assignment ———
@@ -235,7 +235,7 @@ export function assignmentEmail(opts: {
     </div>
     ${button(opts.propostaUrl, 'Ver proposta')}
   `
-  return { subject: `Projetus — Técnico atribuído (${opts.propostaNr})`, html: baseLayout('Técnico atribuído', body) }
+  return { subject: `PROJETUS — Técnico atribuído (${opts.propostaNr})`, html: baseLayout('Técnico atribuído', body) }
 }
 
 // ——— Template: Participant Added ———
@@ -252,7 +252,7 @@ export function participantAddedEmail(opts: {
     ${muted('A partir de agora você receberá notificações sobre atualizações nessa proposta — novos comentários, mudanças de situação e atribuições.')}
     ${button(opts.propostaUrl, 'Ver proposta')}
   `
-  return { subject: `Projetus — Você foi adicionado à proposta ${opts.propostaNr}`, html: baseLayout('Novo participante', body) }
+  return { subject: `PROJETUS — Você foi adicionado à proposta ${opts.propostaNr}`, html: baseLayout('Novo participante', body) }
 }
 
 // ——— Template: Diligencia ———
@@ -284,7 +284,7 @@ export function diligenciaEmail(opts: {
     </div>
     ${button(opts.propostaUrl, 'Ver proposta')}
   `
-  return { subject: `Projetus — Diligencia (${opts.numeroProposta})`, html: baseLayout('Diligencia', body) }
+  return { subject: `PROJETUS — Diligencia (${opts.numeroProposta})`, html: baseLayout('Diligencia', body) }
 }
 
 // ——— Template: Daily Digest ———
@@ -338,7 +338,7 @@ function digestPropostaCard(item: DigestItem | DigestStale, appUrl: string, isSt
   const tgovLink = item.transferGovId
     ? `<a href="${TGOV_URL}${encodeURIComponent(item.transferGovId)}" style="display:inline-block;padding:7px 14px;background:${BG_SUBTLE};border:1px solid ${BORDER};border-radius:8px;color:${TEXT_BODY};font-family:${FONT_BODY};font-size:12px;font-weight:500;text-decoration:none;margin-right:8px;">Ver no TransfereGov</a>`
     : ''
-  const internalLink = `<a href="${appUrl}/tgov/${encodeURIComponent(item.propostaKey)}" style="display:inline-block;padding:7px 14px;background:${BRAND};border-radius:8px;color:#fff;font-family:${FONT_BODY};font-size:12px;font-weight:600;text-decoration:none;">Ver no Projetus</a>`
+  const internalLink = `<a href="${appUrl}/tgov/${encodeURIComponent(item.propostaKey)}" style="display:inline-block;padding:7px 14px;background:${BRAND};border-radius:8px;color:#fff;font-family:${FONT_BODY};font-size:12px;font-weight:600;text-decoration:none;">Ver no PROJETUS</a>`
 
   const eventBadge = 'eventType' in item
     ? `<div style="margin-top:8px;"><span style="font-size:12px;color:${isStale ? '#B45309' : BRAND};font-weight:600;">${isStale ? '⚠ Sem acesso há +24h' : escapeHtml(EVENT_LABELS[item.eventType] || item.eventType)}</span><span style="font-size:12px;color:${TEXT_FAINT};"> · ${timeAgo(item.eventAt)}</span></div>`
