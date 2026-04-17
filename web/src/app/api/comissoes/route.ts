@@ -215,7 +215,7 @@ export async function GET(request: NextRequest) {
         `, [...pauloParams, pauloUserId]),
 
         // Coordenador: 1% of regular vendedores' Fechado sales
-        // Excludes Tito (gestor role) and Paulo's own leads (coordenador role)
+        // Excludes gestor-role leads and Paulo's own leads (coordenador role)
         query(`
           SELECT
             COALESCE(SUM(vp.valor_venda) * 0.01, 0)::numeric as total,
@@ -258,7 +258,7 @@ export async function GET(request: NextRequest) {
 
     // Map leads, zeroing out comissao_bonus for coordenador on split leads
     // where they are the closer but not the vendedor (bonus belongs to the SDR).
-    // Also zero out all commission fields for gestor-role vendedores (Tito) — gestors
+    // Also zero out all commission fields for gestor-role vendedores — gestors
     // are socio/owners and never earn commission.
     const mappedLeads = leadsRows.map(lead => {
       const isCloserNotVendedor =

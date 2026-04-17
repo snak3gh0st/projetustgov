@@ -113,8 +113,8 @@ export function isAdmin(role: string): boolean {
 
 /**
  * Contact CSV export gate — admin-tier only.
- * Tito and Philipe (role 'gestor' or 'admin') are the only users who may
- * download bulk contact data (email/telefone/nome_pessoa) across leads.
+ * Only users with role 'gestor' or 'admin' may download bulk contact data
+ * (email/telefone/nome_pessoa) across leads.
  * DO NOT loosen this without explicit product approval — see
  * .planning/quick/260414-jby-exportar-contatos-qualquer-uma-somente-p/.
  */

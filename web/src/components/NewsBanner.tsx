@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 
 const NEWS_VERSION = 'v4.5'
 const NEWS_ITEMS = [
-  'Seguranca: exportacao de CSV de contatos agora restrita a gestor/admin (Tito e Philipe)',
+  'Seguranca: exportacao de CSV de contatos agora restrita a gestor/admin',
   'TGov: novo campo "Responsavel Tecnico" nos sidecards de Aprovacao e Execucao',
   'TGov: thread de comentarios em cada proposta/projeto — historico compartilhado',
   'Novo perfil "csm" com acesso read-only ao TGov + permissao para comentar',
