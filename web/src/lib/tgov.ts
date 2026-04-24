@@ -14,9 +14,8 @@
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Role groups for tab isolation: aprovação roles cannot access execução tab and vice-versa. */
+/** Role groups for tab isolation: aprovação roles cannot access execução/prestação tabs and vice-versa. */
 export const APROVACAO_ONLY_ROLES = ['coord_aprovacao', 'assistente_aprovacao', 'projetista'] as const
-export const EXECUCAO_ONLY_ROLES = ['coord_execucao', 'assistente_execucao'] as const
 /** PC Coordenação roles — can only see the prestacao_contas tab. */
 export const PRESTACAO_ONLY_ROLES = ['coord_prestacao', 'assistente_prestacao'] as const
 

@@ -19,8 +19,8 @@ export async function GET() {
     const seeAll = role === 'adm_produto'
       || role === 'coord_aprovacao'
       || role === 'assistente_aprovacao'
-      || role === 'coord_execucao'
-      || role === 'assistente_execucao'
+      || role === 'coord_prestacao'
+      || role === 'assistente_prestacao'
 
     const items = await query<{
       proposta_key: string

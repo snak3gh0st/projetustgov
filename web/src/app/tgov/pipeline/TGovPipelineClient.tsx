@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { TGOV_STATUS_ORDER, tgovStatusSortKey, APROVACAO_ONLY_ROLES, EXECUCAO_ONLY_ROLES } from '@/lib/tgov'
+import { TGOV_STATUS_ORDER, tgovStatusSortKey, APROVACAO_ONLY_ROLES, PRESTACAO_ONLY_ROLES } from '@/lib/tgov'
 
 // ── Types ───────────────────────────────────────────────────────────────────
 type PipelineTab = 'aprovacao' | 'execucao' | 'prestacao_contas'
@@ -89,9 +89,9 @@ function getDashboardUrl(tab: PipelineTab, situacao: string): string {
 
 function getVisibleTabs(userRole: string): PipelineTab[] {
   const isAprovacaoOnly = (APROVACAO_ONLY_ROLES as readonly string[]).includes(userRole)
-  const isExecucaoOnly = (EXECUCAO_ONLY_ROLES as readonly string[]).includes(userRole)
+  const isPrestacaoOnly = (PRESTACAO_ONLY_ROLES as readonly string[]).includes(userRole)
   if (isAprovacaoOnly) return ['aprovacao']
-  if (isExecucaoOnly) return ['execucao', 'prestacao_contas']
+  if (isPrestacaoOnly) return ['execucao', 'prestacao_contas']
   return ['aprovacao', 'execucao', 'prestacao_contas']
 }
 

@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const tab = searchParams.get('tab') ?? 'aprovacao'
 
-    const cacheKey = `${tab}:${session.role === 'projetista_execucao' ? session.userId : 'global'}`
+    const cacheKey = `${tab}:global`
     const cached = _cache.get(cacheKey)
     if (cached && cached.expiresAt > Date.now()) {
       return NextResponse.json(cached.data)
@@ -75,11 +75,7 @@ export async function GET(request: NextRequest) {
         : `situacao ILIKE '%Prestação de Contas%'`
 
       const params: unknown[] = [allNrPropostas, allCnpjs]
-      let tecnicoFilter = ''
-      if (session.role === 'projetista_execucao') {
-        params.push(session.userId)
-        tecnicoFilter = `AND tecnico_id = $${params.length}::uuid`
-      }
+      const tecnicoFilter = ''
 
       // Step 2: query with arrays
       byStatusRows = await query<{ situacao: string; cnt: number }>(

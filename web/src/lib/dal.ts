@@ -4,28 +4,27 @@ import { auth } from '@/lib/auth'
 import { query } from '@/lib/db'
 import { redirect } from 'next/navigation'
 
-export type Role = 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'projetista_execucao' | 'coord_prestacao' | 'assistente_prestacao'
+export type Role = 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_prestacao' | 'assistente_prestacao'
 
 /** Who can create/manage users of which roles. Single source of truth. */
 export const ROLE_CAN_CREATE: Partial<Record<Role, Role[]>> = {
-  gestor:               ['admin', 'vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'projetista_execucao', 'coord_prestacao', 'assistente_prestacao'],
-  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'projetista_execucao', 'coord_prestacao', 'assistente_prestacao'],
-  adm_produto:          ['coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'projetista_execucao', 'coord_prestacao', 'assistente_prestacao'],
+  gestor:               ['admin', 'vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_prestacao', 'assistente_prestacao'],
+  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_prestacao', 'assistente_prestacao'],
+  adm_produto:          ['coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_prestacao', 'assistente_prestacao'],
   coord_aprovacao:      ['assistente_aprovacao', 'projetista'],
   assistente_aprovacao: ['projetista'],
-  coord_execucao:       ['assistente_execucao', 'projetista_execucao'],
-  assistente_execucao:  ['projetista_execucao'],
+  coord_prestacao:      ['assistente_prestacao'],
 }
 
 /** Same as create - who can delete users of which roles. */
 export const ROLE_CAN_DELETE: Partial<Record<Role, Role[]>> = {
-  gestor:               ['admin', 'vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'projetista_execucao', 'coord_prestacao', 'assistente_prestacao'],
-  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'projetista_execucao', 'coord_prestacao', 'assistente_prestacao'],
-  adm_produto:          ['coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'projetista_execucao', 'coord_prestacao', 'assistente_prestacao'],
+  gestor:               ['admin', 'vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_prestacao', 'assistente_prestacao'],
+  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_prestacao', 'assistente_prestacao'],
+  adm_produto:          ['coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_prestacao', 'assistente_prestacao'],
   coord_aprovacao:      ['assistente_aprovacao', 'projetista'],
   assistente_aprovacao: [],
-  coord_execucao:       ['assistente_execucao', 'projetista_execucao'],
-  assistente_execucao:  [],
+  coord_prestacao:      ['assistente_prestacao'],
+  assistente_prestacao: [],
 }
 
 export function canManageRole(actorRole: Role, targetRole: Role): boolean {
@@ -86,7 +85,6 @@ export function canModifyData(role: string): boolean {
 export function canReadTgov(role: string | undefined): boolean {
   return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'csm'
       || role === 'coord_aprovacao' || role === 'assistente_aprovacao' || role === 'projetista'
-      || role === 'coord_execucao' || role === 'assistente_execucao'
       || role === 'coord_prestacao' || role === 'assistente_prestacao'
 }
 
@@ -94,7 +92,6 @@ export function canReadTgov(role: string | undefined): boolean {
 export function canWriteTgov(role: string | undefined): boolean {
   return role === 'gestor' || role === 'admin' || role === 'adm_produto'
       || role === 'coord_aprovacao' || role === 'assistente_aprovacao'
-      || role === 'coord_execucao' || role === 'assistente_execucao'
       || role === 'coord_prestacao' || role === 'assistente_prestacao'
 }
 
@@ -102,7 +99,6 @@ export function canWriteTgov(role: string | undefined): boolean {
 export function canCommentTgov(role: string | undefined): boolean {
   return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'csm'
       || role === 'coord_aprovacao' || role === 'assistente_aprovacao' || role === 'projetista'
-      || role === 'coord_execucao' || role === 'assistente_execucao'
       || role === 'coord_prestacao' || role === 'assistente_prestacao'
 }
 
