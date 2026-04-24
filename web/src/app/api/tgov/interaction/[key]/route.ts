@@ -1,6 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession, canReadTgov, canWriteTgov } from '@/lib/dal'
+import { sendDiligenciaEmail } from '@/lib/email-service'
+
+const DILIGENCIA_TRIGGER_ROLES = new Set([
+  'coord_aprovacao', 'assistente_aprovacao',
+  'coord_prestacao', 'assistente_prestacao',
+])
+
+async function maybeSendDiligencia(params: {
+  role: string
+  itemKey: string
+  vencimento: string | null
+  obs: string | null
+}): Promise<void> {
+  if (!DILIGENCIA_TRIGGER_ROLES.has(params.role)) return
+  if (!params.vencimento) return
+  const comentario = (params.obs ?? '').trim()
+  if (!comentario) return
+
+  // Fetch proposta metadata (propostas takes precedence; fallback to tgov_propostas)
+  const meta = await query<{
+    situacao: string | null
+    proponente: string | null
+    proponente_cnpj: string | null
+    orgao_superior: string | null
+  }>(
+    `SELECT situacao, proponente, proponente_cnpj, orgao_superior
+       FROM propostas WHERE nr_proposta = $1
+     UNION ALL
+     SELECT situacao, proponente, proponente_cnpj, orgao_superior
+       FROM tgov_propostas WHERE nr_proposta = $1
+         AND NOT EXISTS (SELECT 1 FROM propostas WHERE nr_proposta = $1)
+     LIMIT 1`,
+    [params.itemKey],
+  )
+  if (meta.length === 0) {
+    console.warn('[diligencia] no proposta metadata for', params.itemKey)
+    return
+  }
+  const p = meta[0]
+
+  // Recipients = all participants of this proposta
+  const participants = await query<{ user_id: string }>(
+    `SELECT user_id FROM tgov_proposta_participants WHERE proposta_key = $1`,
+    [params.itemKey],
+  )
+  if (participants.length === 0) return
+
+  await sendDiligenciaEmail({
+    recipientIds: participants.map(x => x.user_id),
+    numeroProposta: params.itemKey,
+    ministerio: p.orgao_superior ?? '—',
+    proponente: p.proponente ?? '—',
+    cnpj: p.proponente_cnpj ?? '—',
+    situacao: p.situacao ?? '—',
+    comentario,
+  })
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -77,6 +134,18 @@ export async function PATCH(
       return NextResponse.json({ error: 'tab is required' }, { status: 400 })
     }
 
+    // Role ↔ tab isolation:
+    //   aprovação roles  → somente tab='aprovacao'
+    //   prestação roles  → tab='execucao' ou 'prestacao_contas' (NUNCA aprovacao)
+    const APROVACAO_ROLES = ['coord_aprovacao', 'assistente_aprovacao']
+    const PRESTACAO_ROLES = ['coord_prestacao', 'assistente_prestacao']
+    if (APROVACAO_ROLES.includes(session.role) && body.tab !== 'aprovacao') {
+      return NextResponse.json({ error: 'Forbidden: aprovacao roles can only write to aprovacao tab' }, { status: 403 })
+    }
+    if (PRESTACAO_ROLES.includes(session.role) && body.tab === 'aprovacao') {
+      return NextResponse.json({ error: 'Forbidden: prestacao roles cannot write to aprovacao tab' }, { status: 403 })
+    }
+
     // Validate vencimento if provided
     if (body.vencimento !== undefined && body.vencimento !== null && body.vencimento !== '') {
       const d = new Date(body.vencimento)
@@ -108,6 +177,15 @@ export async function PATCH(
     )
 
     const r = rows[0]
+
+    // Fire-and-forget: diligência email when coord/assistente sets vencimento + obs
+    maybeSendDiligencia({
+      role: session.role,
+      itemKey,
+      vencimento: r.vencimento,
+      obs: r.obs,
+    }).catch((err) => console.error('[diligencia] send failed:', err))
+
     return NextResponse.json({
       status: r.status,
       obs: r.obs,

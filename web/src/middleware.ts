@@ -111,6 +111,16 @@ export default auth((req) => {
     }
   }
 
+  if (role === 'coord_prestacao' || role === 'assistente_prestacao') {
+    // Perfis de prestação de contas são TGov-only (somente a aba prestacao_contas).
+    if (isCrmPage || isCrmHome) {
+      return Response.redirect(new URL('/tgov', req.url))
+    }
+    if (isCrmApi) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  }
+
   // vendedor / coordenador / visualizador cannot access TGov
   if (role && ['vendedor', 'coordenador', 'visualizador'].includes(role) && isTGovPath) {
     if (pathname.startsWith('/api/')) {
