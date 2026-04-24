@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
           MIN(EXTRACT(DAY FROM pe.data_fim_vigencia - NOW())::INT) AS dias_ate_vencimento_min,
           MAX(GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT)) AS dias_em_execucao_max,
           BOOL_OR(GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT) < 100) AS tag_desembolso,
-          BOOL_OR(GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT) >= 100 AND pe.valor_desembolsado = 0) AS tag_lobby,
+          BOOL_OR(GREATEST(0, EXTRACT(DAY FROM NOW() - pe.data_inicio_vigencia)::INT) >= 100 AND pe.valor_desembolsado = 0 AND pe.situacao = 'Em execução') AS tag_lobby,
           BOOL_OR(
             COALESCE(pe.rendimento_aplicacao, 0) > 5000
             AND COALESCE(pe.saldo_conta, 0) >= COALESCE(pe.rendimento_aplicacao, 0)

@@ -233,6 +233,11 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
       icon: '\u{1F4B3}',
     },
     {
+      title: 'Valor a Desembolsar',
+      value: formatCompactCurrency(filteredRows.reduce((s, r) => s + Math.max(0, Number(r.total_repasse) - Number(r.total_desembolsado)), 0)),
+      icon: '\u{1F4E5}',
+    },
+    {
       title: 'Alertas Ativos',
       value: String(filteredRows.filter(r => r.tem_alerta).length),
       icon: '\u26A0',
@@ -616,7 +621,8 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                         value={row.crm_status || 'Não Contatado'}
                         onClick={e => e.stopPropagation()}
                         onChange={e => { void updateStatus(row.cnpj, e.target.value) }}
-                        className={`text-xs font-medium rounded-full px-2 py-0.5 border-0 cursor-pointer ${STATUS_COLORS[row.crm_status] || STATUS_COLORS['Não Contatado']}`}
+                        disabled={isGestor}
+                        className={`text-xs font-medium rounded-full px-2 py-0.5 border-0 ${isGestor ? 'cursor-default opacity-75' : 'cursor-pointer'} ${STATUS_COLORS[row.crm_status] || STATUS_COLORS['Não Contatado']}`}
                       >
                         {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
