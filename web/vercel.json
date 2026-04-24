@@ -6,18 +6,6 @@
   "regions": ["fra1"],
   "crons": [
     {
-      "path": "/api/cron/sync-leads",
-      "schedule": "15 12 * * *"
-    },
-    {
-      "path": "/api/cron/sync-execucao",
-      "schedule": "45 12 * * *"
-    },
-    {
-      "path": "/api/cron/sync-tgov-only",
-      "schedule": "0 13 * * *"
-    },
-    {
       "path": "/api/cron/digest",
       "schedule": "20 14 * * *"
     },
