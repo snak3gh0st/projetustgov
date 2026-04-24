@@ -48,6 +48,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    // Sector isolation: roles de Execução e Prestação não acessam Aprovação.
+    const EXECUCAO_ONLY = ['coord_execucao', 'assistente_execucao']
+    const PRESTACAO_ONLY = ['coord_prestacao', 'assistente_prestacao']
+    if (EXECUCAO_ONLY.includes(session.role) || PRESTACAO_ONLY.includes(session.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     // Garante existência das tabelas TGov-only (defensivo, idempotente)
     await ensureTgovTables()
 

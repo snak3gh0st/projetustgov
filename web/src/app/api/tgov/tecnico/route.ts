@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 const VALID_TARGETS = ['proposta', 'execucao'] as const
 type TargetType = (typeof VALID_TARGETS)[number]
-const TECNICO_ROLES = ['adm_produto', 'gestor', 'admin', 'coord_aprovacao', 'assistente_aprovacao', 'projetista'] as const
+const TECNICO_ROLES = ['adm_produto', 'gestor', 'admin', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao'] as const
 
 // Simple UUID v1-v5 sanity check (8-4-4-4-12 hex)
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

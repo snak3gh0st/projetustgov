@@ -7,7 +7,7 @@ import { logout } from '@/lib/auth-actions'
 interface SidebarProps {
   user: {
     name?: string | null
-    role: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_prestacao' | 'assistente_prestacao'
+    role: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao'
     email?: string | null
   }
 }
@@ -119,6 +119,19 @@ export default function Sidebar({ user }: SidebarProps) {
         { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
         { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
       ]
+    : user.role === 'coord_execucao'
+    ? [
+        { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
+        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
+        { href: '/cadastro-vendedor', label: 'Usuarios TGov', icon: 'vendedores' },
+      ]
+    : user.role === 'assistente_execucao'
+    ? [
+        { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
+        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
+      ]
     : user.role === 'coord_prestacao'
     ? [
         { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
@@ -202,11 +215,13 @@ export default function Sidebar({ user }: SidebarProps) {
               ? 'bg-cyan-50 text-cyan-600'
               : user.role === 'projetista'
               ? 'bg-violet-50 text-violet-600'
+              : user.role === 'coord_execucao' || user.role === 'assistente_execucao'
+              ? 'bg-amber-50 text-amber-600'
               : user.role === 'coord_prestacao' || user.role === 'assistente_prestacao'
               ? 'bg-emerald-50 text-emerald-600'
               : 'bg-green-50 text-green-600'
           }`}>
-            {user.role === 'gestor' ? 'Gestor' : user.role === 'admin' ? 'Admin' : user.role === 'coordenador' ? 'Coordenador' : user.role === 'visualizador' ? 'Visualizador' : user.role === 'adm_produto' ? 'Adm Produto' : user.role === 'csm' ? 'CSM' : user.role === 'coord_aprovacao' ? 'Coord. Aprovação' : user.role === 'assistente_aprovacao' ? 'Assist. Aprovação' : user.role === 'projetista' ? 'Projetista' : user.role === 'coord_prestacao' ? 'Coord. Prestação' : user.role === 'assistente_prestacao' ? 'Assist. Prestação' : 'Vendedor'}
+            {user.role === 'gestor' ? 'Gestor' : user.role === 'admin' ? 'Admin' : user.role === 'coordenador' ? 'Coordenador' : user.role === 'visualizador' ? 'Visualizador' : user.role === 'adm_produto' ? 'Adm Produto' : user.role === 'csm' ? 'CSM' : user.role === 'coord_aprovacao' ? 'Coord. Aprovação' : user.role === 'assistente_aprovacao' ? 'Assist. Aprovação' : user.role === 'projetista' ? 'Projetista' : user.role === 'coord_execucao' ? 'Coord. Execução' : user.role === 'assistente_execucao' ? 'Assist. Execução' : user.role === 'coord_prestacao' ? 'Coord. Prestação' : user.role === 'assistente_prestacao' ? 'Assist. Prestação' : 'Vendedor'}
           </span>
         </div>
         <form action={logout}>
@@ -221,7 +236,7 @@ export default function Sidebar({ user }: SidebarProps) {
 
       {/* Footer: powered by */}
       <div className="px-5 py-3 border-t border-gray-200">
-        <p className="text-[10px] text-gray-400 text-center mb-1">v4.3</p>
+        <p className="text-[10px] text-gray-400 text-center mb-1">v4.6</p>
         <p className="text-[10px] text-[#0072F7] tracking-wider text-center">
           powered by <a href="https://sigmaintel.io" target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline">SigmaIntel</a>
         </p>

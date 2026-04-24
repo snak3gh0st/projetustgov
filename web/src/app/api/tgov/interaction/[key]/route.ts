@@ -5,6 +5,7 @@ import { sendDiligenciaEmail } from '@/lib/email-service'
 
 const DILIGENCIA_TRIGGER_ROLES = new Set([
   'coord_aprovacao', 'assistente_aprovacao',
+  'coord_execucao', 'assistente_execucao',
   'coord_prestacao', 'assistente_prestacao',
 ])
 
@@ -134,16 +135,21 @@ export async function PATCH(
       return NextResponse.json({ error: 'tab is required' }, { status: 400 })
     }
 
-    // Role ↔ tab isolation:
+    // Role ↔ tab isolation: cada setor só escreve na sua aba.
     //   aprovação roles  → somente tab='aprovacao'
-    //   prestação roles  → tab='execucao' ou 'prestacao_contas' (NUNCA aprovacao)
+    //   execução roles   → somente tab='execucao'
+    //   prestação roles  → somente tab='prestacao_contas'
     const APROVACAO_ROLES = ['coord_aprovacao', 'assistente_aprovacao']
+    const EXECUCAO_ROLES = ['coord_execucao', 'assistente_execucao']
     const PRESTACAO_ROLES = ['coord_prestacao', 'assistente_prestacao']
     if (APROVACAO_ROLES.includes(session.role) && body.tab !== 'aprovacao') {
       return NextResponse.json({ error: 'Forbidden: aprovacao roles can only write to aprovacao tab' }, { status: 403 })
     }
-    if (PRESTACAO_ROLES.includes(session.role) && body.tab === 'aprovacao') {
-      return NextResponse.json({ error: 'Forbidden: prestacao roles cannot write to aprovacao tab' }, { status: 403 })
+    if (EXECUCAO_ROLES.includes(session.role) && body.tab !== 'execucao') {
+      return NextResponse.json({ error: 'Forbidden: execucao roles can only write to execucao tab' }, { status: 403 })
+    }
+    if (PRESTACAO_ROLES.includes(session.role) && body.tab !== 'prestacao_contas') {
+      return NextResponse.json({ error: 'Forbidden: prestacao roles can only write to prestacao_contas tab' }, { status: 403 })
     }
 
     // Validate vencimento if provided

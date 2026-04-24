@@ -6,7 +6,7 @@ import { digestEmail } from '@/lib/email-templates'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-const TGOV_ROLES = ['adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'gestor', 'admin']
+const TGOV_ROLES = ['adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao', 'gestor', 'admin']
 
 export async function GET(request: NextRequest) {
   try {

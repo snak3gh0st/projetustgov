@@ -192,9 +192,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Roles de Aprovação não devem acessar a API de execução
+    // Sector isolation: cada setor só lê a sua aba na API de execução.
     const APROVACAO_ONLY = ['coord_aprovacao', 'assistente_aprovacao', 'projetista']
+    const EXECUCAO_ONLY = ['coord_execucao', 'assistente_execucao']
+    const PRESTACAO_ONLY = ['coord_prestacao', 'assistente_prestacao']
     if (APROVACAO_ONLY.includes(session.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    const requestedMode = new URL(request.url).searchParams.get('mode') ?? 'execucao'
+    if (EXECUCAO_ONLY.includes(session.role) && requestedMode !== 'execucao') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    if (PRESTACAO_ONLY.includes(session.role) && requestedMode !== 'prestacao_contas') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

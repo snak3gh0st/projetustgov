@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react'
 
-const NEWS_VERSION = 'v4.5'
+const NEWS_VERSION = 'v4.6'
 const NEWS_ITEMS = [
+  'TGov: novos perfis Coord. Execucao e Assist. Execucao (padrao Aprovacao)',
+  'TGov: cada setor (Aprovacao / Execucao / Prestacao) ve somente a sua aba',
   'Seguranca: exportacao de CSV de contatos agora restrita a gestor/admin',
-  'TGov: novo campo "Responsavel Tecnico" nos sidecards de Aprovacao e Execucao',
   'TGov: thread de comentarios em cada proposta/projeto — historico compartilhado',
-  'Novo perfil "csm" com acesso read-only ao TGov + permissao para comentar',
   'Performance: queries de Aprovacao e Execucao 100x mais rapidas (NOT MATERIALIZED)',
 ]
 const STORAGE_KEY = `projetus-news-dismissed-${NEWS_VERSION}`

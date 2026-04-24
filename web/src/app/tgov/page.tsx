@@ -9,7 +9,7 @@ export default async function TGovPage({
 }) {
   const session = await verifySession()
 
-  // Role guard: all TGov roles (aprovação + prestação) may access /tgov
+  // Role guard: all TGov roles (aprovação + execução + prestação) may access /tgov
   if (
     session.role !== 'gestor' &&
     session.role !== 'admin' &&
@@ -18,6 +18,8 @@ export default async function TGovPage({
     session.role !== 'coord_aprovacao' &&
     session.role !== 'projetista' &&
     session.role !== 'assistente_aprovacao' &&
+    session.role !== 'coord_execucao' &&
+    session.role !== 'assistente_execucao' &&
     session.role !== 'coord_prestacao' &&
     session.role !== 'assistente_prestacao'
   ) {

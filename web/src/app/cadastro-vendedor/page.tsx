@@ -7,7 +7,7 @@ export default async function CadastroVendedorPage() {
   if (!session) redirect('/login')
 
   const { role } = session as { role: string }
-  const USERS_PAGE_ROLES = ['gestor', 'admin', 'adm_produto', 'coord_aprovacao', 'assistente_aprovacao']
+  const USERS_PAGE_ROLES = ['gestor', 'admin', 'adm_produto', 'coord_aprovacao', 'assistente_aprovacao', 'coord_execucao', 'coord_prestacao']
   if (!USERS_PAGE_ROLES.includes(role)) redirect('/sem-permissao')
 
   const creatableRoles = ROLE_CAN_CREATE[role as Role] ?? []

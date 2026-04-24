@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
             `SELECT id FROM users
              WHERE active = true
                AND email IS NOT NULL
-               AND role IN ('adm_produto','coord_aprovacao','assistente_aprovacao','coord_prestacao','assistente_prestacao','gestor','admin')`,
+               AND role IN ('adm_produto','coord_aprovacao','assistente_aprovacao','coord_execucao','assistente_execucao','coord_prestacao','assistente_prestacao','gestor','admin')`,
             [],
           ),
           query<{ titulo: string | null }>(

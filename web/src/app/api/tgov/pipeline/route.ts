@@ -27,6 +27,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const tab = searchParams.get('tab') ?? 'aprovacao'
 
+    // Sector isolation: cada setor só lê o pipeline da sua aba.
+    const APROVACAO_ONLY = ['coord_aprovacao', 'assistente_aprovacao', 'projetista']
+    const EXECUCAO_ONLY = ['coord_execucao', 'assistente_execucao']
+    const PRESTACAO_ONLY = ['coord_prestacao', 'assistente_prestacao']
+    if (APROVACAO_ONLY.includes(session.role) && tab !== 'aprovacao') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    if (EXECUCAO_ONLY.includes(session.role) && tab !== 'execucao') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    if (PRESTACAO_ONLY.includes(session.role) && tab !== 'prestacao_contas') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const cacheKey = `${tab}:global`
     const cached = _cache.get(cacheKey)
     if (cached && cached.expiresAt > Date.now()) {

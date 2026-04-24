@@ -17,7 +17,7 @@ export async function GET() {
     const rows = await query<{ id: string; nome: string; email: string; role: string }>(
       `SELECT id, nome, email, role
        FROM users
-       WHERE role IN ('adm_produto', 'gestor', 'admin', 'coord_aprovacao', 'projetista')
+       WHERE role IN ('adm_produto', 'gestor', 'admin', 'coord_aprovacao', 'projetista', 'coord_execucao')
        ORDER BY nome ASC`,
     )
     return NextResponse.json({ tecnicos: rows })

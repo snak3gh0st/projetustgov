@@ -24,14 +24,14 @@ export default async function RootLayout({
           <Sidebar
             user={{
               name: session.user.name,
-              role: session.user.role as 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista',
+              role: session.user.role as 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao',
               email: session.user.email,
             }}
           />
         )}
         <main className={session ? "ml-56 min-h-screen p-6" : "min-h-screen p-6"}>
           {session?.user && <NewsBanner />}
-          {session?.user && ['gestor', 'admin', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista'].includes(
+          {session?.user && ['gestor', 'admin', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'].includes(
             session.user.role as string
           ) && (
             <div className="flex justify-end mb-2">

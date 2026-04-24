@@ -35,6 +35,7 @@ import {
   APROVACAO_NR_PROPOSTAS,
   EXECUCAO_NR_PROPOSTAS,
   APROVACAO_ONLY_ROLES,
+  EXECUCAO_ONLY_ROLES,
   PRESTACAO_ONLY_ROLES,
 } from '@/lib/tgov'
 
@@ -344,7 +345,7 @@ interface CnpjSearchResult {
 // ---------------------------------------------------------------------------
 
 interface TGovDashboardClientProps {
-  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'projetista' | 'assistente_aprovacao' | 'coord_prestacao' | 'assistente_prestacao'
+  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'projetista' | 'assistente_aprovacao' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao'
   view?: 'pipeline' | 'dashboard'
   highlight?: string
   /** Scroll to a section after sidecard opens (e.g. 'comments') */
@@ -365,7 +366,8 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
   const isDashboardView = view !== 'dashboard'
   // Tab priority: URL param > role-based default
   const initialTab: TGovTab = initialTabParam
-    ?? ((PRESTACAO_ONLY_ROLES as readonly string[]).includes(userRole) ? 'prestacao_contas'
+    ?? ((EXECUCAO_ONLY_ROLES as readonly string[]).includes(userRole) ? 'execucao'
+      : (PRESTACAO_ONLY_ROLES as readonly string[]).includes(userRole) ? 'prestacao_contas'
       : DEFAULT_TGOV_TAB)
   const [activeTab, setActiveTab] = useState<TGovTab>(initialTab)
   const isExecTab = initialTabParam === 'execucao' || initialTabParam === 'prestacao_contas'
@@ -630,9 +632,11 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
               {(['aprovacao', 'execucao', 'prestacao_contas'] as TGovTab[])
                 .filter(tab => {
                   const isAprovacaoRole = (APROVACAO_ONLY_ROLES as readonly string[]).includes(userRole)
+                  const isExecucaoRole = (EXECUCAO_ONLY_ROLES as readonly string[]).includes(userRole)
                   const isPrestacaoRole = (PRESTACAO_ONLY_ROLES as readonly string[]).includes(userRole)
-                  if (isAprovacaoRole && tab !== 'aprovacao') return false
-                  if (isPrestacaoRole && tab === 'aprovacao') return false
+                  if (isAprovacaoRole) return tab === 'aprovacao'
+                  if (isExecucaoRole) return tab === 'execucao'
+                  if (isPrestacaoRole) return tab === 'prestacao_contas'
                   return true
                 })
                 .map((tab) => (

@@ -19,7 +19,7 @@ type Props = {
   onAssigned: (tecnicoId: string | null, tecnicoNome: string | null) => void
 }
 
-const WRITE_ROLES = ['gestor', 'admin', 'adm_produto', 'coord_aprovacao', 'assistente_aprovacao']
+const WRITE_ROLES = ['gestor', 'admin', 'adm_produto', 'coord_aprovacao', 'assistente_aprovacao', 'coord_execucao', 'assistente_execucao']
 function canWriteTgovClient(role: string): boolean {
   return WRITE_ROLES.includes(role)
 }

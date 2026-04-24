@@ -19,6 +19,8 @@ export async function GET() {
     const seeAll = role === 'adm_produto'
       || role === 'coord_aprovacao'
       || role === 'assistente_aprovacao'
+      || role === 'coord_execucao'
+      || role === 'assistente_execucao'
       || role === 'coord_prestacao'
       || role === 'assistente_prestacao'
 
@@ -99,7 +101,7 @@ export async function GET() {
     `, [userId])
 
     // Stale assignments: for coord/assistente/adm_produto only
-    const canSeeStale = ['coord_aprovacao', 'assistente_aprovacao', 'adm_produto', 'gestor', 'admin'].includes(role)
+    const canSeeStale = ['coord_aprovacao', 'assistente_aprovacao', 'coord_execucao', 'assistente_execucao', 'adm_produto', 'gestor', 'admin'].includes(role)
     let stale: { proposta_key: string; titulo: string | null; tecnico_nome: string | null; assigned_at: string; hours: number }[] = []
 
     if (canSeeStale) {
