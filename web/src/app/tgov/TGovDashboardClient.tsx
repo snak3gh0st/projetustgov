@@ -1273,6 +1273,7 @@ function AprovacaoTable({
           <SortableTh label="Data" col="data" className="text-left px-4" {...thProps} />
           <SortableTh label="CNPJ" col="cnpj" className="text-left px-4" {...thProps} />
           <SortableTh label="Proponente" col="proponente" className="text-left px-4" {...thProps} />
+          <SortableTh label="Situação" col="situacao" className="text-left px-4" {...thProps} />
           <SortableTh label="Vencimento" col="vencimento" className="text-left px-4" {...thProps} />
           <SortableTh label="Tecnico" col="tecnicoNome" className="text-left px-3" {...thProps} />
           <th className="px-3 py-2.5 w-8"></th>
@@ -1280,7 +1281,7 @@ function AprovacaoTable({
       </thead>
       <tbody className="divide-y divide-gray-100">
         {loading ? (
-          <SkeletonRows cols={7} />
+          <SkeletonRows cols={8} />
         ) : sorted && sorted.length > 0 ? (
           sorted.map((row, idx) => {
             const isSelected = selectedKey === row.numeroProposta
@@ -1312,6 +1313,7 @@ function AprovacaoTable({
               <td className="px-4 py-2.5 text-gray-700">
                 {row.proponente || '—'}
               </td>
+              <td className="px-3 py-2.5"><SituacaoBadge situacao={row.situacao ?? ''} /></td>
               <td className="px-4 py-2.5"><VencimentoBadge vencimento={row.vencimento} /></td>
               <td className="px-3 py-2.5 text-xs text-gray-600 truncate max-w-[120px]">
                 {row.tecnicoNome || <span className="text-gray-300">—</span>}
