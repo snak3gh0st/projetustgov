@@ -1,441 +1,361 @@
-# Architecture Research
+# Architecture Patterns
 
-**Domain:** Lead distribution, design refresh, and memory optimization integrated into existing Next.js 14 CRM
-**Researched:** 2026-03-30
-**Confidence:** HIGH — all findings based on direct inspection of live codebase
+**Domain:** CRM + Customer Success integration into Next.js 14 App Router
+**Researched:** 2026-04-27
+**Confidence:** HIGH — based on direct codebase inspection
 
-## Standard Architecture
+---
 
-### System Overview
+## Verified Facts From Codebase
 
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                        BROWSER (React 18)                                │
-├──────────────────────────────────────────────────────────────────────────┤
-│  ┌───────────────────┐  ┌───────────────────┐  ┌───────────────────────┐ │
-│  │  Sidebar.tsx      │  │  /distribuir page │  │  All existing pages   │ │
-│  │  MODIFY: rebrand  │  │  MODIFY: add auto-│  │  MODIFY: token swap   │ │
-│  │  Projete colors   │  │  distribute btn   │  │  (CSS var replace)    │ │
-│  └───────────────────┘  └───────────────────┘  └───────────────────────┘ │
-├──────────────────────────────────────────────────────────────────────────┤
-│                  Next.js 14 App Router (Server + Client)                 │
-├──────────────────────────────────────────────────────────────────────────┤
-│  ┌───────────────────────────┐  ┌─────────────────────────────────────┐  │
-│  │  /api/cron/sync-execucao  │  │  /api/leads (existing)              │  │
-│  │  MODIFY: auto-distribute  │  │  UNCHANGED                          │  │
-│  │  already wired (live)     │  │                                     │  │
-│  └───────────────────────────┘  └─────────────────────────────────────┘  │
-├──────────────────────────────────────────────────────────────────────────┤
-│                        lib/ (shared)                                     │
-│  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────┐  │
-│  │  distribute-execucao│  │  repo-sync.ts        │  │  execucao-sync  │  │
-│  │  EXISTS: round-robin│  │  MODIFY: streaming   │  │  UNCHANGED      │  │
-│  │  for execucao       │  │  buffer refactor     │  │                 │  │
-│  └─────────────────────┘  └─────────────────────┘  └─────────────────┘  │
-├──────────────────────────────────────────────────────────────────────────┤
-│                     Supabase PostgreSQL                                  │
-│  ┌───────────────────────────┐  ┌──────────────────────────────────────┐ │
-│  │  vendedor_projetos        │  │  vendedor_projetos (approval leads)  │ │
-│  │  UNCHANGED: lead CRM data │  │  projetos_execucao (execution)       │ │
-│  └───────────────────────────┘  └──────────────────────────────────────┘ │
-│                                                                          │
-│  globals.css + tailwind.config.ts                                        │
-│  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │  ADD: CSS custom properties for Projete brand tokens              │  │
-│  │  MODIFY: tailwind.config.ts extend colors to reference CSS vars   │  │
-│  └────────────────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────────────┘
-```
+### What exists today
 
-### Component Responsibilities
+- `propostas` table: transfer_gov_id, nr_proposta, titulo, situacao, valor_global, valor_repasse, valor_contrapartida, proponente_cnpj, estado, municipio, modalidade, orgao_superior, orgao_vinculado, data_publicacao, data_inicio/fim_vigencia. **No budget line items stored.**
+- `projetos_execucao` table: financial aggregates (valor_global, valor_repasse, valor_desembolsado, saldo_conta, rendimento_aplicacao, ingresso_contrapartida, pct_execucao), plus execution tags (tag_lobby, tag_desembolso, tag_rendimento) computed in SQL inside `/api/execucao`.
+- ETL downloads 10 SICONV CSV files: siconv_proposta, siconv_convenio, siconv_desembolso, siconv_programa, siconv_programa_proposta, siconv_proponentes, siconv_emenda, siconv_apoiadores_emendas_programas, siconv_historico_situacao. **No `siconv_plano_aplicacao_detalhado.csv` in the downloader.**
+- `tgov_projetos_execucao` and `tgov_propostas` mirror tables exist for TGov-only clients (non-CRM).
+- `Sidebar.tsx` is a `'use client'` component, fixed width `w-56`, receives `user` prop from the server layout. No collapse state or toggle exists.
+- `layout.tsx` is a server async component. Calls `auth()`, passes `user` to `<Sidebar>`, hardcodes `ml-56` margin on `<main>`. No client state wrappers.
+- `csm` role exists in `dal.ts` Role type, `next-auth.d.ts`, and Sidebar nav arrays. CSM currently sees: TGov Pipeline, TGov Dashboard, TGov BI — same as projetista. No dedicated `/csm` page exists.
+- `/api/tgov/pipeline` serves a unified view of aprovacao + execucao by tab (donut chart data).
+- `/api/execucao` serves per-CNPJ aggregated execution data with tags (for sales team).
+- `canReadTgov()` in `dal.ts` includes `csm`. `canWriteTgov()` does NOT include `csm` (read-only by default).
+- Python ETL runs on sigmadb systemd timers. Memory peaks at ~1300MB during proposta sync.
 
-| Component | Responsibility | Status |
-|-----------|----------------|--------|
-| `tailwind.config.ts` | Color/font token definitions | MODIFY — add Projete brand palette |
-| `globals.css` | CSS custom properties for theme | MODIFY — add `--color-*` variables |
-| `Sidebar.tsx` | Navigation + brand wordmark | MODIFY — swap PROJETUS gradient for Projete logo/colors |
-| All page components | Use brand tokens via Tailwind classes | MODIFY — grep/replace hardcoded hex values |
-| `distribute-execucao.ts` | Round-robin assignment for unassigned execucao CNPJs | EXISTS — already works, wired into cron |
-| `/distribuir/page.tsx` | Manual distribution UI | MODIFY — expose auto-distribute trigger |
-| `/api/cron/sync-execucao/route.ts` | Cron: sync + auto-distribute | EXISTS — distribution already called post-sync |
-| `repo-sync.ts` | Lead sync ETL from government CSVs | MODIFY — replace `Buffer.from(arrayBuffer())` with true streaming |
-| `downloadAndStreamCSV()` | ZIP download + streaming CSV parse | MODIFY — eliminate the full-buffer step |
-| `db.ts` | pg.Pool singleton | UNCHANGED |
-| `dal.ts` | Session / auth helpers | UNCHANGED |
+---
 
-## Recommended Project Structure
+## Question 1: CSM Pipeline API — New vs Extend
 
-No new files or directories needed for any of the three features. All changes are modifications to existing files:
+**Verdict:** Create a new `/api/csm/pipeline` route. Do NOT extend `/api/execucao` or `/api/tgov/aprovacao`.
+
+### Why not extend existing routes
+
+`/api/execucao` is a CNPJ-grouped CRM view with vendedor isolation joins, contact lookups, and sales tags. It groups by CNPJ for the sales execution pipeline. Adding CSM priority levels would couple two semantically different views and break the existing sort logic.
+
+`/api/tgov/aprovacao` and `/api/tgov/execucao` are TGov-scoped, whitelist-filtered views for the product team (aprovacao/execucao/PC tabs). Adding CSM priority logic there would contaminate the whitelist-driven filtering with business priority scoring.
+
+### Recommended new routes
 
 ```
-web/src/
-├── app/
-│   ├── globals.css              # MODIFY: add CSS custom properties for Projete tokens
-│   ├── distribuir/
-│   │   └── page.tsx             # MODIFY: add auto-distribute trigger button
-│   └── [all other pages]        # MODIFY: swap hardcoded hex → Tailwind token classes
-├── components/
-│   └── Sidebar.tsx              # MODIFY: rebrand wordmark + active/hover colors
-└── lib/
-    └── repo-sync.ts             # MODIFY: streaming buffer refactor (memory fix)
-web/
-└── tailwind.config.ts           # MODIFY: add Projete brand color tokens
+/api/csm/pipeline     GET  — 5-level priority list spanning propostas + projetos_execucao
+/api/csm/[cnpj]       GET  — per-client detail: proposals + convenios + CRM status + tags
+/api/csm/budget-refresh  POST  — lazy fetch + cache from TransfereGov (see Q2)
 ```
 
-Database: no migrations required for any of the three features.
+### Pipeline query shape
 
-### Structure Rationale
+The CSM pipeline query combines data from both tables using UNION ALL with a CASE-computed `priority_level` column:
 
-- **No new files:** All three features (distribution, design, memory) are enhancements to existing modules. Adding new files would fragment behavior that already has a clear home.
-- **CSS custom properties in globals.css:** This is the single place where the design system lives. Tailwind reads the tokens from here via `theme.extend.colors`. Changing a brand color later requires editing one line in one file, not grep-replacing 200 components.
-- **distribute-execucao.ts untouched:** The logic already exists and works. The only work is making the result visible in the UI and possibly adding a "distribute approval leads" variant for the approval pipeline.
+```sql
+-- Priority 1: Em Execução + saldo > 0 (active, high-value)
+-- Priority 2: Em Execução + rendimento_aplicacao > 5000 (investment income)
+-- Priority 3: Em Execução + valor_desembolsado = 0 (tag_lobby — blocked)
+-- Priority 4: Aprovacao stage (from propostas whitelist — pre-execution upsell)
+-- Priority 5: Prestação de Contas stage (closing)
+SELECT cnpj, nome_proponente, situacao, saldo_conta, valor_desembolsado,
+  CASE
+    WHEN situacao ILIKE 'Em Execu%' AND saldo_conta > 0 AND valor_desembolsado > 0 THEN 1
+    WHEN situacao ILIKE 'Em Execu%' AND rendimento_aplicacao > 5000 THEN 2
+    WHEN situacao ILIKE 'Em Execu%' AND valor_desembolsado = 0 THEN 3
+    WHEN ... aprovacao stage THEN 4
+    WHEN situacao ILIKE '%Prestação%' THEN 5
+    ELSE 6
+  END AS priority_level
+FROM projetos_execucao
+WHERE cnpj IN (SELECT REGEXP_REPLACE(cnpj,'[^0-9]','','g') FROM vendedor_projetos)
+UNION ALL
+SELECT ... FROM propostas WHERE nr_proposta = ANY($whitelist)
+ORDER BY priority_level, saldo_conta DESC NULLS LAST
+```
 
-## Architectural Patterns
+Reuses `APROVACAO_NR_PROPOSTAS` and `EXECUCAO_NR_PROPOSTAS` whitelist constants from `tgov.ts`. The whitelist identifies Projetus clients across both tables.
 
-### Pattern 1: CSS Custom Property Token System
+### Auth gate — add to dal.ts
 
-**What:** Define brand colors as CSS variables in `:root {}` inside `globals.css`. Reference them in `tailwind.config.ts` as `'var(--color-brand-primary)'`. Then use `bg-brand-primary` in components.
-
-**When to use:** Whenever the codebase has hardcoded hex values scattered across components that must be globally swappable.
-
-**Trade-offs:** Adds one indirection layer (class → CSS var → computed color). Zero runtime cost. Enables future dark-mode or client white-labeling with zero component changes. The existing `tailwind.config.ts` already has a `sigma` color namespace — the Projete tokens extend this pattern rather than replacing it.
-
-**Example:**
-```css
-/* globals.css — add under @tailwind base */
-:root {
-  --color-brand-primary: #0072F7;   /* Projete primary — TBD from brand guide */
-  --color-brand-accent:  #FD225C;   /* Projete accent  — TBD from brand guide */
-  --color-sidebar-bg:    #050B1F;   /* sidebar background */
+```typescript
+export function canCsm(role: string | undefined): boolean {
+  return role === 'gestor' || role === 'admin' || role === 'csm'
 }
 ```
 
+---
+
+## Question 2: Budget Items (Plano de Aplicacao Detalhado)
+
+**Verdict: NOT in the database. Requires a new data source.**
+
+The `propostas` table contains only aggregate financial columns. There are no line item tables. The Python ETL downloader in `repository_downloader.py` downloads exactly 10 SICONV CSV files — none is `siconv_plano_aplicacao_detalhado.csv`. STATE.md explicitly states: "Plano de Aplicacao Detalhado: disponivel em propostas/convenios via TransfereGov — precisa de nova API/join para expor itens orcamentarios."
+
+### Option A — Fetch from TransfereGov API at read time (recommended for v6.0)
+
+TransfereGov exposes proposal detail via:
+```
+https://transferegov.sistema.gov.br/api/v1/proposta/{idProposta}/planoAplicacaoDetalhado
+```
+where `idProposta` is `propostas.transfer_gov_id`.
+
+Fetch on demand from the Next.js API route when a CSM user opens a proposal that has no cache entry. Store the result in a new `csm_budget_cache` table (proposta_id, items JSONB, sales_tags JSONB, fetched_at TIMESTAMPTZ) with a 7-day TTL.
+
+**Critical unknown:** TransfereGov API authentication requirements. Must verify manually whether this endpoint requires a bearer token or is publicly accessible. If auth is required, the fetch must be proxied through a server-side Next.js route — never expose tokens to the browser.
+
+**Why Option A for v6.0:** Avoids a new ETL pipeline. Works within the existing sigmadb + Vercel architecture. Budget items are only needed when a CSM user actively inspects a proposal.
+
+### Option B — New ETL sync (higher effort, needed for AI tags at scale)
+
+Add `siconv_plano_aplicacao_detalhado.csv` to the sigmadb Python downloader and create a new `itens_orcamentarios` table. Not recommended for v6.0 — verify the CSV exists and has stable headers before committing. This enables batch AI tag inference across all proposals on sync.
+
+**Recommendation:** Start with Option A. If AI tags must cover all proposals (not just ones the CSM has opened), escalate to Option B in v6.1.
+
+---
+
+## Question 3: AI Tag Inference Architecture
+
+**Verdict:** Pre-compute on budget fetch, store in JSONB. Not per request, not real-time.
+
+### Options evaluated
+
+| Approach | Latency | Cost | Feasibility |
+|----------|---------|------|-------------|
+| Per-request inference | 500ms–3s added to page load | API credits per view | Not viable |
+| Pre-compute on sync (ETL) | Background | Credits per proposal, once | Viable if ETL has budget data |
+| Lazy compute on first access | Background, after cache miss | Credits per proposal, once | Viable with Option A |
+| Embedding similarity (local) | Negligible at query time | One-time compute | Best long-term |
+
+### Recommended approach — embedding similarity, pre-computed on budget fetch
+
+1. Define a static list of Projetus service categories (e.g., "consultoria de projetos", "elaboração de plano de trabalho", "assessoria técnica", "capacitação", "gestão de convênios").
+
+2. When `/api/csm/budget-refresh` fetches budget items from TransfereGov, for each `descricao` line item, compute cosine similarity against the service category embeddings using OpenAI `text-embedding-3-small`.
+
+3. Store result in `csm_budget_cache.sales_tags` JSONB: `{"potencial": "alto", "categorias": ["consultoria", "gestão"]}`.
+
+4. The CSM pipeline and detail pages read pre-computed tags — zero inference latency at query time.
+
+### Where inference runs
+
+Use OpenAI `text-embedding-3-small` from the Next.js `/api/csm/budget-refresh` server route, called lazily on first access. This keeps inference off the browser and avoids edge function constraints.
+
+**Vercel timeout risk:** Embedding calls are fast (~100ms each) but batching 50+ line items per proposal could approach the 30s `maxDuration` if the TransfereGov fetch is slow. Mitigate by: (a) parallelizing embedding calls with `Promise.all`, (b) caching embeddings for the static service category list at module level so only the new line items need embedding.
+
+**Scale threshold:** For <300 proposals, in-memory JS cosine similarity is sufficient. If budget item volume exceeds ~5,000 items, add pgvector extension (available on Supabase) and use `vector` columns with `<=>` cosine distance operator.
+
+### Similarity implementation (in-memory, sufficient for v6.0)
+
 ```typescript
-// tailwind.config.ts — extend existing sigma object
-colors: {
-  projete: {
-    primary: 'var(--color-brand-primary)',
-    accent:  'var(--color-brand-accent)',
-  },
-  sigma: { /* keep existing for backward compat during migration */ }
+function cosineSimilarity(a: number[], b: number[]): number {
+  const dot = a.reduce((sum, ai, i) => sum + ai * b[i], 0)
+  const normA = Math.sqrt(a.reduce((s, ai) => s + ai * ai, 0))
+  const normB = Math.sqrt(b.reduce((s, bi) => s + bi * bi, 0))
+  return dot / (normA * normB)
 }
 ```
 
-### Pattern 2: Stream-Without-Buffer for Large ZIP Downloads
+---
 
-**What:** The current `downloadAndStreamCSV()` does `Buffer.from(await res.arrayBuffer())`, which loads the entire compressed file into a `Buffer` before any parsing begins. For the 187MB proposta ZIP, this contributes ~200MB to peak heap. Replace with `res.body` piped through the inflate stream directly, so the buffer is never fully materialized.
+## Question 4: Sidebar Collapse State in App Router
 
-**When to use:** Any government CSV download where the compressed file exceeds ~50MB.
+**Verdict:** The sidebar must become controlled via a new client wrapper component (`LayoutShell`) inserted between the server layout and the sidebar.
 
-**Trade-offs:** The custom ZIP header parser in `_parseZipBuffer` needs rewriting because it currently reads byte offsets from a fully-loaded `Buffer`. The alternative is to use Node.js's built-in `stream/pipeline` with a writable passthrough that reads the ZIP local file header incrementally. This is the highest-risk change in the milestone — the custom ZIP parser is tightly coupled to the buffer approach. The safest refactor is to use `node-fetch` response body streaming through a Transform stream that handles the local file header manually.
+### Current architecture (server layout + client sidebar)
 
-**Example (current problem):**
+```
+layout.tsx (server async)
+  auth() → user
+  └── <Sidebar user={user} />   ← 'use client', already
+  └── <main className="ml-56">  ← hardcoded, server-rendered
+```
+
+The server layout cannot hold `useState`. Collapse state cannot live there.
+
+### Recommended pattern — LayoutShell client wrapper
+
+```
+layout.tsx (server) — unchanged, just passes user
+  └── <LayoutShell user={user}>    ← NEW 'use client' component
+        ├── <Sidebar user={user} collapsed={collapsed} onToggle={toggle} />
+        └── <main className={collapsed ? "ml-16" : "ml-56"}>
+              {children}
+            </main>
+```
+
+The server layout passes only `user` (serializable) to `LayoutShell`. `LayoutShell` owns collapse state and dark mode state.
+
+### State persistence via localStorage
+
 ```typescript
-// CURRENT — full buffer in memory
-const zipBuffer = Buffer.from(await res.arrayBuffer())  // ~200MB for proposta
-return await _parseZipBuffer(zipBuffer, url, onRow)     // another ~200MB subarray
+// LayoutShell.tsx
+'use client'
+const [collapsed, setCollapsed] = useState(false)
+useEffect(() => {
+  const saved = localStorage.getItem('sidebar-collapsed')
+  if (saved === 'true') setCollapsed(true)
+}, [])
+const toggle = () =>
+  setCollapsed(prev => {
+    localStorage.setItem('sidebar-collapsed', String(!prev))
+    return !prev
+  })
 ```
 
-**Example (target approach):**
+Initial render uses default (expanded) — no server/client mismatch since `Sidebar` is already client-only and the margin is applied in `LayoutShell`.
+
+### Collapsed sidebar behavior
+
+- Width: `w-56` (expanded) → `w-16` (collapsed, icon-only)
+- Main margin: `ml-56` → `ml-16`
+- Labels hidden in collapsed mode via conditional `hidden` class
+- Toggle button: chevron icon at sidebar bottom
+
+### Dark mode
+
+Add second state `isDark` to `LayoutShell`. Apply `dark` class to `<html>` via `document.documentElement.classList.toggle('dark', isDark)`. Persist in localStorage. Configure `darkMode: 'class'` in `tailwind.config.ts` (one-line addition — currently missing from config).
+
+### Mobile
+
+When `LayoutShell` detects screen width < `md`, auto-collapse sidebar to an overlay drawer. Detect via CSS media query or `window.innerWidth` check on mount. Sidebar closes on route change via `usePathname` effect.
+
+---
+
+## Component Boundaries
+
+| Component | Responsibility | Status | Communicates With |
+|-----------|---------------|--------|-------------------|
+| `layout.tsx` (server) | Auth check, user prop extraction | MODIFY: delegate children to LayoutShell | Passes user to LayoutShell |
+| `LayoutShell.tsx` (new, client) | Collapse + dark mode state | NEW | Sidebar, main content |
+| `Sidebar.tsx` (client) | Navigation rendering | MODIFY: accept collapsed prop | Receives user + collapsed + onToggle |
+| `/api/csm/pipeline` (new) | Priority-ranked unified view | NEW | projetos_execucao, propostas, tgov_whitelist |
+| `/api/csm/[cnpj]` (new) | Per-client detail | NEW | projetos_execucao, propostas, vendedor_projetos |
+| `/api/csm/budget-refresh` (new) | Lazy TransfereGov fetch + AI tags | NEW | TransfereGov external API, csm_budget_cache |
+| `/csm/pipeline/page.tsx` (new) | CSM pipeline page | NEW | verifySession, /api/csm/pipeline |
+| `CSMPipelineClient.tsx` (new) | Pipeline table + priority bands | NEW | GET /api/csm/pipeline |
+| `dal.ts` | Auth helpers | MODIFY: add canCsm() | Used by all new API routes |
+
+---
+
+## Data Flow: CSM Pipeline
+
+```
+CSM user loads /csm/pipeline
+  → CSMPipelineClient fetches GET /api/csm/pipeline
+  → API: canCsm(session.role) check
+  → SQL: UNION ALL projetos_execucao (Projetus filter via vendedor_projetos)
+           + propostas (APROVACAO_NR_PROPOSTAS whitelist)
+         with CASE-computed priority_level (1–5)
+         ORDER BY priority_level, saldo_conta DESC
+  → Returns rows: { cnpj, proponente, priority_level, situacao, saldo_conta,
+                    valor_desembolsado, crm_status, tags[], idProposta }
+  → UI renders priority bands (color-coded by level 1–5)
+
+CSM opens proposal detail
+  → Fetch GET /api/csm/[cnpj]
+  → Check csm_budget_cache WHERE proposta_id = $id AND fetched_at > NOW() - interval '7 days'
+  → IF cache hit: return items + sales_tags immediately
+  → IF cache miss: return proposal data now, trigger background POST /api/csm/budget-refresh
+      → budget-refresh: GET TransfereGov API → compute embeddings → INSERT csm_budget_cache
+      → client polls or WebSocket notifies (simple: client re-fetches after 3s delay)
+```
+
+---
+
+## Schema Changes Required
+
+```sql
+-- New table: lazy cache for budget items + AI tags
+CREATE TABLE IF NOT EXISTS csm_budget_cache (
+  proposta_id VARCHAR NOT NULL PRIMARY KEY,   -- propostas.transfer_gov_id
+  items JSONB NOT NULL DEFAULT '[]',           -- raw budget line items from TransfereGov
+  sales_tags JSONB NOT NULL DEFAULT '{}',      -- {"potencial": "alto", "categorias": [...]}
+  fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS ix_csm_budget_cache_fetched
+  ON csm_budget_cache(fetched_at);
+```
+
+No changes to `propostas`, `projetos_execucao`, or any existing table.
+
+One addition to `tailwind.config.ts`:
 ```typescript
-// TARGET — stream directly through inflate, never buffer the full ZIP
-import { pipeline } from 'stream/promises'
-const res = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) })
-// Skip the ZIP local file header bytes (30 + filenameLen + extraLen)
-// then pipe body.readable -> skip header bytes -> InflateRaw -> readline -> onRow
+darkMode: 'class',  // add this line
 ```
 
-The exact implementation depends on whether the government ZIPs use Deflate (method 8) or Store (method 0). Current code handles both — the streaming refactor must too.
-
-### Pattern 3: Existing Round-Robin Distribution (Already Implemented)
-
-**What:** `distribute-execucao.ts` already implements least-loaded round-robin: query active vendedores with their current execucao lead count, get unassigned CNPJs, assign each to the vendedor with fewest leads, upsert into `vendedor_projetos`. This is called automatically by the `sync-execucao` cron.
-
-**When to use:** Only when new execution projects arrive via cron (automatic). A manual re-run button in `/distribuir` calls the same function via an API endpoint.
-
-**Trade-offs:** The current implementation processes assignments one row at a time in a loop (N individual UPDATE/INSERT queries). At a few hundred CNPJs this is fine. At thousands of newly-synced CNPJs it adds latency to the cron. A bulk INSERT with a CTE would be faster but adds complexity. For the current 8,793-project dataset, the row-at-a-time approach is acceptable.
-
-**Existing flow:**
-```
-sync-execucao cron completes
-    |
-    v
-distributeUnassignedExecucao()
-    |
-    +-- SELECT active vendedores with current_count
-    +-- SELECT projetos_execucao CNPJs with no vendedor_projetos entry
-    +-- Round-robin: assign each to min-count vendedor
-    +-- For each assignment: UPDATE existing or INSERT new vendedor_projetos row
-    |
-    v
-Returns { distributed, updated, inserted, vendedores[] } summary
-```
-
-### Pattern 4: Manual Distribution Trigger via API + UI
-
-**What:** The `/distribuir` page already lets gestores manually assign approval-pipeline leads. Adding a "Distribuir Execucao Automaticamente" button calls a new `/api/execucao/distribute` endpoint which calls `distributeUnassignedExecucao()` and returns the summary. The response is rendered as a confirmation table showing each vendedor's before/after counts.
-
-**When to use:** When the gestor wants to manually re-run distribution without waiting for the cron, or when new vendedores are added after a sync has already run.
-
-**Trade-offs:** The endpoint must be gestor/coordenador only (same auth pattern as all other mutation endpoints). It is idempotent — calling it multiple times only assigns truly unassigned CNPJs.
-
-**Example:**
-```typescript
-// /api/execucao/distribute/route.ts (NEW small file)
-export async function POST(request: Request) {
-  const session = await getApiSession()
-  if (!session || !['gestor', 'coordenador'].includes(session.role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-  const result = await distributeUnassignedExecucao()
-  return NextResponse.json(result)
-}
-```
-
-## Data Flow
-
-### Memory Flow During Proposta Sync (Current Problem)
-
-```
-GET siconv_proposta.csv.zip (187MB compressed)
-    |
-    v
-res.arrayBuffer()                              <- allocates ~200MB Buffer A
-    |
-    v
-Buffer.from(...)                               <- copy into zipBuffer (~200MB Buffer B)
-    |
-    v
-zipBuffer.subarray(dataOffset, ...)            <- compressedData slice (~180MB, shared)
-    |
-    v
-createInflateRaw().pipe(readline)              <- streams decompressed (~500-700MB peak)
-    |                                             while propostaMap accumulates
-    v
-propostaMap: Map<id, {cnpj, nome, ...}>        <- ~300-500MB for 1.1M OSC rows at peak
-    |
-    v
-leads array: LeadData[]                        <- ~100-200MB additional for built records
-
-PEAK: ~1300MB heap with all in-flight simultaneously
-```
-
-### Memory Flow After Refactor (Target)
-
-```
-GET siconv_proposta.csv.zip
-    |
-    v
-res.body (ReadableStream)                      <- never buffered
-    |
-    v
-Skip ZIP local file header bytes (incremental) <- ~100 bytes, no allocation
-    |
-    v
-InflateRaw stream                              <- decompress chunk by chunk
-    |
-    v
-readline (line-by-line)                        <- one row in memory at a time
-    |
-    v
-propostaMap: Map<id, {cnpj, nome, ...}>        <- same as before, unchanged
-                                                  but: zipBuffer never exists
-PEAK: ~300-500MB (propostaMap only, no zipBuffer overhead)
-```
+---
 
-**Realistic target:** Eliminating the full `Buffer.from(arrayBuffer())` step removes ~200MB of peak allocation. The propostaMap itself accounts for the remaining 300-500MB and is harder to reduce without a two-pass approach (first pass: collect OSC IDs; second pass: build minimal Map for only those IDs). Two-pass doubles download time but halves Map size.
+## Anti-Patterns to Avoid
 
-### Distribution Flow (Daily Cron)
+### Anti-Pattern 1: Extending /api/execucao for CSM priority view
+**What:** Adding priority_level CASE to the existing execucao route.
+**Why bad:** Execucao route groups by CNPJ for sales team isolation (vendedor_projetos joins). CSM needs per-convenio rows for priority scoring — the grouping semantics are incompatible.
+**Instead:** New `/api/csm/pipeline` with its own SQL.
 
-```
-Vercel Cron 13:00 UTC triggers GET /api/cron/sync-execucao
-    |
-    v
-syncProjetosExecucao()        <- stream proposta + convenio, upsert projetos_execucao
-    |                            ~30-60s, 8,793+ rows
-    v
-distributeUnassignedExecucao()
-    |
-    +-- SELECT vendedores with current_count (single query)
-    +-- SELECT unassigned execucao CNPJs (single query)
-    +-- Loop: assign round-robin, N individual queries
-    |
-    v
-Returns summary logged to Vercel console
-```
+### Anti-Pattern 2: Real-time AI inference per page load
+**What:** Calling OpenAI API from `/api/csm/pipeline` on every request.
+**Why bad:** API key exposure risk if not proxied, ~500ms–3s latency added, cost per view, Vercel 30s maxDuration risk at batch scale.
+**Instead:** Pre-compute on budget fetch, store in `csm_budget_cache.sales_tags` JSONB.
 
-### Design Token Swap Flow (One-Time Migration)
+### Anti-Pattern 3: Server component state for sidebar collapse
+**What:** Cookie-based collapse state read in `layout.tsx` (server component).
+**Why bad:** Forces full-page server re-render on every toggle, breaks React streaming. Also couples sidebar state to the server render critical path.
+**Instead:** `LayoutShell` client wrapper holds state in `useState`, persisted in `localStorage`.
 
-```
-1. Define CSS vars in :root (globals.css)
-2. Map Tailwind color names to CSS vars (tailwind.config.ts)
-3. Grep for hardcoded hex values (#FD225C, #0072F7, #7A4BAC, etc.)
-4. Replace with Tailwind token classes (text-projete-accent, bg-projete-primary)
-5. Test in browser — Sidebar wordmark, active nav color, button colors, KPI highlights
-6. Brand guide delivery from client -> update CSS var values -> instant propagation
-```
+### Anti-Pattern 4: Fetching all budget items on pipeline load
+**What:** On `/csm/pipeline` load, fetch TransfereGov budget data for all 300+ proposals.
+**Why bad:** Blocks initial page render, risks Vercel timeout (30s maxDuration), external API rate limits.
+**Instead:** Lazy per-proposal fetch on demand, with 7-day JSONB cache.
 
-### Key Data Flows
+### Anti-Pattern 5: Adding CSM nav items without the LayoutShell
+**What:** Adding `/csm/pipeline` to Sidebar before implementing collapse — sidebar grows longer with no way to collapse.
+**Why bad:** Forces an awkward vertical scroll for roles with many nav items. Technical debt that must be retrofitted.
+**Instead:** Build LayoutShell + collapse first (Phase 1), then add CSM nav items.
 
-1. **Distribution idempotency:** `distributeUnassignedExecucao()` only acts on CNPJs that have no `vendedor_projetos` entry with a non-null `vendedor_id`. Running it twice is safe — the second run finds zero unassigned CNPJs.
+---
 
-2. **Approval lead distribution (existing):** The `repo-sync.ts` already implements round-robin for approval leads (STEP 5 in the ETL). New CNPJs get the least-loaded vendedor. Existing CNPJs keep their assignment. The `/distribuir` page exposes manual reassignment for the approval pipeline. This is already shipped — no changes needed unless the client requests a separate manual re-run button for approval leads.
+## Build Order Recommendation
 
-3. **Brand token propagation:** After the CSS var → Tailwind mapping is in place, updating the Projete primary color requires changing one line in `globals.css`. All components using `bg-projete-primary` reflect the change on next build.
+Ordered by dependencies:
 
-## Scaling Considerations
+1. **LayoutShell + sidebar collapse + dark mode** — Pure UI, no data dependency. Must be done before adding new nav items or the sidebar becomes unwieldy for CSM. One Tailwind config change required.
 
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| Current (~50 vendedores, ~9k execucao projects) | Row-at-a-time distribution loop is fine. Single query for unassigned list. |
-| 10k+ unassigned at once | Replace N individual queries in `distributeUnassignedExecucao()` with a single bulk INSERT via CTE — saves 10-30s of cron time. |
-| Memory > 1GB during sync | Switch from single-buffer ZIP parsing to true streaming (Pattern 2). If propostaMap still exceeds 1GB, implement two-pass: first pass collects OSC ID_PROPOSTA into a Set, second pass builds only matched records. |
+2. **CSM nav items in Sidebar** — Add `/csm/pipeline` link for `csm` role (and gestor/admin). Blocked by LayoutShell being stable.
 
-### Scaling Priorities
+3. **`canCsm()` in dal.ts + `/api/csm/pipeline` route** — New SQL query, new auth gate. No external dependencies. Can be built and tested independently of UI.
 
-1. **Memory (immediate):** The 1300MB peak is the most urgent concern. Vercel Pro default is 2GB (confirmed from official docs as of 2026), so the current 1300MB does NOT crash the function. However, the 1300MB claim in PROJECT.md may have been measured against an older 1GB default. The refactor is still worthwhile to create headroom for CSV growth.
+4. **`/csm/pipeline` page + CSMPipelineClient** — Blocked by API route. Standard Next.js client page pattern.
 
-2. **Distribution loop (deferred):** Current N-query loop is fine for <1000 unassigned CNPJs. Only optimize when the cron timing report shows distribution taking >30s.
+5. **`csm_budget_cache` migration + `/api/csm/budget-refresh`** — Blocked by TransfereGov API endpoint verification. Prototype fetch manually first to confirm auth requirements.
 
-## Anti-Patterns
+6. **AI tags** — Blocked by budget data availability (step 5). Add embedding computation to the budget-refresh route.
 
-### Anti-Pattern 1: Replacing Tailwind Classes With Inline Styles for Brand Colors
+7. **Mobile layout** — Can run parallel with steps 3–4. CSS breakpoints in LayoutShell, auto-collapse on route change.
 
-**What people do:** Add `style={{ color: brandGuide.primary }}` to components because it's faster than setting up CSS tokens.
+---
 
-**Why it's wrong:** Inline styles bypass Tailwind's JIT compilation. They can't be overridden by utility classes, don't participate in responsive/hover/focus variants, and make the codebase unmaintainable when brand colors change.
+## Scalability Considerations
 
-**Do this instead:** Define the color once in `globals.css` as a CSS custom property, map it in `tailwind.config.ts`, and use it as a Tailwind class everywhere. One line in `globals.css` to update the brand color, zero component changes.
+| Concern | At current scale (~300 Projetus proposals) | At 1K proposals |
+|---------|---------------------------------------------|-----------------|
+| CSM pipeline query | UNION ALL, fast (<100ms). Indexes on cnpj, situacao already exist. | Add index on projetos_execucao(saldo_conta) for priority sort |
+| Budget cache | JSONB per proposal, ~1–5KB each. 300 proposals = ~1.5MB total | Trivial |
+| AI embeddings | In-memory JS cosine similarity, <10ms | Switch to pgvector if >5K line items |
+| Sidebar collapse | localStorage + CSS width change, zero server impact | N/A |
+| TransfereGov fetch | On-demand, ~300ms per proposal | Add rate limiting if CSM triggers bulk refresh |
 
-### Anti-Pattern 2: Downloading the ZIP to Disk Then Reading It
-
-**What people do:** `fs.writeFileSync('/tmp/file.zip', buffer)` then `fs.createReadStream('/tmp/file.zip')` to avoid the in-memory buffer problem.
-
-**Why it's wrong:** Vercel serverless functions have 512MB `/tmp` storage. A 187MB compressed ZIP that inflates to ~1GB would overflow this limit. Vercel's ephemeral filesystem is also not shared across function invocations — the file is gone on the next cron run.
-
-**Do this instead:** True streaming from the HTTP response body directly through the inflate transform, never touching disk.
-
-### Anti-Pattern 3: Calling distributeUnassignedExecucao() on Every Lead Page Load
-
-**What people do:** To show "how many unassigned" in the UI, they call the distribution function on the client side on every page load.
-
-**Why it's wrong:** The function runs N database writes. Calling it from the frontend converts a read-only page load into a mutation, creates race conditions if multiple gestores are online simultaneously, and inflates Supabase query counts.
-
-**Do this instead:** Separate the read (SELECT COUNT of unassigned CNPJs) from the write (POST to trigger distribution). Show the count on the page via a cheap SELECT. The mutation only happens when the gestor explicitly clicks "Distribuir".
-
-### Anti-Pattern 4: Hardcoding Projete Colors Next to the Existing PROJETUS Colors
-
-**What people do:** Add a new `projete` key to `tailwind.config.ts` with hex values directly, keep the old `sigma` key, and use both throughout components — half the app is one brand, half is the other.
-
-**Why it's wrong:** During the migration period, two conflicting brand systems coexist. The migration never fully completes. The `sigma` colors become dead code that no one dares remove.
-
-**Do this instead:** Decide on the canonical color names for the new brand. Migrate all usages of `sigma.*` to `projete.*` in one pass. Delete the `sigma` namespace from `tailwind.config.ts` after migration. Purging dead tokens is the only way the design system stays clean.
-
-### Anti-Pattern 5: Two-Pass Streaming That Downloads the Proposta ZIP Twice
-
-**What people do:** To reduce Map size, they implement a two-pass approach: first streaming pass collects OSC IDs into a Set, second pass builds the full Map — but they download the ZIP twice.
-
-**Why it's wrong:** The government server is unreliable (already requires 3-attempt retry logic in `downloadAndStreamCSV`). Downloading the 187MB proposta ZIP twice doubles the risk of timeout and doubles the government server load. It also doubles the cron time for STEP A.
-
-**Do this instead:** If two-pass is needed, implement it with a single download into a streaming buffer that can be rewound — OR make the first pass more selective so the Set-based filter brings Map memory low enough without a second download. Alternatively, accept the memory cost of the full propostaMap since Vercel Pro now gives 2GB by default.
-
-## Integration Points
-
-### External Services
-
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| `repositorio.dados.gov.br` | HTTP GET ZIP → stream inflate → readline — existing `downloadAndStreamCSV` helper | Memory refactor changes the internals of this helper. The call sites (`syncLeadsFromRepo`, `syncProjetosExecucao`) are unchanged — they use the same `onRow` callback API. |
-| Supabase PostgreSQL | `pg.Pool` via `getPool()` — unchanged | No schema changes. Distribution writes to existing `vendedor_projetos` table. |
-| Google Fonts | CSS `@import` in `globals.css` — existing Space Grotesk + Inter | If Projete brand specifies different fonts, add to the existing import. The `fontFamily` in `tailwind.config.ts` already has `heading` and `body` keys to swap. |
-
-### Internal Boundaries
-
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| `distribute-execucao.ts` → `db.ts` | Uses `query()` helper for reads, `getPool().connect()` not needed | Current implementation uses `query()` correctly — each SELECT/INSERT/UPDATE is a separate auto-released connection. No pool starvation risk. |
-| `/api/execucao/distribute` → `distribute-execucao.ts` | Direct import + call | New tiny route file. Same auth pattern as all other mutation routes (`getApiSession`, role check). |
-| `repo-sync.ts` → streaming ZIP | Internal refactor of `downloadAndStreamCSV` | The function's public signature (`url: string, onRow: callback`) does not change. Only the internal implementation changes. All callers (`syncLeadsFromRepo`, `syncProjetosExecucao`) are unaffected. |
-| `globals.css` → `tailwind.config.ts` | CSS vars defined in globals, referenced in config via `var(--color-*)` | Standard Tailwind + CSS custom property pattern. Supported in Tailwind v3 and v4. |
-| `Sidebar.tsx` → Projete brand | Props unchanged. Internal color classes and wordmark text/logo updated | Single file change. The `layout.tsx` renders Sidebar unchanged — it only passes `user` prop. |
-
-## Build Order
-
-Build in this dependency order to minimize risk:
-
-**Phase A — Lead Distribution (lowest risk, already partly implemented)**
-
-Step A1: Add `/api/execucao/distribute` route (POST, calls `distributeUnassignedExecucao()`).
-- Depends on: nothing new — `distribute-execucao.ts` already exists and works
-- Risk: zero — purely additive
-
-Step A2: Add "Distribuir Automaticamente" button to `/distribuir` page.
-- Depends on: Step A1
-- Risk: low — UI addition to existing page
-
-Step A3: Validate auto-distribution is running correctly in existing cron.
-- Depends on: existing code inspection + Vercel cron logs
-- Risk: none — already deployed, just need to verify
-
-**Phase B — Design Refresh (medium effort, medium blast radius)**
-
-Step B1: Collect Projete brand guide from client (colors, fonts, logo). Block until received.
-
-Step B2: Add CSS custom properties to `globals.css` `:root {}` block.
-- Depends on: Step B1
-- Risk: zero until components reference the vars
-
-Step B3: Add Projete color namespace to `tailwind.config.ts`.
-- Depends on: Step B2
-- Risk: zero — additive, existing `sigma` colors still work
-
-Step B4: Update `Sidebar.tsx` — wordmark, active color, brand gradient.
-- Depends on: Step B3
-- Risk: low — single component, visually obvious if wrong
-
-Step B5: Grep and replace hardcoded hex values across all page components.
-- Depends on: Step B3
-- Risk: medium — large surface area. Use targeted grep for the 3-4 known hex values (`#FD225C`, `#0072F7`, `#7A4BAC`, `#050B1F`). Review each occurrence before replacing.
-
-Step B6: Remove `sigma.*` color tokens from `tailwind.config.ts` once all references are gone.
-- Depends on: Step B5 fully complete
-- Risk: low — `tsc` and Tailwind purge will catch any missed references
-
-**Phase C — Memory Optimization (highest technical risk, defer until last)**
-
-Step C1: Add memory instrumentation to `syncLeadsFromRepo()`.
-- Log `process.memoryUsage().heapUsed` after each major step (after ZIP download, after Map build, after leads array build).
-- Deploy and run cron. Get real numbers before changing anything.
-- Depends on: nothing
-- Risk: zero — logging only
-
-Step C2: Refactor `downloadAndStreamCSV` to avoid full-buffer ZIP materialization.
-- Replace `Buffer.from(await res.arrayBuffer())` with `res.body` pipe chain.
-- The custom ZIP local file header parser needs rewriting for streaming.
-- Depends on: Step C1 data (know exactly how much memory to save)
-- Risk: HIGH — this is the most complex change. The ZIP header parsing is custom and tightly coupled to Buffer byte offsets. Test with all three government ZIP files before deploying.
-
-Step C3: If memory is still >1GB after Step C2, consider limiting the propostaMap.
-- Option: filter more aggressively at the row level (check if CNPJ already in `neededCnpjs` set before adding to propostaMap in execucao-sync).
-- Option: implement a minimal two-pass that avoids double download by caching only the IDs in pass 1.
-- Depends on: Step C2 + measurement
-- Risk: medium — logic change inside the ETL hot path
+---
 
 ## Sources
 
-- Direct code inspection: `web/src/lib/repo-sync.ts` — `downloadAndStreamCSV` buffer logic at lines 199-216, `_parseZipBuffer` at 218-267, ZIP Buffer allocation pattern
-- Direct code inspection: `web/src/lib/execucao-sync.ts` — `memory_peak_mb` instrumentation at lines 217-219, existing 900MB guard at line 220
-- Direct code inspection: `web/src/lib/distribute-execucao.ts` — full round-robin implementation, already wired into cron
-- Direct code inspection: `web/src/app/api/cron/sync-execucao/route.ts` — `distributeUnassignedExecucao()` already called at lines 32-33
-- Direct code inspection: `web/src/components/Sidebar.tsx` — current PROJETUS gradient wordmark at line 87, `sigma.neon` color at line 106, `sigma.magenta` used for active state
-- Direct code inspection: `web/tailwind.config.ts` — existing `sigma` color namespace, `fontFamily.heading` and `fontFamily.body` keys
-- Direct code inspection: `web/src/app/globals.css` — existing Space Grotesk + Inter import, no CSS custom properties today
-- Direct code inspection: `web/src/app/distribuir/page.tsx` — existing manual assignment UI, no auto-distribute button
-- Vercel official docs: `https://vercel.com/docs/functions/configuring-functions/memory` — Pro default is 2GB (not 1GB), confirmed 2026. The 1GB figure in PROJECT.md is outdated.
-- Node.js official: `https://nodejs.org/en/learn/diagnostics/memory/understanding-and-tuning-memory` — Buffer lives off-heap; V8 heap pressure from large Map<string, object> entries
-- Web search: "Node.js streaming CSV memory optimization large files 2026" — streaming over full-buffer is 200x less memory for large files; for-await-of async iterator pattern handles backpressure
+- Direct codebase inspection (HIGH confidence):
+  - `web/schema.sql` — propostas table schema (no budget line items confirmed)
+  - `web/src/app/api/execucao/route.ts` — CNPJ-grouped query shape + existing tags
+  - `web/src/app/api/tgov/pipeline/route.ts` — existing unified pipeline, whitelist usage
+  - `web/src/app/api/tgov/aprovacao/route.ts` — ALL_PROPOSTAS_CTE pattern, whitelist filter
+  - `web/src/lib/tgov.ts` — APROVACAO_NR_PROPOSTAS, EXECUCAO_NR_PROPOSTAS whitelists
+  - `web/src/lib/tgov-tables.ts` — tgov_propostas + tgov_projetos_execucao DDL
+  - `web/src/lib/dal.ts` — canReadTgov, canWriteTgov, canCommentTgov helpers; csm role confirmed
+  - `web/src/components/Sidebar.tsx` — 'use client', fixed w-56, csm nav items (TGov only)
+  - `web/src/app/layout.tsx` — server component, ml-56 hardcoded, no client state
+  - `src/crawler/repository_downloader.py` — 10 CSV files downloaded, no plano_aplicacao
+  - `.planning/STATE.md` — explicit note: "Plano de Aplicacao Detalhado precisa de nova API/join"
 
----
-*Architecture research for: v4.1 Lead Distribution + Design Refresh + Memory Optimization*
-*Researched: 2026-03-30*
-*Confidence: HIGH — all patterns based on direct inspection of live codebase; Vercel memory limits verified against official docs*
+- MEDIUM confidence (needs manual verification):
+  - TransfereGov API endpoint format and authentication requirements for planoAplicacaoDetalhado
+  - pgvector availability on Supabase free tier (documented as available on Pro; free tier unclear)

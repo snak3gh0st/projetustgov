@@ -1,17 +1,26 @@
 # Project Research Summary
 
-**Project:** CRM v4.1 — Distribuicao, Design & Performance
-**Domain:** CRM SaaS — lead distribution equalization, brand identity refresh, memory optimization
-**Researched:** 2026-03-30
-**Confidence:** HIGH
+**Project:** PROJETUS v6.0 — CSM & Customer Success
+**Domain:** CRM SaaS — Customer Success Management, AI-assisted tagging, UI/UX refresh
+**Researched:** 2026-04-27
+**Confidence:** MEDIUM
+
+> **Note:** Of the 4 research files synthesized, ARCHITECTURE.md is dated 2026-04-27 and covers v6.0
+> directly (HIGH confidence). STACK.md, FEATURES.md, and PITFALLS.md are dated 2026-03-30 and cover
+> the v4.1 milestone (lead distribution, brand refresh, memory optimization) — a different feature set.
+> The Stack, Features, and Pitfalls sections below draw primarily from the orchestrator's key-insight
+> brief and ARCHITECTURE.md rather than from the stale research files. The roadmapper should be aware
+> that a dedicated v6.0 stack/features/pitfalls research pass may be warranted before implementation.
+
+---
 
 ## Executive Summary
 
-This is a subsequent milestone added to a fully-shipped Next.js 14 + Supabase CRM (v4.0). All three v4.1 features have significant scaffolding already in place: the round-robin distribution algorithm exists and is wired into the daily cron, the Tailwind v3.4 design token system is in place with a `sigma.*` palette ready to be swapped, and the memory root cause has been precisely identified as a single line in `repo-sync.ts`. This milestone is completion and polish, not greenfield development.
+PROJETUS v6.0 adds a Customer Success Management (CSM) layer on top of an existing Next.js 14 + PostgreSQL CRM. The CSM pipeline aggregates approval-stage (`propostas`) and execution-stage (`projetos_execucao`) Projetus clients into a 5-level priority view — without touching the existing vendedor-scoped execucao pipeline. The architecture decision is clear from codebase inspection: new routes under `/api/csm/*`, a new `canCsm()` auth gate in `dal.ts`, a new `csm_budget_cache` table for lazy budget-item caching, and a `LayoutShell` client wrapper to hold sidebar-collapse and dark-mode state. These changes are additive; no existing routes or tables are modified.
 
-The recommended approach treats the three features as independent work streams that can proceed in parallel, but with strict sequencing within each stream. Distribution must handle a CNPJ normalization audit and advisory lock before any code ships. Design refresh requires the client to deliver the Projete brand guide before any token work begins, and all 229 arbitrary hex color classes must be migrated in the same commit as the config change or production will ship with a visually inconsistent mixed palette. Memory optimization must instrument heap usage per-step first, apply the streaming fix second, and verify both memory and cron timing before merging.
+The most significant technical gap is that budget line items (Plano de Aplicacao Detalhado) are not in the database and are not downloaded by the current ETL. For v6.0, the recommended approach is lazy on-demand fetch from the TransfereGov API, cached in a `csm_budget_cache` JSONB table with a 7-day TTL. AI tags (mapping budget item descriptions to Projetus service categories) depend on this data being available; they are therefore a Phase 5 concern, not Phase 1. The TransfereGov API authentication requirements are a critical unknown that must be verified before Phase 4 begins.
 
-The key risk across all three features is invisible partial completion: distribution that silently assigns the wrong vendedor due to CNPJ format mismatch, a brand refresh that updates config but not 229 arbitrary-value classes, or a "streaming fix" that pipes through Node.js streams but still buffers the full ZIP via `res.arrayBuffer()` inside the helper. Each pitfall looks complete from the outside while the core problem remains. Prevention requires explicit pre-deployment verification queries and instrumented metrics for each area.
+The UI work (collapsible sidebar, dark mode, mobile drawer) is purely additive and well-understood. The highest-risk phase is AI tagging: combining an external API with uncertain auth, OpenAI embedding calls, and pgvector (or in-memory cosine similarity as a fallback) within Vercel's 30s maxDuration window. The build order must enforce RBAC before any CSM routes go live, and the budget ETL must be verified before AI tags are written.
 
 ---
 
@@ -19,120 +28,128 @@ The key risk across all three features is invisible partial completion: distribu
 
 ### Recommended Stack
 
-The existing stack handles all three features without any new required dependencies. The one optional addition is `unzipper` (^0.10.14, MIT, 3M weekly downloads) to replace the hand-written ZIP header parser in `_parseZipBuffer` when implementing streaming ZIP downloads. If adding an npm package is undesirable, Node.js 18+ built-ins (`Readable.fromWeb` + `createInflateRaw`) achieve the same result with more custom code.
-
-The font migration from CDN `@import` to `next/font/google` requires creating `web/src/app/fonts.ts` — a new file but no new package, as `next/font/google` ships with Next.js 14. All other changes are modifications to existing files. No new directories are needed.
+The existing stack (Next.js 14 App Router, PostgreSQL on sigmadb, Tailwind v3, raw `pg` queries) requires only targeted additions for v6.0. No framework changes.
 
 **Core technologies:**
-- `unzipper` ^0.10.14 (optional): Streaming ZIP parser — eliminates the full-buffer ZIP download and the hand-written header parsing code in `_parseZipBuffer`
-- `next/font/google` (built-in to Next.js 14): Self-hosted font loading — removes the Google Fonts CDN DNS lookup at render time and eliminates layout shift via `size-adjust`
-- `Readable.fromWeb` (Node.js 18+ built-in): Web Streams to Node Streams bridge — required to pipe `fetch` response body through Node.js `createInflateRaw` without buffering
-- `pg` multi-row parameterized INSERT: Batch upsert pattern (500 rows per call) — replaces N individual DB round-trips, caps live memory to 500 lead objects simultaneously
 
-**Critical version note:** Vercel Pro default memory is 2 GB / 1 vCPU (not 1 GB as noted in legacy project docs). The 4 GB / 2 vCPU maximum is available via the Vercel dashboard only — it cannot be set in `vercel.json` for Next.js App Router routes. The 1300 MB peak does not currently crash the function but wastes cost and leaves no headroom for CSV file growth.
+- `next-themes`: dark mode toggle — integrates cleanly with Tailwind `darkMode: 'class'` config; eliminates manual `document.classList` management
+- Cookie-based sidebar collapse state: server-readable on first render, prevents hydration mismatch from localStorage (the localStorage approach is viable but introduces a known FOUC risk on initial render — cookies are the safer alternative)
+- `vaul`: mobile bottom-drawer for sidebar on small screens — purpose-built for React, composable with the existing Sidebar component
+- `OpenAI text-embedding-3-small` + pgvector: AI tag inference via cosine similarity on budget item descriptions; keyword matching is the acceptable v6.0 fallback if pgvector is unavailable on sigmadb
+- `csm_budget_cache` table (JSONB): lazy cache for TransfereGov budget items and computed sales tags, 7-day TTL
+
+**Critical version note:** pgvector availability on the production sigmadb PostgreSQL instance must be verified before Phase 5. The sigmadb server is a dedicated Postgres instance (not Supabase) — the extension must be installed manually if not already present.
 
 ### Expected Features
 
-**Must have (table stakes):**
-- Distribution: Manual "Distribuir Agora" button in `/distribuir` page calling existing API, with post-distribution report modal showing before/after counts per vendedor
-- Distribution: Cron auto-distribution wired into `sync-execucao` (code path exists — verify it fires correctly in Vercel production logs)
-- Distribution: Skip inactive vendedores and skip CNPJs already assigned from the approval pipeline
-- Brand: Replace `sigma.*` color tokens in `tailwind.config.ts` with Projete palette (blocked on client brand guide delivery)
-- Brand: Swap logo, favicon, page title, and font imports in `layout.tsx`; update `Sidebar.tsx` wordmark
-- Memory: Set `memory: 3008` in Vercel config immediately as mitigation while streaming rewrite ships
-- Memory: Replace `Buffer.from(await res.arrayBuffer())` with true streaming pipeline in `repo-sync.ts`
-- Brand: Update `NewsBanner.tsx` with bumped version and brand announcement (required per project memory rules)
+**Must have (P1 — table stakes for CSM role):**
 
-**Should have (differentiators):**
-- Distribution: Equity stats view showing current lead count balance per vendedor before triggering distribution
-- Distribution: Advisory lock (`pg_advisory_lock(42)`) preventing race condition between cron and manual trigger
-- Brand: Full audit and migration of 229 arbitrary `bg-[#...]` / `text-[#...]` Tailwind classes across 24 files
-- Memory: Batch DB upserts (500 rows per call) to reduce DB round-trips and cap in-flight object count
+- CSM pipeline page (`/csm/pipeline`) with 5-level priority ranking across propostas + projetos_execucao — the core CSM workflow
+- `canCsm()` RBAC gate in `dal.ts` + auth guard on all `/api/csm/*` routes — without this, CSM data is accessible to any authenticated session
+- Budget items on-demand fetch (`/api/csm/budget-refresh`) with JSONB cache — CSM cannot assess proposal detail without line item data
+- Collapsible sidebar + dark mode via `LayoutShell` — sidebar grows unwieldy for CSM role without collapse; must precede adding CSM nav items
 
-**Defer to v2+:**
-- Tailwind v4 migration — separate milestone; v4 requires new config format, Oxide engine, plugin migration
-- Weighted lead distribution by seniority or performance — requires a performance metrics system not yet built
-- Two-pass streaming with Set-based CNPJ filter to reduce `propostaMap` size — only needed if streaming fix leaves peak above 1 GB
+**Should have (P2 — differentiators after P1 stable):**
+
+- AI sales tags: OpenAI `text-embedding-3-small` embeddings matching budget descriptions to Projetus service categories, stored in `csm_budget_cache.sales_tags` — blocked by Phase 4 budget ETL
+- Mobile layout: `vaul` drawer sidebar on small screens, auto-collapse on route change
+
+**Defer to v6.1+:**
+
+- Full ETL for `siconv_plano_aplicacao_detalhado.csv` (enables batch AI tagging across all proposals, not just ones the CSM has opened)
+- Weighted lead distribution or CSM-side assignment features
+- pgvector-backed similarity search at scale (in-memory cosine similarity is sufficient for <300 proposals)
 
 ### Architecture Approach
 
-All changes modify existing files. No new directories are needed. The design token system follows the CSS custom properties pattern: define brand colors in `globals.css` `:root {}`, map them via `tailwind.config.ts` to Tailwind utility classes — a future brand color change becomes a one-line edit in one file with zero component changes. The streaming memory fix changes only the internals of `downloadAndStreamCSV()` without altering its public signature, leaving all callers (`syncLeadsFromRepo`, `syncProjetosExecucao`) untouched. The distribution UI exposes one new tiny `/api/execucao/distribute` route that is a direct call into the existing `distributeUnassignedExecucao()` function.
+The CSM layer is purely additive to the existing codebase. A new `LayoutShell` client wrapper sits between the server `layout.tsx` and the Sidebar, owning collapse/dark-mode state. Three new API routes under `/api/csm/` handle the pipeline view, per-client detail, and lazy budget refresh. One new table (`csm_budget_cache`) stores cached budget items and computed AI tags. The existing `csm` role in `dal.ts` is already defined — it just lacks an auth gate and a dedicated UI.
 
-**Major components and their changes:**
-1. `repo-sync.ts` / `downloadAndStreamCSV` — MODIFY: replace full-buffer ZIP download with streaming pipeline; highest technical risk in the milestone
-2. `tailwind.config.ts` + `globals.css` — MODIFY: replace `sigma.*` with Projete CSS custom properties and token mapping
-3. `/distribuir/page.tsx` + `/api/execucao/distribute` — MODIFY/ADD: manual distribution trigger with result modal
-4. `distribute-execucao.ts` — MODIFY: add advisory lock; verify equalization count targets execution context only
-5. `src/app/fonts.ts` (NEW) + `layout.tsx` — ADD/MODIFY: self-hosted font loading via `next/font/google`
-6. `Sidebar.tsx` — MODIFY: swap wordmark, active and hover colors to Projete brand
-7. `NewsBanner.tsx` — MODIFY: bump version, add brand announcement item
+**Major components:**
+
+1. `LayoutShell.tsx` (new, client) — collapse + dark mode state; sits between server layout and Sidebar/main
+2. `/api/csm/pipeline` (new) — UNION ALL query across `projetos_execucao` + `propostas`, CASE-computed priority_level 1–5, ordered by priority then saldo_conta
+3. `/api/csm/budget-refresh` (new) — lazy TransfereGov fetch + OpenAI embedding inference + cache write
+4. `csm_budget_cache` table (new) — proposta_id PK, items JSONB, sales_tags JSONB, fetched_at TIMESTAMPTZ, 7-day TTL
+5. `dal.ts` + auth gates (modify) — add `canCsm()`, apply to all `/api/csm/*` routes
 
 ### Critical Pitfalls
 
-1. **CNPJ format mismatch silently re-distributes already-owned leads** — Before deploying any distribution code, run `SELECT COUNT(*) FROM vendedor_projetos WHERE cnpj != REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g')` and clean any non-zero result. This is a one-way door: distribution running first against mismatched data permanently assigns CNPJs to the wrong vendedor.
+1. **Hydration mismatch from localStorage sidebar state** — If collapse state is initialized from `localStorage` in a `useEffect`, the server renders expanded and the client flips on hydration, causing layout shift. Prevention: initialize `collapsed` from a cookie set server-side so `layout.tsx` can pass the correct initial value as a prop to `LayoutShell`.
 
-2. **Race condition between cron auto-distribution and manual trigger** — Wrap `distributeUnassignedExecucao()` with `SELECT pg_try_advisory_lock(42)` at entry and `SELECT pg_advisory_unlock(42)` on exit. Both the cron path and the manual API path call this function; without a lock, concurrent calls read the same unassigned list and assign different vendedores to the same CNPJ.
+2. **Dark mode FOUC + Radix portal scope** — Applying the `dark` class to `<html>` via `document.documentElement.classList` after mount causes a flash of unstyled content. Prevention: use `next-themes` which injects a blocking script before paint. Additionally, Radix UI portals (dropdowns, dialogs) render outside the component tree — confirm `ThemeProvider` wraps the root so portals inherit the `dark` class.
 
-3. **Brand refresh deploys with 229 arbitrary color classes unchanged** — The `tailwind.config.ts` token change has zero effect on `bg-[#050B1F]` / `text-[#FD225C]` style classes. Config update and all 24-file migrations must ship in the same commit. Run `grep -r "bg-\[#\|text-\[#\|border-\[#" src/ | wc -l` after migration — target is 0.
+3. **CSM RBAC guard missing on `/api/csm/*` routes** — The `csm` role exists in `dal.ts` but has no dedicated auth gate. Any authenticated session can call the new CSM routes unless `canCsm()` is added and applied. Prevention: build `canCsm()` + apply it in the first commit of every CSM route. Never merge a `/api/csm/*` route without the auth gate.
 
-4. **Streaming fix still materializes the full ZIP buffer inside the helper** — A streaming refactor that changes the outer `res.body` call but leaves `_parseZipBuffer` intact still accumulates ~200 MB in heap. Instrument `process.memoryUsage().heapUsed` before and after the download step specifically. If peak is unchanged after the fix, the buffer is still materializing inside the helper.
+4. **Real-time AI inference per request** — Calling OpenAI from `/api/csm/pipeline` on every load adds 500ms–3s latency and risks the Vercel 30s maxDuration. Prevention: pre-compute embeddings on budget fetch, store in `csm_budget_cache.sales_tags` JSONB; pipeline route reads only pre-computed tags.
 
-5. **Streaming ZIP fix adds 30-60 seconds to cron runtime, exhausting the BrasilAPI enrichment budget** — After deploying the streaming change, check `duration_ms` in `cron_sync_log`. If it increases by more than 30 seconds, the enrichment time-budget guard (`elapsed > 200000ms`) must be adjusted downward. Never deploy a memory optimization without a full end-to-end timing run.
+5. **TransfereGov API auth unknown** — The `planoAplicacaoDetalhado` endpoint's authentication requirements have not been verified. If bearer auth is required, the fetch must be proxied through a server-side route. Prevention: manually test the endpoint before Phase 4 implementation begins. If auth blocks the API approach, escalate to full ETL (Option B) before writing any budget-refresh code.
 
 ---
 
 ## Implications for Roadmap
 
-Based on combined research, the three features map to two implementation phases. The distribution feature ships first (zero external dependencies, lowest risk). The design and memory features share a second phase with a hard external dependency gate (brand guide from client) and a required instrumentation step before any memory code changes.
+Based on ARCHITECTURE.md build order + feature dependencies, suggested 6-phase structure:
 
-### Phase 1: Lead Distribution — Manual Trigger and Race Condition Safety
+### Phase 1: CSM RBAC Foundation
 
-**Rationale:** All required code already exists (`distribute-execucao.ts`, cron wiring, auth pattern). This phase adds only the UI surface and the safety guard. It has zero external dependencies, making it the ideal first ship. The advisory lock and CNPJ normalization audit must be part of the initial implementation — both are one-way doors if skipped.
+**Rationale:** Auth gates must exist before any CSM data is accessible. Pure backend concern with no UI dependency. Unblocks all subsequent CSM route development.
+**Delivers:** `canCsm()` in `dal.ts`; auth guard middleware pattern for all `/api/csm/*` routes; `csm` role confirmed in session type
+**Addresses:** Must-have RBAC (P1); blocks Pitfall 3 (missing auth gate)
+**Avoids:** Shipping any CSM route without an auth gate; this phase must complete before Phase 2 merges
 
-**Delivers:** A "Distribuir Automaticamente" button in `/distribuir` with a result modal showing per-vendedor before/after lead counts. Advisory lock in `distributeUnassignedExecucao()` preventing double-assignment from concurrent cron and manual trigger. Verification that cron auto-distribution fires correctly in production.
+### Phase 2: CSM Pipeline API + Page
 
-**Addresses:** Distribution table-stakes features (manual trigger, result modal, skip inactive vendedores, skip approval-pipeline leads)
+**Rationale:** The pipeline view is the core CSM deliverable. Reuses existing execucao tags and whitelist constants from `tgov.ts` — no new external dependencies. Can be built and tested independently of the UI refresh.
+**Delivers:** `/api/csm/pipeline` (UNION ALL query, priority 1–5), `/api/csm/[cnpj]` (per-client detail), `/csm/pipeline/page.tsx`, `CSMPipelineClient.tsx`
+**Uses:** Existing `APROVACAO_NR_PROPOSTAS` / `EXECUCAO_NR_PROPOSTAS` whitelists; existing `projetos_execucao` tags (tag_lobby, tag_desembolso, tag_rendimento)
+**Avoids:** Anti-pattern of extending `/api/execucao` (incompatible grouping semantics for CSM priority view)
 
-**Avoids:** Pitfall 1 (CNPJ normalization audit runs before any distribution code deploys), Pitfall 2 (advisory lock is part of initial implementation, not a follow-up), Pitfall 3 (equalization count must target execution context only — definition pinned before the count query is written)
+### Phase 3: Sidebar Collapse + Dark Mode (LayoutShell)
 
-**Pre-deployment gate:** Run `SELECT COUNT(*) FROM vendedor_projetos WHERE cnpj != REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g')`. Result must be 0. If not, run CNPJ cleanup migration before continuing.
+**Rationale:** Required before adding CSM nav items — sidebar becomes unwieldy for multi-role users without collapse. Also required before mobile layout work (Phase 6). Dark mode is a companion concern since both states live in `LayoutShell`.
+**Delivers:** `LayoutShell.tsx` (collapse + dark mode state), `Sidebar.tsx` updated to accept `collapsed` prop, `next-themes` integration, `darkMode: 'class'` in Tailwind config, CSM nav item added to Sidebar
+**Uses:** `next-themes`, cookie-based initial state to prevent FOUC/hydration mismatch
+**Avoids:** Pitfall 1 (hydration mismatch), Pitfall 2 (FOUC + Radix portal scope)
+**Research flag:** Confirm `next-themes` interaction with existing Radix UI portal components before implementation
 
-### Phase 2: Design Refresh and Memory Optimization
+### Phase 4: Budget Items (On-Demand Fetch + Cache)
 
-**Rationale:** Design refresh is blocked on the Projete brand guide from the client — an external dependency that cannot be accelerated. Memory optimization requires a measured baseline before the fix can be verified. Both sub-tracks can start in parallel once the brand guide arrives and the instrumentation deployment is live. The immediate memory mitigation (`memory: 3008`) ships independently of both.
+**Rationale:** Lazy TransfereGov fetch is the minimum viable approach for v6.0 budget data. Blocked by TransfereGov API auth verification — this must happen first. The `csm_budget_cache` schema must be migrated before Phase 5 can write to it.
+**Delivers:** `csm_budget_cache` table migration, `/api/csm/budget-refresh` route (fetch + cache write), 7-day TTL cache-miss/cache-hit logic in `/api/csm/[cnpj]`
+**Avoids:** Anti-pattern of fetching all 300+ budget items on pipeline load; real-time inference latency
+**Research flag:** Needs manual TransfereGov API verification (curl test) before implementation. If auth blocks public access, Option B (full ETL) must be scoped as an alternative before this phase begins.
 
-**Delivers:** Full Projete visual identity (colors, fonts, logo, favicon, page title, NewsBanner brand announcement) plus memory peak reduced from ~1300 MB to target below 600 MB for the proposta sync cron function.
+### Phase 5: AI Sales Tags
 
-**Uses:** `next/font/google` (built-in), optional `unzipper` package, CSS custom properties pattern in `globals.css`, `Readable.fromWeb` + `createInflateRaw` streaming pipeline for ZIP downloads
+**Rationale:** Directly dependent on Phase 4 — budget item descriptions must be in `csm_budget_cache.items` before embeddings can be computed. OpenAI `text-embedding-3-small` runs inside the `/api/csm/budget-refresh` route, pre-computed on first access.
+**Delivers:** Embedding computation in `budget-refresh` route, cosine similarity matching against Projetus service category embeddings, `sales_tags` JSONB written to cache, tags surfaced in CSM pipeline and detail pages
+**Uses:** OpenAI `text-embedding-3-small`; in-memory JS cosine similarity (<300 proposals); pgvector as upgrade path
+**Research flag:** Verify pgvector availability on sigmadb (`SELECT * FROM pg_extension WHERE extname = 'vector'`) before implementation. If unavailable, in-memory cosine similarity is the v6.0 implementation and pgvector escalates to v6.1.
 
-**Avoids:** Pitfall 5 on design (arbitrary colors not migrated — config change and all file migrations ship in one commit), Pitfall 6 (font update touches both `globals.css` import and `tailwind.config.ts` fontFamily atomically), Pitfall 7 (NewsBanner version bump is the final step of design refresh deployment), Pitfall 4 (instrument first to confirm ZIP buffer is the actual allocation before fixing), Pitfall 8 (verify streaming fix eliminates buffer inside `_parseZipBuffer`, not just at the call site), Pitfall 9 (verify end-to-end cron timing does not regress after streaming change)
+### Phase 6: Mobile Layout
 
-**Sub-ordering within Phase 2:**
-
-- Step 2a: Deploy `memory: 3008` to Vercel function config — 1-line change, no dependencies, ships immediately
-- Step 2b: Add per-step heap instrumentation to `syncLeadsFromRepo` — deploy and wait for one cron run to establish the baseline before any fix is written
-- Step 2c (parallel with 2b): Receive brand guide from client; add CSS custom properties to `globals.css`, Projete tokens to `tailwind.config.ts`, update `Sidebar.tsx`
-- Step 2d: Full arbitrary-color audit and file-by-file migration; remove `sigma.*` namespace — all in one commit with the config change
-- Step 2e: Font migration (`fonts.ts` creation, `layout.tsx` update, remove `@import` from `globals.css`)
-- Step 2f: `NewsBanner.tsx` version bump and brand announcement item — last step before design refresh deployment
-- Step 2g: Implement streaming ZIP fix in `downloadAndStreamCSV` — after baseline from Step 2b is established and the fix can be compared to it
-- Step 2h: Implement batch DB upserts — after Step 2g is verified stable, as an additional cost optimization
+**Rationale:** Lowest dependency — requires LayoutShell (Phase 3) to be stable, but otherwise independent. Can run in parallel with Phase 4/5 if team capacity allows.
+**Delivers:** `vaul` bottom drawer for sidebar on small screens; auto-collapse on route change via `usePathname`; responsive layout in `LayoutShell`
+**Uses:** `vaul` library
 
 ### Phase Ordering Rationale
 
-- Distribution ships first because it has zero external dependencies and existing code handles 90% of the work. The client sees immediate value.
-- Design refresh is gated on client brand guide delivery. Starting it before the guide arrives produces rework. The memory mitigation (Step 2a) can ship the moment Phase 1 is complete regardless of brand guide status.
-- Memory optimization is last within Phase 2 because it carries the highest technical risk (rewriting the custom ZIP header parser), requires a measured baseline to be credible, and is independent of both distribution and design refresh.
+- Phases 1 → 2: auth-before-data. No CSM route ships without the RBAC gate in place.
+- Phase 3 before CSM nav items: adding nav items before LayoutShell creates a non-collapsible sidebar (ARCHITECTURE.md anti-pattern 5).
+- Phases 4 → 5: data-before-AI. AI tags cannot run without budget item data in `csm_budget_cache`.
+- Phase 6 is the most independent and can slip without blocking core CSM functionality.
 
 ### Research Flags
 
-Phases likely needing deeper investigation during planning:
-- **Phase 2 / Memory optimization — ZIP streaming:** The `_parseZipBuffer` function uses custom byte-offset parsing of the ZIP local file header, tightly coupled to the `Buffer` approach. Before writing the streaming implementation, confirm the compression method used in the actual `siconv_proposta.csv.zip` file (Deflate vs Store, i.e., bytes 8-9 of the local file header). This is a 5-second check (`xxd proposta.zip | head`) that eliminates a class of implementation risk.
-- **Phase 2 / Design refresh — arbitrary color surface area:** Before the brand guide arrives, run the full grep audit (`grep -r "bg-\[#\|text-\[#\|border-\[#" src/`) and document every file and hex value that needs migration. 229 classes across 24 files is a large surface — the audit output becomes the migration checklist and prevents surprise scope expansion mid-phase.
+**Needs `/gsd:research-phase` during planning:**
+- **Phase 4:** TransfereGov API authentication requirements for `planoAplicacaoDetalhado` — critical unknown, blocks implementation
+- **Phase 5:** pgvector availability on sigmadb dedicated Postgres — must be verified before embedding storage approach is finalized
+- **Phase 3:** `next-themes` interaction with Radix UI portals — confirm `dark` class propagates to portal-rendered components
 
-Phases with well-documented patterns (skip additional research):
-- **Phase 1 / Distribution UI and API:** The `distributeUnassignedExecucao()` function signature, auth pattern (`getApiSession` + role check), and page structure are fully documented from codebase inspection. No new patterns needed.
-- **Phase 2 / Font migration:** `next/font/google` with CSS variable bridge to Tailwind is the canonical Next.js 14 pattern. Import name (`Space_Grotesk` with underscore) and variable option are verified from official docs. No research gap.
+**Standard patterns (skip research-phase):**
+- **Phase 1:** `canCsm()` RBAC helper — straightforward extension of existing `canReadTgov()`/`canWriteTgov()` pattern in `dal.ts`
+- **Phase 2:** CSM pipeline SQL — UNION ALL + CASE priority is fully specified in ARCHITECTURE.md with exact query shape
+- **Phase 6:** `vaul` mobile drawer — standard library with well-documented React integration
 
 ---
 
@@ -140,55 +157,40 @@ Phases with well-documented patterns (skip additional research):
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All conclusions from direct codebase inspection plus official Vercel, Next.js, and Node.js docs verified 2026-03-30. One optional dependency (`unzipper`) assessed from npm registry data and GitHub. No assumptions about unread files. |
-| Features | HIGH | Root causes and existing code confirmed by direct inspection of live codebase. Vercel memory limits verified against official docs (2 GB default, not the 1 GB figure in legacy PROJECT.md). Only the Projete brand guide content is unknown — that is an external input, not a research question. |
-| Architecture | HIGH | All component responsibilities confirmed from live code. `distribute-execucao.ts` confirmed wired into `sync-execucao` cron at lines 32-33. ZIP buffer allocation confirmed at `repo-sync.ts` line 202. No architectural assumptions. |
-| Pitfalls | HIGH | CNPJ mismatch, race condition, and ZIP buffer pitfalls verified against actual code patterns. Arbitrary color count of 229 across 24 files is from a real grep audit of the codebase. |
+| Architecture | HIGH | ARCHITECTURE.md based on direct codebase inspection (2026-04-27); component boundaries, data flow, anti-patterns, and build order are well-specified |
+| Stack | MEDIUM | v6.0 stack picks (next-themes, vaul, pgvector) came from orchestrator key-insight brief; no primary v6.0 STACK.md research file exists |
+| Features | MEDIUM | Priority tiers from orchestrator brief; consistent with ARCHITECTURE.md but no dedicated v6.0 FEATURES.md research |
+| Pitfalls | MEDIUM | Three named pitfalls from orchestrator brief; ARCHITECTURE.md anti-patterns corroborate them; no dedicated v6.0 PITFALLS.md |
 
-**Overall confidence:** HIGH
+**Overall confidence:** MEDIUM
 
 ### Gaps to Address
 
-- **Projete brand guide content:** Colors, font families, logo files, and favicon assets are unknown until the client delivers the brand guide. No brand work beyond CSS custom property scaffolding can proceed before delivery. The roadmap must include an explicit "receive brand guide" gate between Phase 1 completion and Phase 2 design work.
-
-- **Government ZIP compression method:** The streaming rewrite must handle both Deflate (method 8) and Store (method 0) ZIP entries. Research confirms the government uses Deflate, but this must be re-verified against the actual `siconv_proposta.csv.zip` file header before writing the streaming implementation. One `xxd` command resolves this immediately.
-
-- **`gestor_vendedor` role in distribution:** The distribution query filters for `u.active = true` and the `vendedor` role. If any active users have the `gestor_vendedor` role and also handle execution leads, they are excluded from equalization. The production DB was not audited for this edge case. Confirm in the production database before deploying Phase 1.
-
-- **Current production cron behavior:** Whether the existing `sync-execucao` cron is successfully calling `distributeUnassignedExecucao()` post-sync can only be confirmed from Vercel function logs. The code path exists and was verified at lines 32-33 of the cron route. Production behavior should be confirmed from logs before Phase 1 begins, to avoid building a feature that is already working.
+- **TransfereGov API auth:** Unknown whether `planoAplicacaoDetalhado` requires authentication. Must verify manually (curl test) before Phase 4. If auth-gated, a server-side proxy is required and the timeline extends.
+- **pgvector on sigmadb:** The production DB is a dedicated Postgres instance, not Supabase. pgvector must be confirmed installed before Phase 5 work begins. In-memory cosine similarity is the verified fallback.
+- **`next-themes` + Radix portal interaction:** Radix UI dialogs and dropdowns render in portals outside the ThemeProvider tree. Must confirm the `dark` class propagates correctly before dark mode is shipped.
+- **Stale research files:** STACK.md, FEATURES.md, and PITFALLS.md in `.planning/research/` cover v4.1, not v6.0. Roadmapper should note these should be regenerated for v6.0 if deeper research is needed before implementation phases.
 
 ---
 
 ## Sources
 
-### Primary (HIGH confidence — direct codebase inspection, 2026-03-30)
+### Primary (HIGH confidence)
 
-- `web/src/lib/repo-sync.ts` — ZIP buffer allocation at line 202, `_parseZipBuffer` structure, sequential upsert loop at lines 706-722
-- `web/src/lib/distribute-execucao.ts` — full round-robin implementation, CNPJ normalization in query, N-loop INSERT/UPDATE pattern
-- `web/src/app/api/cron/sync-execucao/route.ts` — `distributeUnassignedExecucao()` called at lines 32-33 (confirmed wired into cron)
-- `web/src/lib/execucao-sync.ts` — `memory_peak_mb` instrumentation, 900 MB guard at line 220
-- `web/tailwind.config.ts` — `sigma.*` color namespace, `fontFamily.heading` and `fontFamily.body` keys
-- `web/src/app/globals.css` — CDN font `@import` URL, confirmed no CSS custom properties today
-- `web/src/app/distribuir/page.tsx` — manual assignment UI, confirmed no auto-distribute button present
-- `web/src/components/Sidebar.tsx` — PROJETUS gradient wordmark, `sigma.neon` / `sigma.magenta` active and hover state usage
-- `web/vercel.json` — confirmed dual `sync-leads` cron entries (12:30 and 18:00 UTC); `sync-execucao` must be audited to confirm it appears exactly once
-- Grep audit — 229 arbitrary color classes in 24 files; 424 standard Tailwind color references across codebase
-
-### Primary (HIGH confidence — official external documentation, verified 2026-03-30)
-
-- `https://vercel.com/docs/functions/limitations` — Pro default 2 GB / 1 vCPU, max 4 GB / 2 vCPU
-- `https://vercel.com/docs/functions/configuring-functions/memory` — memory not settable per-route in `vercel.json` for Next.js App Router; must use Vercel dashboard
-- `https://nextjs.org/docs/14/app/building-your-application/optimizing/fonts` — `next/font/google`, `Space_Grotesk` import name (underscore), CSS variable approach for Tailwind
-- Node.js 18 release notes + `https://nodejs.org/api/stream.html` — `Readable.fromWeb` available in Node.js 18+
+- `.planning/research/ARCHITECTURE.md` (2026-04-27) — direct codebase inspection: `web/schema.sql`, `web/src/app/api/execucao/route.ts`, `web/src/app/api/tgov/pipeline/route.ts`, `web/src/lib/tgov.ts`, `web/src/lib/dal.ts`, `web/src/components/Sidebar.tsx`, `web/src/app/layout.tsx`, `src/crawler/repository_downloader.py`, `.planning/STATE.md`
 
 ### Secondary (MEDIUM confidence)
 
-- `https://tailwindcss.com/blog/tailwindcss-v4` — confirmed v3 vs v4 scope difference, migration complexity
-- `https://tailwindcss.com/docs/theme` — Tailwind v3 arbitrary value class behavior (not affected by `theme.extend.colors` changes)
-- npm `unzipper` ^0.10.14 — 3M weekly downloads, last release 2024, MIT license
-- LeanData / LeadAngel round-robin distribution blog posts — fewest-first vs strict round-robin tradeoffs (consistent with implemented code behavior)
+- Orchestrator key-insight brief — v6.0 stack picks (next-themes, cookie sidebar, vaul, OpenAI text-embedding-3-small + pgvector), feature priorities (P1/P2), top pitfalls, build order
+- `.planning/research/STACK.md` (2026-03-30, v4.1) — streaming ZIP/memory patterns; not directly applicable to v6.0 but informs Vercel function timeout risk awareness
+- `.planning/research/PITFALLS.md` (2026-03-30, v4.1) — advisory lock, CNPJ normalization, NewsBanner bump patterns; partially applicable as general project hygiene
+
+### Tertiary (LOW confidence / needs validation)
+
+- TransfereGov API endpoint format — referenced in ARCHITECTURE.md as `https://transferegov.sistema.gov.br/api/v1/proposta/{idProposta}/planoAplicacaoDetalhado`; authentication requirements unverified
+- pgvector availability on sigmadb dedicated Postgres — documented as available on Supabase Pro; sigmadb status unconfirmed
 
 ---
 
-*Research completed: 2026-03-30*
-*Ready for roadmap: yes*
+*Research completed: 2026-04-27*
+*Ready for roadmap: yes — with research flags for Phases 3, 4, 5*
