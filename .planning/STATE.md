@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: CSM & Customer Success
-status: defining
-stopped_at: Defining requirements for v6.0
+status: roadmap_ready
+stopped_at: Roadmap created — ready to plan Phase 22
 last_updated: "2026-04-27T00:00:00.000Z"
 last_activity: 2026-04-27
 progress:
-  total_phases: 21
-  completed_phases: 21
-  total_plans: 41
-  completed_plans: 41
+  total_phases: 5
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State: PROJETUS — v6.0 CSM & Customer Success
@@ -20,23 +20,33 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-27)
 
 **Core value:** CRM de vendas com inteligencia automatizada sobre propostas e projetos em execucao do Transfer Gov, agora com area de Customer Success para upsell/cross-sell pos-venda.
-**Current focus:** Defining requirements for v6.0
+**Current focus:** Phase 22 — CSM RBAC Foundation (not started)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 22 — CSM RBAC Foundation
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-27 — Milestone v6.0 started
+Status: Not started
+Last activity: 2026-04-27 — Roadmap created for v6.0
 
-Progress (v5.0): [██████████] 100% (Complete)
+Progress (v6.0): [----------] 0% (0/5 phases)
 
 **Milestone v1.0:** Complete (Phases 1, 2, 4, 5)
 **Milestone v2.0:** Superseded by Next.js migration (Phases 6-8)
 **Milestone v3.0:** Complete (Phases 10-13 + 74 quick tasks)
 **Milestone v4.0:** COMPLETE (Phases 14-18)
 **Milestone v5.0:** COMPLETE (Phases 19-21)
-**Milestone v6.0:** IN PROGRESS — defining requirements
+**Milestone v6.0:** IN PROGRESS — roadmap ready, Phase 22 not started
+
+## Phase Map (v6.0)
+
+| Phase | Name | Requirements | Status |
+|-------|------|--------------|--------|
+| 22 | CSM RBAC Foundation | CSM-01..04 (4 reqs) | Not started |
+| 23 | CSM Pipeline & BI Dashboard | CLI-01..06, BI-01..05 (11 reqs) | Not started |
+| 24 | UI Refresh | UI-01..04 (4 reqs) | Not started |
+| 25 | Budget Items ETL & Display | BUD-01..04 (4 reqs) | Not started |
+| 26 | AI Sales Tags | TAG-01, TAG-02 (2 reqs) | Not started |
 
 ## Accumulated Context
 
@@ -50,6 +60,25 @@ Progress (v5.0): [██████████] 100% (Complete)
 | prestacao_contas tab mapeia para /api/tgov/execucao?mode=prestacao_contas | Reutiliza rota execucao com filtro ILIKE — evita nova rota |
 | APROVACAO_ONLY_ROLES e EXECUCAO_ONLY_ROLES exportados de tgov.ts | Centraliza constantes de grupos de roles para tab isolation |
 
+### Key Architecture Decisions (v6.0 — pre-implementation)
+
+| Decision | Rationale |
+|----------|-----------|
+| CSM routes under /api/csm/* (new namespace) | Anti-pattern to extend /api/execucao — incompatible grouping semantics for CSM priority view |
+| canCsm() auth gate before any CSM route | csm role exists in dal.ts but has no dedicated auth gate; any session can call CSM routes without it |
+| Lazy on-demand budget fetch (not full ETL) | Budget items not in DB; lazy fetch + 7-day JSONB cache is minimum viable for v6.0 (batch ETL deferred to v7.0) |
+| Cookie-based sidebar collapse state | localStorage causes hydration mismatch / FOUC; cookie is server-readable for correct initial render |
+| next-themes for dark mode | Injects blocking script before paint, eliminates FOUC; integrates with Tailwind darkMode: 'class' |
+| In-memory cosine similarity as pgvector fallback | pgvector availability on sigmadb unverified; in-memory JS is sufficient for <300 proposals |
+
+### Research Prerequisites (must verify before planning)
+
+| Phase | What to Verify | Impact if Blocked |
+|-------|---------------|-------------------|
+| 25 (Budget) | TransfereGov planoAplicacaoDetalhado API auth requirements (curl test) | If auth-gated: server-side proxy required. If blocked entirely: full ETL (Option B) must be scoped |
+| 26 (AI Tags) | pgvector on sigmadb: `SELECT * FROM pg_extension WHERE extname = 'vector'` | If unavailable: in-memory cosine similarity is v6.0 implementation; pgvector → v6.1 |
+| 24 (UI) | next-themes interaction with Radix UI portal components | If dark class doesn't propagate to portals: custom workaround needed |
+
 ### Quick Tasks Completed (v5.0 + recent)
 
 | # | Description | Date | Commit |
@@ -62,15 +91,18 @@ Progress (v5.0): [██████████] 100% (Complete)
 | 260416-fep | TGOV Aprovacao: campo Vencimento com date picker + badge Vencida/Em tempo | 2026-04-16 | c459ec3 |
 | 260416-gmd | Clear tgov_comments on phase transitions; Tecnico column; novos roles PC | 2026-04-16 | 619b92c |
 
-### Technical Context (v5.0 Stack)
+### Technical Context (v6.0 Stack)
 
-- **Role csm:** Existe no DB enum e no next-auth.d.ts/dal.ts — pipeline dedicado a implementar em v6.0
+- **Role csm:** Existe no DB enum e no next-auth.d.ts/dal.ts — canCsm() a criar em Phase 22
 - **tgov.ts:** Contratos compartilhados (TGovRow, TGovFilters, APROVACAO_ONLY_ROLES, EXECUCAO_ONLY_ROLES)
 - **API TGov:** /api/tgov/aprovacao, /api/tgov/execucao (com mode=prestacao_contas), /api/tgov/tecnico, /api/tgov/interaction/[key]
-- **Tags execucao:** Lobby, Desembolso, Rendimento, Autossuficiente, Iniciante — usaveis como base para CSM priority levels
-- **Plano de Aplicacao Detalhado:** disponivel em propostas/convenios via TransfereGov — precisa de nova API/join para expor itens orcamentarios
+- **Tags execucao:** Lobby, Desembolso, Rendimento, Autossuficiente, Iniciante — mapeiam para priority levels 1-5 do CSM
+- **Plano de Aplicacao Detalhado:** endpoint TransfereGov API — auth reqs unverified; csm_budget_cache JSONB a criar
+- **New deps (planned):** next-themes (dark mode), vaul (mobile drawer sidebar)
+- **New table (planned):** csm_budget_cache (proposta_id PK, items JSONB, sales_tags JSONB, fetched_at TIMESTAMPTZ)
 
 ## Session Continuity
 
 Last session: 2026-04-27
-Stopped at: Started v6.0 milestone definition
+Stopped at: Roadmap created — ready to plan Phase 22
+Next action: `/gsd:plan-phase 22`

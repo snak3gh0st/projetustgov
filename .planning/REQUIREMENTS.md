@@ -75,41 +75,39 @@ Requirements para milestone v6.0 — CSM & Customer Success.
 
 ## Traceability
 
-Preenchido durante criacao do roadmap.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CSM-01 | — | Pending |
-| CSM-02 | — | Pending |
-| CSM-03 | — | Pending |
-| CSM-04 | — | Pending |
-| CLI-01 | — | Pending |
-| CLI-02 | — | Pending |
-| CLI-03 | — | Pending |
-| CLI-04 | — | Pending |
-| CLI-05 | — | Pending |
-| CLI-06 | — | Pending |
-| BI-01 | — | Pending |
-| BI-02 | — | Pending |
-| BI-03 | — | Pending |
-| BI-04 | — | Pending |
-| BI-05 | — | Pending |
-| BUD-01 | — | Pending |
-| BUD-02 | — | Pending |
-| BUD-03 | — | Pending |
-| BUD-04 | — | Pending |
-| TAG-01 | — | Pending |
-| TAG-02 | — | Pending |
-| UI-01 | — | Pending |
-| UI-02 | — | Pending |
-| UI-03 | — | Pending |
-| UI-04 | — | Pending |
+| CSM-01 | Phase 22 | Pending |
+| CSM-02 | Phase 22 | Pending |
+| CSM-03 | Phase 22 | Pending |
+| CSM-04 | Phase 22 | Pending |
+| CLI-01 | Phase 23 | Pending |
+| CLI-02 | Phase 23 | Pending |
+| CLI-03 | Phase 23 | Pending |
+| CLI-04 | Phase 23 | Pending |
+| CLI-05 | Phase 23 | Pending |
+| CLI-06 | Phase 23 | Pending |
+| BI-01 | Phase 23 | Pending |
+| BI-02 | Phase 23 | Pending |
+| BI-03 | Phase 23 | Pending |
+| BI-04 | Phase 23 | Pending |
+| BI-05 | Phase 23 | Pending |
+| BUD-01 | Phase 25 | Pending |
+| BUD-02 | Phase 25 | Pending |
+| BUD-03 | Phase 25 | Pending |
+| BUD-04 | Phase 25 | Pending |
+| TAG-01 | Phase 26 | Pending |
+| TAG-02 | Phase 26 | Pending |
+| UI-01 | Phase 24 | Pending |
+| UI-02 | Phase 24 | Pending |
+| UI-03 | Phase 24 | Pending |
+| UI-04 | Phase 24 | Pending |
 
 **Coverage:**
 - v6.0 requirements: 25 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 25 ⚠️
+- Mapped to phases: 25/25 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-27*
-*Last updated: 2026-04-27 — Milestone v6.0 initial definition*
+*Last updated: 2026-04-27 — Traceability completed, all 25 requirements mapped to Phases 22–26*

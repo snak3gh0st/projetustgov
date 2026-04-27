@@ -2,7 +2,7 @@
 
 ## Overview
 
-PROJETUS entrega inteligência pós-venda para gestores identificarem clientes qualificados com projetos em execução no TransferênciaGov. **Milestone v1.0** (Phases 1–5) estabeleceu o pipeline ETL completo, monitoramento operacional, qualificação de clientes e data dashboard em Streamlit. **Milestone v2.0** (Phases 6–9) transformou o dashboard em uma ferramenta de vendas com branding Sigma premium — supersedida pela migração para Next.js. **Milestone v3.0** (Phases 10–13) construiu um CRM de Vendas completo em Next.js: auth por vendedor, atribuição de leads, pipeline kanban, rastreamento de contatos e controle de comissões. **Milestone v4.0** (Phases 14–18) adicionou a aba de inteligência pós-venda `/execucao` para gestores — ETL de convenios OSC, agrupamento por CNPJ com métricas financeiras, tags de classificação e distribuição automática de leads. **Milestone v5.0** (Phases 19–20) entregou o TGov Dashboard com abas Aprovação e Execução, designação de técnico responsável, perfil CSM e sistema de comentários.
+PROJETUS entrega inteligência pós-venda para gestores identificarem clientes qualificados com projetos em execução no TransferênciaGov. **Milestone v1.0** (Phases 1–5) estabeleceu o pipeline ETL completo, monitoramento operacional, qualificação de clientes e data dashboard em Streamlit. **Milestone v2.0** (Phases 6–9) transformou o dashboard em uma ferramenta de vendas com branding Sigma premium — supersedida pela migração para Next.js. **Milestone v3.0** (Phases 10–13) construiu um CRM de Vendas completo em Next.js: auth por vendedor, atribuição de leads, pipeline kanban, rastreamento de contatos e controle de comissões. **Milestone v4.0** (Phases 14–18) adicionou a aba de inteligência pós-venda `/execucao` para gestores — ETL de convenios OSC, agrupamento por CNPJ com métricas financeiras, tags de classificação e distribuição automática de leads. **Milestone v5.0** (Phases 19–21) entregou o TGov Dashboard com abas Aprovação/Execução/Prestação de Contas, designação de técnico responsável, perfil CSM, sistema de comentários, TGov BI + Pipeline, novos roles e isolamento de perfis. **Milestone v6.0** (Phases 22–26) entrega a área de Customer Success: pipeline CSM priorizado, visão unificada CRM+TGov, itens orçamentários via TransfereGov API, tags de potencial de venda por IA, e UI refresh (sidebar recolhível, dark mode, mobile, logo).
 
 ## Phases
 
@@ -54,11 +54,22 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 </details>
 
-### Milestone v5.0 — TGov Dashboard — In Progress
+<details>
+<summary>Milestone v5.0 — TGov Dashboard (Phases 19–21) — Complete</summary>
 
 - [x] **Phase 19: TGov Dashboard** - Página gestor-only `/tgov` com abas Aprovação/Execução, donut de situação, KPIs, tabela paginada e filtros (2026-03-30)
 - [x] **Phase 20: Ajustes TGov 07/04 — Técnico + CSM** - Designação de técnico responsável, perfil CSM, sistema de comentários tgov_comments, helpers RBAC centralizados (2026-04-08)
-- [x] **Phase 21: Ajustes TGov 09/04 — BI, Pipeline, Execução/PC Split, Novos Roles** - Nav TGOV BI + TGOV Pipeline (kanban estilo CRM), split Execução em Execução/Prestação de Contas, novos roles coord_execucao/assistente_execucao/projetista_execucao, isolamento de perfis, bugfixes aprovação (completed 2026-04-10)
+- [x] **Phase 21: Ajustes TGov 09/04 — BI, Pipeline, Execução/PC Split, Novos Roles** - Nav TGov BI + Pipeline, split Execução/PC, novos roles coord_execucao/assistente_execucao, isolamento de perfis, bugfixes (2026-04-10)
+
+</details>
+
+### Milestone v6.0 — CSM & Customer Success — In Progress
+
+- [ ] **Phase 22: CSM RBAC Foundation** - canCsm() gate, /csm route protection, CRM capabilities (add client, edit contact, commissions) for CSM role
+- [ ] **Phase 23: CSM Pipeline & BI Dashboard** - Unified client list with 5-level priority badges, aggregated financials, search/filter, expandable detail, BI dashboard totals and charts
+- [ ] **Phase 24: UI Refresh** - Collapsible sidebar, dark mode via next-themes, mobile-responsive sidebar, logo text "Hub da Projetos"
+- [ ] **Phase 25: Budget Items ETL & Display** - csm_budget_cache table, on-demand TransfereGov API fetch, 7-day TTL cache, budget items rendered per project in CSM detail view
+- [ ] **Phase 26: AI Sales Tags** - OpenAI embedding-based similarity matching between budget items and Projetus service categories, manual tag fallback for CSM
 
 ---
 
@@ -249,7 +260,8 @@ Plans:
 
 </details>
 
-### Milestone v5.0 — TGov Dashboard — Complete
+<details>
+<summary>Milestone v5.0 — TGov Dashboard — Complete</summary>
 
 ### Phase 19: TGov Dashboard
 **Goal**: Página gestor-only `/tgov` que reproduz as principais visões Power BI de aprovação e execução dentro do app. Abas Aprovação e Execução com donut de situação, KPI card, tabela paginada (25 rows, paginação numerada) e filtros compartilhados (Ano, Tipo, Status, UF). Filtros inline de tabela (Proponente, Número Proposta) afetam apenas a tabela.
@@ -285,15 +297,78 @@ Plans:
 
 **Depends on**: Phase 20 (técnico, CSM, comentários tgov_comments)
 
-**Status**: In Progress
+**Status**: Complete (2026-04-10)
 
 Plans:
-- [ ] 21-01-PLAN.md — RBAC: novos roles em validations.ts + page.tsx + middleware; isolamento de abas por role
-- [ ] 21-02-PLAN.md — Sidebar: renomear TGov BI + novo item TGov Pipeline; nova rota /tgov/pipeline com TGovPipelineSection
-- [ ] 21-03-PLAN.md — Split Execução/PC: nova aba Prestação de Contas, split API execucao/route.ts, paginação independente
-- [ ] 21-04-PLAN.md — Bugfixes Aprovação: CSS bordas tabela, SituacaoBadge na coluna SITUAÇÃO, ícone contador de comentários
+- [x] 21-01-PLAN.md — RBAC: novos roles em validations.ts + page.tsx + middleware; isolamento de abas por role
+- [x] 21-02-PLAN.md — Sidebar: renomear TGov BI + novo item TGov Pipeline; nova rota /tgov/pipeline com TGovPipelineSection
+- [x] 21-03-PLAN.md — Split Execução/PC: nova aba Prestação de Contas, split API execucao/route.ts, paginação independente
+- [x] 21-04-PLAN.md — Bugfixes Aprovação: CSS bordas tabela, SituacaoBadge na coluna SITUAÇÃO, ícone contador de comentários
 
 **Out of scope**: Notificações, edição de comentários, qualquer mudança fora do módulo TGov.
+
+</details>
+
+---
+
+### Milestone v6.0 — CSM & Customer Success — In Progress
+
+### Phase 22: CSM RBAC Foundation
+**Goal**: CSM role (bruno@projetus.org) can access a protected /csm area and perform CRM capabilities — adding clients, editing contact data, and viewing own commissions. Auth gate exists before any CSM data routes are built.
+**Depends on**: Phase 21 (csm role already in DB enum + next-auth.d.ts)
+**Requirements**: CSM-01, CSM-02, CSM-03, CSM-04
+**Success Criteria** (what must be TRUE):
+  1. CSM user navigating to /csm lands on an authenticated page; unauthenticated users are redirected
+  2. canCsm() helper in dal.ts is applied to all /api/csm/* routes — no CSM route is accessible without the auth gate
+  3. CSM can add a new client record to the system via the existing CRM add-client flow
+  4. CSM can edit phone/email for any client without needing gestor privileges
+  5. CSM can view their own commission calculations using the existing SDR/Closer commission system
+**Plans**: TBD
+
+### Phase 23: CSM Pipeline & BI Dashboard
+**Goal**: CSM sees all Projetus clients (2020–2025) in a unified prioritized list with aggregated financial data, can drill into per-client project detail, filter and search, and has a dedicated BI dashboard with portfolio-wide totals and project counts.
+**Depends on**: Phase 22 (canCsm() gate must exist before CSM data routes are built)
+**Requirements**: CLI-01, CLI-02, CLI-03, CLI-04, CLI-05, CLI-06, BI-01, BI-02, BI-03, BI-04, BI-05
+**Success Criteria** (what must be TRUE):
+  1. CSM sees a unified client list — one row per client — showing saldo em conta, valor a desembolsar, saldo rendimento previsto, and valor a liberar aggregated across all projects, plus a count of projects per situacao (execucao c/ saldo, a desembolsar, aprovacao, PC) on each client row
+  2. Each client row and project displays a priority badge (1=saldo em conta, 2=a desembolsar, 3=rendimento, 4=aprovacao, 5=PC) with distinct color per level
+  3. CSM can search by client name or CNPJ and filter by situacao or saldo range
+  4. CSM can expand a client row to see all their projects grouped by phase (aprovacao, execucao, PC) with per-project financial data
+  5. CSM BI dashboard shows portfolio totals (saldo em conta, a liberar, rendimento) and a project count breakdown by situacao via KPI cards and chart
+**Plans**: TBD
+
+### Phase 24: UI Refresh
+**Goal**: All platform users benefit from a collapsible sidebar, dark mode, mobile-responsive navigation, and updated logo text. These changes apply globally — not CSM-specific.
+**Depends on**: Phase 22 (csm role + /csm route exist; LayoutShell will wrap the sidebar that already contains the CSM nav item)
+**Requirements**: UI-01, UI-02, UI-03, UI-04
+**Success Criteria** (what must be TRUE):
+  1. User can click a toggle to collapse the sidebar to icon-only width and expand it again; state persists across page navigations (cookie-based, no hydration flash)
+  2. User can switch to dark mode from any page; the dark class applies globally including Radix UI portal components (dropdowns, dialogs); no flash of unstyled content on first load
+  3. On a mobile device, the sidebar appears as a bottom drawer (vaul) that closes automatically on route change
+  4. The app logo/brand text reads "Hub da Projetos" everywhere it previously showed "CRM de vendas"
+**Plans**: TBD
+
+### Phase 25: Budget Items ETL & Display
+**Goal**: CSM can view budget line items (Plano de Aplicacao Detalhado) for any execution-phase project with saldo em conta, fetched on-demand from TransfereGov API and cached for 7 days.
+**Depends on**: Phase 23 (CSM client detail view must exist to render budget items within it)
+**Requirements**: BUD-01, BUD-02, BUD-03, BUD-04
+**Success Criteria** (what must be TRUE):
+  1. CSM opening a project in execucao with saldo em conta sees a list of budget line items from Plano de Aplicacao Detalhado
+  2. Budget items with saldo zerado (fully executed) are not shown in the list
+  3. Item descriptions are truncated to 30 characters in the list view
+  4. Items load from cache on repeat visits (7-day TTL); first visit triggers a TransfereGov API fetch transparently
+**Research prerequisite**: TransfereGov API authentication requirements for planoAplicacaoDetalhado endpoint must be verified (curl test) before plan-phase begins. If auth is required, server-side proxy must be scoped. If public access is blocked entirely, full ETL (Option B) must be planned as alternative before implementation starts.
+**Plans**: TBD
+
+### Phase 26: AI Sales Tags
+**Goal**: Budget line items for each execution project are automatically matched against Projetus service categories (juridico, contabil, marketing, RH) and presented as sales potential tags; CSM can override or assign tags manually when AI is not available.
+**Depends on**: Phase 25 (csm_budget_cache.items must be populated before embeddings can be computed)
+**Requirements**: TAG-01, TAG-02
+**Success Criteria** (what must be TRUE):
+  1. Each execution project in the CSM view displays one or more service tags (juridico, contabil, marketing, RH) automatically derived from its budget item descriptions
+  2. CSM can manually assign or override service tags on any project when the auto-generated tags are absent or incorrect
+**Research prerequisite**: pgvector availability on sigmadb dedicated Postgres must be verified (`SELECT * FROM pg_extension WHERE extname = 'vector'`) before implementation. In-memory JS cosine similarity is the v6.0 fallback if pgvector is unavailable — plan accordingly.
+**Plans**: TBD
 
 ---
 
@@ -325,7 +400,8 @@ Tarefas pontuais executadas fora de fases formais — bugs, ajustes de UX e pequ
 - **Milestone v2.0**: Phases 6 → 7 → 8 (complete), Phase 9 (superseded)
 - **Milestone v3.0**: Phases 10 → 11 → 13 (complete), Phase 12 (not started)
 - **Milestone v4.0**: Phases 14 → 15 → 16 → 17 → 18 (complete)
-- **Milestone v5.0**: Phases 19 → 20 (complete)
+- **Milestone v5.0**: Phases 19 → 20 → 21 (complete)
+- **Milestone v6.0**: Phases 22 → 23 → 24 → 25 → 26 (in progress)
 
 | Phase | Plans | Status | Concluído |
 |-------|-------|--------|-----------|
@@ -354,10 +430,17 @@ Tarefas pontuais executadas fora de fases formais — bugs, ajustes de UX e pequ
 | **Milestone v5.0** | | | |
 | 19. TGov Dashboard | 3/3 | ✅ Complete | 2026-03-30 |
 | 20. Ajustes TGov 07/04 — Técnico + CSM | 4/4 | ✅ Complete | 2026-04-08 |
+| 21. Ajustes TGov 09/04 — BI + Pipeline + Roles | 4/4 | ✅ Complete | 2026-04-10 |
+| **Milestone v6.0** | | | |
+| 22. CSM RBAC Foundation | 0/TBD | 🔲 Not started | — |
+| 23. CSM Pipeline & BI Dashboard | 0/TBD | 🔲 Not started | — |
+| 24. UI Refresh | 0/TBD | 🔲 Not started | — |
+| 25. Budget Items ETL & Display | 0/TBD | 🔲 Not started | — |
+| 26. AI Sales Tags | 0/TBD | 🔲 Not started | — |
 
-**Resumo:** 20 phases planejadas — 17 completas, 1 opcional (Phase 3), 1 supersedida (Phase 9), 1 não iniciada (Phase 12)
+**Resumo:** 26 phases planejadas — 18 completas, 1 opcional (Phase 3), 1 supersedida (Phase 9), 1 não iniciada/diferida (Phase 12), 5 em planejamento (Phases 22–26)
 
 ---
 
 *Roadmap criado: 2026-02-04*
-*Última atualização: 2026-04-08 — adicionado Phase 18 (Lead Distribution), Milestone v5.0 Phase 20 marcada completa, quick tasks atualizadas para 60 total*
+*Última atualização: 2026-04-27 — Milestone v6.0 CSM & Customer Success — Phases 22–26 adicionadas*
