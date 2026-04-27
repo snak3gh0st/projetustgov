@@ -323,7 +323,12 @@ Plans:
   3. CSM can add a new client record to the system via the existing CRM add-client flow
   4. CSM can edit phone/email for any client without needing gestor privileges
   5. CSM can view their own commission calculations using the existing SDR/Closer commission system
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 22-01-PLAN.md — canCsm() helper, middleware exemption for /csm + /api/csm, /csm page scaffold, sidebar CSM nav, bruno user verification (CSM-01)
+- [ ] 22-02-PLAN.md — POST /api/csm/clients (add client) + PATCH /api/csm/clients/[cnpj]/contacts (edit telefone/email only) (CSM-02, CSM-03)
+- [ ] 22-03-PLAN.md — GET /api/csm/comissoes proxy + /csm/comissoes sub-page + sidebar Comissoes entry (CSM-04)
 
 ### Phase 23: CSM Pipeline & BI Dashboard
 **Goal**: CSM sees all Projetus clients (2020–2025) in a unified prioritized list with aggregated financial data, can drill into per-client project detail, filter and search, and has a dedicated BI dashboard with portfolio-wide totals and project counts.
@@ -432,7 +437,7 @@ Tarefas pontuais executadas fora de fases formais — bugs, ajustes de UX e pequ
 | 20. Ajustes TGov 07/04 — Técnico + CSM | 4/4 | ✅ Complete | 2026-04-08 |
 | 21. Ajustes TGov 09/04 — BI + Pipeline + Roles | 4/4 | ✅ Complete | 2026-04-10 |
 | **Milestone v6.0** | | | |
-| 22. CSM RBAC Foundation | 0/TBD | 🔲 Not started | — |
+| 22. CSM RBAC Foundation | 0/3 | 🔲 Not started | — |
 | 23. CSM Pipeline & BI Dashboard | 0/TBD | 🔲 Not started | — |
 | 24. UI Refresh | 0/TBD | 🔲 Not started | — |
 | 25. Budget Items ETL & Display | 0/TBD | 🔲 Not started | — |
