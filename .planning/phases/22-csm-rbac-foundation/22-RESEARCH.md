@@ -1,329 +1,523 @@
-# Phase 22: CSM RBAC Foundation - Research
+# Phase 22: CSM RBAC Foundation — Research
 
 **Researched:** 2026-04-27
-**Domain:** Next.js RBAC, CSM role gating, CRM capability extension
-**Confidence:** HIGH
+**Domain:** Next.js App Router RBAC, Auth.js v5 JWT sessions, middleware route isolation
+**Confidence:** HIGH — based on direct codebase inspection
+
+---
 
 ## Summary
 
-Phase 22 establishes the CSM area of the application: a protected `/csm` route for bruno@projetus.org, a `canCsm()` auth gate applied to all `/api/csm/*` routes, and CRM capabilities (add client, edit contact data, view own commissions). The `csm` role already exists in the DB enum, next-auth.d.ts, dal.ts, and Sidebar.tsx — but it currently redirects CSM users away from any CRM path and blocks all non-TGov API access. This is the main blocker that Phase 22 must resolve.
+Phase 22 establishes the CSM role's dedicated area (`/csm`) with proper auth gating and CRM capabilities. The `csm` role already exists in the DB enum, `dal.ts` Role type, and `next-auth.d.ts`. What is missing is: (1) the `canCsm()` dal helper, (2) the `/csm` page and middleware allowance, (3) a POST endpoint to add a client (no such endpoint exists today), (4) middleware exemptions for CSM to access `/comissoes` or a proxy commission endpoint, and (5) a contact-edit path CSM can call without `canModifyData()` or `verifyLeadAccess()` blocking it.
 
-The existing middleware.ts csm block (lines 58-74) is incompatible with all four CSM requirements. It must be amended to carve out `/csm` page paths and `/api/csm/*` API paths before any CSM data routes are built. All CSM mutations go under the new `/api/csm/*` namespace — this is a pre-existing architectural decision from STATE.md and must not be relitigated.
+The middleware today actively blocks the `csm` role from every CRM path and every non-tgov API. The commissions page (`/comissoes`) sits in `CRM_PAGE_PATHS` and is redirected for CSM. The add-client "flow" referenced in ROADMAP success criteria does not exist as a REST endpoint — inserts into `vendedor_projetos` only happen via gestor-only Excel imports and automated ETL. These gaps are real work, not mere plumbing.
 
-Critical finding: **no single-client add endpoint exists in the codebase** (CSM-02). The only paths that write to `existing_clients` or `vendedor_projetos` are bulk Excel imports (`/api/import-existing-clients`, gestor-only) and automated ETL/distribute flows. A new `POST /api/csm/clients` endpoint must be built from scratch.
+**Primary recommendation:** Create `/app/csm/` page tree + `canCsm()` dal helper + `/api/csm/*` namespace for all four capabilities. Extend middleware to pass `/csm` and `/api/csm` for the CSM role. Reuse the existing commission logic but proxy through `/api/csm/comissoes` to enforce the self-only filter.
 
-**Primary recommendation:** Three-plan structure — (1) dal.ts `canCsm()` + middleware amendment, (2) `/csm` page shell + new `/api/csm/clients` CRUD for CSM-01/02/03, (3) `/csm/comissoes` wiring CSM-04 via existing commission query logic adapted for csm role.
+---
+
+<user_constraints>
+## User Constraints (from STATE.md locked decisions)
+
+### Locked Decisions
+- CSM routes under `/api/csm/*` (new namespace — anti-pattern to extend `/api/execucao`; incompatible grouping semantics)
+- `canCsm()` auth gate must exist before any CSM data routes are built
+- Role `csm` is already in the DB enum and `next-auth.d.ts` / `dal.ts` — Phase 21 complete
+- Lazy on-demand budget fetch with 7-day JSONB cache (not full ETL) — deferred to Phase 25
+- Target CSM user: `bruno@projetus.org`
+
+### Claude's Discretion
+- Whether CSM commissions are served via new `/api/csm/comissoes` proxy or by extending middleware to pass `/api/comissoes` for CSM role — either is valid; proxy is recommended for cleaner isolation
+- Whether `canModifyData()` is extended to include CSM or a separate `canCsmWriteClient()` helper is created — separate helper is recommended to avoid unintended CRM write grants
+- Page-level UX for `/csm` (minimal scaffold vs. full layout) — scaffold is fine for Phase 22; data comes in Phase 23
+
+### Deferred Ideas (OUT OF SCOPE for Phase 22)
+- CSM unified client list, priority badges, BI dashboard (Phase 23)
+- Collapsible sidebar, dark mode, mobile (Phase 24)
+- Budget items ETL, csm_budget_cache table (Phase 25)
+- AI tags (Phase 26)
+- Auto-notifications, custom CSM comp rules (v7.0)
+</user_constraints>
+
+---
 
 <phase_requirements>
 ## Phase Requirements
 
 | ID | Description | Research Support |
 |----|-------------|-----------------|
-| CSM-01 | CSM (bruno@projetus.org) pode acessar area exclusiva `/csm` com visão administrativa de todos os clientes históricos Projetus (2020–2025) | Middleware must carve out `/csm` from CRM block; `verifySession()` + canCsm() guard on page |
-| CSM-02 | CSM pode adicionar novo cliente ao sistema | No existing single-client add endpoint — new `POST /api/csm/clients` required; writes to `existing_clients` + `vendedor_projetos` |
-| CSM-03 | CSM pode editar dados de contato (telefone, email) de qualquer cliente | Mirror of `/api/leads/[cnpj]/contacts` PATCH but under `/api/csm/clients/[cnpj]/contacts`; `canCsm()` replaces `canModifyData()` gate |
-| CSM-04 | CSM pode visualizar e calcular comissões próprias (mesmo sistema SDR/Closer existente) | Reuse `/api/comissoes` logic filtered to `session.userId`; add csm branch OR create `/api/csm/comissoes` — depends on whether bruno has `vendedor_id` rows |
+| CSM-01 | CSM (bruno@projetus.org) pode acessar area exclusiva `/csm` com visao administrativa de todos os clientes historicos Projetus (2020-2025) | Auth gate via `canCsm()` + middleware allowance for `/csm`. Page scaffold only in Phase 22; data query in Phase 23. |
+| CSM-02 | CSM pode adicionar novo cliente ao sistema | No existing POST endpoint for `vendedor_projetos`. Requires new `POST /api/csm/clients`. |
+| CSM-03 | CSM pode editar dados de contato (telefone, email) de qualquer cliente | `canModifyData()` excludes CSM. `verifyLeadAccess()` would deny CSM. Requires new `/api/csm/clients/[cnpj]/contacts` PATCH bypassing both blockers. |
+| CSM-04 | CSM pode visualizar e calcular comissoes proprias (mesmo sistema SDR/Closer existente) | `/comissoes` route is blocked in middleware for CSM. Either extend middleware or create `GET /api/csm/comissoes` proxy with `vendedor_id = session.userId` filter. |
 </phase_requirements>
+
+---
 
 ## Standard Stack
 
 ### Core
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
-| next-auth | `^5.x` (project uses NextAuth v5 config style) | JWT session, role in token | Already in use — auth.config.ts + auth.ts pattern is locked |
-| `@/lib/dal` | internal | RBAC helpers (canReadTgov, canWriteTgov, getApiSession, verifySession) | All role gates live here; canCsm() goes here |
-| `@/lib/db` | internal | `query()` wrapper for postgres | All data access uses this |
-| Next.js App Router | 14+ | Pages and API routes | Project standard |
+| next-auth v5 | `^5.0.0-beta.30` | JWT sessions, `auth()` callable in middleware + RSC | Already in use; `session.user.role` carries the role |
+| Next.js App Router | `^14.2.0` | Page tree, API routes, middleware | Entire app uses this |
+| pg (node-postgres) | `^8.13.0` | DB queries via `query()` helper in `src/lib/db.ts` | Existing abstraction |
+| Tailwind CSS | `^3.4.0` | Styling | Project standard |
+| zod | `^4.3.6` | Input validation in API routes | Used in validations.ts |
 
-### Supporting
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| `next/navigation` | built-in | `redirect()` in server pages | Page-level role guards |
-| `NextResponse` | built-in | JSON + status in API routes | API route responses |
+### No New Dependencies
+Phase 22 introduces no new npm packages. All capabilities build on existing stack.
 
-### Alternatives Considered
-| Instead of | Could Use | Tradeoff |
-|------------|-----------|----------|
-| New `/api/csm/*` namespace | Extend existing `/api/leads/*` | Extending leads routes means adding csm exceptions throughout existing CRM logic — the project decision in STATE.md rejects this: "Anti-pattern to extend /api/execucao — incompatible grouping semantics" |
-
-**Installation:** No new dependencies required for Phase 22.
+---
 
 ## Architecture Patterns
 
-### Recommended Project Structure
+### Recommended Project Structure (Phase 22 additions)
+
 ```
 web/src/
 ├── app/
-│   ├── csm/                    # NEW — CSM area pages
-│   │   ├── page.tsx            # /csm entry point (verifySession + canCsm guard)
-│   │   └── comissoes/
-│   │       └── page.tsx        # /csm/comissoes (CSM-04)
+│   ├── csm/
+│   │   └── page.tsx          # Server component — canCsm() gate, scaffold UI
 │   └── api/
-│       └── csm/                # NEW — CSM API namespace
+│       └── csm/
 │           ├── clients/
-│           │   ├── route.ts    # GET (client list) + POST (add client)
+│           │   ├── route.ts                  # POST: add new client (CSM-02)
 │           │   └── [cnpj]/
 │           │       └── contacts/
-│           │           └── route.ts  # PATCH (edit contact)
+│           │           └── route.ts          # PATCH/GET: edit contact (CSM-03)
 │           └── comissoes/
-│               └── route.ts    # GET (own commissions)
+│               └── route.ts                  # GET: commissions proxy (CSM-04)
 ├── lib/
-│   └── dal.ts                  # AMENDED — add canCsm() helper
-└── middleware.ts               # AMENDED — carve out /csm paths
+│   └── dal.ts                # Add canCsm() helper
+components/
+└── Sidebar.tsx               # Add /csm nav item for csm role
+middleware.ts                 # Add /csm and /api/csm to CSM allow-list
 ```
 
-### Pattern 1: dal.ts Helper — canCsm()
-**What:** Boolean function checking if a role may access CSM area
-**When to use:** In every `/api/csm/*` route + in the `/csm` page
-**Example:**
+### Pattern 1: canCsm() Helper in dal.ts
+
+**What:** Function that returns true only for `csm`, `gestor`, `admin`. Added to `dal.ts` following the exact pattern of `canReadTgov()` and `canWriteTgov()`.
+
+**When to use:** Called in every `/api/csm/*` route handler before processing. Also used in `app/csm/page.tsx` server component to redirect non-CSM roles.
+
 ```typescript
-// Source: web/src/lib/dal.ts (existing canReadTgov pattern)
-/** CSM area: full read + write access for csm role; gestor can also access for oversight. */
+// Source: web/src/lib/dal.ts — follows existing helper pattern
+/** CSM area: read + write access for own CSM data. Gestor/admin can also enter for oversight. */
 export function canCsm(role: string | undefined): boolean {
-  return role === 'csm' || role === 'gestor'
+  return role === 'csm' || role === 'gestor' || role === 'admin'
 }
 ```
-This follows the exact signature of `canReadTgov` and `canWriteTgov` already in dal.ts.
 
-### Pattern 2: Page-Level Role Guard (Server Component)
-**What:** verifySession() + role check + redirect
-**When to use:** All CSM page routes
-**Example:**
+### Pattern 2: Middleware Extension for /csm
+
+**What:** The `csm` role block in `middleware.ts` (lines 58–74) must be updated to explicitly allow `/csm` and `/api/csm` paths through. Currently `/api/csm/*` hits the `isCrmApi` block (any `/api/*` not in the explicit exceptions list) and returns 403.
+
+The `isCrmApi` check is:
 ```typescript
-// Source: web/src/app/tgov/page.tsx (lines 1-27) — exact pattern to copy
+const isCrmApi = pathname.startsWith('/api/') &&
+  !pathname.startsWith('/api/tgov') &&
+  !pathname.startsWith('/api/auth') &&
+  !pathname.startsWith('/api/usuarios') &&
+  !pathname.startsWith('/api/health')
+```
+
+`/api/csm/*` hits this and returns 403 for CSM today. Fix: add `/api/csm` to the exclusion list globally OR add a pass-through before the CSM redirect block.
+
+```typescript
+// Required change: add CSM exemptions BEFORE the CRM API block
+const CSM_PATHS = ['/csm', '/api/csm']
+const isCsmPath = CSM_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
+
+if (role === 'csm') {
+  if (isCsmPath) return  // CSM-area: allow through
+  if (isCrmPage || isCrmHome) {
+    return Response.redirect(new URL('/csm', req.url))  // redirect to /csm not /tgov
+  }
+  // ... rest of existing mutation gate logic
+}
+```
+
+Note: `/comissoes` page (CRM_PAGE_PATHS) is handled via `/api/csm/comissoes` proxy + an embedded tab in the `/csm` page — NOT by exempting the CRM `/comissoes` page for CSM.
+
+### Pattern 3: /csm Page Server Component
+
+**What:** Server component that uses `verifySession()` (redirect-on-no-session) then `canCsm()` (redirect to /sem-permissao if false). Established pattern from `/tgov/page.tsx`.
+
+```typescript
+// Source: web/src/app/tgov/page.tsx — same guard pattern
 import { verifySession } from '@/lib/dal'
 import { redirect } from 'next/navigation'
+import { canCsm } from '@/lib/dal'
 
 export default async function CsmPage() {
   const session = await verifySession()
-  if (session.role !== 'csm' && session.role !== 'gestor') {
+  if (!canCsm(session.role)) {
     redirect('/sem-permissao')
   }
-  // render client component with session.role passed as prop
+  // Phase 22: scaffold UI only; full client list in Phase 23
+  return <CsmDashboardClient userRole={session.role} />
 }
 ```
 
-### Pattern 3: API Route Auth Gate
-**What:** getApiSession() + canCsm check + 403 response
-**When to use:** All `/api/csm/*` routes
-**Example:**
-```typescript
-// Source: web/src/app/api/tgov/aprovacao/route.ts (lines 1-8) — analogous pattern
-import { getApiSession, canCsm } from '@/lib/dal'
+### Pattern 4: POST /api/csm/clients (CSM-02 — New Client)
 
+**What:** A new POST endpoint that inserts into `vendedor_projetos`. No existing endpoint does this for CSM. Requires: CNPJ + nome minimum. Sets `vendedor_id = session.userId` (CSM is the "owner" of the client for commission tracking purposes).
+
+The planner must decide: should the new client also be inserted into `existing_clients`? Research recommendation: YES — `existing_clients` flags known Projetus clients and `LEFT JOIN existing_clients ec ON vp.cnpj = ec.cnpj` drives the `is_existing_client` flag in lead display. Use UPSERT (ON CONFLICT DO NOTHING) for both tables to handle pre-existing CNPJs.
+
+```typescript
+// Pattern from web/src/app/api/leads/[cnpj]/contacts/route.ts
+const session = await getApiSession()
+if (!session || !canCsm(session.role)) {
+  return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+}
+// Insert into vendedor_projetos with vendedor_id = session.userId
+// Insert into existing_clients ON CONFLICT DO NOTHING
+```
+
+### Pattern 5: PATCH /api/csm/clients/[cnpj]/contacts (CSM-03 — Edit Contact)
+
+**What:** Parallel to `/api/leads/[cnpj]/contacts` PATCH but without `canModifyData()` or `verifyLeadAccess()` checks (both block CSM). Uses `canCsm()` instead. Only allows `telefone` and `email` field updates per CSM-03 scope — never expose `status_contato`, `tipo_vendedor`, or `comissao_*` to CSM writes.
+
+```typescript
+// Allowed fields for CSM contact edit — restricted scope
+const allowedFields = ['telefone', 'email']
+```
+
+Note: CSM-03 says "edit contact data for any client" — `verifyLeadAccess()` must NOT be called here, because it requires `vendedor_projetos.vendedor_id = userId` which fails for clients CSM doesn't own.
+
+### Pattern 6: GET /api/csm/comissoes (CSM-04 — Commissions)
+
+**What:** Thin proxy that runs the same SQL as `/api/comissoes` but hardcodes `vendedor_id = session.userId`. CSM never sees other sellers' data.
+
+The existing `/api/comissoes/route.ts` has no CSM branch — if CSM reached it, the query has no `vendedor_id` filter for unmatched roles, which could return all sellers' data. The proxy approach ensures isolation without modifying the CRM commission endpoint.
+
+```typescript
+// Source: web/src/app/api/comissoes/route.ts pattern — add CSM branch equivalent to 'vendedor'
+// filters.push(`vp.vendedor_id = $${paramIndex++}`)
+// params.push(session.userId)
+// Never allow vendedorId override for CSM (gestor-only privilege)
+```
+
+### Pattern 7: Sidebar Update for CSM
+
+`Sidebar.tsx` lines 96–101 give CSM only 3 TGov nav items. Add `/csm` as first nav item. The commission view (CSM-04) should be a tab within `/csm`, not a separate `/comissoes` link (since `/comissoes` is blocked in middleware for CSM and the CSM commission data comes from `/api/csm/comissoes`).
+
+```typescript
+// Current csm block (lines 96–101) — add /csm entry:
+: user.role === 'csm'
+? [
+    { href: '/csm', label: 'Clientes CSM', icon: 'leads' },  // NEW
+    { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
+    { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
+    { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
+  ]
+```
+
+### Anti-Patterns to Avoid
+
+- **Extending `/api/leads` POST for CSM**: the leads table is CRM-scoped; CSM adding a client via the SDR lead flow is semantically wrong. Use `/api/csm/clients`.
+- **Calling `canModifyData()` for CSM write checks**: it excludes CSM by design. Use `canCsm()` for CSM write gates.
+- **Exempting all of `/api/*` in middleware for CSM**: CSM should only have `/api/csm/*` access. Do not add a blanket exception.
+- **Using `verifyLeadAccess()` for CSM contact edits**: it checks `vendedor_projetos.vendedor_id = userId`, which denies CSM for clients not assigned to them. CSM-03 requires "any client" access — skip this helper in CSM contact routes.
+- **Pointing the CSM sidebar `/comissoes` link at `/comissoes`**: that page redirects CSM to `/csm` via middleware. Commission view must be embedded in `/csm` with data from `/api/csm/comissoes`.
+
+---
+
+## Don't Hand-Roll
+
+| Problem | Don't Build | Use Instead | Why |
+|---------|-------------|-------------|-----|
+| Session check + role gate | Custom session extraction | `getApiSession()` from `dal.ts` | Handles JWT refresh, returns typed session |
+| Page-level auth with redirect | Manual session check | `verifySession()` from `dal.ts` | Handles unauthenticated redirect to /login |
+| DB connection pooling | New Pool instance | `query()` from `lib/db.ts` | Existing pool with retry logic |
+| Commission calculation logic | New calculation code | Reuse SQL from `/api/comissoes/route.ts` | The logic is battle-tested; proxy, don't duplicate |
+
+---
+
+## Common Pitfalls
+
+### Pitfall 1: /api/csm/* Returns 403 for CSM
+**What goes wrong:** `/api/csm/*` matches the `isCrmApi` check in middleware (any `/api/*` not in the explicit whitelist). CSM's current middleware block returns 403 for all CRM APIs including the new `/api/csm` namespace.
+**Why it happens:** `/api/csm` was not in the whitelist when the CSM block was written — it didn't exist yet.
+**How to avoid:** Add `/api/csm` to the middleware exception list (same level as `/api/tgov`, `/api/auth`, `/api/usuarios`, `/api/health`) before the `isCrmApi` variable is computed. OR add the pass-through inside the CSM role block before `if (isCrmApi)`.
+**Warning signs:** Every `/api/csm/*` call returns HTTP 403 with `{"error":"Forbidden"}`.
+
+### Pitfall 2: Commission Query Returns All Sellers for CSM
+**What goes wrong:** `/api/comissoes/route.ts` has explicit branches for `vendedor`, `coordenador`, and `vendedorId` param. CSM matches none. The `filters` array at that point contains only `['vp.vendedor_id IS NOT NULL', ...]` — no user scoping. CSM would see all closed deals.
+**Why it happens:** CSM role did not exist when the commission endpoint was written.
+**How to avoid:** Use `/api/csm/comissoes` proxy that always prepends `vp.vendedor_id = $N` with `session.userId`. Never allow CSM to hit raw `/api/comissoes`.
+**Warning signs:** Commission response contains rows with multiple different `vendedor_id` values.
+
+### Pitfall 3: bruno@projetus.org User May Not Exist
+**What goes wrong:** No code references `bruno@projetus.org`. If the user row doesn't exist in the DB with `role = 'csm'`, CSM-01 through CSM-04 cannot be tested with this account.
+**Why it happens:** User creation is a manual DB operation; no migration creates named users.
+**How to avoid:** Wave 0 must verify: `SELECT id, email, role FROM users WHERE email = 'bruno@projetus.org'`. If no row, insert it with `role = 'csm'` and a temporary password. This is a pre-implementation gate.
+**Warning signs:** Login as bruno@projetus.org returns invalid credentials.
+
+### Pitfall 4: auth.ts JWT Callback Type-Casts Role Incompletely
+**What goes wrong:** `auth.ts` line 63 type-casts `token.role` as `'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador'` — a stale union that predates CSM and TGov roles. TypeScript may surface no errors but the narrow type could cause issues if any code does a strict type check.
+**Why it happens:** JWT callback typing was not updated when new roles were added.
+**How to avoid:** Update the `token.role` cast in `auth.ts` jwt callback to use the `Role` type from `dal.ts`, or at minimum add `'csm'` to the union. No runtime impact but prevents TS complaints and makes the code self-documenting.
+
+### Pitfall 5: Middleware Redirect Loop if /csm Page Appears in isCrmPage
+**What goes wrong:** If `/csm` is accidentally added to `CRM_PAGE_PATHS` or if the redirect for CSM is changed to `/csm` without the path being exempted, CSM would loop between `/csm` (redirects to `/csm`) indefinitely.
+**Why it happens:** `/csm` is NOT currently in `CRM_PAGE_PATHS` so this is safe today. Risk is introduced only by future edits.
+**How to avoid:** Never add `/csm` to `CRM_PAGE_PATHS`. When changing the CSM redirect from `/tgov` to `/csm`, ensure the `isCsmPath` check fires before `isCrmPage`.
+
+### Pitfall 6: Contact Edit Scope Creep
+**What goes wrong:** CSM contact edit PATCH accidentally allows updating `status_contato`, `tipo_vendedor`, or `comissao_*` fields, giving CSM power to mark clients as "Fechado" and trigger commission calculations.
+**Why it happens:** The existing `/api/leads/[cnpj]/contacts` PATCH `allowedFields` list is broad. If the new CSM route copies it carelessly, status_contato could be included.
+**How to avoid:** The new `/api/csm/clients/[cnpj]/contacts` PATCH must define its own `allowedFields = ['telefone', 'email']` — nothing more.
+
+---
+
+## Code Examples
+
+### Verified: Auth Gate Pattern (from /tgov/page.tsx)
+```typescript
+// Source: web/src/app/tgov/page.tsx lines 1-27
+import { verifySession } from '@/lib/dal'
+import { redirect } from 'next/navigation'
+
+export default async function ProtectedPage() {
+  const session = await verifySession()   // redirects to /login if no session
+  if (!canCsm(session.role)) {
+    redirect('/sem-permissao')
+  }
+  // render...
+}
+```
+
+### Verified: API Route Auth Gate Pattern (from /api/tgov/aprovacao/route.ts)
+```typescript
+// Source: web/src/app/api/tgov/aprovacao/route.ts lines 44-49
 export async function GET(request: NextRequest) {
   const session = await getApiSession()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!canCsm(session.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  // ... business logic
+  if (!session || !canReadTgov(session.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  // ...
 }
 ```
 
-### Pattern 4: Middleware Amendment — CSM Carve-Out
-**What:** Amend the `role === 'csm'` block in middleware.ts to allow `/csm` pages and `/api/csm/*`
-**When to use:** This is a ONE-TIME change that unlocks all future CSM routes
-**Example:**
+### Verified: Role-Scoped Commission Filter (from /api/comissoes/route.ts)
 ```typescript
-// Source: web/src/middleware.ts (lines 58-74) — current block to amend
-if (role === 'csm') {
-  // NEW: allow /csm area before checking CRM blocks
-  if (pathname === '/csm' || pathname.startsWith('/csm/')) return  // pass through
-  if (pathname.startsWith('/api/csm/')) return  // CSM API namespace allowed
+// Source: web/src/app/api/comissoes/route.ts lines 28-41
+// Existing branches — CSM must use equivalent proxy:
+if (session.role === 'vendedor') {
+  filters.push(`vp.vendedor_id = $${paramIndex++}`)
+  params.push(session.userId)
+} else if (session.role === 'coordenador' && !vendedorId) {
+  filters.push(`(vp.vendedor_id = $${paramIndex} OR vp.closer_id = $${paramIndex})`)
+  params.push(session.userId)
+  paramIndex++
+}
+// CSM proxy (/api/csm/comissoes) always uses vendedor branch logic:
+// filters.push(`vp.vendedor_id = $${paramIndex++}`)
+// params.push(session.userId)
+```
 
-  // EXISTING: keep TGov-only isolation for CRM paths
+### Verified: Current CSM Middleware Block (to be extended)
+```typescript
+// Source: web/src/middleware.ts lines 58–74
+// Current — blocks all non-TGov API for CSM:
+if (role === 'csm') {
   if (isCrmPage || isCrmHome) {
     return Response.redirect(new URL('/tgov', req.url))
   }
   if (isCrmApi) {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
   }
-  // EXISTING: mutation gate for TGov remains
-  const isTgovPrivilegedMutation =
-    pathname.startsWith('/api/tgov/whitelist') ||
-    pathname.startsWith('/api/tgov/interaction') ||
-    pathname.startsWith('/api/tgov/tecnico')
+  const isTgovPrivilegedMutation = ...
   if (isTgovPrivilegedMutation && req.method !== 'GET') {
     return Response.json({ error: 'Forbidden: CSM is read-only on this resource' }, { status: 403 })
   }
 }
+// isCrmApi catches /api/csm/* today because it is not in the whitelist
 ```
 
-### Pattern 5: Contact Edit (CSM-03)
-**What:** PATCH handler in `/api/csm/clients/[cnpj]/contacts` mirroring existing pattern
-**When to use:** CSM editing phone/email for any client
-**Example:**
-```typescript
-// Source: web/src/app/api/leads/[cnpj]/contacts/route.ts (lines 103-171)
-// Allowed fields for CSM: only ['telefone', 'email'] — CSM-03 scoped narrower than gestor
-const CSM_ALLOWED_CONTACT_FIELDS = ['telefone', 'email']
-```
-Note: `verifyLeadAccess()` checks `vendedor_projetos.vendedor_id` or `closer_id` — CSM must bypass this check since CSM can edit ANY client's contacts (per CSM-03). Use `canCsm()` instead of `verifyLeadAccess()`.
-
-### Anti-Patterns to Avoid
-- **Adding csm to `canModifyData()`:** This would open all CRM write endpoints (status_contato, assignments, commission overrides) to CSM — far broader than required. Keep `canModifyData()` untouched.
-- **Adding csm to `CRM_PAGE_PATHS` exceptions in middleware:** Piecemeal exceptions become unmaintainable. The carve-out must be a clear prefix: `/csm` and `/api/csm/*` only.
-- **Extending `/api/leads/[cnpj]/contacts` for csm:** CSM bypasses `verifyLeadAccess()` (which filters by assigned vendedor); reusing the endpoint would require forking the auth logic inside it.
-- **Extending `/api/comissoes` with a csm branch:** The existing comissoes route has gestor/coordenador/vendedor-specific logic; adding csm means touching mission-critical commission code. Mirror the relevant query in `/api/csm/comissoes` instead.
-
-## Don't Hand-Roll
-
-| Problem | Don't Build | Use Instead | Why |
-|---------|-------------|-------------|-----|
-| Session auth | Custom JWT parsing | `getApiSession()` / `verifySession()` from dal.ts | Already handles token refresh, redirect on no-session |
-| DB queries | Raw `pg` Pool instances | `query()` from `@/lib/db` | Project standard; handles SSL, connection pooling |
-| Commission math | New calculation logic | Copy query pattern from `/api/comissoes/route.ts` | Existing formula already handles SDR/Closer/Exclusivo types |
-
-**Key insight:** The auth layer is already complete — canCsm() is a 2-line addition to dal.ts. The implementation work is almost entirely in (a) middleware amendment, (b) new CSM page shell, and (c) new API endpoints under `/api/csm/*`.
-
-## Common Pitfalls
-
-### Pitfall 1: Middleware Blocks /api/csm/* Before canCsm() Runs
-**What goes wrong:** New `/api/csm/*` routes return 403 because `isCrmApi` is true (any `/api/` path not listed as TGov/auth/health/usuarios).
-**Why it happens:** `isCrmApi` is a catch-all: `pathname.startsWith('/api/') && !pathname.startsWith('/api/tgov') && !pathname.startsWith('/api/auth') && !pathname.startsWith('/api/usuarios') && !pathname.startsWith('/api/health')`. `/api/csm/` falls into this.
-**How to avoid:** The middleware csm carve-out (Pattern 4) must `return` early for `/api/csm/` BEFORE the `isCrmApi` check runs.
-**Warning signs:** `canCsm()` never called in logs; all CSM API calls return 403 with "Forbidden" (no role info).
-
-### Pitfall 2: CSM-02 Assumes a Reusable Add-Client Endpoint
-**What goes wrong:** Planning attempts to call an existing `/api/leads` POST or `/api/import-existing-clients` for CSM-02.
-**Why it happens:** The success criterion says "via the existing CRM add-client flow" — but no such single-client form endpoint exists. The only insert paths are bulk Excel import (gestor-only) and automated ETL.
-**How to avoid:** Plan explicitly creates `POST /api/csm/clients` that inserts into `existing_clients` (and optionally `vendedor_projetos`) with `canCsm()` gate.
-**Warning signs:** 403 on POST to `/api/import-existing-clients`, or trying to adapt bulk import for single-client use.
-
-### Pitfall 3: CSM-04 Commissions Return Empty Without vendedor_id Rows
-**What goes wrong:** Bruno's commission view shows zero records.
-**Why it happens:** `/api/comissoes` filters by `vp.vendedor_id = session.userId` + `status_contato = 'Fechado'`. If no `vendedor_projetos` rows exist with `vendedor_id = bruno_user_id`, the query returns empty.
-**How to avoid:** Before deploying CSM-04, verify that bruno@projetus.org has entries as vendedor_id in the DB, OR clarify with client whether CSM commission model differs from SDR/Closer. This is an open question (see below).
-**Warning signs:** `/api/csm/comissoes` returns empty array despite bruno having sales; gestor view in `/api/comissoes` also shows nothing for bruno.
-
-### Pitfall 4: JWT Role Cache Delays CSM Access During Testing
-**What goes wrong:** After bruno is given `csm` role in DB, `/csm` still redirects to login or wrong page.
-**Why it happens:** `auth.ts` refreshes the role from DB at most once per hour (line 68: `REFRESH_MS = 60 * 60 * 1000`). During dev/testing, the stale JWT has the old role.
-**How to avoid:** Sign out and sign back in to force a fresh JWT after any role change.
-**Warning signs:** DB shows `role = 'csm'` but session.role shows old value; logs show no DB refresh hit.
-
-### Pitfall 5: Sidebar Nav for CSM Doesn't Include /csm
-**What goes wrong:** bruno can navigate to `/csm` directly but the sidebar shows no link.
-**Why it happens:** The csm branch in Sidebar.tsx (lines 96-101) currently shows only TGov items.
-**How to avoid:** Amend the csm navItems array to include `{ href: '/csm', label: 'CSM', icon: 'csm' }` when adding the `/csm` page.
-**Warning signs:** No CSM nav item visible for bruno's sidebar.
-
-## Code Examples
-
-### Add canCsm() to dal.ts
-```typescript
-// Source: web/src/lib/dal.ts — add after canCommentTgov()
-/** CSM area access: full CRUD on /csm routes and /api/csm/* routes. */
-export function canCsm(role: string | undefined): boolean {
-  return role === 'csm' || role === 'gestor'
-}
-```
-
-### POST /api/csm/clients — new single-client add
-```typescript
-// Source: pattern from web/src/app/api/leads/[cnpj]/contacts/route.ts
-// Inserts into existing_clients; optionally creates vendedor_projetos stub
-export async function POST(request: NextRequest) {
-  const session = await getApiSession()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!canCsm(session.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
-  const { cnpj, nome, notes } = await request.json()
-  if (!cnpj || !nome) return NextResponse.json({ error: 'cnpj and nome required' }, { status: 400 })
-
-  const result = await query(
-    `INSERT INTO existing_clients (cnpj, nome, added_by, notes)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (cnpj) DO NOTHING
-     RETURNING id`,
-    [cleanCNPJ(cnpj), nome, session.userId, notes || null]
-  )
-  return result.length > 0
-    ? NextResponse.json(result[0], { status: 201 })
-    : NextResponse.json({ error: 'Client already exists' }, { status: 409 })
-}
-```
-
-### PATCH /api/csm/clients/[cnpj]/contacts — edit contact (CSM-03)
-```typescript
-// Source: mirrors web/src/app/api/leads/[cnpj]/contacts/route.ts PATCH
-// Key difference: no verifyLeadAccess() — CSM can edit ANY client's contacts
-export async function PATCH(request: NextRequest, { params }: { params: { cnpj: string } }) {
-  const session = await getApiSession()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!canCsm(session.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
-  const cnpj = decodeURIComponent(params.cnpj)
-  const body = await request.json()
-  const { id, telefone, email } = body  // CSM-03: only phone + email editable
-
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-
-  const updates: string[] = []
-  const values: unknown[] = []
-  let paramIdx = 1
-  if (telefone !== undefined) { updates.push(`telefone = $${paramIdx++}`); values.push(telefone) }
-  if (email !== undefined) { updates.push(`email = $${paramIdx++}`); values.push(email) }
-  if (updates.length === 0) return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
-
-  values.push(id, cnpj)
-  await query(
-    `UPDATE lead_contacts SET ${updates.join(', ')} WHERE id = $${paramIdx} AND lead_cnpj = $${paramIdx + 1}`,
-    values
-  )
-  return NextResponse.json({ success: true })
-}
-```
+---
 
 ## State of the Art
 
-| Old Approach | Current Approach | When Changed | Impact |
-|--------------|------------------|--------------|--------|
-| CSM blocked from all CRM APIs | CSM gets `/csm` + `/api/csm/*` namespace | Phase 22 | Unlocks CSM capabilities without polluting CRM routes |
-| No `canCsm()` helper | `canCsm()` exported from dal.ts | Phase 22 | Consistent RBAC pattern; planner creates this in Wave 0 |
-| CSM nav = TGov items only | CSM nav gains `/csm` entry | Phase 22 | Sidebar.tsx csm block amended |
+| Old Approach | Current Approach | Impact |
+|--------------|------------------|--------|
+| CSM redirected to /tgov on CRM paths | Add `/csm` pass-through; redirect CRM paths to `/csm` instead | CSM lands on own area |
+| No add-client REST endpoint | New `POST /api/csm/clients` | Satisfies CSM-02 |
+| canModifyData() gates contact writes (excludes CSM) | `canCsm()` gate for new `/api/csm/clients/[cnpj]/contacts` | CSM can edit contacts without gestor privileges |
+| Commission endpoint has no CSM branch | `/api/csm/comissoes` proxy pinned to session.userId | CSM-04 isolation: own commissions only, no cross-seller leak |
+| canCsm() does not exist | Add to dal.ts | Single source of truth for CSM access decisions |
 
-**Deprecated/outdated:**
-- "CSM é TGov-only" comment in middleware.ts: This is Phase 20's constraint, intentionally lifted by Phase 22.
+---
 
 ## Open Questions
 
-1. **CSM-04: Does bruno@projetus.org have vendedor_projetos rows with his user_id as vendedor_id?**
-   - What we know: The commission system filters `vp.vendedor_id = session.userId`. CSM-04 requirement says "mesmo sistema SDR/Closer existente."
-   - What's unclear: Whether bruno was ever assigned leads as a vendedor, or whether CSM commissions come from a separate source (TGov upsell deals not in vendedor_projetos).
-   - Recommendation: Planner should add a DB verification step to check `SELECT COUNT(*) FROM vendedor_projetos WHERE vendedor_id = (SELECT id FROM users WHERE email = 'bruno@projetus.org')` before building the commission UI. If zero, the commission view will always be empty — needs client clarification.
+1. **Does `bruno@projetus.org` exist in the DB with role='csm'?**
+   - What we know: Role `csm` is in enum; no code references this email; the user was not created by any migration script in the repository
+   - What's unclear: Whether it was created manually after Phase 20/21
+   - Recommendation: Wave 0 task must verify via DB query and create if missing
 
-2. **CSM-01: What constitutes "todos os clientes históricos Projetus (2020–2025)"?**
-   - What we know: `existing_clients` and `vendedor_projetos` are the CRM client tables. Phase 23 will build the full unified view.
-   - What's unclear: Phase 22 only needs the auth gate and shell — the actual client list query is Phase 23. But the `/csm` page.tsx shell needs a placeholder that doesn't mislead.
-   - Recommendation: `/csm` page in Phase 22 should render a minimal placeholder ("CSM area under construction") or a basic client count — NOT the full list (that's Phase 23). The planner should scope this clearly.
+2. **Should POST /api/csm/clients also insert into `existing_clients`?**
+   - What we know: `existing_clients` drives the `is_existing_client` flag in lead display; `LEFT JOIN existing_clients ec ON vp.cnpj = ec.cnpj` is in the leads query
+   - What's unclear: Whether CSM-added clients should be flagged as "existing Projetus clients" for CRM visibility
+   - Recommendation: Yes — insert into both tables with ON CONFLICT DO NOTHING; this ensures correct flag behavior if a CSM client later appears in the CRM leads view
 
-3. **Sidebar nav icon for /csm**
-   - What we know: Sidebar.tsx uses a `switch(name)` in `NavIcon()` with hardcoded SVG paths. No 'csm' case exists.
-   - What's unclear: Whether to add a new icon or reuse an existing one (e.g., 'leads' or 'bi').
-   - Recommendation: Reuse existing icon (e.g., 'leads' or 'pipeline') — a new SVG can be added in Phase 24 UI Refresh.
+3. **Commission view: embedded tab in /csm or standalone page?**
+   - What we know: `/comissoes` page is a 'use client' component with significant local state; `/comissoes` is blocked for CSM in middleware
+   - What's unclear: Whether the commission UI should be duplicated into `/csm/comissoes/page.tsx` or rendered as a tab within `/csm/page.tsx`
+   - Recommendation: Standalone sub-page `/csm/comissoes/page.tsx` that reuses the same client component wired to `/api/csm/comissoes`. This avoids bloating the main CSM page and makes the sidebar navigation straightforward.
+
+---
+
+## Validation Architecture
+
+> No test framework (vitest/jest/playwright) is installed in `web/`. Verification follows the project convention of curl + Node.js tsx scripts. The planning/config.json has no `workflow.nyquist_validation` key — no automated test suite required. Verification is manual but must be specified concretely.
+
+### Test Framework
+| Property | Value |
+|----------|-------|
+| Framework | None — project uses curl + tsx scripts (see `web/scripts/`) |
+| Config file | none |
+| Quick run command | `curl` against local dev server (see per-requirement commands below) |
+| Full suite command | Run all curl checks sequentially |
+| Estimated runtime | ~5–15 seconds per check |
+
+### Phase Requirements — Verification Map
+
+| Req ID | Behavior | Test Type | Verification Command | File Exists? |
+|--------|----------|-----------|---------------------|-------------|
+| CSM-01 | Unauthenticated user → redirect to /login | integration | `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/csm` → `307` | Wave 0 gap: /csm page does not exist yet |
+| CSM-01 | CSM session → 200 on /csm | integration | curl with csm session cookie → `200` | same |
+| CSM-01 | Vendedor session → redirect away from /csm | integration | curl with vendedor session cookie → `307` | same |
+| CSM-02 | CSM can POST new client | integration | `curl -X POST /api/csm/clients -b csm_cookie -d '{"cnpj":"...","nome":"..."}' -w "%{http_code}"` → `201` | Wave 0 gap: route does not exist |
+| CSM-02 | Anon/vendedor → blocked | integration | same curl without cookie → `401`; vendedor cookie → `403` | same |
+| CSM-02 | New row appears in vendedor_projetos | db | `SELECT cnpj, nome, vendedor_id FROM vendedor_projetos WHERE cnpj='...'` confirms row + vendedor_id = bruno_uuid | same |
+| CSM-03 | CSM can PATCH telefone/email via /api/csm/clients/[cnpj]/contacts | integration | `curl -X PATCH /api/csm/clients/{cnpj}/contacts -b csm_cookie -d '{"id":1,"telefone":"..."}' -w "%{http_code}"` → `200` | Wave 0 gap: route does not exist |
+| CSM-03 | Vendedor blocked from PATCH | integration | same curl with vendedor cookie → `403` | same |
+| CSM-03 | Only telefone/email updatable (no status_contato) | unit | Code review: verify `allowedFields = ['telefone', 'email']` in route handler | same |
+| CSM-04 | GET /api/csm/comissoes returns only bruno's rows | integration | `curl /api/csm/comissoes -b csm_cookie` → JSON; all `leads[].vendedor_id` == bruno_uuid | Wave 0 gap: route does not exist |
+| CSM-04 | No cross-seller data leak | db | Count distinct vendedor_ids in response — must be 1 | same |
+
+### Nyquist Sampling Rate
+- **Minimum sample interval:** After each route/page task, run the corresponding curl check manually
+- **Full suite trigger:** After all 4 Phase 22 plans are complete, run all curl checks in sequence
+- **Phase-complete gate:** All checks above return expected HTTP codes before moving to Phase 23
+- **Estimated feedback latency per task:** ~5 seconds (curl round-trip on local dev server)
+
+### Wave 0 Gaps (must be created before implementation)
+
+- [ ] Verify `bruno@projetus.org` user exists in DB:
+  ```bash
+  # Run from web/ with DATABASE_URL set:
+  npx tsx -e "
+  const { query } = require('./src/lib/db')
+  query(\"SELECT id, email, role FROM users WHERE email = 'bruno@projetus.org'\")
+    .then(rows => { console.log(rows.length ? JSON.stringify(rows[0]) : 'NOT FOUND'); process.exit(0) })
+  "
+  ```
+  If NOT FOUND: create user with role='csm' and a temporary password.
+
+- [ ] No test framework to install — verification is curl-based.
+
+*(If bruno user exists: "No user creation gap — existing test infrastructure covers pre-condition.")*
+
+### Concrete Verification Scripts
+
+**CSM-01 — auth gate:**
+```bash
+# Anon → redirect to login (307)
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/csm
+# Expected: 307
+
+# Obtain CSM session token by logging in:
+CSM_TOKEN=$(curl -s -X POST http://localhost:3000/api/auth/callback/credentials \
+  -d "email=bruno%40projetus.org&password=<password>&csrfToken=<token>" \
+  -c /tmp/csm_cookies.txt -b /tmp/csm_cookies.txt \
+  | ... ) # token extraction depends on next-auth cookie flow
+
+# CSM authenticated → 200
+curl -s -o /dev/null -w "%{http_code}" \
+  -b /tmp/csm_cookies.txt \
+  http://localhost:3000/csm
+# Expected: 200
+```
+
+**CSM-02 — add client:**
+```bash
+curl -s -X POST http://localhost:3000/api/csm/clients \
+  -H "Content-Type: application/json" \
+  -b /tmp/csm_cookies.txt \
+  -d '{"cnpj":"12345678000195","nome":"Test Client CSM Phase 22"}' \
+  -w "\nHTTP: %{http_code}\n"
+# Expected: HTTP 201, body contains the created vendedor_projetos row id
+
+# Isolation check — vendedor session blocked:
+curl -s -X POST http://localhost:3000/api/csm/clients \
+  -H "Content-Type: application/json" \
+  -b /tmp/vendedor_cookies.txt \
+  -d '{"cnpj":"12345678000195","nome":"Test"}' \
+  -w "\nHTTP: %{http_code}\n"
+# Expected: HTTP 403
+```
+
+**CSM-03 — edit contact:**
+```bash
+# First get a contact ID from the test client created above
+CONTACT_ID=$(curl -s "http://localhost:3000/api/csm/clients/12345678000195/contacts" \
+  -b /tmp/csm_cookies.txt | npx tsx -e "process.stdin.pipe(require('stream').Transform({transform(c,e,cb){process.stdout.write(JSON.parse(c)[0].id+'');cb()}}))")
+
+curl -s -X PATCH "http://localhost:3000/api/csm/clients/12345678000195/contacts" \
+  -H "Content-Type: application/json" \
+  -b /tmp/csm_cookies.txt \
+  -d "{\"id\": ${CONTACT_ID}, \"telefone\": \"(11) 98888-7777\"}" \
+  -w "\nHTTP: %{http_code}\n"
+# Expected: HTTP 200 {"success":true}
+```
+
+**CSM-04 — commission isolation:**
+```bash
+curl -s "http://localhost:3000/api/csm/comissoes" \
+  -b /tmp/csm_cookies.txt \
+  | npx tsx -e "
+    const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'))
+    const ids = new Set(data.leads.map(l => l.vendedor_id))
+    console.log(ids.size === 1 ? 'PASS: single vendedor_id' : 'FAIL: data leak — multiple ids: ' + [...ids].join(','))
+  "
+# Expected: PASS: single vendedor_id
+```
+
+---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- `web/src/middleware.ts` — current CSM block (lines 58-74); confirmed isCrmApi catch-all
-- `web/src/lib/dal.ts` — all existing canX() helpers; no canCsm() exists
-- `web/src/app/api/leads/[cnpj]/contacts/route.ts` — contact CRUD pattern
-- `web/src/app/api/comissoes/route.ts` — commission query logic, role filtering
-- `web/src/app/api/import-existing-clients/route.ts` — only existing_clients INSERT (bulk only)
-- `web/src/app/api/import-spreadsheet/route.ts` — only vendedor_projetos INSERT (bulk only)
-- `web/src/app/tgov/page.tsx` — canonical page-level role guard pattern
-- `web/src/components/Sidebar.tsx` — current csm nav block (lines 96-101)
-- `.planning/STATE.md` — `/api/csm/*` namespace decision locked
+- Direct file inspection: `web/src/middleware.ts` — complete CSM block, CRM_PAGE_PATHS, isCrmApi definition
+- Direct file inspection: `web/src/lib/dal.ts` — Role type, canReadTgov(), canWriteTgov(), canModifyData(), verifyLeadAccess()
+- Direct file inspection: `web/src/lib/auth.ts` — JWT callback, session callback, role storage in token
+- Direct file inspection: `web/src/auth.config.ts` — edge-compatible middleware auth
+- Direct file inspection: `web/src/app/api/comissoes/route.ts` — commission filter logic, confirmed no CSM branch
+- Direct file inspection: `web/src/app/api/leads/[cnpj]/contacts/route.ts` — canModifyData() gate, verifyLeadAccess() gate
+- Direct file inspection: `web/src/components/Sidebar.tsx` — current CSM nav items (TGov only, no /csm)
+- Direct file inspection: `web/src/app/layout.tsx` — RootLayout session handling
+- Direct file inspection: `web/src/app/tgov/page.tsx` — established page guard pattern
+- Direct file inspection: `web/src/app/api/leads/route.ts` — confirmed GET-only (no POST for add-client)
+- Direct file inspection: `web/package.json` — confirmed no vitest/jest/playwright installed
 
 ### Secondary (MEDIUM confidence)
-- `web/src/lib/auth.ts` lines 65-78 — JWT role refresh every 60 min (relevant for testing pitfall)
+- `.planning/STATE.md` — locked architecture decisions for v6.0, bruno@projetus.org as target user
+- `.planning/ROADMAP.md` — Phase 22 success criteria and phase dependencies
+
+---
 
 ## Metadata
 
 **Confidence breakdown:**
-- Standard stack: HIGH — all libraries are existing project dependencies
-- Architecture: HIGH — patterns are direct copies from TGov + contacts routes; decisions locked in STATE.md
-- Pitfalls: HIGH — confirmed by reading middleware.ts and grep results (no single-client add endpoint)
+- Standard stack: HIGH — direct package.json + source file inspection
+- Architecture: HIGH — all patterns derived from existing codebase, no assumptions
+- Pitfalls: HIGH — all 6 pitfalls confirmed by direct code inspection
+- Validation: MEDIUM — curl scripts are patterns; actual session token flow requires running dev server and may need adaptation for next-auth v5 cookie format
 
 **Research date:** 2026-04-27
-**Valid until:** 2026-06-01 (stable stack — NextAuth/Next.js patterns don't shift monthly)
+**Valid until:** 2026-06-01 (stable Next.js App Router RBAC patterns)
