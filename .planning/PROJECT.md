@@ -29,6 +29,7 @@ Sistema completo de CRM de vendas e inteligencia de dados do Transfer Gov. Extra
 - ✓ TGov Dashboard (/tgov) com abas Aprovacao/Execucao/Prestacao de Contas — v5.0 Phase 19
 - ✓ Designacao de tecnico responsavel + perfil CSM + tgov_comments — v5.0 Phase 20
 - ✓ Nav TGov BI + Pipeline, novos roles coord_execucao/assistente_execucao, isolamento de perfis — v5.0 Phase 21
+- ✓ CSM RBAC Foundation: canCsm() gate, /csm + /csm/comissoes pages, middleware exemptions, CSM client/contact/commissions APIs — v6.0 Phase 22
 
 ### Active
 
