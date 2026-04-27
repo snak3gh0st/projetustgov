@@ -65,7 +65,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Milestone v6.0 — CSM & Customer Success — In Progress
 
-- [ ] **Phase 22: CSM RBAC Foundation** - canCsm() gate, /csm route protection, CRM capabilities (add client, edit contact, commissions) for CSM role
+- [x] **Phase 22: CSM RBAC Foundation** - canCsm() gate, /csm route protection, CRM capabilities (add client, edit contact, commissions) for CSM role
 - [ ] **Phase 23: CSM Pipeline & BI Dashboard** - Unified client list with 5-level priority badges, aggregated financials, search/filter, expandable detail, BI dashboard totals and charts
 - [ ] **Phase 24: UI Refresh** - Collapsible sidebar, dark mode via next-themes, mobile-responsive sidebar, logo text "Hub da Projetos"
 - [ ] **Phase 25: Budget Items ETL & Display** - csm_budget_cache table, on-demand TransfereGov API fetch, 7-day TTL cache, budget items rendered per project in CSM detail view
@@ -437,7 +437,7 @@ Tarefas pontuais executadas fora de fases formais — bugs, ajustes de UX e pequ
 | 20. Ajustes TGov 07/04 — Técnico + CSM | 4/4 | ✅ Complete | 2026-04-08 |
 | 21. Ajustes TGov 09/04 — BI + Pipeline + Roles | 4/4 | ✅ Complete | 2026-04-10 |
 | **Milestone v6.0** | | | |
-| 22. CSM RBAC Foundation | 1/3 | In Progress|  |
+| 22. CSM RBAC Foundation | 3/3 | Complete |  |
 | 23. CSM Pipeline & BI Dashboard | 0/TBD | 🔲 Not started | — |
 | 24. UI Refresh | 0/TBD | 🔲 Not started | — |
 | 25. Budget Items ETL & Display | 0/TBD | 🔲 Not started | — |

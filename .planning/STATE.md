@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: — CSM & Customer Success — In Progress
 status: executing
-stopped_at: Completed 22-csm-rbac-foundation Plan 01 — canCsm helper, middleware /csm exemption, /csm page scaffold, sidebar nav entry
-last_updated: "2026-04-27T15:35:00.000Z"
-last_activity: 2026-04-27 -- Completed Phase 22 Plan 01
+stopped_at: Completed 22-csm-rbac-foundation Plan 03 — all 3 plans complete; CSM RBAC foundation phase done
+last_updated: "2026-04-27T16:30:00.000Z"
+last_activity: 2026-04-27 -- Completed Phase 22 Plans 02 and 03
 progress:
   total_phases: 21
   completed_phases: 12
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-04-27)
 
 ## Current Position
 
-Phase: 22 (csm-rbac-foundation) — EXECUTING
-Plan: 2 of 3 (Plan 01 complete)
-Status: Executing Phase 22 — Plan 01 done
-Last activity: 2026-04-27 - Completed Plan 01: canCsm(), middleware CSM_PATHS, /csm page scaffold, Sidebar nav entry
+Phase: 22 (csm-rbac-foundation) — COMPLETE
+Plan: 3 of 3 (all plans complete)
+Status: Phase 22 complete — all 3 plans done; ready to start Phase 23
+Last activity: 2026-04-27 - Completed Plan 02: POST /api/csm/clients, GET+PATCH /api/csm/clients/[cnpj]/contacts; Plan 03: GET /api/csm/comissoes proxy, /csm/comissoes page, Sidebar 5-item csm block
 
 Progress (v6.0): [----------] 0% (0/5 phases)
 
@@ -36,13 +36,13 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 **Milestone v3.0:** Complete (Phases 10-13 + 74 quick tasks)
 **Milestone v4.0:** COMPLETE (Phases 14-18)
 **Milestone v5.0:** COMPLETE (Phases 19-21)
-**Milestone v6.0:** IN PROGRESS — Phase 22 Plan 01 complete
+**Milestone v6.0:** IN PROGRESS — Phase 22 complete (3/3 plans); Phase 23 next
 
 ## Phase Map (v6.0)
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 22 | CSM RBAC Foundation | CSM-01..04 (4 reqs) | Plan 01 done (1/3) |
+| 22 | CSM RBAC Foundation | CSM-01..04 (4 reqs) | COMPLETE (3/3 plans) |
 | 23 | CSM Pipeline & BI Dashboard | CLI-01..06, BI-01..05 (11 reqs) | Not started |
 | 24 | UI Refresh | UI-01..04 (4 reqs) | Not started |
 | 25 | Budget Items ETL & Display | BUD-01..04 (4 reqs) | Not started |
@@ -59,6 +59,15 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 | NOT MATERIALIZED nos CTEs all_propostas/all_exec (Plan 20-04) | Postgres materializava CTE referenciada uma unica vez; hint forca inlining e desbloqueia push-down — speedup 100x (5s → 54ms) |
 | prestacao_contas tab mapeia para /api/tgov/execucao?mode=prestacao_contas | Reutiliza rota execucao com filtro ILIKE — evita nova rota |
 | APROVACAO_ONLY_ROLES e EXECUCAO_ONLY_ROLES exportados de tgov.ts | Centraliza constantes de grupos de roles para tab isolation |
+
+### Key Architecture Decisions (v6.0 — Phase 22 Plans 02 and 03)
+
+| Decision | Rationale |
+|----------|-----------|
+| status_contato = 'Não Contatado' (accented) in CSM POST (Plan 22-02) | Plan template had unaccented form; repo-sync.ts + api/leads production SQL uses accented form — unaccented INSERT would silently misclassify new rows in pipeline filters |
+| allowedFields = ['telefone', 'email'] in PATCH /api/csm/clients/[cnpj]/contacts (Plan 22-02) | CSM trust scope; status_contato/principal/comissao_* changes must remain in gestor/vendedor hands only |
+| vendedor_id hardcoded to session.userId in /api/csm/comissoes; no vendedorId query-param honored (Plan 22-03) | Prevents cross-seller data leak even from malicious CSM query strings; data isolation is non-negotiable |
+| paulo_breakdown / per_vendedor / vendedores_list / selected_vendedor_stats stripped from CSM comissoes response (Plan 22-03) | Manager-facing aggregations expose Paulo's personal commission split to a non-manager role |
 
 ### Key Architecture Decisions (v6.0 — Phase 22 Plan 01)
 
@@ -114,5 +123,5 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 ## Session Continuity
 
 Last session: 2026-04-27
-Stopped at: Completed 22-csm-rbac-foundation Plan 01 — CSM RBAC foundation (canCsm, middleware, /csm page, sidebar)
-Next action: Execute Phase 22 Plans 02 and 03 (Wave 2, parallel)
+Stopped at: Completed 22-csm-rbac-foundation Phase — all 3 plans done (CSM-01..04 all satisfied)
+Next action: Execute Phase 23 — CSM Pipeline & BI Dashboard (CLI-01..06, BI-01..05)
