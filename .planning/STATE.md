@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: — CSM & Customer Success — In Progress
-status: executing
-stopped_at: Completed 22-csm-rbac-foundation Plan 03 — all 3 plans complete; CSM RBAC foundation phase done
-last_updated: "2026-04-27T16:30:00.000Z"
-last_activity: 2026-04-27 -- Completed Phase 22 Plans 02 and 03
+status: completed
+stopped_at: Completed 22-csm-rbac-foundation Phase — all 3 plans done (CSM-01..04 all satisfied)
+last_updated: "2026-04-27T20:02:50.022Z"
+last_activity: 2026-04-27
 progress:
   total_phases: 21
   completed_phases: 12
   total_plans: 52
-  completed_plans: 48
+  completed_plans: 47
 ---
 
 # Project State: PROJETUS — v6.0 CSM & Customer Success
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-04-27)
 
 ## Current Position
 
-Phase: 22 (csm-rbac-foundation) — COMPLETE
-Plan: 3 of 3 (all plans complete)
+Phase: 22
+Plan: Not started
 Status: Phase 22 complete — all 3 plans done; ready to start Phase 23
-Last activity: 2026-04-27 - Completed Plan 02: POST /api/csm/clients, GET+PATCH /api/csm/clients/[cnpj]/contacts; Plan 03: GET /api/csm/comissoes proxy, /csm/comissoes page, Sidebar 5-item csm block
+Last activity: 2026-04-27
 
 Progress (v6.0): [----------] 0% (0/5 phases)
 
