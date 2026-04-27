@@ -46,6 +46,11 @@ export default auth((req) => {
     !pathname.startsWith('/api/usuarios') &&
     !pathname.startsWith('/api/health')
 
+  // CSM-area paths (page + API). Must be allowed through for csm role even
+  // though /api/csm/* would otherwise match isCrmApi.
+  const CSM_PATHS = ['/csm', '/api/csm']
+  const isCsmPath = CSM_PATHS.some(p => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?'))
+
   if (role === 'adm_produto') {
     if (isCrmPage || isCrmHome) {
       return Response.redirect(new URL('/tgov', req.url))
@@ -56,14 +61,18 @@ export default auth((req) => {
   }
 
   if (role === 'csm') {
-    // CSM é TGov-only, mesmo isolamento de adm_produto vs CRM.
+    // CSM-area paths take precedence — never block /csm or /api/csm for the csm role.
+    if (isCsmPath) {
+      return
+    }
+    // CSM is otherwise TGov-read + CSM-area only — CRM pages and CRM APIs are blocked.
     if (isCrmPage || isCrmHome) {
-      return Response.redirect(new URL('/tgov', req.url))
+      return Response.redirect(new URL('/csm', req.url))
     }
     if (isCrmApi) {
       return Response.json({ error: 'Forbidden' }, { status: 403 })
     }
-    // Mutation gate: CSM só pode escrever em /api/tgov/comments. Tudo mais bloqueado.
+    // Mutation gate: CSM só pode escrever em /api/tgov/comments. Tudo mais bloqueado em TGov.
     const isTgovPrivilegedMutation =
       pathname.startsWith('/api/tgov/whitelist') ||
       pathname.startsWith('/api/tgov/interaction') ||
