@@ -9,7 +9,7 @@ Requirements para milestone v6.0 — CSM & Customer Success.
 
 ### CSM Role & Acesso
 
-- [ ] **CSM-01**: CSM (bruno@projetus.org) pode acessar area exclusiva `/csm` com visao administrativa de todos os clientes historicos Projetus (2020–2025)
+- [x] **CSM-01**: CSM (bruno@projetus.org) pode acessar area exclusiva `/csm` com visao administrativa de todos os clientes historicos Projetus (2020–2025)
 - [ ] **CSM-02**: CSM pode adicionar novo cliente ao sistema
 - [ ] **CSM-03**: CSM pode editar dados de contato (telefone, email) de qualquer cliente
 - [ ] **CSM-04**: CSM pode visualizar e calcular comissoes proprias (mesmo sistema SDR/Closer existente)
@@ -77,7 +77,7 @@ Requirements para milestone v6.0 — CSM & Customer Success.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CSM-01 | Phase 22 | Pending |
+| CSM-01 | Phase 22 | Complete |
 | CSM-02 | Phase 22 | Pending |
 | CSM-03 | Phase 22 | Pending |
 | CSM-04 | Phase 22 | Pending |

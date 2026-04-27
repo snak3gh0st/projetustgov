@@ -323,7 +323,7 @@ Plans:
   3. CSM can add a new client record to the system via the existing CRM add-client flow
   4. CSM can edit phone/email for any client without needing gestor privileges
   5. CSM can view their own commission calculations using the existing SDR/Closer commission system
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 22-01-PLAN.md — canCsm() helper, middleware exemption for /csm + /api/csm, /csm page scaffold, sidebar CSM nav, bruno user verification (CSM-01)
@@ -437,7 +437,7 @@ Tarefas pontuais executadas fora de fases formais — bugs, ajustes de UX e pequ
 | 20. Ajustes TGov 07/04 — Técnico + CSM | 4/4 | ✅ Complete | 2026-04-08 |
 | 21. Ajustes TGov 09/04 — BI + Pipeline + Roles | 4/4 | ✅ Complete | 2026-04-10 |
 | **Milestone v6.0** | | | |
-| 22. CSM RBAC Foundation | 0/3 | 🔲 Not started | — |
+| 22. CSM RBAC Foundation | 1/3 | In Progress|  |
 | 23. CSM Pipeline & BI Dashboard | 0/TBD | 🔲 Not started | — |
 | 24. UI Refresh | 0/TBD | 🔲 Not started | — |
 | 25. Budget Items ETL & Display | 0/TBD | 🔲 Not started | — |

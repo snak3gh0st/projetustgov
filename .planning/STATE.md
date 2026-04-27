@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v6.0
-milestone_name: CSM & Customer Success
-status: roadmap_ready
-stopped_at: Roadmap created — ready to plan Phase 22
-last_updated: "2026-04-27T00:00:00.000Z"
-last_activity: 2026-04-27
+milestone_name: — CSM & Customer Success — In Progress
+status: executing
+stopped_at: Completed 22-csm-rbac-foundation Plan 01 — canCsm helper, middleware /csm exemption, /csm page scaffold, sidebar nav entry
+last_updated: "2026-04-27T15:35:00.000Z"
+last_activity: 2026-04-27 -- Completed Phase 22 Plan 01
 progress:
-  total_phases: 5
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 21
+  completed_phases: 12
+  total_plans: 52
+  completed_plans: 48
 ---
 
 # Project State: PROJETUS — v6.0 CSM & Customer Success
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-27)
 
 **Core value:** CRM de vendas com inteligencia automatizada sobre propostas e projetos em execucao do Transfer Gov, agora com area de Customer Success para upsell/cross-sell pos-venda.
-**Current focus:** Phase 22 — CSM RBAC Foundation (not started)
+**Current focus:** Phase 22 — csm-rbac-foundation
 
 ## Current Position
 
-Phase: 22 — CSM RBAC Foundation
-Plan: —
-Status: Not started
-Last activity: 2026-04-27 — Roadmap created for v6.0
+Phase: 22 (csm-rbac-foundation) — EXECUTING
+Plan: 2 of 3 (Plan 01 complete)
+Status: Executing Phase 22 — Plan 01 done
+Last activity: 2026-04-27 - Completed Plan 01: canCsm(), middleware CSM_PATHS, /csm page scaffold, Sidebar nav entry
 
 Progress (v6.0): [----------] 0% (0/5 phases)
 
@@ -36,13 +36,13 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 **Milestone v3.0:** Complete (Phases 10-13 + 74 quick tasks)
 **Milestone v4.0:** COMPLETE (Phases 14-18)
 **Milestone v5.0:** COMPLETE (Phases 19-21)
-**Milestone v6.0:** IN PROGRESS — roadmap ready, Phase 22 not started
+**Milestone v6.0:** IN PROGRESS — Phase 22 Plan 01 complete
 
 ## Phase Map (v6.0)
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 22 | CSM RBAC Foundation | CSM-01..04 (4 reqs) | Not started |
+| 22 | CSM RBAC Foundation | CSM-01..04 (4 reqs) | Plan 01 done (1/3) |
 | 23 | CSM Pipeline & BI Dashboard | CLI-01..06, BI-01..05 (11 reqs) | Not started |
 | 24 | UI Refresh | UI-01..04 (4 reqs) | Not started |
 | 25 | Budget Items ETL & Display | BUD-01..04 (4 reqs) | Not started |
@@ -59,6 +59,16 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 | NOT MATERIALIZED nos CTEs all_propostas/all_exec (Plan 20-04) | Postgres materializava CTE referenciada uma unica vez; hint forca inlining e desbloqueia push-down — speedup 100x (5s → 54ms) |
 | prestacao_contas tab mapeia para /api/tgov/execucao?mode=prestacao_contas | Reutiliza rota execucao com filtro ILIKE — evita nova rota |
 | APROVACAO_ONLY_ROLES e EXECUCAO_ONLY_ROLES exportados de tgov.ts | Centraliza constantes de grupos de roles para tab isolation |
+
+### Key Architecture Decisions (v6.0 — Phase 22 Plan 01)
+
+| Decision | Rationale |
+|----------|-----------|
+| canCsm() placed after canCommentTgov() in dal.ts (Plan 22-01) | Logical grouping with TGov helpers; single source of truth for CSM area access (csm|gestor|admin) |
+| CSM_PATHS allow-list at top-level scope in middleware, isCsmPath early-return inside csm block (Plan 22-01) | Prevents /api/csm/* from hitting isCrmApi 403; must fire before isCrmApi check to avoid race |
+| CSM CRM-page redirect changed from /tgov to /csm (Plan 22-01) | /tgov was a stopgap; /csm is the correct CSM home; avoids redirect loop via Pitfall 5 pattern |
+| auth.ts JWT/session callbacks use Role from @/lib/dal (Plan 22-01) | Stale 5-element union predated csm/tgov roles; import type ensures TS stays in sync with dal.ts |
+| bruno@projetus.org updated via UPDATE SET role='csm' — no INSERT (Plan 22-01) | User existed with role='vendedor'; only role update needed, no bcrypt/INSERT required |
 
 ### Key Architecture Decisions (v6.0 — pre-implementation)
 
@@ -104,5 +114,5 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 ## Session Continuity
 
 Last session: 2026-04-27
-Stopped at: Roadmap created — ready to plan Phase 22
-Next action: `/gsd:plan-phase 22`
+Stopped at: Completed 22-csm-rbac-foundation Plan 01 — CSM RBAC foundation (canCsm, middleware, /csm page, sidebar)
+Next action: Execute Phase 22 Plans 02 and 03 (Wave 2, parallel)
