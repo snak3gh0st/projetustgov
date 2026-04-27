@@ -95,6 +95,7 @@ export default function Sidebar({ user }: SidebarProps) {
       ]
     : user.role === 'csm'
     ? [
+        { href: '/csm', label: 'Clientes CSM', icon: 'leads' },
         { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
         { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
         { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
