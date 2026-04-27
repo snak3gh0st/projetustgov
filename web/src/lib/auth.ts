@@ -4,6 +4,7 @@ import * as bcrypt from 'bcryptjs'
 import { query } from './db'
 import { CRMUser } from './types'
 import { authConfig } from '@/auth.config'
+import type { Role } from '@/lib/dal'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -60,7 +61,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // On sign-in, copy user.id and user.role to token
       if (user) {
         token.id = user.id as string
-        token.role = (user as { role: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' }).role
+        token.role = (user as { role: Role }).role
         token.roleRefreshedAt = Date.now()
       } else if (token.id) {
         // Refresh role from DB every hour so role changes take effect without re-login
@@ -82,7 +83,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Copy token.id and token.role to session.user
       if (session.user) {
         session.user.id = token.id as string
-        session.user.role = token.role as 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador'
+        session.user.role = token.role as Role
       }
       return session
     },

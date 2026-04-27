@@ -108,6 +108,11 @@ export function canCommentTgov(role: string | undefined): boolean {
       || role === 'coord_prestacao' || role === 'assistente_prestacao'
 }
 
+/** CSM area: read + write access to CSM-owned data. Gestor/admin can also enter for oversight. */
+export function canCsm(role: string | undefined): boolean {
+  return role === 'csm' || role === 'gestor' || role === 'admin'
+}
+
 // Helper: check if user has admin-level access (full control)
 export function isAdmin(role: string): boolean {
   return role === 'gestor'
