@@ -26,12 +26,17 @@ Sistema completo de CRM de vendas e inteligencia de dados do Transfer Gov. Extra
 - ✓ Alert rule (valor_desembolsado = 0) confirmada com cliente — v4.0
 - ✓ Dashboard separado Pipeline Aprovacao vs Pipeline Execucao — v4.0
 - ✓ Distribuicao igualitaria de leads na execucao com client-routing para coordenador — v4.1 Phase 18
+- ✓ TGov Dashboard (/tgov) com abas Aprovacao/Execucao/Prestacao de Contas — v5.0 Phase 19
+- ✓ Designacao de tecnico responsavel + perfil CSM + tgov_comments — v5.0 Phase 20
+- ✓ Nav TGov BI + Pipeline, novos roles coord_execucao/assistente_execucao, isolamento de perfis — v5.0 Phase 21
 
 ### Active
 
-- [ ] Identidade visual Projete (cores, fontes, logo)
-- [ ] Otimizacao de memoria no sync de propostas (~1300MB → <1GB)
-- [ ] TGov dashboard replicando Power BI oficial (Aprovacao + Execucao)
+- [ ] CSM pipeline com 5 niveis de prioridade por saldo/fase TransfereGov
+- [ ] Perfil CSM completo: acesso CRM+TGov unificado, adicionar clientes, comissoes
+- [ ] Visualizacao orcamentaria simplificada (Plano de Aplicacao Detalhado, 30 chars)
+- [ ] Tags de potencial de venda por IA (similaridade itens orcamentarios × servicos Projetus)
+- [ ] UI: sidebar recolhivel, dark mode, mobile-friendly, logo text
 
 ### Out of Scope
 
@@ -42,24 +47,27 @@ Sistema completo de CRM de vendas e inteligencia de dados do Transfer Gov. Extra
 - **Mobile app** — Web-first approach
 - **WhatsApp automation** — Projeto separado/futuro
 
-## Current Milestone: v4.1 Distribuicao, Design & Performance
+## Current Milestone: v6.0 CSM & Customer Success
 
-**Goal:** Equilibrar distribuicao de leads na execucao, atualizar identidade visual para marca Projete, e otimizar memoria do sync de propostas.
+**Goal:** Criar area de Customer Success para Bruno Ferreira — pipeline priorizado por saldo/fase TransfereGov com visao combinada CRM+TGov, acesso orcamentario simplificado, tags de potencial de venda por IA, e melhorias de UI para toda a plataforma.
 
 **Target features:**
-- Distribuicao igualitaria de leads (Execucao) — Roleta automatica para leads novos sem vendedor da aprovacao, priorizando vendedores com menos leads totais na execucao
-- Identidade visual Projete — Atualizar design do app conforme guia de marca da Projete
-- Otimizacao de memoria — Resolver pico de ~1300MB no sync de propostas (limite Vercel Pro: 1GB)
+- CSM pipeline com 5 niveis de prioridade (execucao com saldo, a desembolsar, rendimento, aprovacao, prestacao de contas)
+- Perfil CSM completo: acesso CRM+TGov unificado, adicionar clientes, editar telefones, calcular comissoes
+- Visualizacao orcamentaria: itens do Plano de Aplicacao Detalhado simplificados (30 chars, via ID Proposta)
+- Tags de potencial de venda por IA (similaridade entre itens orcamentarios e servicos Projetus)
+- UI: sidebar recolhivel, dark mode, mobile-friendly, logo text → "Hub da Projetos"
 
 ## Context
 
-**Current state (v4.0 shipped):**
-- Next.js 14 App Router + Supabase PostgreSQL on Vercel
-- ~15,500 LOC TypeScript (web/)
-- 17 phases completed across 4 milestones + 82 quick tasks
-- 2 Vercel cron jobs: sync-leads (12:30 UTC), sync-execucao (13:00 UTC)
+**Current state (v5.0 shipped):**
+- Next.js 14 App Router + Supabase PostgreSQL on Vercel (crons moved to sigmadb systemd timers)
+- ~15,500+ LOC TypeScript (web/)
+- 21 phases completed across 5 milestones + 95+ quick tasks
+- sigmadb systemd timers: sync-leads + sync-execucao (replacing Vercel crons)
 - 8,793 OSC execution projects synced from government CSVs
-- 5 roles: gestor, vendedor, coordenador, visualizador, gestor_vendedor
+- 10+ roles: gestor, vendedor, coordenador, visualizador, gestor_vendedor, csm, coord_execucao, assistente_execucao, coord_prestacao, assistente_prestacao
+- TGov Dashboard (/tgov) com abas Aprovacao/Execucao/PC, tecnico assignment, tgov_comments
 
 **Key technical decisions (v4.0):**
 - NUMERIC(18,2) for all financial columns (not FLOAT)
@@ -122,4 +130,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-30 after Phase 18 (Lead Distribution) complete*
+*Last updated: 2026-04-27 — Milestone v6.0 CSM & Customer Success started*
