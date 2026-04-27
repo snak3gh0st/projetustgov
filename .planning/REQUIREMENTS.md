@@ -1,84 +1,115 @@
-# Requirements: PROJETUS v4.1
+# Requirements: PROJETUS v6.0
 
-**Defined:** 2026-03-30
-**Core Value:** CRM de vendas com inteligencia automatizada sobre propostas e projetos em execucao do Transfer Gov
+**Defined:** 2026-04-27
+**Core Value:** CRM de vendas com inteligencia automatizada sobre propostas e projetos em execucao do Transfer Gov, com area de Customer Success (CSM) para upsell e cross-sell pos-venda
 
-## v4.1 Requirements
+## v6.0 Requirements
 
-Requirements for milestone v4.1 — Distribuicao, Design & Performance.
+Requirements para milestone v6.0 — CSM & Customer Success.
 
-### Distribuicao de Leads
+### CSM Role & Acesso
 
-- [x] **DIST-01**: Leads na execucao com tag "cliente" sao automaticamente atribuidos ao coordenador (Paulo) para monitoramento — nao entram na roleta
-- [x] **DIST-02**: Leads novos na execucao sem tag "cliente" e sem vendedor da aprovacao sao automaticamente atribuidos ao vendedor com menos leads totais na execucao
-- [x] **DIST-03**: Distribuicao usa advisory lock (pg_advisory_lock) para prevenir dupla atribuicao entre cron e trigger manual
-- [x] **DIST-04**: Gestor pode disparar distribuicao manual via botao na UI
+- [ ] **CSM-01**: CSM (bruno@projetus.org) pode acessar area exclusiva `/csm` com visao administrativa de todos os clientes historicos Projetus (2020–2025)
+- [ ] **CSM-02**: CSM pode adicionar novo cliente ao sistema
+- [ ] **CSM-03**: CSM pode editar dados de contato (telefone, email) de qualquer cliente
+- [ ] **CSM-04**: CSM pode visualizar e calcular comissoes proprias (mesmo sistema SDR/Closer existente)
 
-### Identidade Visual
+### CSM Client View
 
-- [ ] **DESIGN-01**: Cores do app atualizadas conforme guia de marca Projete (Tailwind config + migracao de hex hardcoded)
-- [ ] **DESIGN-02**: Logo e favicon substituidos por assets da Projete
-- [ ] **DESIGN-03**: Fontes migradas para marca Projete via next/font/google
-- [ ] **DESIGN-04**: Design tokens implementados via CSS custom properties (:root variables)
+- [ ] **CLI-01**: CSM ve todos os clientes Projetus em lista unificada — uma linha por cliente com dados financeiros agregados
+- [ ] **CLI-02**: Cada cliente exibe: total saldo em conta, valor a desembolsar, saldo de rendimento previsto, valor a liberar (desembolso + aprovacao pendentes)
+- [ ] **CLI-03**: Cada cliente exibe contagem de projetos por situacao: execucao c/ saldo / a desembolsar / aprovacao / prestacao de contas
+- [ ] **CLI-04**: CSM pode expandir cliente e ver todos os projetos agrupados por fase (aprovacao, execucao, PC)
+- [ ] **CLI-05**: CSM pode buscar e filtrar clientes por nome, CNPJ, situacao e saldo
+- [ ] **CLI-06**: Cada cliente e projeto exibe badge/tag colorida com nivel de prioridade: 1=saldo em conta · 2=a desembolsar · 3=rendimento · 4=aprovacao · 5=PC
 
-### Performance
+### CSM BI & Pipeline
 
-- [ ] **PERF-01**: Instrumentar heap usage por step no sync de propostas para medir baseline real
-- [ ] **PERF-02**: Com base na medicao, implementar otimizacao para reduzir pico de memoria
+- [ ] **BI-01**: BI do CSM exibe total de saldo em conta de todos os clientes gerenciados
+- [ ] **BI-02**: BI do CSM exibe contagem de projetos por situacao (KPIs + grafico)
+- [ ] **BI-03**: BI do CSM exibe total de saldo de rendimento previsto
+- [ ] **BI-04**: BI do CSM exibe valor total a liberar (desembolso pendente + aprovacao pendente)
+- [ ] **BI-05**: CSM tem pipeline/funil proprio separado do CRM vendas e TGov
 
-### TGov Dashboard
+### Itens Orcamentarios
 
-- [x] **TGOV-01**: Nova pagina /tgov acessivel via sidebar, restrita a role gestor
-- [x] **TGOV-02**: Tab Aprovacao com donut chart de situacao, KPI card total, e tabela detalhada (ID Proposta, Data, CNPJ, Proponente, Situacao)
-- [x] **TGOV-03**: Tab Execucao com mesma estrutura (donut + KPI + tabela) usando dados de projetos em execucao
-- [x] **TGOV-04**: Filtros: Ano, Tipo (Meus Proponentes/Outros), Status, UF do Proponente
-- [x] **TGOV-05**: Filtros na tabela: Proponente, Numero Proposta
+- [ ] **BUD-01**: CSM pode ver itens do Plano de Aplicacao Detalhado dentro de cada projeto em execucao
+- [ ] **BUD-02**: Itens orcamentarios exibidos apenas para projetos EM EXECUCAO com saldo em conta
+- [ ] **BUD-03**: Itens com saldo zerado (ja totalmente executados) sao ocultados da listagem
+- [ ] **BUD-04**: Descricoes de itens truncadas em 30 caracteres na listagem
 
-## Future Requirements (v4.2+)
+### Tags de Potencial de Venda
 
-### Distribuicao
+- [ ] **TAG-01**: Sistema gera tags de potencial por similaridade entre itens orcamentarios e servicos Projetus (juridico, contabil, marketing, RH)
+- [ ] **TAG-02**: CSM pode atribuir tags de servico manualmente por projeto quando IA nao disponivel
 
-- **DIST-05**: Relatorio pos-distribuicao com modal mostrando alocacao por vendedor
+### UI & Usabilidade
 
-### Performance
+- [ ] **UI-01**: Usuario pode recolher e esconder a sidebar
+- [ ] **UI-02**: Usuario pode ativar dark mode (visao noturna) em toda a plataforma
+- [ ] **UI-03**: Plataforma e mobile-friendly com sidebar responsiva em dispositivos moveis
+- [ ] **UI-04**: Assinatura da logo exibe "Hub da Projetos" (nao "CRM de vendas")
 
-- **PERF-03**: Streaming ZIP download (se medicao confirmar necessidade)
-- **PERF-04**: Batch DB inserts (se medicao confirmar necessidade)
+## v7.0 Requirements (Deferred)
+
+### CSM Avancado
+
+- **CSM-ADV-01**: Auto-notificacao quando novo cliente Projetus entra no TGov (aprovacao/execucao)
+- **CSM-ADV-02**: Regras de comp CSM diferenciadas (estrutura de comissao propria — definir com cliente)
+- **CSM-ADV-03**: Budget items batch ETL para pre-carregamento de todos os 8.793 projetos
+
+### AI Avancado
+
+- **AI-ADV-01**: Modelo de embedding vetorial (pgvector) para similaridade semantica de alta precisao
+- **AI-ADV-02**: Score de confianca por tag com indicador "needs_review" para revisao humana
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Link externo para TransferGov na tabela TGov | Verificar se dados locais cobrem antes |
-| Migracao Tailwind v4 | Milestone separado, overhead significativo |
-| Pipeline Kanban drag-and-drop | Adiado desde v3.0, sem demanda |
-| Edicao de dados de projetos em execucao | Read-only por decisao do v4.0 |
+| Handoff workflow vendedor → CSM | Regras de negocio nao definidas com cliente |
+| Kanban CSM (drag-to-stage) | Lista priorizada e suficiente para v1 com um usuario; Phase 12 ja deferida |
+| Notificacoes push para CSM | Depende de regras de negocio — definir em v7.0 |
+| Integracao com sistema financeiro real | Saldo em conta e estimado (TransfereGov) — nao ha acesso ao banking |
+| WhatsApp automation | Projeto separado/futuro |
 
 ## Traceability
 
+Preenchido durante criacao do roadmap.
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DIST-01 | Phase 18 | Complete |
-| DIST-02 | Phase 18 | Complete |
-| DIST-03 | Phase 18 | Complete |
-| DIST-04 | Phase 18 | Complete |
-| TGOV-01 | Phase 19 | Complete |
-| TGOV-02 | Phase 19 | Complete |
-| TGOV-03 | Phase 19 | Complete |
-| TGOV-04 | Phase 19 | Complete |
-| TGOV-05 | Phase 19 | Complete |
-| PERF-01 | Phase 20 | Pending |
-| PERF-02 | Phase 20 | Pending |
-| DESIGN-01 | Phase 21 | Pending |
-| DESIGN-02 | Phase 21 | Pending |
-| DESIGN-03 | Phase 21 | Pending |
-| DESIGN-04 | Phase 21 | Pending |
+| CSM-01 | — | Pending |
+| CSM-02 | — | Pending |
+| CSM-03 | — | Pending |
+| CSM-04 | — | Pending |
+| CLI-01 | — | Pending |
+| CLI-02 | — | Pending |
+| CLI-03 | — | Pending |
+| CLI-04 | — | Pending |
+| CLI-05 | — | Pending |
+| CLI-06 | — | Pending |
+| BI-01 | — | Pending |
+| BI-02 | — | Pending |
+| BI-03 | — | Pending |
+| BI-04 | — | Pending |
+| BI-05 | — | Pending |
+| BUD-01 | — | Pending |
+| BUD-02 | — | Pending |
+| BUD-03 | — | Pending |
+| BUD-04 | — | Pending |
+| TAG-01 | — | Pending |
+| TAG-02 | — | Pending |
+| UI-01 | — | Pending |
+| UI-02 | — | Pending |
+| UI-03 | — | Pending |
+| UI-04 | — | Pending |
 
 **Coverage:**
-- v4.1 requirements: 15 total
-- Mapped to phases: 15
-- Unmapped: 0 ✓
+- v6.0 requirements: 25 total
+- Mapped to phases: 0 (pending roadmap)
+- Unmapped: 25 ⚠️
 
 ---
-*Requirements defined: 2026-03-30*
-*Last updated: 2026-03-30 — traceability mapped after roadmap creation*
+*Requirements defined: 2026-04-27*
+*Last updated: 2026-04-27 — Milestone v6.0 initial definition*
