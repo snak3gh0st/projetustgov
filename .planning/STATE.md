@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: — CSM & Customer Success — In Progress
-status: completed
+status: executing
 stopped_at: Completed 22-csm-rbac-foundation Phase — all 3 plans done (CSM-01..04 all satisfied)
-last_updated: "2026-04-27T20:02:50.022Z"
-last_activity: 2026-04-27
+last_updated: "2026-04-28T00:16:52.506Z"
+last_activity: 2026-04-28 -- Phase 23 execution started
 progress:
   total_phases: 21
   completed_phases: 12
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-27)
 
 **Core value:** CRM de vendas com inteligencia automatizada sobre propostas e projetos em execucao do Transfer Gov, agora com area de Customer Success para upsell/cross-sell pos-venda.
-**Current focus:** Phase 22 — csm-rbac-foundation
+**Current focus:** Phase 23 — csm-pipeline-bi-dashboard
 
 ## Current Position
 
-Phase: 22
-Plan: Not started
-Status: Phase 22 complete — all 3 plans done; ready to start Phase 23
-Last activity: 2026-04-27
+Phase: 23 (csm-pipeline-bi-dashboard) — EXECUTING
+Plan: 2 of 4 (Plan 02 complete)
+Status: Executing Phase 23
+Last activity: 2026-04-27 -- Plan 23-02 complete (GET /api/csm/clients/[cnpj]/projects)
 
 Progress (v6.0): [----------] 0% (0/5 phases)
 
@@ -43,7 +43,7 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
 | 22 | CSM RBAC Foundation | CSM-01..04 (4 reqs) | COMPLETE (3/3 plans) |
-| 23 | CSM Pipeline & BI Dashboard | CLI-01..06, BI-01..05 (11 reqs) | Not started |
+| 23 | CSM Pipeline & BI Dashboard | CLI-01..06, BI-01..05 (11 reqs) | IN PROGRESS (Plans 01-02 done) |
 | 24 | UI Refresh | UI-01..04 (4 reqs) | Not started |
 | 25 | Budget Items ETL & Display | BUD-01..04 (4 reqs) | Not started |
 | 26 | AI Sales Tags | TAG-01, TAG-02 (2 reqs) | Not started |
@@ -59,6 +59,14 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 | NOT MATERIALIZED nos CTEs all_propostas/all_exec (Plan 20-04) | Postgres materializava CTE referenciada uma unica vez; hint forca inlining e desbloqueia push-down — speedup 100x (5s → 54ms) |
 | prestacao_contas tab mapeia para /api/tgov/execucao?mode=prestacao_contas | Reutiliza rota execucao com filtro ILIKE — evita nova rota |
 | APROVACAO_ONLY_ROLES e EXECUCAO_ONLY_ROLES exportados de tgov.ts | Centraliza constantes de grupos de roles para tab isolation |
+
+### Key Architecture Decisions (v6.0 — Phase 23 Plan 02)
+
+| Decision | Rationale |
+|----------|-----------|
+| phase='execucao' for PC rows in /api/csm/clients/[cnpj]/projects (Plan 23-02) | PC rows live in projetos_execucao tables; UI distinguishes via priority_level=5 or situacao ILIKE '%presta%conta%' — avoids third phase value the UI would have to handle |
+| Empty result returns {cnpj, projects:[]} not 404 (Plan 23-02) | CSM-added clients with no TGov projects are a valid case — do not 404 |
+| NOT EXISTS dedup in exec_rows/apr_rows CTEs (Plan 23-02) | Prevents double-counting rows present in both CRM and TGov-only tables; mirrors pattern from /api/tgov/execucao |
 
 ### Key Architecture Decisions (v6.0 — Phase 22 Plans 02 and 03)
 
@@ -123,5 +131,5 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 ## Session Continuity
 
 Last session: 2026-04-27
-Stopped at: Completed 22-csm-rbac-foundation Phase — all 3 plans done (CSM-01..04 all satisfied)
-Next action: Execute Phase 23 — CSM Pipeline & BI Dashboard (CLI-01..06, BI-01..05)
+Stopped at: Completed 23-csm-pipeline-bi-dashboard Plan 02 — GET /api/csm/clients/[cnpj]/projects with NOT MATERIALIZED CTE union + priority_level
+Next action: Execute Phase 23 Plan 03 — CSM client list UI with expandable rows

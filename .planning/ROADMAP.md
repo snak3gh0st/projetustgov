@@ -340,7 +340,7 @@ Plans:
   3. CSM can search by client name or CNPJ and filter by situacao or saldo range
   4. CSM can expand a client row to see all their projects grouped by phase (aprovacao, execucao, PC) with per-project financial data
   5. CSM BI dashboard shows portfolio totals (saldo em conta, a liberar, rendimento) and a project count breakdown by situacao via KPI cards and chart
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
 - [ ] 23-01-PLAN.md — GET /api/csm/portfolio (aggregated client list with priority badge) + GET /api/csm/bi (portfolio totals, by-status counts, funnel) (CLI-01..03, CLI-06 server, BI-01..05 server)
@@ -444,7 +444,7 @@ Tarefas pontuais executadas fora de fases formais — bugs, ajustes de UX e pequ
 | 21. Ajustes TGov 09/04 — BI + Pipeline + Roles | 4/4 | ✅ Complete | 2026-04-10 |
 | **Milestone v6.0** | | | |
 | 22. CSM RBAC Foundation | 3/3 | Complete    | 2026-04-27 |
-| 23. CSM Pipeline & BI Dashboard | 0/4 | 🔲 Not started | — |
+| 23. CSM Pipeline & BI Dashboard | 1/4 | In Progress|  |
 | 24. UI Refresh | 0/TBD | 🔲 Not started | — |
 | 25. Budget Items ETL & Display | 0/TBD | 🔲 Not started | — |
 | 26. AI Sales Tags | 0/TBD | 🔲 Not started | — |

@@ -19,9 +19,9 @@ Requirements para milestone v6.0 — CSM & Customer Success.
 - [ ] **CLI-01**: CSM ve todos os clientes Projetus em lista unificada — uma linha por cliente com dados financeiros agregados
 - [ ] **CLI-02**: Cada cliente exibe: total saldo em conta, valor a desembolsar, saldo de rendimento previsto, valor a liberar (desembolso + aprovacao pendentes)
 - [ ] **CLI-03**: Cada cliente exibe contagem de projetos por situacao: execucao c/ saldo / a desembolsar / aprovacao / prestacao de contas
-- [ ] **CLI-04**: CSM pode expandir cliente e ver todos os projetos agrupados por fase (aprovacao, execucao, PC)
+- [x] **CLI-04**: CSM pode expandir cliente e ver todos os projetos agrupados por fase (aprovacao, execucao, PC)
 - [ ] **CLI-05**: CSM pode buscar e filtrar clientes por nome, CNPJ, situacao e saldo
-- [ ] **CLI-06**: Cada cliente e projeto exibe badge/tag colorida com nivel de prioridade: 1=saldo em conta · 2=a desembolsar · 3=rendimento · 4=aprovacao · 5=PC
+- [x] **CLI-06**: Cada cliente e projeto exibe badge/tag colorida com nivel de prioridade: 1=saldo em conta · 2=a desembolsar · 3=rendimento · 4=aprovacao · 5=PC
 
 ### CSM BI & Pipeline
 
@@ -84,9 +84,9 @@ Requirements para milestone v6.0 — CSM & Customer Success.
 | CLI-01 | Phase 23 | Pending |
 | CLI-02 | Phase 23 | Pending |
 | CLI-03 | Phase 23 | Pending |
-| CLI-04 | Phase 23 | Pending |
+| CLI-04 | Phase 23 | Complete |
 | CLI-05 | Phase 23 | Pending |
-| CLI-06 | Phase 23 | Pending |
+| CLI-06 | Phase 23 | Complete |
 | BI-01 | Phase 23 | Pending |
 | BI-02 | Phase 23 | Pending |
 | BI-03 | Phase 23 | Pending |
