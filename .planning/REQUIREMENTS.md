@@ -45,7 +45,7 @@ Requirements para milestone v6.0 — CSM & Customer Success.
 
 ### UI & Usabilidade
 
-- [ ] **UI-01**: Usuario pode recolher e esconder a sidebar
+- [x] **UI-01**: Usuario pode recolher e esconder a sidebar
 - [x] **UI-02**: Usuario pode ativar dark mode (visao noturna) em toda a plataforma
 - [ ] **UI-03**: Plataforma e mobile-friendly com sidebar responsiva em dispositivos moveis
 - [x] **UI-04**: Assinatura da logo exibe "Hub da Projetos" (nao "CRM de vendas")
@@ -98,7 +98,7 @@ Requirements para milestone v6.0 — CSM & Customer Success.
 | BUD-04 | Phase 25 | Pending |
 | TAG-01 | Phase 26 | Pending |
 | TAG-02 | Phase 26 | Pending |
-| UI-01 | Phase 24 | Pending |
+| UI-01 | Phase 24 | Complete |
 | UI-02 | Phase 24 | Complete |
 | UI-03 | Phase 24 | Pending |
 | UI-04 | Phase 24 | Complete |

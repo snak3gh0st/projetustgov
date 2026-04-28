@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: — CSM & Customer Success — In Progress
 status: executing
-stopped_at: Completed 24-ui-refresh Plan 01 — dark mode infrastructure + brand rename
-last_updated: "2026-04-28T13:02:00.000Z"
+stopped_at: Completed 24-ui-refresh Plan 02 — collapsible sidebar with cookie persistence
+last_updated: "2026-04-28T13:17:00.000Z"
 last_activity: 2026-04-28
 progress:
   total_phases: 26
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-04-27)
 ## Current Position
 
 Phase: 24
-Plan: 01 complete
-Status: Executing Phase 24 — Plan 01 done
+Plan: 02 complete
+Status: Executing Phase 24 — Plans 01 and 02 done
 Last activity: 2026-04-28
 
 Progress (v6.0): [██░░░░░░░░] 20% (1/5 phases)
@@ -36,7 +36,7 @@ Progress (v6.0): [██░░░░░░░░] 20% (1/5 phases)
 **Milestone v3.0:** Complete (Phases 10-13 + 74 quick tasks)
 **Milestone v4.0:** COMPLETE (Phases 14-18)
 **Milestone v5.0:** COMPLETE (Phases 19-21)
-**Milestone v6.0:** IN PROGRESS — Phase 22 complete (3/3 plans); Phase 23 complete (4/4 plans); Phase 24 in progress (Plan 01 done)
+**Milestone v6.0:** IN PROGRESS — Phase 22 complete (3/3 plans); Phase 23 complete (4/4 plans); Phase 24 in progress (Plans 01-02 done)
 
 ## Phase Map (v6.0)
 
@@ -44,7 +44,7 @@ Progress (v6.0): [██░░░░░░░░] 20% (1/5 phases)
 |-------|------|--------------|--------|
 | 22 | CSM RBAC Foundation | CSM-01..04 (4 reqs) | COMPLETE (3/3 plans) |
 | 23 | CSM Pipeline & BI Dashboard | CLI-01..06, BI-01..05 (11 reqs) | IN PROGRESS (Plans 01-02 + 04 done) |
-| 24 | UI Refresh | UI-01..04 (4 reqs) | IN PROGRESS (Plan 01 done — dark mode + brand rename) |
+| 24 | UI Refresh | UI-01..04 (4 reqs) | IN PROGRESS (Plans 01-02 done — dark mode, brand rename, collapsible sidebar) |
 | 25 | Budget Items ETL & Display | BUD-01..04 (4 reqs) | Not started |
 | 26 | AI Sales Tags | TAG-01, TAG-02 (2 reqs) | Not started |
 
@@ -94,6 +94,14 @@ Progress (v6.0): [██░░░░░░░░] 20% (1/5 phases)
 | CSM CRM-page redirect changed from /tgov to /csm (Plan 22-01) | /tgov was a stopgap; /csm is the correct CSM home; avoids redirect loop via Pitfall 5 pattern |
 | auth.ts JWT/session callbacks use Role from @/lib/dal (Plan 22-01) | Stale 5-element union predated csm/tgov roles; import type ensures TS stays in sync with dal.ts |
 | bruno@projetus.org updated via UPDATE SET role='csm' — no INSERT (Plan 22-01) | User existed with role='vendedor'; only role update needed, no bcrypt/INSERT required |
+
+### Key Architecture Decisions (v6.0 — Phase 24 Plan 02)
+
+| Decision | Rationale |
+|----------|-----------|
+| Client writes sidebar:state via document.cookie directly (Plan 24-02) | Instant UX without server round-trip; Server Action setSidebarState exists for future RSC callers but not used by toggle handler |
+| cookies() without await in layout.tsx (Plan 24-02) | Next.js 14.2.0 synchronous cookies() API — Pitfall 5 from research confirmed working |
+| Default sidebarOpen=true when cookie absent (Plan 24-02) | undefined !== 'false' = true; new users see full sidebar on first visit |
 
 ### Key Architecture Decisions (v6.0 — Phase 24 Plan 01)
 
@@ -147,5 +155,5 @@ Progress (v6.0): [██░░░░░░░░] 20% (1/5 phases)
 ## Session Continuity
 
 Last session: 2026-04-28
-Stopped at: Completed 24-ui-refresh Plan 01 — dark mode infrastructure + brand rename Hub da Projetos
-Next action: Execute Phase 24 Plan 02 — collapsible sidebar
+Stopped at: Completed 24-ui-refresh Plan 02 — collapsible sidebar with cookie persistence
+Next action: Execute Phase 24 Plan 03 — mobile bottom drawer
