@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { formatCNPJ, formatCompactCurrency } from '@/lib/format'
 import PriorityBadge from '@/components/PriorityBadge'
 
@@ -193,27 +193,30 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
   }
 
   const toggleExpand = (cnpj: string) => {
+    const isCurrentlyExpanded = expanded.has(cnpj)
     setExpanded(prev => {
       const next = new Set(prev)
       if (next.has(cnpj)) {
         next.delete(cnpj)
-        return next
-      }
-      next.add(cnpj)
-      if (!projectsCache[cnpj]) {
-        setLoadingProjects(p => new Set(p).add(cnpj))
-        fetch(`/api/csm/clients/${cnpj}/projects`, { credentials: 'include' })
-          .then(r => r.ok ? r.json() : Promise.reject(r.status))
-          .then(data => {
-            setProjectsCache(c => ({ ...c, [cnpj]: data.projects ?? [] }))
-            setLoadingProjects(p => { const x = new Set(p); x.delete(cnpj); return x })
-          })
-          .catch(() => {
-            setLoadingProjects(p => { const x = new Set(p); x.delete(cnpj); return x })
-          })
+      } else {
+        next.add(cnpj)
       }
       return next
     })
+    // Fetch projects on first expand — must be outside the setState updater
+    // so it does not run twice in React StrictMode
+    if (!isCurrentlyExpanded && !projectsCache[cnpj]) {
+      setLoadingProjects(p => new Set(p).add(cnpj))
+      fetch(`/api/csm/clients/${cnpj}/projects`, { credentials: 'include' })
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(data => {
+          setProjectsCache(c => ({ ...c, [cnpj]: data.projects ?? [] }))
+          setLoadingProjects(p => { const x = new Set(p); x.delete(cnpj); return x })
+        })
+        .catch(() => {
+          setLoadingProjects(p => { const x = new Set(p); x.delete(cnpj); return x })
+        })
+    }
   }
 
   // Loading state
@@ -367,9 +370,8 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
                 ]
 
                 return (
-                  <>
+                  <React.Fragment key={c.cnpj}>
                     <tr
-                      key={c.cnpj}
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() => toggleExpand(c.cnpj)}
                     >
@@ -421,7 +423,7 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
 
                     {/* Expanded row */}
                     {isExpanded && (
-                      <tr key={`${c.cnpj}-expanded`}>
+                      <tr>
                         <td colSpan={8} className="bg-gray-50 px-6 py-4 border-b border-gray-200">
                           {isLoadingProjects ? (
                             <div className="flex items-center gap-2 text-gray-400 text-sm">
@@ -453,7 +455,7 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 )
               })}
             </tbody>
