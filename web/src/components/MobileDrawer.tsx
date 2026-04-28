@@ -52,7 +52,7 @@ export default function MobileDrawer({ user }: MobileDrawerProps) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="Projete" style={{ width: 100, height: 'auto' }} />
               <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5 tracking-widest uppercase">
-                Hub da Projetos
+                Hub da PROJETUS
               </p>
             </div>
 

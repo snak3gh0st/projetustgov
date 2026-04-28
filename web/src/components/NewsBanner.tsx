@@ -7,7 +7,7 @@ const NEWS_ITEMS = [
   'UI: tema escuro disponivel em toda a plataforma (botao no menu lateral)',
   'UI: menu lateral pode ser recolhido para liberar espaco — preferencia salva entre sessoes',
   'UI: navegacao mobile com gaveta inferior (toque no botao azul no canto inferior esquerdo)',
-  'UI: assinatura "Hub da Projetos" no lugar de "CRM de Vendas"',
+  'UI: assinatura "Hub da PROJETUS" no lugar de "CRM de Vendas"',
 ]
 const STORAGE_KEY = `projetus-news-dismissed-${NEWS_VERSION}`
 

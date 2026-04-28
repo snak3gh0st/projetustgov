@@ -9,8 +9,8 @@ import Providers from '@/components/Providers'
 import MobileDrawer from '@/components/MobileDrawer'
 
 export const metadata: Metadata = {
-  title: 'Hub da Projetos',
-  description: 'Hub da Projetos — gestão de instrumentos governamentais',
+  title: 'Hub da PROJETUS',
+  description: 'Hub da PROJETUS — gestão de instrumentos governamentais',
 }
 
 export default async function RootLayout({
