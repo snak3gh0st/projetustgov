@@ -63,7 +63,7 @@ completed: 2026-04-28
 - **Duration:** ~10 min
 - **Started:** 2026-04-28T13:10:00Z
 - **Completed:** 2026-04-28T13:20:00Z
-- **Tasks:** 2 auto + 1 checkpoint (pending human verify)
+- **Tasks:** 2 auto + 1 checkpoint (human verify: APPROVED)
 - **Files modified:** 6 (2 created, 4 modified)
 
 ## Accomplishments
@@ -80,7 +80,7 @@ Each task was committed atomically:
 
 1. **Task 1: Install vaul, extract nav-items helper, create MobileDrawer** - `6a01b48` (feat)
 2. **Task 2: Wire MobileDrawer into layout.tsx and update responsive margin + NewsBanner** - `38402f3` (feat)
-3. **Task 3: Phase 24 cumulative human-verify** - PENDING (checkpoint — awaiting user verification)
+3. **Task 3: Phase 24 cumulative human-verify** - APPROVED — all 16 checks passed
 
 ## Files Created/Modified
 
@@ -111,38 +111,30 @@ None - plan executed exactly as written.
 
 ## Checkpoint: Phase 24 Cumulative Human-Verify (Task 3)
 
-**Status:** AWAITING USER APPROVAL
+**Status:** APPROVED — All 16 checks passed (user: "approved", 2026-04-28)
 
-The following 16 checks cover the full Phase 24 feature set (dark mode + collapsible sidebar + mobile drawer + brand text + NewsBanner v4.7).
+### Verification Results
 
-Start the dev server: `cd /Users/pauloloureiro/Dev/SigmaProjects/projetustgov/web && npm run dev`
+| # | Check | Result |
+|---|-------|--------|
+| 1 | Login page subtitle reads "Hub da Projetos" | PASS |
+| 2 | Sidebar header reads "Hub da Projetos" after login | PASS |
+| 3 | Browser tab title reads "Hub da Projetos" | PASS |
+| 4 | Sidebar collapses to icon-only, persists after refresh | PASS |
+| 5 | Dark mode toggles, html gains dark class, no FOUC on reload | PASS |
+| 6 | Dark mode persists in localStorage and toggles back to light | PASS |
+| 7 | Desktop sidebar disappears on mobile viewport | PASS |
+| 8 | Blue circular hamburger button visible at bottom-left on mobile | PASS |
+| 9 | vaul bottom drawer slides up with correct nav items | PASS |
+| 10 | Nav item tap navigates AND drawer closes automatically | PASS |
+| 11 | Dark/light toggle works inside drawer while drawer stays open | PASS |
+| 12 | "Sair" inside drawer logs out | PASS |
+| 13 | NewsBanner shows "v4.7" with four UI-refresh entries | PASS |
+| 14 | Zero React hydration warnings in DevTools console | PASS |
+| 15 | `npm run lint` — zero errors (pre-existing img warnings only) | PASS |
+| 16 | `npx tsc --noEmit` — only pre-existing CsmBiClient.tsx error | PASS |
 
-### Desktop checks (viewport >= 1024px)
-
-1. Visit `http://localhost:3000/login` — subtitle reads "Hub da Projetos" (mixed case, NOT all caps)
-2. Log in — sidebar header reads "Hub da Projetos"
-3. Browser tab title reads "Hub da Projetos"
-4. Click chevron-left at top of sidebar — collapses to icon-only width, main content margin shrinks; refresh — state persists; click chevron-right — expands
-5. Click sun/moon button in sidebar — `<html>` gains `class="dark"`, page background turns dark gray, sidebar turns dark; refresh — no flash of light first
-6. Dark mode persists in `localStorage` (`theme=dark`) and can be toggled back to light
-
-### Mobile checks (viewport < 768px)
-
-7. Desktop sidebar disappears entirely
-8. Blue circular hamburger button visible at bottom-left corner
-9. Tap it — vaul bottom drawer slides up; header shows "Hub da Projetos"; drawer contains same nav items as desktop sidebar, filtered by role
-10. Tap any nav item — page navigates AND drawer closes automatically
-11. Open drawer again, tap dark/light toggle — theme switches, drawer remains open
-12. Tap "Sair" inside drawer — logs out
-
-### Cross-cutting checks
-
-13. Open NewsBanner (if not dismissed) — version reads "v4.7" with the four UI-refresh entries
-14. Open DevTools console — zero React hydration warnings on page load in light or dark mode
-15. `cd web && npm run lint` — zero errors (img tag warnings pre-existed)
-16. `cd web && npx tsc --noEmit` — only the pre-existing CsmBiClient.tsx error (no new errors)
-
-Type "approved" if all 16 checks pass, OR describe failures.
+**Outcome:** Phase 24 UI Refresh fully verified. All 4 requirements (UI-01 through UI-04) satisfied.
 
 ## User Setup Required
 
@@ -156,4 +148,4 @@ None - no external service configuration required. All changes are frontend-only
 
 ---
 *Phase: 24-ui-refresh*
-*Completed: 2026-04-28 (pending Task 3 checkpoint approval)*
+*Completed: 2026-04-28 — all 16 verification checks passed*

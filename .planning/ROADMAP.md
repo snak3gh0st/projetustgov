@@ -67,7 +67,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 22: CSM RBAC Foundation** - canCsm() gate, /csm route protection, CRM capabilities (add client, edit contact, commissions) for CSM role
 - [ ] **Phase 23: CSM Pipeline & BI Dashboard** - Unified client list with 5-level priority badges, aggregated financials, search/filter, expandable detail, BI dashboard totals and charts
-- [x] **Phase 24: UI Refresh** - Collapsible sidebar, dark mode via next-themes, mobile-responsive sidebar, logo text "Hub da Projetos" (completed 2026-04-28)
+- [x] **Phase 24: UI Refresh** - Collapsible sidebar, dark mode via next-themes, mobile-responsive sidebar (vaul), logo text "Hub da Projetos" — all 16 checks approved (completed 2026-04-28)
 - [ ] **Phase 25: Budget Items ETL & Display** - csm_budget_cache table, on-demand TransfereGov API fetch, 7-day TTL cache, budget items rendered per project in CSM detail view
 - [ ] **Phase 26: AI Sales Tags** - OpenAI embedding-based similarity matching between budget items and Projetus service categories, manual tag fallback for CSM
 
@@ -358,9 +358,9 @@ Plans:
 **Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 24-01-PLAN.md — Dark mode foundation (next-themes + Tailwind darkMode + Providers + ThemeToggle) + brand rename to "Hub da Projetos" (UI-02, UI-04)
-- [ ] 24-02-PLAN.md — Collapsible sidebar with cookie persistence (sidebar:state cookie, defaultOpen prop, toggle button, responsive main margin) (UI-01)
-- [ ] 24-03-PLAN.md — Mobile bottom drawer via vaul (extract shared nav-items helper, hidden md:flex on desktop sidebar, NewsBanner v4.7 bump) + cumulative human-verify (UI-03)
+- [x] 24-01-PLAN.md — Dark mode foundation (next-themes + Tailwind darkMode + Providers + ThemeToggle) + brand rename to "Hub da Projetos" (UI-02, UI-04)
+- [x] 24-02-PLAN.md — Collapsible sidebar with cookie persistence (sidebar:state cookie, defaultOpen prop, toggle button, responsive main margin) (UI-01)
+- [x] 24-03-PLAN.md — Mobile bottom drawer via vaul (extract shared nav-items helper, hidden md:flex on desktop sidebar, NewsBanner v4.7 bump) + cumulative human-verify (UI-03)
 
 ### Phase 25: Budget Items ETL & Display
 **Goal**: CSM can view budget line items (Plano de Aplicacao Detalhado) for any execution-phase project with saldo em conta, fetched on-demand from TransfereGov API and cached for 7 days.
@@ -448,7 +448,7 @@ Tarefas pontuais executadas fora de fases formais — bugs, ajustes de UX e pequ
 | **Milestone v6.0** | | | |
 | 22. CSM RBAC Foundation | 3/3 | Complete    | 2026-04-27 |
 | 23. CSM Pipeline & BI Dashboard | 3/4 | Complete    | 2026-04-28 |
-| 24. UI Refresh | 3/3 | Complete   | 2026-04-28 |
+| 24. UI Refresh | 3/3 | ✅ Complete | 2026-04-28 |
 | 25. Budget Items ETL & Display | 0/TBD | 🔲 Not started | — |
 | 26. AI Sales Tags | 0/TBD | 🔲 Not started | — |
 
@@ -457,4 +457,4 @@ Tarefas pontuais executadas fora de fases formais — bugs, ajustes de UX e pequ
 ---
 
 *Roadmap criado: 2026-02-04*
-*Última atualização: 2026-04-27 — Milestone v6.0 CSM & Customer Success — Phases 22–26 adicionadas*
+*Última atualização: 2026-04-28 — Phase 24 UI Refresh complete (all 16 checks approved)*
