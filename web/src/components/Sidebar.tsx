@@ -97,6 +97,7 @@ export default function Sidebar({ user }: SidebarProps) {
     ? [
         { href: '/csm', label: 'Clientes CSM', icon: 'leads' },
         { href: '/csm/comissoes', label: 'Comissoes', icon: 'comissoes' },
+        { href: '/csm/bi', label: 'BI Dashboard CSM', icon: 'bi' },
         { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
         { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
         { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
