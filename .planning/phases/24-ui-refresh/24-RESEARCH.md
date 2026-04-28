@@ -140,7 +140,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 import { cookies } from 'next/headers'
 
 export async function setSidebarState(open: boolean) {
-  const cookieStore = await cookies()
+  const cookieStore = cookies()
   cookieStore.set('sidebar:state', String(open), {
     path: '/',
     maxAge: 60 * 60 * 24 * 365, // 1 year
@@ -371,6 +371,25 @@ function toggle() {
 
 ---
 
+---
+
+## Scope Decision Required: Dark Mode Coverage (UI-02)
+
+**Decision affects plan size significantly.**
+
+22 of 32 `.tsx` files in `/app` use hard-coded light-mode color classes (`bg-white`, `bg-gray-50`, `text-gray-800`, etc.). The success criterion for UI-02 says "the dark class applies globally" — which next-themes satisfies by setting `class="dark"` on `<html>`. However, a user who enables dark mode on a page full of hard-coded `bg-white` divs will see a mostly-white page with only the sidebar/layout background darkened.
+
+**Two valid interpretations:**
+
+| Interpretation | Scope | Plan size |
+|---------------|-------|-----------|
+| A) "Dark class is available globally" | Infrastructure only: tailwind config + next-themes + layout.tsx + Sidebar.tsx + globals.css | ~3 tasks |
+| B) "Dark mode looks correct on all pages" | Infrastructure + dark: variants on all 22 files | ~8-10 tasks |
+
+**Research recommendation:** Implement interpretation A in Phase 24 (infrastructure + structural dark: classes on layout/sidebar/nav). Per-page dark: variants belong in a follow-up quick task or Phase 25. The success criterion does not say "every component renders dark mode correctly" — it says the class applies globally, which A satisfies.
+
+**Planner action:** Scope to interpretation A unless user explicitly requests B. Document assumption in PLAN.md.
+
 ## Open Questions
 
 1. **UI-04 casing: "Hub da Projetos" vs "Hub da PROJETOS"**
@@ -378,12 +397,7 @@ function toggle() {
    - What's unclear: Whether the sidebar brand text should follow email convention (PROJETUS) or use the new phrasing exactly as specified (Hub da Projetos).
    - Recommendation: Use "Hub da Projetos" verbatim as stated in the requirement. This is sidebar UI text, not an email subject. Flag for planner to confirm with user if they want "Hub da PROJETOS."
 
-2. **Scope of dark: classes — global vs selective**
-   - What we know: 22 of 32 tsx files in `/app` use hard-coded light-mode bg/text classes (`bg-white`, `bg-gray-50`, etc.).
-   - What's unclear: Is the requirement for full dark mode across all 22 files, or just structural elements (sidebar, layout background, nav)?
-   - Recommendation: Phase 24 scope should cover: layout.tsx, Sidebar.tsx, globals.css, ThemeToggle placement. Deep per-page dark: classes can be a follow-up. The success criterion says "dark class applies globally" which means the `<html>` class is set globally (next-themes does this) — individual page dark: variants are a UX enhancement, not the criterion.
-
-3. **Sidebar icon-only collapsed state icons**
+2. **Sidebar icon-only collapsed state icons**
    - What we know: Sidebar uses inline SVG icons via the NavIcon function.
    - What's unclear: When collapsed to icon-only, should the labels be hidden via CSS (simple) or should the component restructure (complex)?
    - Recommendation: Simple approach — `hidden` label + narrower `w-14` aside. No restructuring needed.
