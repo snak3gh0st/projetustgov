@@ -16,20 +16,20 @@ Requirements para milestone v6.0 — CSM & Customer Success.
 
 ### CSM Client View
 
-- [ ] **CLI-01**: CSM ve todos os clientes Projetus em lista unificada — uma linha por cliente com dados financeiros agregados
-- [ ] **CLI-02**: Cada cliente exibe: total saldo em conta, valor a desembolsar, saldo de rendimento previsto, valor a liberar (desembolso + aprovacao pendentes)
-- [ ] **CLI-03**: Cada cliente exibe contagem de projetos por situacao: execucao c/ saldo / a desembolsar / aprovacao / prestacao de contas
+- [x] **CLI-01**: CSM ve todos os clientes Projetus em lista unificada — uma linha por cliente com dados financeiros agregados
+- [x] **CLI-02**: Cada cliente exibe: total saldo em conta, valor a desembolsar, saldo de rendimento previsto, valor a liberar (desembolso + aprovacao pendentes)
+- [x] **CLI-03**: Cada cliente exibe contagem de projetos por situacao: execucao c/ saldo / a desembolsar / aprovacao / prestacao de contas
 - [ ] **CLI-04**: CSM pode expandir cliente e ver todos os projetos agrupados por fase (aprovacao, execucao, PC)
 - [ ] **CLI-05**: CSM pode buscar e filtrar clientes por nome, CNPJ, situacao e saldo
-- [ ] **CLI-06**: Cada cliente e projeto exibe badge/tag colorida com nivel de prioridade: 1=saldo em conta · 2=a desembolsar · 3=rendimento · 4=aprovacao · 5=PC
+- [x] **CLI-06**: Cada cliente e projeto exibe badge/tag colorida com nivel de prioridade: 1=saldo em conta · 2=a desembolsar · 3=rendimento · 4=aprovacao · 5=PC
 
 ### CSM BI & Pipeline
 
-- [ ] **BI-01**: BI do CSM exibe total de saldo em conta de todos os clientes gerenciados
-- [ ] **BI-02**: BI do CSM exibe contagem de projetos por situacao (KPIs + grafico)
-- [ ] **BI-03**: BI do CSM exibe total de saldo de rendimento previsto
-- [ ] **BI-04**: BI do CSM exibe valor total a liberar (desembolso pendente + aprovacao pendente)
-- [ ] **BI-05**: CSM tem pipeline/funil proprio separado do CRM vendas e TGov
+- [x] **BI-01**: BI do CSM exibe total de saldo em conta de todos os clientes gerenciados
+- [x] **BI-02**: BI do CSM exibe contagem de projetos por situacao (KPIs + grafico)
+- [x] **BI-03**: BI do CSM exibe total de saldo de rendimento previsto
+- [x] **BI-04**: BI do CSM exibe valor total a liberar (desembolso pendente + aprovacao pendente)
+- [x] **BI-05**: CSM tem pipeline/funil proprio separado do CRM vendas e TGov
 
 ### Itens Orcamentarios
 
@@ -81,17 +81,17 @@ Requirements para milestone v6.0 — CSM & Customer Success.
 | CSM-02 | Phase 22 | Complete (22-02) |
 | CSM-03 | Phase 22 | Complete (22-02) |
 | CSM-04 | Phase 22 | Complete (22-03) |
-| CLI-01 | Phase 23 | Pending |
-| CLI-02 | Phase 23 | Pending |
-| CLI-03 | Phase 23 | Pending |
+| CLI-01 | Phase 23 | Complete |
+| CLI-02 | Phase 23 | Complete |
+| CLI-03 | Phase 23 | Complete |
 | CLI-04 | Phase 23 | Pending |
 | CLI-05 | Phase 23 | Pending |
-| CLI-06 | Phase 23 | Pending |
-| BI-01 | Phase 23 | Pending |
-| BI-02 | Phase 23 | Pending |
-| BI-03 | Phase 23 | Pending |
-| BI-04 | Phase 23 | Pending |
-| BI-05 | Phase 23 | Pending |
+| CLI-06 | Phase 23 | Complete |
+| BI-01 | Phase 23 | Complete |
+| BI-02 | Phase 23 | Complete |
+| BI-03 | Phase 23 | Complete |
+| BI-04 | Phase 23 | Complete |
+| BI-05 | Phase 23 | Complete |
 | BUD-01 | Phase 25 | Pending |
 | BUD-02 | Phase 25 | Pending |
 | BUD-03 | Phase 25 | Pending |
