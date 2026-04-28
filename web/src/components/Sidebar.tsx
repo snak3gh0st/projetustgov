@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { logout } from '@/lib/auth-actions'
 import ThemeToggle from '@/components/ThemeToggle'
+import { getNavItemsForRole } from '@/lib/sidebar-nav-items'
 
 interface SidebarProps {
   user: {
@@ -46,26 +47,6 @@ function NavIcon({ name, className }: { name: string; className?: string }) {
   }
 }
 
-const LEADS_ITEM = { href: '/leads', label: 'Lead Aprovacao', icon: 'leads' }
-const EXECUCAO_ITEM = { href: '/execucao', label: 'Lead Execucao', icon: 'execucao' }
-
-const BASE_NAV_ITEMS = [
-  { href: '/', label: 'Pipeline', icon: 'pipeline' },
-  LEADS_ITEM,
-  { href: '/comissoes', label: 'Comissoes', icon: 'comissoes' },
-  { href: '/bi', label: 'BI Analytics', icon: 'bi' },
-  { href: '/monitorar', label: 'Meus Monitorados', icon: 'monitorar' },
-]
-
-const BASE_WITH_EXECUCAO = [
-  { href: '/', label: 'Pipeline', icon: 'pipeline' },
-  LEADS_ITEM,
-  EXECUCAO_ITEM,
-  { href: '/comissoes', label: 'Comissoes', icon: 'comissoes' },
-  { href: '/bi', label: 'BI Analytics', icon: 'bi' },
-  { href: '/monitorar', label: 'Meus Monitorados', icon: 'monitorar' },
-]
-
 export default function Sidebar({ user, defaultOpen = true }: SidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -83,92 +64,12 @@ export default function Sidebar({ user, defaultOpen = true }: SidebarProps) {
     writeSidebarCookie(next)
   }
 
-  const navItems = (user.role === 'gestor' || user.role === 'admin')
-    ? [
-        ...BASE_WITH_EXECUCAO,
-        { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
-        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
-        { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
-        { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
-        { href: '/cadastro-vendedor', label: 'Usuarios', icon: 'vendedores' },
-      ]
-    : user.role === 'coordenador'
-    ? [
-        ...BASE_WITH_EXECUCAO,
-        { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
-        { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
-      ]
-    : user.role === 'visualizador'
-    ? BASE_NAV_ITEMS.filter((item) => item.href !== '/monitorar')
-    : user.role === 'adm_produto'
-    ? [
-        { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
-        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
-        { href: '/cadastro-vendedor', label: 'Usuarios TGOV', icon: 'vendedores' },
-      ]
-    : user.role === 'csm'
-    ? [
-        { href: '/csm', label: 'Clientes CSM', icon: 'leads' },
-        { href: '/csm/comissoes', label: 'Comissoes', icon: 'comissoes' },
-        { href: '/csm/bi', label: 'BI Dashboard CSM', icon: 'bi' },
-        { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
-        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
-      ]
-    : user.role === 'coord_aprovacao'
-    ? [
-        { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
-        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
-        { href: '/cadastro-vendedor', label: 'Usuarios TGov', icon: 'vendedores' },
-      ]
-    : user.role === 'assistente_aprovacao'
-    ? [
-        { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
-        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
-        { href: '/cadastro-vendedor', label: 'Usuarios TGov', icon: 'vendedores' },
-      ]
-    : user.role === 'projetista'
-    ? [
-        { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
-        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
-      ]
-    : user.role === 'coord_execucao'
-    ? [
-        { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
-        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
-        { href: '/cadastro-vendedor', label: 'Usuarios TGov', icon: 'vendedores' },
-      ]
-    : user.role === 'assistente_execucao'
-    ? [
-        { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
-        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
-      ]
-    : user.role === 'coord_prestacao'
-    ? [
-        { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
-        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
-        { href: '/cadastro-vendedor', label: 'Usuarios TGov', icon: 'vendedores' },
-      ]
-    : user.role === 'assistente_prestacao'
-    ? [
-        { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
-        { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
-        { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
-      ]
-    : BASE_WITH_EXECUCAO
+  const navItems = getNavItemsForRole(user.role)
 
   return (
     <aside
       data-sidebar-open={open}
-      className={`fixed left-0 top-0 h-screen ${open ? 'w-56' : 'w-14'} bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col z-50 transition-[width] duration-200`}
+      className={`fixed left-0 top-0 h-screen ${open ? 'w-56' : 'w-14'} bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 hidden md:flex flex-col z-50 transition-[width] duration-200`}
     >
       <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-800">
         <div className={open ? '' : 'hidden'}>
