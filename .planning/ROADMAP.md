@@ -311,8 +311,6 @@ Plans:
 
 ---
 
-### Milestone v6.0 — CSM & Customer Success — In Progress
-
 ### Phase 22: CSM RBAC Foundation
 **Goal**: CSM role (bruno@projetus.org) can access a protected /csm area and perform CRM capabilities — adding clients, editing contact data, and viewing own commissions. Auth gate exists before any CSM data routes are built.
 **Depends on**: Phase 21 (csm role already in DB enum + next-auth.d.ts)
@@ -357,7 +355,12 @@ Plans:
   2. User can switch to dark mode from any page; the dark class applies globally including Radix UI portal components (dropdowns, dialogs); no flash of unstyled content on first load
   3. On a mobile device, the sidebar appears as a bottom drawer (vaul) that closes automatically on route change
   4. The app logo/brand text reads "Hub da Projetos" everywhere it previously showed "CRM de vendas"
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 24-01-PLAN.md — Dark mode foundation (next-themes + Tailwind darkMode + Providers + ThemeToggle) + brand rename to "Hub da Projetos" (UI-02, UI-04)
+- [ ] 24-02-PLAN.md — Collapsible sidebar with cookie persistence (sidebar:state cookie, defaultOpen prop, toggle button, responsive main margin) (UI-01)
+- [ ] 24-03-PLAN.md — Mobile bottom drawer via vaul (extract shared nav-items helper, hidden md:flex on desktop sidebar, NewsBanner v4.7 bump) + cumulative human-verify (UI-03)
 
 ### Phase 25: Budget Items ETL & Display
 **Goal**: CSM can view budget line items (Plano de Aplicacao Detalhado) for any execution-phase project with saldo em conta, fetched on-demand from TransfereGov API and cached for 7 days.
@@ -445,7 +448,7 @@ Tarefas pontuais executadas fora de fases formais — bugs, ajustes de UX e pequ
 | **Milestone v6.0** | | | |
 | 22. CSM RBAC Foundation | 3/3 | Complete    | 2026-04-27 |
 | 23. CSM Pipeline & BI Dashboard | 3/4 | Complete    | 2026-04-28 |
-| 24. UI Refresh | 0/TBD | 🔲 Not started | — |
+| 24. UI Refresh | 0/3 | 🔲 Planned | — |
 | 25. Budget Items ETL & Display | 0/TBD | 🔲 Not started | — |
 | 26. AI Sales Tags | 0/TBD | 🔲 Not started | — |
 
