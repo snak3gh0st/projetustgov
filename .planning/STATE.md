@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: — CSM & Customer Success — In Progress
-status: verifying
+status: executing
 stopped_at: Completed 24-ui-refresh Plan 01 — dark mode infrastructure + brand rename
 last_updated: "2026-04-28T13:02:00.000Z"
 last_activity: 2026-04-28
 progress:
-  total_phases: 21
-  completed_phases: 12
-  total_plans: 52
-  completed_plans: 48
+  total_phases: 26
+  completed_phases: 14
+  total_plans: 62
+  completed_plans: 54
 ---
 
 # Project State: PROJETUS — v6.0 CSM & Customer Success
