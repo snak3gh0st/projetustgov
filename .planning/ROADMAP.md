@@ -355,7 +355,7 @@ Plans:
   2. User can switch to dark mode from any page; the dark class applies globally including Radix UI portal components (dropdowns, dialogs); no flash of unstyled content on first load
   3. On a mobile device, the sidebar appears as a bottom drawer (vaul) that closes automatically on route change
   4. The app logo/brand text reads "Hub da Projetos" everywhere it previously showed "CRM de vendas"
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 24-01-PLAN.md — Dark mode foundation (next-themes + Tailwind darkMode + Providers + ThemeToggle) + brand rename to "Hub da Projetos" (UI-02, UI-04)
@@ -448,7 +448,7 @@ Tarefas pontuais executadas fora de fases formais — bugs, ajustes de UX e pequ
 | **Milestone v6.0** | | | |
 | 22. CSM RBAC Foundation | 3/3 | Complete    | 2026-04-27 |
 | 23. CSM Pipeline & BI Dashboard | 3/4 | Complete    | 2026-04-28 |
-| 24. UI Refresh | 0/3 | 🔲 Planned | — |
+| 24. UI Refresh | 1/3 | In Progress|  |
 | 25. Budget Items ETL & Display | 0/TBD | 🔲 Not started | — |
 | 26. AI Sales Tags | 0/TBD | 🔲 Not started | — |
 

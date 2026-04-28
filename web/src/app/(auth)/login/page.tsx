@@ -29,7 +29,7 @@ export default function LoginPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="Projete" style={{ width: 180, height: 'auto' }} />
           </div>
-          <p className="text-gray-400 text-sm">CRM de Vendas</p>
+          <p className="text-gray-400 dark:text-gray-500 text-sm">Hub da Projetos</p>
           <p className="text-[11px] text-[#0072F7] mt-2">
             powered by <span className="font-semibold">SigmaIntel</span>
           </p>

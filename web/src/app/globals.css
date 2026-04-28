@@ -6,15 +6,13 @@
 
 body {
   font-family: 'Inter', sans-serif;
-  background-color: #F8FAFC;
-  color: #1E293B;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Space Grotesk', sans-serif;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar — light */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -27,4 +25,15 @@ h1, h2, h3, h4, h5, h6 {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
+}
+
+/* Custom scrollbar — dark (when html.dark) */
+html.dark ::-webkit-scrollbar-track {
+  background: #1F2937;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: #4B5563;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6B7280;
 }

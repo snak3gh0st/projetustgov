@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: — CSM & Customer Success — In Progress
 status: verifying
-stopped_at: Completed 23-csm-pipeline-bi-dashboard-03-PLAN.md
-last_updated: "2026-04-28T01:10:30.478Z"
+stopped_at: Completed 24-ui-refresh Plan 01 — dark mode infrastructure + brand rename
+last_updated: "2026-04-28T13:02:00.000Z"
 last_activity: 2026-04-28
 progress:
   total_phases: 21
   completed_phases: 12
   total_plans: 52
-  completed_plans: 47
+  completed_plans: 48
 ---
 
 # Project State: PROJETUS — v6.0 CSM & Customer Success
@@ -20,23 +20,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-27)
 
 **Core value:** CRM de vendas com inteligencia automatizada sobre propostas e projetos em execucao do Transfer Gov, agora com area de Customer Success para upsell/cross-sell pos-venda.
-**Current focus:** Phase 23 — csm-pipeline-bi-dashboard
+**Current focus:** Phase 24 — ui-refresh
 
 ## Current Position
 
-Phase: 23
-Plan: Not started
-Status: All plans executed, pending verification
+Phase: 24
+Plan: 01 complete
+Status: Executing Phase 24 — Plan 01 done
 Last activity: 2026-04-28
 
-Progress (v6.0): [----------] 0% (0/5 phases)
+Progress (v6.0): [██░░░░░░░░] 20% (1/5 phases)
 
 **Milestone v1.0:** Complete (Phases 1, 2, 4, 5)
 **Milestone v2.0:** Superseded by Next.js migration (Phases 6-8)
 **Milestone v3.0:** Complete (Phases 10-13 + 74 quick tasks)
 **Milestone v4.0:** COMPLETE (Phases 14-18)
 **Milestone v5.0:** COMPLETE (Phases 19-21)
-**Milestone v6.0:** IN PROGRESS — Phase 22 complete (3/3 plans); Phase 23 next
+**Milestone v6.0:** IN PROGRESS — Phase 22 complete (3/3 plans); Phase 23 complete (4/4 plans); Phase 24 in progress (Plan 01 done)
 
 ## Phase Map (v6.0)
 
@@ -44,7 +44,7 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 |-------|------|--------------|--------|
 | 22 | CSM RBAC Foundation | CSM-01..04 (4 reqs) | COMPLETE (3/3 plans) |
 | 23 | CSM Pipeline & BI Dashboard | CLI-01..06, BI-01..05 (11 reqs) | IN PROGRESS (Plans 01-02 + 04 done) |
-| 24 | UI Refresh | UI-01..04 (4 reqs) | Not started |
+| 24 | UI Refresh | UI-01..04 (4 reqs) | IN PROGRESS (Plan 01 done — dark mode + brand rename) |
 | 25 | Budget Items ETL & Display | BUD-01..04 (4 reqs) | Not started |
 | 26 | AI Sales Tags | TAG-01, TAG-02 (2 reqs) | Not started |
 
@@ -95,6 +95,14 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 | auth.ts JWT/session callbacks use Role from @/lib/dal (Plan 22-01) | Stale 5-element union predated csm/tgov roles; import type ensures TS stays in sync with dal.ts |
 | bruno@projetus.org updated via UPDATE SET role='csm' — no INSERT (Plan 22-01) | User existed with role='vendedor'; only role update needed, no bcrypt/INSERT required |
 
+### Key Architecture Decisions (v6.0 — Phase 24 Plan 01)
+
+| Decision | Rationale |
+|----------|-----------|
+| UI-02 Interpretation A: infrastructure only (Plan 24-01) | Per-page dark: variants on 22 light-hardcoded pages deferred to follow-up quick task; dark class applies globally via html cascade |
+| suppressHydrationWarning on html not body (Plan 24-01) | next-themes injects blocking script that sets class on html; body suppression would miss the actual mismatch |
+| Hub da Projetos mixed case in UI (Plan 24-01) | PROJETUS-uppercase memory rule scoped to email subjects/body content — in-app UI uses the verbatim REQUIREMENTS.md phrasing |
+
 ### Key Architecture Decisions (v6.0 — pre-implementation)
 
 | Decision | Rationale |
@@ -138,12 +146,6 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 
 ## Session Continuity
 
-<<<<<<< HEAD
-Last session: 2026-04-28T00:40:49.831Z
-Stopped at: Completed 23-csm-pipeline-bi-dashboard-03-PLAN.md
-Next action: Execute Phase 23 Plans 03+04 — CSM client list UI + BI dashboard page
-=======
 Last session: 2026-04-28
-Stopped at: Completed Plan 23-04 — /csm/bi page + CsmBiClient + Sidebar CSM BI nav entry
-Next action: Complete Phase 23 — verify Plan 03 (CsmDashboardClient) + merge worktrees
->>>>>>> worktree-agent-a3e18052
+Stopped at: Completed 24-ui-refresh Plan 01 — dark mode infrastructure + brand rename Hub da Projetos
+Next action: Execute Phase 24 Plan 02 — collapsible sidebar
