@@ -70,7 +70,7 @@ Each task was committed atomically:
 2. **Task 2: Add collapsible state + toggle button to Sidebar.tsx** - `5d11bde` (feat)
 3. **Task 3: Read sidebar:state cookie in layout.tsx and sync main margin** - `8294924` (feat)
 
-**Plan metadata:** (docs commit — pending)
+**Plan metadata:** `4bc7cb1` (docs)
 
 ## Files Created/Modified
 
