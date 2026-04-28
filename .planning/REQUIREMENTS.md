@@ -81,9 +81,9 @@ Requirements para milestone v6.0 — CSM & Customer Success.
 | CSM-02 | Phase 22 | Complete (22-02) |
 | CSM-03 | Phase 22 | Complete (22-02) |
 | CSM-04 | Phase 22 | Complete (22-03) |
-| CLI-01 | Phase 23 | Pending (API done, UI pending) |
-| CLI-02 | Phase 23 | Pending (API done, UI pending) |
-| CLI-03 | Phase 23 | Pending (API done, UI pending) |
+| CLI-01 | Phase 23 | Complete (23-01 API + 23-03 UI) |
+| CLI-02 | Phase 23 | Complete (23-01 API + 23-03 UI) |
+| CLI-03 | Phase 23 | Complete (23-01 API + 23-03 UI) |
 | CLI-04 | Phase 23 | Complete (23-02) |
 | CLI-05 | Phase 23 | Complete |
 | CLI-06 | Phase 23 | Complete (23-01) |
