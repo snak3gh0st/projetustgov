@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: — CSM & Customer Success — In Progress
 status: executing
-stopped_at: Completed 24-ui-refresh Plan 02 — collapsible sidebar with cookie persistence
-last_updated: "2026-04-28T13:17:00.000Z"
+stopped_at: "Completed 24-ui-refresh Plan 03 tasks 1+2 — mobile bottom drawer; awaiting Task 3 human-verify checkpoint"
+last_updated: "2026-04-28T13:21:00.000Z"
 last_activity: 2026-04-28
 progress:
   total_phases: 26
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-04-27)
 ## Current Position
 
 Phase: 24
-Plan: 02 complete
-Status: Executing Phase 24 — Plans 01 and 02 done
+Plan: 03 in progress (Tasks 1+2 done — awaiting checkpoint Task 3)
+Status: Executing Phase 24 — Plans 01, 02, and 03 (tasks 1+2) done
 Last activity: 2026-04-28
 
 Progress (v6.0): [██░░░░░░░░] 20% (1/5 phases)
@@ -44,7 +44,7 @@ Progress (v6.0): [██░░░░░░░░] 20% (1/5 phases)
 |-------|------|--------------|--------|
 | 22 | CSM RBAC Foundation | CSM-01..04 (4 reqs) | COMPLETE (3/3 plans) |
 | 23 | CSM Pipeline & BI Dashboard | CLI-01..06, BI-01..05 (11 reqs) | IN PROGRESS (Plans 01-02 + 04 done) |
-| 24 | UI Refresh | UI-01..04 (4 reqs) | IN PROGRESS (Plans 01-02 done — dark mode, brand rename, collapsible sidebar) |
+| 24 | UI Refresh | UI-01..04 (4 reqs) | IN PROGRESS (Plans 01-03 executing — dark mode, brand rename, collapsible sidebar, mobile drawer tasks 1+2 done — checkpoint pending) |
 | 25 | Budget Items ETL & Display | BUD-01..04 (4 reqs) | Not started |
 | 26 | AI Sales Tags | TAG-01, TAG-02 (2 reqs) | Not started |
 
@@ -94,6 +94,15 @@ Progress (v6.0): [██░░░░░░░░] 20% (1/5 phases)
 | CSM CRM-page redirect changed from /tgov to /csm (Plan 22-01) | /tgov was a stopgap; /csm is the correct CSM home; avoids redirect loop via Pitfall 5 pattern |
 | auth.ts JWT/session callbacks use Role from @/lib/dal (Plan 22-01) | Stale 5-element union predated csm/tgov roles; import type ensures TS stays in sync with dal.ts |
 | bruno@projetus.org updated via UPDATE SET role='csm' — no INSERT (Plan 22-01) | User existed with role='vendedor'; only role update needed, no bcrypt/INSERT required |
+
+### Key Architecture Decisions (v6.0 — Phase 24 Plan 03)
+
+| Decision | Rationale |
+|----------|-----------|
+| vaul issue #631 workaround: useEffect pathname close (Plan 24-03) | vaul drawers don't auto-close on Next.js navigation; useEffect(() => setOpen(false), [pathname]) is the confirmed fix per research |
+| Shared getNavItemsForRole() helper in sidebar-nav-items.ts (Plan 24-03) | Single source of truth for nav items — prevents drift between desktop Sidebar and mobile MobileDrawer |
+| hidden md:flex on desktop aside (Plan 24-03) | Standard Tailwind responsive hiding pattern; sidebar disappears entirely on mobile |
+| md:ml-* on main in layout.tsx (Plan 24-03) | Mobile viewport has no fixed sidebar to offset; margin applied only at >= 768px |
 
 ### Key Architecture Decisions (v6.0 — Phase 24 Plan 02)
 
@@ -155,5 +164,5 @@ Progress (v6.0): [██░░░░░░░░] 20% (1/5 phases)
 ## Session Continuity
 
 Last session: 2026-04-28
-Stopped at: Completed 24-ui-refresh Plan 02 — collapsible sidebar with cookie persistence
-Next action: Execute Phase 24 Plan 03 — mobile bottom drawer
+Stopped at: Completed 24-ui-refresh Plan 03 tasks 1+2 — mobile bottom drawer; awaiting Task 3 human-verify checkpoint
+Next action: Human verification of Phase 24 cumulative UI (Task 3 checkpoint)
