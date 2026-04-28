@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: — CSM & Customer Success — In Progress
 status: executing
-stopped_at: Completed Plans 23-01 + 23-02 (API layer done)
-last_updated: "2026-04-28T00:27:41.914Z"
-last_activity: 2026-04-28 -- Phase 23 Plans 01+02 complete
+stopped_at: Completed Plan 23-04 (CSM BI Dashboard page + Sidebar nav)
+last_updated: "2026-04-28T00:40:00.000Z"
+last_activity: 2026-04-28 -- Phase 23 Plan 04 complete (CSM BI Dashboard)
 progress:
   total_phases: 21
   completed_phases: 10
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-27)
 ## Current Position
 
 Phase: 23 (csm-pipeline-bi-dashboard) — EXECUTING
-Plan: 2 of 4 (Plan 02 complete)
+Plan: 4 of 4 (Plan 04 complete — /csm/bi page + Sidebar nav)
 Status: Executing Phase 23
-Last activity: 2026-04-27 -- Plan 23-02 complete (GET /api/csm/clients/[cnpj]/projects)
+Last activity: 2026-04-28 -- Plan 23-04 complete (/csm/bi page + CsmBiClient + Sidebar nav entry)
 
 Progress (v6.0): [----------] 0% (0/5 phases)
 
@@ -43,7 +43,7 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
 | 22 | CSM RBAC Foundation | CSM-01..04 (4 reqs) | COMPLETE (3/3 plans) |
-| 23 | CSM Pipeline & BI Dashboard | CLI-01..06, BI-01..05 (11 reqs) | IN PROGRESS (Plans 01-02 done) |
+| 23 | CSM Pipeline & BI Dashboard | CLI-01..06, BI-01..05 (11 reqs) | IN PROGRESS (Plans 01-02 + 04 done) |
 | 24 | UI Refresh | UI-01..04 (4 reqs) | Not started |
 | 25 | Budget Items ETL & Display | BUD-01..04 (4 reqs) | Not started |
 | 26 | AI Sales Tags | TAG-01, TAG-02 (2 reqs) | Not started |
@@ -59,6 +59,14 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 | NOT MATERIALIZED nos CTEs all_propostas/all_exec (Plan 20-04) | Postgres materializava CTE referenciada uma unica vez; hint forca inlining e desbloqueia push-down — speedup 100x (5s → 54ms) |
 | prestacao_contas tab mapeia para /api/tgov/execucao?mode=prestacao_contas | Reutiliza rota execucao com filtro ILIKE — evita nova rota |
 | APROVACAO_ONLY_ROLES e EXECUCAO_ONLY_ROLES exportados de tgov.ts | Centraliza constantes de grupos de roles para tab isolation |
+
+### Key Architecture Decisions (v6.0 — Phase 23 Plan 04)
+
+| Decision | Rationale |
+|----------|-----------|
+| BI-02 donut uses recharts PieChart inline (not TGovStatusDonut) (Plan 23-04) | TGovStatusDonut expects {status,count} keys; refactoring for generic bucket shape is out of scope — 30-line inline is isolated to /csm/bi |
+| Funnel is horizontal-bar divs, not SVG funnel (Plan 23-04) | Visual simplicity, accessibility, no added deps; matches existing horizontal-bar pattern in codebase |
+| /csm/bi nav entry added only to csm role sidebar block (Plan 23-04) | gestor/admin have canCsm() access via direct URL; sidebar pollution for non-CSM roles out of scope |
 
 ### Key Architecture Decisions (v6.0 — Phase 23 Plan 02)
 
@@ -131,5 +139,5 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 ## Session Continuity
 
 Last session: 2026-04-28
-Stopped at: Completed Plans 23-01 (portfolio+BI APIs) + 23-02 (client-detail API)
-Next action: Execute Phase 23 Plans 03+04 — CSM client list UI + BI dashboard page
+Stopped at: Completed Plan 23-04 — /csm/bi page + CsmBiClient + Sidebar CSM BI nav entry
+Next action: Complete Phase 23 — verify Plan 03 (CsmDashboardClient) + merge worktrees

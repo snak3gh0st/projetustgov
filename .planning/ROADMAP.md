@@ -340,13 +340,13 @@ Plans:
   3. CSM can search by client name or CNPJ and filter by situacao or saldo range
   4. CSM can expand a client row to see all their projects grouped by phase (aprovacao, execucao, PC) with per-project financial data
   5. CSM BI dashboard shows portfolio totals (saldo em conta, a liberar, rendimento) and a project count breakdown by situacao via KPI cards and chart
-**Plans:** 1/4 plans executed
+**Plans:** 3/4 plans executed (01, 02, 04 done; 03 executing in parallel)
 
 Plans:
 - [x] 23-01-PLAN.md — GET /api/csm/portfolio (aggregated client list with priority badge) + GET /api/csm/bi (portfolio totals, by-status counts, funnel) (CLI-01..03, CLI-06 server, BI-01..05 server)
-- [ ] 23-02-PLAN.md — GET /api/csm/clients/[cnpj]/projects (single-client project breakdown with per-row priority) (CLI-04, CLI-06)
+- [x] 23-02-PLAN.md — GET /api/csm/clients/[cnpj]/projects (single-client project breakdown with per-row priority) (CLI-04, CLI-06)
 - [ ] 23-03-PLAN.md — PriorityBadge component + replace CsmDashboardClient with full client list (search, filter, expandable rows, badges) (CLI-01..06 UI)
-- [ ] 23-04-PLAN.md — /csm/bi server+client page (KPI cards + donut + funnel) + Sidebar nav entry (BI-01..05 UI)
+- [x] 23-04-PLAN.md — /csm/bi server+client page (KPI cards + donut + funnel) + Sidebar nav entry (BI-01..05 UI)
 
 ### Phase 24: UI Refresh
 **Goal**: All platform users benefit from a collapsible sidebar, dark mode, mobile-responsive navigation, and updated logo text. These changes apply globally — not CSM-specific.
@@ -444,7 +444,7 @@ Tarefas pontuais executadas fora de fases formais — bugs, ajustes de UX e pequ
 | 21. Ajustes TGov 09/04 — BI + Pipeline + Roles | 4/4 | ✅ Complete | 2026-04-10 |
 | **Milestone v6.0** | | | |
 | 22. CSM RBAC Foundation | 3/3 | Complete    | 2026-04-27 |
-| 23. CSM Pipeline & BI Dashboard | 1/4 | In Progress|  |
+| 23. CSM Pipeline & BI Dashboard | 3/4 | In Progress|  |
 | 24. UI Refresh | 0/TBD | 🔲 Not started | — |
 | 25. Budget Items ETL & Display | 0/TBD | 🔲 Not started | — |
 | 26. AI Sales Tags | 0/TBD | 🔲 Not started | — |
