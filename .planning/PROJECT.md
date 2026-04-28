@@ -30,10 +30,10 @@ Sistema completo de CRM de vendas e inteligencia de dados do Transfer Gov. Extra
 - ✓ Designacao de tecnico responsavel + perfil CSM + tgov_comments — v5.0 Phase 20
 - ✓ Nav TGov BI + Pipeline, novos roles coord_execucao/assistente_execucao, isolamento de perfis — v5.0 Phase 21
 - ✓ CSM RBAC Foundation: canCsm() gate, /csm + /csm/comissoes pages, middleware exemptions, CSM client/contact/commissions APIs — v6.0 Phase 22
+- ✓ CSM Pipeline & BI Dashboard: lista unificada de clientes com 5 niveis de prioridade, financials agregados, search/filter, expand por projetos, /csm/bi com KPIs + donut + funil — v6.0 Phase 23
 
 ### Active
 
-- [ ] CSM pipeline com 5 niveis de prioridade por saldo/fase TransfereGov
 - [ ] Perfil CSM completo: acesso CRM+TGov unificado, adicionar clientes, comissoes
 - [ ] Visualizacao orcamentaria simplificada (Plano de Aplicacao Detalhado, 30 chars)
 - [ ] Tags de potencial de venda por IA (similaridade itens orcamentarios × servicos Projetus)
