@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react'
 
-const NEWS_VERSION = 'v4.6'
+const NEWS_VERSION = 'v4.7'
 const NEWS_ITEMS = [
-  'TGov: novos perfis Coord. Execucao e Assist. Execucao (padrao Aprovacao)',
-  'TGov: cada setor (Aprovacao / Execucao / Prestacao) ve somente a sua aba',
-  'Seguranca: exportacao de CSV de contatos agora restrita a gestor/admin',
-  'TGov: thread de comentarios em cada proposta/projeto — historico compartilhado',
-  'Performance: queries de Aprovacao e Execucao 100x mais rapidas (NOT MATERIALIZED)',
+  'UI: tema escuro disponivel em toda a plataforma (botao no menu lateral)',
+  'UI: menu lateral pode ser recolhido para liberar espaco — preferencia salva entre sessoes',
+  'UI: navegacao mobile com gaveta inferior (toque no botao azul no canto inferior esquerdo)',
+  'UI: assinatura "Hub da Projetos" no lugar de "CRM de Vendas"',
 ]
 const STORAGE_KEY = `projetus-news-dismissed-${NEWS_VERSION}`
 

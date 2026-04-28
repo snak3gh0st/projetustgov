@@ -6,6 +6,7 @@ import NotificationBell from '@/components/NotificationBell'
 import { auth } from '@/lib/auth'
 import { cookies } from 'next/headers'
 import Providers from '@/components/Providers'
+import MobileDrawer from '@/components/MobileDrawer'
 
 export const metadata: Metadata = {
   title: 'Hub da Projetos',
@@ -35,7 +36,16 @@ export default async function RootLayout({
               defaultOpen={sidebarOpen}
             />
           )}
-          <main className={session ? `${sidebarOpen ? 'ml-56' : 'ml-14'} min-h-screen p-6 transition-[margin] duration-200` : "min-h-screen p-6"}>
+          {session?.user && (
+            <MobileDrawer
+              user={{
+                name: session.user.name,
+                role: session.user.role as 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao',
+                email: session.user.email,
+              }}
+            />
+          )}
+          <main className={session ? `${sidebarOpen ? 'md:ml-56' : 'md:ml-14'} min-h-screen p-6 transition-[margin] duration-200` : "min-h-screen p-6"}>
             {session?.user && <NewsBanner />}
             {session?.user && ['gestor', 'admin', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'].includes(
               session.user.role as string

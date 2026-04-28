@@ -174,7 +174,7 @@ export default function Sidebar({ user, defaultOpen = true }: SidebarProps) {
 
       {/* Footer: powered by */}
       <div className={`px-5 py-3 border-t border-gray-200 dark:border-gray-800 ${open ? '' : 'hidden'}`}>
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center mb-1">v4.6</p>
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center mb-1">v4.7</p>
         <p className="text-[10px] text-[#0072F7] tracking-wider text-center">
           powered by <a href="https://sigmaintel.io" target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline">SigmaIntel</a>
         </p>
