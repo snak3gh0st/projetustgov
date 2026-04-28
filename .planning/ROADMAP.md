@@ -343,7 +343,7 @@ Plans:
 **Plans:** 1/4 plans executed
 
 Plans:
-- [ ] 23-01-PLAN.md — GET /api/csm/portfolio (aggregated client list with priority badge) + GET /api/csm/bi (portfolio totals, by-status counts, funnel) (CLI-01..03, CLI-06 server, BI-01..05 server)
+- [x] 23-01-PLAN.md — GET /api/csm/portfolio (aggregated client list with priority badge) + GET /api/csm/bi (portfolio totals, by-status counts, funnel) (CLI-01..03, CLI-06 server, BI-01..05 server)
 - [ ] 23-02-PLAN.md — GET /api/csm/clients/[cnpj]/projects (single-client project breakdown with per-row priority) (CLI-04, CLI-06)
 - [ ] 23-03-PLAN.md — PriorityBadge component + replace CsmDashboardClient with full client list (search, filter, expandable rows, badges) (CLI-01..06 UI)
 - [ ] 23-04-PLAN.md — /csm/bi server+client page (KPI cards + donut + funnel) + Sidebar nav entry (BI-01..05 UI)

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: — CSM & Customer Success — In Progress
 status: executing
-stopped_at: Completed 22-csm-rbac-foundation Phase — all 3 plans done (CSM-01..04 all satisfied)
-last_updated: "2026-04-28T00:16:52.506Z"
-last_activity: 2026-04-28 -- Phase 23 execution started
+stopped_at: Completed Plans 23-01 + 23-02 (API layer done)
+last_updated: "2026-04-28T00:27:41.914Z"
+last_activity: 2026-04-28 -- Phase 23 Plans 01+02 complete
 progress:
   total_phases: 21
-  completed_phases: 12
-  total_plans: 52
+  completed_phases: 10
+  total_plans: 45
   completed_plans: 47
 ---
 
@@ -130,6 +130,6 @@ Progress (v6.0): [----------] 0% (0/5 phases)
 
 ## Session Continuity
 
-Last session: 2026-04-27
-Stopped at: Completed 23-csm-pipeline-bi-dashboard Plan 02 — GET /api/csm/clients/[cnpj]/projects with NOT MATERIALIZED CTE union + priority_level
-Next action: Execute Phase 23 Plan 03 — CSM client list UI with expandable rows
+Last session: 2026-04-28
+Stopped at: Completed Plans 23-01 (portfolio+BI APIs) + 23-02 (client-detail API)
+Next action: Execute Phase 23 Plans 03+04 — CSM client list UI + BI dashboard page

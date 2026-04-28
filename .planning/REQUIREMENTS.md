@@ -25,11 +25,11 @@ Requirements para milestone v6.0 — CSM & Customer Success.
 
 ### CSM BI & Pipeline
 
-- [ ] **BI-01**: BI do CSM exibe total de saldo em conta de todos os clientes gerenciados
-- [ ] **BI-02**: BI do CSM exibe contagem de projetos por situacao (KPIs + grafico)
-- [ ] **BI-03**: BI do CSM exibe total de saldo de rendimento previsto
-- [ ] **BI-04**: BI do CSM exibe valor total a liberar (desembolso pendente + aprovacao pendente)
-- [ ] **BI-05**: CSM tem pipeline/funil proprio separado do CRM vendas e TGov
+- [x] **BI-01**: BI do CSM exibe total de saldo em conta de todos os clientes gerenciados
+- [x] **BI-02**: BI do CSM exibe contagem de projetos por situacao (KPIs + grafico)
+- [x] **BI-03**: BI do CSM exibe total de saldo de rendimento previsto
+- [x] **BI-04**: BI do CSM exibe valor total a liberar (desembolso pendente + aprovacao pendente)
+- [x] **BI-05**: CSM tem pipeline/funil proprio separado do CRM vendas e TGov
 
 ### Itens Orcamentarios
 
@@ -81,17 +81,17 @@ Requirements para milestone v6.0 — CSM & Customer Success.
 | CSM-02 | Phase 22 | Complete (22-02) |
 | CSM-03 | Phase 22 | Complete (22-02) |
 | CSM-04 | Phase 22 | Complete (22-03) |
-| CLI-01 | Phase 23 | Pending |
-| CLI-02 | Phase 23 | Pending |
-| CLI-03 | Phase 23 | Pending |
-| CLI-04 | Phase 23 | Complete |
+| CLI-01 | Phase 23 | Pending (API done, UI pending) |
+| CLI-02 | Phase 23 | Pending (API done, UI pending) |
+| CLI-03 | Phase 23 | Pending (API done, UI pending) |
+| CLI-04 | Phase 23 | Complete (23-02) |
 | CLI-05 | Phase 23 | Pending |
-| CLI-06 | Phase 23 | Complete |
-| BI-01 | Phase 23 | Pending |
-| BI-02 | Phase 23 | Pending |
-| BI-03 | Phase 23 | Pending |
-| BI-04 | Phase 23 | Pending |
-| BI-05 | Phase 23 | Pending |
+| CLI-06 | Phase 23 | Complete (23-01) |
+| BI-01 | Phase 23 | Pending (API done, UI pending) |
+| BI-02 | Phase 23 | Pending (API done, UI pending) |
+| BI-03 | Phase 23 | Pending (API done, UI pending) |
+| BI-04 | Phase 23 | Pending (API done, UI pending) |
+| BI-05 | Phase 23 | Pending (API done, UI pending) |
 | BUD-01 | Phase 25 | Pending |
 | BUD-02 | Phase 25 | Pending |
 | BUD-03 | Phase 25 | Pending |
