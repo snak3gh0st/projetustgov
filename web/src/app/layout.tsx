@@ -4,6 +4,7 @@ import Sidebar from '@/components/Sidebar'
 import NewsBanner from '@/components/NewsBanner'
 import NotificationBell from '@/components/NotificationBell'
 import { auth } from '@/lib/auth'
+import { cookies } from 'next/headers'
 import Providers from '@/components/Providers'
 
 export const metadata: Metadata = {
@@ -17,6 +18,8 @@ export default async function RootLayout({
   children: React.ReactNode
 }) {
   const session = await auth()
+  const cookieStore = cookies()
+  const sidebarOpen = cookieStore.get('sidebar:state')?.value !== 'false'
 
   return (
     <html lang="pt-BR" suppressHydrationWarning>
@@ -29,9 +32,10 @@ export default async function RootLayout({
                 role: session.user.role as 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao',
                 email: session.user.email,
               }}
+              defaultOpen={sidebarOpen}
             />
           )}
-          <main className={session ? "ml-56 min-h-screen p-6" : "min-h-screen p-6"}>
+          <main className={session ? `${sidebarOpen ? 'ml-56' : 'ml-14'} min-h-screen p-6 transition-[margin] duration-200` : "min-h-screen p-6"}>
             {session?.user && <NewsBanner />}
             {session?.user && ['gestor', 'admin', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'].includes(
               session.user.role as string
