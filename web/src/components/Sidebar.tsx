@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { logout } from '@/lib/auth-actions'
+import ThemeToggle from '@/components/ThemeToggle'
 
 interface SidebarProps {
   user: {
@@ -151,12 +152,12 @@ export default function Sidebar({ user }: SidebarProps) {
     : BASE_WITH_EXECUCAO
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-56 bg-white border-r border-gray-200 flex flex-col z-50">
-      <div className="p-5 border-b border-gray-200">
+    <aside className="fixed left-0 top-0 h-screen w-56 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col z-50">
+      <div className="p-5 border-b border-gray-200 dark:border-gray-800">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="Projete" style={{ width: 120, height: 'auto' }} />
-        <p className="text-[10px] text-gray-400 mt-1.5 tracking-widest uppercase">
-          CRM de Vendas
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5 tracking-widest uppercase">
+          Hub da Projetos
         </p>
       </div>
 
@@ -184,8 +185,8 @@ export default function Sidebar({ user }: SidebarProps) {
               href={href}
               className={`flex items-center gap-3 px-5 py-2.5 text-sm transition-colors ${
                 isActive
-                  ? 'text-[#0072F7] bg-blue-50 border-r-2 border-[#0072F7]'
-                  : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                  ? 'text-[#0072F7] bg-blue-50 dark:bg-blue-950/40 border-r-2 border-[#0072F7]'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
               <NavIcon name={icon} />
@@ -196,9 +197,10 @@ export default function Sidebar({ user }: SidebarProps) {
       </nav>
 
       {/* User info and logout */}
-      <div className="p-4 border-t border-gray-200 space-y-3">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
+        <ThemeToggle />
         <div>
-          <p className="text-sm font-medium text-gray-800 truncate">
+          <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
             {user.name || user.email}
           </p>
           <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${
@@ -230,7 +232,7 @@ export default function Sidebar({ user }: SidebarProps) {
         <form action={logout}>
           <button
             type="submit"
-            className="w-full bg-red-50 hover:bg-red-100 text-red-500 py-2 px-3 rounded text-sm transition-colors"
+            className="w-full bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-950/60 text-red-500 dark:text-red-400 py-2 px-3 rounded text-sm transition-colors"
           >
             Sair
           </button>
@@ -238,8 +240,8 @@ export default function Sidebar({ user }: SidebarProps) {
       </div>
 
       {/* Footer: powered by */}
-      <div className="px-5 py-3 border-t border-gray-200">
-        <p className="text-[10px] text-gray-400 text-center mb-1">v4.6</p>
+      <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-800">
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center mb-1">v4.6</p>
         <p className="text-[10px] text-[#0072F7] tracking-wider text-center">
           powered by <a href="https://sigmaintel.io" target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline">SigmaIntel</a>
         </p>
