@@ -465,6 +465,7 @@ async function runSetup() {
       { nome: 'Wellington', email: 'wellington@projetus.org', role: 'vendedor', password: 'Wellington#739' },
       { nome: 'Gabriel', email: 'gabriel@projetus.org', role: 'vendedor', password: 'Gabriel#615' },
       { nome: 'Vitória', email: 'vitoria@projetus.org', role: 'vendedor', password: 'Vitoria#904' },
+      { nome: 'Bruno', email: 'bruno@projetus.org', role: 'vendedor', password: 'Bruno#837' },
       { nome: 'Philipe', email: 'philipe@projetus.org', role: 'gestor', password: 'Philipe#268' },
       { nome: 'Tito', email: 'tito@projetus.org', role: 'gestor', password: 'Tito#351' },
       { nome: 'Paulo', email: 'paulo@projetus.org', role: 'coordenador', password: 'Paulo#649' },
