@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { formatCNPJ, formatCurrency } from '@/lib/format'
+import { formatCNPJ, formatCurrency, whatsappMeUrlFromTelefone } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import ContactNotesTimeline from '@/components/ContactNotesTimeline'
 import LeadContacts from '@/components/LeadContacts'
@@ -451,9 +451,13 @@ export default function LeadDetailPage() {
                   className="text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:border-sigma-neon/50"
                 />
               ) : first.telefone ? (
-                <a href={`https://wa.me/55${first.telefone.replace(/\D/g, '')}`} target="_blank" rel="noopener" className="text-sm text-green-600 hover:text-green-700 block">
-                  {first.telefone}
-                </a>
+                whatsappMeUrlFromTelefone(first.telefone) ? (
+                  <a href={whatsappMeUrlFromTelefone(first.telefone)!} target="_blank" rel="noopener noreferrer" className="text-sm text-green-600 hover:text-green-700 block" title="Conversar no WhatsApp">
+                    {first.telefone}
+                  </a>
+                ) : (
+                  <span className="text-sm text-gray-800">{first.telefone}</span>
+                )
               ) : (
                 <span className="text-sm text-gray-600">Sem telefone</span>
               )}

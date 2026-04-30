@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { formatCNPJ, formatCompactCurrency, formatCurrency, formatDate } from '@/lib/format'
+import { formatCNPJ, formatCompactCurrency, formatCurrency, formatDate, whatsappMeUrlFromTelefone } from '@/lib/format'
 import KPIRow from '@/components/KPIRow'
 import ExecucaoSlideOver from '@/components/ExecucaoSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
@@ -471,6 +471,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
             <tbody>
               {visibleRows.map(row => {
                 const hasContact = row.contact_telefone || row.contact_email
+                const execContatoWaUrl = row.contact_telefone ? whatsappMeUrlFromTelefone(row.contact_telefone) : null
                 const pct = row.pct_execucao_ponderado != null ? Number(row.pct_execucao_ponderado) : null
 
                 return (
@@ -549,7 +550,20 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                               {row.contact_telefone_status === 'nao_atende' && (
                                 <span className="w-2 h-2 rounded-full bg-amber-500 inline-block mr-1 flex-shrink-0" />
                               )}
-                              {row.contact_telefone}
+                              {execContatoWaUrl ? (
+                                <a
+                                  href={execContatoWaUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={e => e.stopPropagation()}
+                                  className="text-green-600 hover:text-green-700 truncate"
+                                  title="Conversar no WhatsApp"
+                                >
+                                  {row.contact_telefone}
+                                </a>
+                              ) : (
+                                <span className="truncate">{row.contact_telefone}</span>
+                              )}
                             </div>
                           )}
                           {row.contact_email && (

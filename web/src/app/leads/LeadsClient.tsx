@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { formatCNPJ, formatCompactCurrency, formatCurrency } from '@/lib/format'
+import { formatCNPJ, formatCompactCurrency, formatCurrency, whatsappMeUrlFromTelefone } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
@@ -467,6 +467,7 @@ export default function LeadsClient() {
               <tbody>
                 {displayLeads.map(lead => {
                   const hasContact = lead.telefone || lead.email
+                  const contatoWaUrl = lead.telefone ? whatsappMeUrlFromTelefone(lead.telefone) : null
                   const isExpanded = expandedCnpjs.has(lead.cnpj)
                   const hasMultipleEmendas = lead.emenda_count > 1
                   const totalComissao = (lead as any).totalComissao || 0
@@ -569,7 +570,20 @@ export default function LeadsClient() {
                               {lead.principal_telefone_status === 'nao_atende' && (
                                 <span className="w-2 h-2 rounded-full bg-amber-500 inline-block mr-1 flex-shrink-0" title="Nao atende" />
                               )}
-                              {lead.telefone}
+                              {contatoWaUrl ? (
+                                <a
+                                  href={contatoWaUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={e => e.stopPropagation()}
+                                  className="text-green-600 hover:text-green-700 truncate"
+                                  title="Conversar no WhatsApp"
+                                >
+                                  {lead.telefone}
+                                </a>
+                              ) : (
+                                <span className="truncate">{lead.telefone}</span>
+                              )}
                             </div>
                           )}
                           {lead.email && (

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import type { LeadContact, TelefoneStatus } from '@/lib/types'
+import { whatsappMeUrlFromTelefone } from '@/lib/format'
 
 interface LeadContactsProps {
   cnpj: string
@@ -275,14 +276,19 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm">
                       {contact.telefone && (
-                        <a
-                          href={`https://wa.me/55${contact.telefone.replace(/\D/g, '')}`}
-                          target="_blank"
-                          rel="noopener"
-                          className="text-green-600 hover:text-green-700"
-                        >
-                          {contact.telefone}
-                        </a>
+                        whatsappMeUrlFromTelefone(contact.telefone) ? (
+                          <a
+                            href={whatsappMeUrlFromTelefone(contact.telefone)!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-green-600 hover:text-green-700"
+                            title="Abrir WhatsApp"
+                          >
+                            {contact.telefone}
+                          </a>
+                        ) : (
+                          <span className="text-gray-700">{contact.telefone}</span>
+                        )
                       )}
                       {contact.email && (
                         <a

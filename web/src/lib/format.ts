@@ -56,3 +56,19 @@ export function formatParlamentarSummary(parlamentares: (string | null)[]): stri
   if (unique.length === 1) return unique[0]
   return `${unique.length} parlamentares`
 }
+
+/** Digits-only E.164-ish path for https://wa.me/ — Brazil prepends 55 when missing. */
+export function whatsappMeUrlFromTelefone(telefone: string | null | undefined): string | null {
+  const d = String(telefone ?? '').replace(/\D/g, '')
+  if (!d) return null
+  if (d.startsWith('55') && d.length >= 12) {
+    return `https://wa.me/${d}`
+  }
+  if ((d.length === 10 || d.length === 11) && !d.startsWith('0')) {
+    return `https://wa.me/55${d}`
+  }
+  if (d.length >= 8 && d.length < 12) {
+    return `https://wa.me/55${d}`
+  }
+  return `https://wa.me/${d}`
+}

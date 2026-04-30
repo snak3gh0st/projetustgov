@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatCNPJ, formatCompactCurrency, formatDate } from '@/lib/format'
+import { formatCNPJ, formatCompactCurrency, formatDate, whatsappMeUrlFromTelefone } from '@/lib/format'
 import ContactNotesTimeline from '@/components/ContactNotesTimeline'
 
 interface ContactRow {
@@ -384,8 +384,8 @@ export default function ExecucaoSlideOver({
                       {c.principal && <span className="text-[10px] text-[#0072F7] font-medium">Principal</span>}
                     </div>
                     <div className="flex flex-wrap gap-3">
-                      {c.telefone && (
-                        <a href={`https://wa.me/55${c.telefone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-700">
+                      {c.telefone && whatsappMeUrlFromTelefone(c.telefone) && (
+                        <a href={whatsappMeUrlFromTelefone(c.telefone)!} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-700" title="Conversar no WhatsApp">
                           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.553 4.12 1.52 5.86L0 24l6.335-1.652A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75c-1.875 0-3.615-.525-5.1-1.44l-.36-.225-3.75.975.99-3.645-.24-.375A9.69 9.69 0 012.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75z"/></svg>
                           {c.telefone}
                         </a>
@@ -637,10 +637,11 @@ export default function ExecucaoSlideOver({
         {/* Quick Actions */}
         <div className="p-4 border-t border-gray-200 flex gap-3">
           <button
-            disabled={!contacts.some(c => c.telefone)}
+            disabled={!contacts.some(c => c.telefone && whatsappMeUrlFromTelefone(c.telefone))}
             onClick={() => {
-              const principal = contacts.find(c => c.principal && c.telefone) || contacts.find(c => c.telefone)
-              if (principal?.telefone) window.open(`https://wa.me/55${principal.telefone.replace(/\D/g, '')}`, '_blank')
+              const principal = contacts.find(c => c.principal && c.telefone && whatsappMeUrlFromTelefone(c.telefone)) || contacts.find(c => c.telefone && whatsappMeUrlFromTelefone(c.telefone))
+              const url = principal?.telefone ? whatsappMeUrlFromTelefone(principal.telefone) : null
+              if (url) window.open(url, '_blank')
             }}
             className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-white bg-green-600 hover:bg-green-500 disabled:bg-gray-200 disabled:text-gray-400 transition-colors"
           >

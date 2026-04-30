@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatCNPJ, formatCurrency } from '@/lib/format'
+import { formatCNPJ, formatCurrency, whatsappMeUrlFromTelefone } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -66,7 +66,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
 
   if (!lead || !localLead) return null
 
-  const phoneDigits = localLead.telefone?.replace(/\D/g, '') || ''
+  const waUrl = whatsappMeUrlFromTelefone(localLead.telefone)
 
   return (
     <div className="fixed inset-0 z-50">
@@ -278,7 +278,19 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                     />
                   ) : (
                     <>
-                      <span className="flex-1">{localLead.telefone || <span className="text-gray-600">Sem telefone</span>}</span>
+                      <span className="flex-1">
+                        {localLead.telefone ? (
+                          waUrl ? (
+                            <a href={waUrl} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-700" title="Conversar no WhatsApp">
+                              {localLead.telefone}
+                            </a>
+                          ) : (
+                            localLead.telefone
+                          )
+                        ) : (
+                          <span className="text-gray-600">Sem telefone</span>
+                        )}
+                      </span>
                       {canModify && (
                         <button
                           onClick={() => {
@@ -391,8 +403,10 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
         {/* Quick Actions */}
         <div className="p-4 border-t border-gray-200 flex gap-3">
           <button
-            disabled={!phoneDigits}
-            onClick={() => window.open(`https://wa.me/55${phoneDigits}`, '_blank')}
+            disabled={!waUrl}
+            onClick={() => {
+              if (waUrl) window.open(waUrl, '_blank')
+            }}
             className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-white bg-green-600 hover:bg-green-500 disabled:bg-gray-200 disabled:text-gray-400 transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
