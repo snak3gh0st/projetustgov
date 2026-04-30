@@ -30,10 +30,6 @@ const BUCKET_COLORS: Record<string, string> = {
   'Outros': '#9ca3af',                  // gray-400
 }
 
-type TooltipPayloadItem = {
-  payload: { bucket: string; value: number }
-}
-
 export default function CsmBiClient({ userRole, userName }: CsmBiClientProps) {
   const [data, setData] = useState<CsmBiResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -134,9 +130,21 @@ export default function CsmBiClient({ userRole, userName }: CsmBiClientProps) {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(v: number, _name: string, props: TooltipPayloadItem) =>
-                    [`${v} projetos · ${formatCompactCurrency(props.payload.value)}`, props.payload.bucket]
-                  }
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null
+                    const row = payload[0]?.payload as { bucket?: string; value?: number; count?: number } | undefined
+                    const count = Number(payload[0]?.value ?? row?.count ?? 0)
+                    const bucket = row?.bucket ?? ''
+                    const value = row?.value ?? 0
+                    return (
+                      <div className="rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs shadow-sm">
+                        <div className="font-medium text-gray-800">{bucket}</div>
+                        <div className="text-gray-600">
+                          {count} projetos · {formatCompactCurrency(value)}
+                        </div>
+                      </div>
+                    )
+                  }}
                 />
               </PieChart>
             </ResponsiveContainer>
