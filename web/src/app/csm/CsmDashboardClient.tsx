@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { formatCNPJ, formatCompactCurrency } from '@/lib/format'
 import PriorityBadge from '@/components/PriorityBadge'
+import CsmSideCard from '@/components/CsmSideCard'
 
 interface CsmDashboardClientProps {
   userRole: string
@@ -132,6 +133,7 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
   const [projectsCache, setProjectsCache] = useState<Record<string, CsmProjectRow[]>>({})
   const [loadingProjects, setLoadingProjects] = useState<Set<string>>(new Set())
   const [fetchTrigger, setFetchTrigger] = useState(0)
+  const [selectedClient, setSelectedClient] = useState<string | null>(null)
 
   // Mount fetch (also triggered by retry)
   useEffect(() => {
@@ -371,18 +373,21 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
 
                 return (
                   <React.Fragment key={c.cnpj}>
-                    <tr
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => toggleExpand(c.cnpj)}
-                    >
+                    <tr className="hover:bg-gray-50">
                       {/* Chevron */}
-                      <td className="px-3 py-3">
+                      <td className="px-3 py-3 cursor-pointer" onClick={() => toggleExpand(c.cnpj)}>
                         <ChevronIcon expanded={isExpanded} />
                       </td>
                       {/* Cliente */}
                       <td className="px-3 py-3">
                         <div className="font-medium text-gray-800">{c.nome_proponente}</div>
                         <div className="text-xs text-gray-400 font-mono">{formatCNPJ(c.cnpj)}</div>
+                        <button
+                          onClick={() => setSelectedClient(c.cnpj)}
+                          className="text-xs text-blue-600 hover:text-blue-800 underline mt-1"
+                        >
+                          [Details]
+                        </button>
                       </td>
                       {/* Saldo em Conta */}
                       <td className="px-3 py-3 text-right tabular-nums text-gray-700">
@@ -461,6 +466,11 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Side Card */}
+      {selectedClient && (
+        <CsmSideCard cnpj={selectedClient} onClose={() => setSelectedClient(null)} />
       )}
     </div>
   )
