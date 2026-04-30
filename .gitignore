@@ -88,3 +88,7 @@ backups/
 .next/
 .claude/
 .playwright-mcp/
+
+# Worktrees
+.worktrees/
+worktrees/
