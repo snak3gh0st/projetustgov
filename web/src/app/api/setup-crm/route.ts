@@ -44,21 +44,33 @@ async function runSetup() {
         nome VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(20) NOT NULL DEFAULT 'vendedor' CHECK (role IN ('gestor', 'vendedor', 'visualizador', 'gestor_vendedor', 'coordenador')),
+        role VARCHAR(40) NOT NULL DEFAULT 'vendedor' CHECK (role IN (
+          'gestor', 'admin', 'vendedor', 'visualizador', 'coordenador',
+          'adm_produto', 'csm',
+          'coord_aprovacao', 'assistente_aprovacao', 'projetista',
+          'coord_prestacao', 'assistente_prestacao'
+        )),
         active BOOLEAN DEFAULT true,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
     `)
 
-    // 1b. Update existing constraint to include coordenador (quick-48 hotfix)
+    // 1b. Keep users.role CHECK aligned with migrations (dal.ts Role) — avoids breaking csm/admin/TGov roles when setup is re-run
     await pool.query(`
       DO $$
       BEGIN
         ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-        ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('gestor', 'vendedor', 'visualizador', 'gestor_vendedor', 'coordenador'));
+        ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN (
+          'gestor', 'admin', 'vendedor', 'visualizador', 'coordenador',
+          'adm_produto', 'csm',
+          'coord_aprovacao', 'assistente_aprovacao', 'projetista',
+          'coord_prestacao', 'assistente_prestacao'
+        ));
       END $$;
     `).catch(() => {}) // Ignore if constraint doesn't exist or already updated
+
+    await pool.query(`ALTER TABLE users ALTER COLUMN role TYPE VARCHAR(40)`).catch(() => {})
 
     // 1c. Migrate gestor_vendedor -> coordenador (quick-48 hotfix)
     await pool.query(`
@@ -465,7 +477,7 @@ async function runSetup() {
       { nome: 'Wellington', email: 'wellington@projetus.org', role: 'vendedor', password: 'Wellington#739' },
       { nome: 'Gabriel', email: 'gabriel@projetus.org', role: 'vendedor', password: 'Gabriel#615' },
       { nome: 'Vitória', email: 'vitoria@projetus.org', role: 'vendedor', password: 'Vitoria#904' },
-      { nome: 'Bruno', email: 'bruno@projetus.org', role: 'vendedor', password: 'Bruno#837' },
+      { nome: 'Bruno', email: 'bruno@projetus.org', role: 'csm', password: 'Bruno#837' },
       { nome: 'Philipe', email: 'philipe@projetus.org', role: 'gestor', password: 'Philipe#268' },
       { nome: 'Tito', email: 'tito@projetus.org', role: 'gestor', password: 'Tito#351' },
       { nome: 'Paulo', email: 'paulo@projetus.org', role: 'coordenador', password: 'Paulo#649' },
