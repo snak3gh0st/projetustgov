@@ -17,10 +17,46 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const filter = searchParams.get('filter') // 'pendentes' or null (all)
+    const vendedorId = searchParams.get('vendedor_id')?.trim() || null
 
-    const whereClause = filter === 'pendentes'
-      ? `WHERE vp.status_contato IN ('Não Contatado', 'Retorno')`
-      : 'WHERE 1=1'
+    // Coordenador can only export with an explicit commercial scope.
+    if (session.role === 'coordenador' && (!vendedorId || vendedorId === 'unassigned')) {
+      return NextResponse.json(
+        { error: 'Forbidden: coordenador export requires vendedor_id filter' },
+        { status: 403 }
+      )
+    }
+
+    if (vendedorId && vendedorId !== 'unassigned') {
+      const vendedorRows = await query<{ id: string }>(
+        `SELECT id FROM users
+         WHERE id = $1 AND role IN ('vendedor', 'coordenador', 'gestor')
+         LIMIT 1`,
+        [vendedorId]
+      )
+      if (vendedorRows.length === 0) {
+        return NextResponse.json({ error: 'Invalid vendedor_id' }, { status: 400 })
+      }
+    }
+
+    const whereConditions: string[] = []
+    const params: unknown[] = []
+    let paramIndex = 1
+
+    if (filter === 'pendentes') {
+      whereConditions.push(`vp.status_contato IN ('Não Contatado', 'Retorno')`)
+    }
+
+    if (vendedorId === 'unassigned') {
+      whereConditions.push('vp.vendedor_id IS NULL')
+    } else if (vendedorId) {
+      whereConditions.push(`vp.vendedor_id = $${paramIndex++}`)
+      params.push(vendedorId)
+    }
+
+    const whereClause = whereConditions.length > 0
+      ? `WHERE ${whereConditions.join(' AND ')}`
+      : ''
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rows = await query(`
@@ -51,7 +87,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN proponentes p ON vp.cnpj = p.cnpj
       ${whereClause}
       ORDER BY u.nome ASC NULLS LAST, COALESCE(p.nome, vp.nome, '') ASC, vp.cnpj
-    `, []) as any[]
+    `, params) as any[]
 
     type Contact = { nome_pessoa: string | null; cargo: string | null; telefone: string | null; email: string | null }
 

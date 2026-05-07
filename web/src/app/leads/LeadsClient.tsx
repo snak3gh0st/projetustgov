@@ -113,7 +113,7 @@ export default function LeadsClient() {
     } finally {
       setLoading(false)
     }
-  }, [search, statusFilter, vendedorFilter, sessionUser])
+  }, [search, statusFilter, vendedorFilter])
 
   useEffect(() => {
     const timer = setTimeout(fetchLeads, 300)
@@ -340,15 +340,36 @@ export default function LeadsClient() {
     }
   }
 
+  const isCoordinator = sessionUser?.role === 'coordenador'
+  const canExportCSV = sessionUser?.role === 'gestor' || sessionUser?.role === 'admin' || isCoordinator
+  const coordinatorHasCommercialFilter = vendedorFilter !== '' && vendedorFilter !== 'unassigned'
+  const exportDisabled = isCoordinator && !coordinatorHasCommercialFilter
+
+  function buildExportHref(kind?: 'pendentes') {
+    const params = new URLSearchParams()
+    if (kind === 'pendentes') params.set('filter', 'pendentes')
+    if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
+    const query = params.toString()
+    return query ? `/api/leads/export-pendentes?${query}` : '/api/leads/export-pendentes'
+  }
+
   function exportCSV() {
+    if (exportDisabled) {
+      alert('Selecione um comercial para exportar.')
+      return
+    }
     const a = document.createElement('a')
-    a.href = '/api/leads/export-pendentes'
+    a.href = buildExportHref()
     a.click()
   }
 
   function exportPendentesCSV() {
+    if (exportDisabled) {
+      alert('Selecione um comercial para exportar pendentes.')
+      return
+    }
     const a = document.createElement('a')
-    a.href = '/api/leads/export-pendentes?filter=pendentes'
+    a.href = buildExportHref('pendentes')
     a.click()
   }
 
@@ -424,16 +445,23 @@ export default function LeadsClient() {
         )}
       </div>
 
-      {/* mirrors canExportContacts() in dal.ts — admin-tier only */}
-      {(sessionUser?.role === 'gestor' || sessionUser?.role === 'admin') && (
+      {/* mirrors canExportContacts() in dal.ts */}
+      {canExportCSV && (
         <div className="flex gap-2 justify-end">
           <button
             onClick={exportPendentesCSV}
-            className="px-3 py-1.5 rounded-lg border border-orange-200 text-orange-600 hover:bg-orange-50 transition-colors text-xs"
+            disabled={exportDisabled}
+            title={exportDisabled ? 'Selecione um comercial para exportar.' : undefined}
+            className="px-3 py-1.5 rounded-lg border border-orange-200 text-orange-600 hover:bg-orange-50 transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Exportar Pendentes CSV
           </button>
-          <button onClick={exportCSV} className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-xs">
+          <button
+            onClick={exportCSV}
+            disabled={exportDisabled}
+            title={exportDisabled ? 'Selecione um comercial para exportar.' : undefined}
+            className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Exportar CSV
           </button>
         </div>

@@ -119,14 +119,13 @@ export function isAdmin(role: string): boolean {
 }
 
 /**
- * Contact CSV export gate — admin-tier only.
- * Only users with role 'gestor' or 'admin' may download bulk contact data
- * (email/telefone/nome_pessoa) across leads.
- * DO NOT loosen this without explicit product approval — see
- * .planning/quick/260414-jby-exportar-contatos-qualquer-uma-somente-p/.
+ * Contact CSV export gate.
+ * - gestor/admin: broad export access
+ * - coordenador: allowed, but must be constrained by vendedor filter
+ *   (enforced in route-level validation)
  */
 export function canExportContacts(role: string | undefined | null): boolean {
-  return role === 'gestor' || role === 'admin'
+  return role === 'gestor' || role === 'admin' || role === 'coordenador'
 }
 
 // Helper: verify vendedor has access to a specific lead
