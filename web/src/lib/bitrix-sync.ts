@@ -62,6 +62,43 @@ function extractPrimaryName(fullName: string | null): { name: string; lastName: 
   return { name: parts[0], lastName: parts.slice(1).join(' ') }
 }
 
+function cleanTextValue(value: string | null): string | null {
+  const clean = (value || '').trim()
+  if (!clean) return null
+
+  const normalized = clean.toLowerCase()
+  if (
+    normalized === 'sem contato' ||
+    normalized === 'sem email' ||
+    normalized === 'sem e-mail' ||
+    normalized === 'nao informado' ||
+    normalized === 'não informado' ||
+    normalized === 'n/a' ||
+    normalized === 'null'
+  ) {
+    return null
+  }
+
+  return clean
+}
+
+function sanitizeEmail(value: string | null): string | null {
+  const clean = cleanTextValue(value)
+  if (!clean) return null
+
+  const match = clean.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)
+  return match ? match[0] : null
+}
+
+function sanitizePhone(value: string | null): string | null {
+  const clean = cleanTextValue(value)
+  if (!clean) return null
+
+  const digits = clean.replace(/\D/g, '')
+  if (digits.length < 10) return null
+  return clean
+}
+
 function buildComment(snapshot: LeadSnapshot, eventType: BitrixEventType, payload: Record<string, unknown>): string {
   const lines: string[] = []
   lines.push('Origem: Projetus CRM')
@@ -186,15 +223,17 @@ async function upsertEntityMap(cnpj: string, map: Partial<EntityMap>): Promise<v
 
 async function ensureCompany(snapshot: LeadSnapshot, existingCompanyId: number | null): Promise<number> {
   const companyTitle = `${snapshot.nome || 'Sem Nome'} (${formatCnpj(snapshot.cnpj)})`
+  const phone = sanitizePhone(snapshot.telefone)
+  const email = sanitizeEmail(snapshot.email)
   const fields: Record<string, unknown> = {
     TITLE: companyTitle,
   }
 
-  if (snapshot.telefone) {
-    fields.PHONE = [{ VALUE: snapshot.telefone, VALUE_TYPE: 'WORK' }]
+  if (phone) {
+    fields.PHONE = [{ VALUE: phone, VALUE_TYPE: 'WORK' }]
   }
-  if (snapshot.email) {
-    fields.EMAIL = [{ VALUE: snapshot.email, VALUE_TYPE: 'WORK' }]
+  if (email) {
+    fields.EMAIL = [{ VALUE: email, VALUE_TYPE: 'WORK' }]
   }
   if (snapshot.observacoes) {
     fields.COMMENTS = snapshot.observacoes
@@ -212,17 +251,19 @@ async function ensureCompany(snapshot: LeadSnapshot, existingCompanyId: number |
 async function ensureContact(snapshot: LeadSnapshot, existingContactId: number | null): Promise<number> {
   const nameSource = snapshot.contato_nome || snapshot.nome
   const { name, lastName } = extractPrimaryName(nameSource)
+  const phone = sanitizePhone(snapshot.telefone)
+  const email = sanitizeEmail(snapshot.email)
   const fields: Record<string, unknown> = {
     NAME: name,
     LAST_NAME: lastName,
     POST: snapshot.contato_cargo || undefined,
   }
 
-  if (snapshot.telefone) {
-    fields.PHONE = [{ VALUE: snapshot.telefone, VALUE_TYPE: 'WORK' }]
+  if (phone) {
+    fields.PHONE = [{ VALUE: phone, VALUE_TYPE: 'WORK' }]
   }
-  if (snapshot.email) {
-    fields.EMAIL = [{ VALUE: snapshot.email, VALUE_TYPE: 'WORK' }]
+  if (email) {
+    fields.EMAIL = [{ VALUE: email, VALUE_TYPE: 'WORK' }]
   }
 
   if (existingContactId) {
