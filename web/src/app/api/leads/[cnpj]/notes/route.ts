@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession, verifyLeadAccess, canModifyData } from '@/lib/dal'
+import { enqueueBitrixEvent } from '@/lib/bitrix-sync'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,6 +95,23 @@ export async function PATCH(
       RETURNING *
     `, [note_id, tipo || null, observacao !== undefined ? observacao : null])
 
+    try {
+      await enqueueBitrixEvent({
+        eventType: 'lead.note',
+        leadCnpj: cnpj,
+        payload: {
+          action: 'update',
+          note_id,
+          note_type: tipo || result[0]?.tipo || null,
+          note_text: observacao !== undefined ? observacao : (result[0]?.observacao || null),
+          actor_id: session.userId,
+          actor_role: session.role,
+        },
+      })
+    } catch (syncError) {
+      console.error('[bitrix-sync] failed to enqueue note update event:', syncError)
+    }
+
     return NextResponse.json(result[0])
   } catch (error) {
     console.error('Contact note update error:', error)
@@ -140,6 +158,21 @@ export async function DELETE(
 
     await query(`DELETE FROM contact_notes WHERE id = $1`, [note_id])
 
+    try {
+      await enqueueBitrixEvent({
+        eventType: 'lead.note',
+        leadCnpj: cnpj,
+        payload: {
+          action: 'delete',
+          note_id,
+          actor_id: session.userId,
+          actor_role: session.role,
+        },
+      })
+    } catch (syncError) {
+      console.error('[bitrix-sync] failed to enqueue note delete event:', syncError)
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Contact note deletion error:', error)
@@ -185,6 +218,23 @@ export async function POST(
       VALUES ($1, $2, $3, $4)
       RETURNING *
     `, [cnpj, session.userId, tipo, observacao || null])
+
+    try {
+      await enqueueBitrixEvent({
+        eventType: 'lead.note',
+        leadCnpj: cnpj,
+        payload: {
+          action: 'create',
+          note_id: result[0]?.id ?? null,
+          note_type: tipo,
+          note_text: observacao || null,
+          actor_id: session.userId,
+          actor_role: session.role,
+        },
+      })
+    } catch (syncError) {
+      console.error('[bitrix-sync] failed to enqueue note create event:', syncError)
+    }
 
     return NextResponse.json(result[0], { status: 201 })
   } catch (error) {

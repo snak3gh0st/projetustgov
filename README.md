@@ -220,6 +220,35 @@ The PROJETUS CRM is a comprehensive sales management system designed specificall
    npm start
    ```
 
+### Bitrix24 Setup
+
+The CRM under `web/` already supports outbound-only sync from Projetus to Bitrix24 using an incoming webhook URL.
+
+1. Add these variables to `web/.env.local` for local use and to your Vercel project for production:
+   ```bash
+   BITRIX_WEBHOOK_URL=https://your-company.bitrix24.com.br/rest/1/your-webhook-code
+   BITRIX_DEFAULT_ASSIGNED_BY_ID=123
+   CRON_SECRET=replace-with-a-random-secret
+   ```
+
+2. Use the webhook base URL only. Do not append `/crm.company.add.json` or any other method. The app appends the Bitrix method automatically.
+
+3. Sync is triggered when Projetus changes lead data in the CRM, including:
+   - lead assignment changes
+   - lead field updates
+   - lead notes create/update/delete
+
+4. Events are written to the local outbox tables `bitrix_sync_queue` and `bitrix_entity_map`, then drained by `GET /api/cron/bitrix-sync`.
+
+5. On Vercel, `web/vercel.json` already schedules `/api/cron/bitrix-sync` every 30 minutes. The cron request must send `Authorization: Bearer <CRON_SECRET>`.
+
+6. The current Bitrix sync creates or updates:
+   - company via `crm.company.*`
+   - contact via `crm.contact.*`
+   - deal via `crm.deal.*`
+
+7. If you only need spreadsheet import into Bitrix instead of API sync, use `GET /api/leads/export-bitrix` from the CRM.
+
 ### Default Users (after setup-crm)
 
 | Name | Email | Password | Role |
