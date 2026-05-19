@@ -6,6 +6,14 @@
   "regions": ["fra1"],
   "crons": [
     {
+      "path": "/api/cron/sync-execucao",
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/sync-tgov-only",
+      "schedule": "30 13 * * *"
+    },
+    {
       "path": "/api/cron/bitrix-sync",
       "schedule": "*/30 * * * *"
     },
