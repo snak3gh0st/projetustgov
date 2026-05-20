@@ -73,6 +73,8 @@ export interface TGovMainFilters {
   status: string
   /** Two-letter UF code, e.g. "SP". Empty string means "all UFs". */
   uf: string
+  /** Assigned técnico/projetista id. Empty string means "all assignees". */
+  tecnico: string
 }
 
 // ---------------------------------------------------------------------------
@@ -190,6 +192,7 @@ export const DEFAULT_MAIN_FILTERS: TGovMainFilters = {
   tipo: 'todos',
   status: '',
   uf: '',
+  tecnico: '',
 }
 
 /** Execucao tab defaults to all years since it shows only Projetus clients. */
@@ -198,6 +201,7 @@ export const DEFAULT_EXECUCAO_MAIN_FILTERS: TGovMainFilters = {
   tipo: 'todos',
   status: '',
   uf: '',
+  tecnico: '',
 }
 
 export const DEFAULT_TABLE_FILTERS: TGovTableFilters = {

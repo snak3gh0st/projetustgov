@@ -183,7 +183,7 @@ function delay(ms: number): Promise<void> {
 
 export async function downloadAndStreamCSV(
   url: string,
-  onRow: (row: Record<string, string>) => void
+  onRow: (row: Record<string, string>) => void | boolean
 ): Promise<number> {
   console.log(`[repo-sync] Downloading ${url}...`)
 
@@ -218,7 +218,7 @@ export async function downloadAndStreamCSV(
 async function _parseZipBuffer(
   zipBuffer: Buffer,
   url: string,
-  onRow: (row: Record<string, string>) => void
+  onRow: (row: Record<string, string>) => void | boolean
 ): Promise<number> {
   // Parse ZIP local file header to find compressed data
   const sig = zipBuffer.readUInt32LE(0)
@@ -258,8 +258,9 @@ async function _parseZipBuffer(
     for (let i = 0; i < headers.length; i++) {
       row[headers[i]] = (cols[i] || '').trim()
     }
-    onRow(row)
+    const shouldContinue = onRow(row)
     rowCount++
+    if (shouldContinue === false) break
   }
 
   console.log(`[repo-sync] Parsed ${rowCount} rows from ${url.split('/').pop()}`)

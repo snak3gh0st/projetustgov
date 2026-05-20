@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession, canReadTgov } from '@/lib/dal'
 import { ensureTgovTables } from '@/lib/tgov-tables'
+import { searchLivePropostas } from '@/lib/tgov-live-search'
 
 export const dynamic = 'force-dynamic'
 
@@ -131,8 +132,51 @@ export async function GET(request: NextRequest) {
       ),
     ])
 
-    const cnpj = cnpjParam || propostas[0]?.proponente_cnpj || execucao[0]?.cnpj || ''
-    const proponente = propostas[0]?.proponente || execucao[0]?.nome_proponente || null
+    const livePropostas = (
+      !isCnpjSearch || propostas.length === 0
+    ) ? await searchLivePropostas({
+      cnpj: isCnpjSearch ? cnpjParam : undefined,
+      nrProposta: isCnpjSearch ? undefined : nrPropostaParam,
+      limit: isCnpjSearch ? 50 : 1,
+    }) : []
+
+    const responsePropostas = propostas.map((r) => ({
+      transferGovId: r.transfer_gov_id,
+      numeroProposta: r.nr_proposta || r.transfer_gov_id,
+      titulo: r.titulo,
+      proponente: r.proponente ?? '',
+      situacao: r.situacao ?? 'Sem Situação',
+      valorGlobal: r.valor_global ? parseFloat(r.valor_global) : null,
+      valorRepasse: r.valor_repasse ? parseFloat(r.valor_repasse) : null,
+      uf: r.estado,
+      municipio: r.municipio,
+      data: r.data_publicacao ? String(r.data_publicacao) : null,
+    }))
+
+    const seenProposalKeys = new Set(
+      responsePropostas.map((proposal) => `${proposal.transferGovId}::${proposal.numeroProposta.replace(/^0+/, '')}`)
+    )
+
+    for (const live of livePropostas) {
+      const key = `${live.transferGovId}::${live.nrProposta.replace(/^0+/, '')}`
+      if (seenProposalKeys.has(key)) continue
+      responsePropostas.push({
+        transferGovId: live.transferGovId,
+        numeroProposta: live.nrProposta || live.transferGovId,
+        titulo: live.titulo,
+        proponente: live.proponente ?? '',
+        situacao: live.situacao ?? 'Sem Situação',
+        valorGlobal: live.valorGlobal,
+        valorRepasse: live.valorRepasse,
+        uf: live.uf,
+        municipio: live.municipio,
+        data: live.dataPublicacao,
+      })
+      seenProposalKeys.add(key)
+    }
+
+    const cnpj = cnpjParam || propostas[0]?.proponente_cnpj || livePropostas[0]?.proponenteCnpj || execucao[0]?.cnpj || ''
+    const proponente = propostas[0]?.proponente || livePropostas[0]?.proponente || execucao[0]?.nome_proponente || null
 
     // Check if this CNPJ is already a Projetus client (existing_clients or vendedor_projetos)
     let isProjetusClient = false
@@ -152,17 +196,7 @@ export async function GET(request: NextRequest) {
       cnpj,
       proponente,
       isProjetusClient,
-      propostas: propostas.map(r => ({
-        numeroProposta: r.nr_proposta || r.transfer_gov_id,
-        titulo: r.titulo,
-        proponente: r.proponente ?? '',
-        situacao: r.situacao ?? 'Sem Situação',
-        valorGlobal: r.valor_global ? parseFloat(r.valor_global) : null,
-        valorRepasse: r.valor_repasse ? parseFloat(r.valor_repasse) : null,
-        uf: r.estado,
-        municipio: r.municipio,
-        data: r.data_publicacao ? String(r.data_publicacao) : null,
-      })),
+      propostas: responsePropostas,
       execucao: execucao.map(r => ({
         nrConvenio: r.nr_convenio,
         idProposta: r.id_proposta,

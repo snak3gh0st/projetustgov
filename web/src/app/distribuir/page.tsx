@@ -577,7 +577,7 @@ export default function DistribuirPage() {
                 className={`rounded-xl p-3 border cursor-pointer transition-all ${
                   isFiltered
                     ? 'border-[#0072F7] bg-blue-50'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
+                    : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-700'
                 }`}
               >
                 <p className="text-sm font-medium text-gray-900 truncate">{v.nome}</p>

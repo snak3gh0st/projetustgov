@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
+import { enqueueBitrixEvent, enqueueBitrixEventsBulk } from '@/lib/bitrix-sync'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +28,19 @@ export async function POST(request: NextRequest) {
           `UPDATE vendedor_projetos SET vendedor_id = NULL, updated_at = NOW() WHERE cnpj = $1`,
           [cnpj]
         )
+        try {
+          await enqueueBitrixEvent({
+            eventType: 'lead.assigned',
+            leadCnpj: cnpj,
+            payload: {
+              action: 'unassign',
+              actor_id: session.userId,
+              actor_role: session.role,
+            },
+          })
+        } catch (syncError) {
+          console.error('[bitrix-sync] failed to enqueue unassign event:', syncError)
+        }
         return NextResponse.json({ success: true, unassigned: true, cnpj })
       }
 
@@ -85,6 +99,22 @@ export async function POST(request: NextRequest) {
            ${protectClosedDeals ? "AND COALESCE(status_contato, '') != 'Fechado' AND COALESCE(comissao_locked, false) = false" : ''}`,
         [vendedor_id, cnpj]
       )
+
+      try {
+        await enqueueBitrixEvent({
+          eventType: 'lead.assigned',
+          leadCnpj: cnpj,
+          payload: {
+            action: 'assign',
+            vendedor_id,
+            actor_id: session.userId,
+            actor_role: session.role,
+            protected_closed_deals: protectClosedDeals,
+          },
+        })
+      } catch (syncError) {
+        console.error('[bitrix-sync] failed to enqueue cnpj assignment event:', syncError)
+      }
 
       return NextResponse.json({
         success: true,
@@ -166,6 +196,18 @@ export async function POST(request: NextRequest) {
               ${protectClosedDeals ? "AND COALESCE(status_contato, '') != 'Fechado' AND COALESCE(comissao_locked, false) = false" : ''}`,
            [vendedor_id, cnpjs, lead_ids]
         )
+      }
+
+      try {
+        await enqueueBitrixEventsBulk('lead.assigned', cnpjs, {
+          action: reassign ? 'bulk_reassign' : 'bulk_assign',
+          vendedor_id,
+          actor_id: session.userId,
+          actor_role: session.role,
+          protected_closed_deals: protectClosedDeals,
+        })
+      } catch (syncError) {
+        console.error('[bitrix-sync] failed to enqueue bulk assignment events:', syncError)
       }
 
       const extraAssigned = Math.max(0, totalAssigned - lead_ids.length)

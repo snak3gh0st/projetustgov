@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
     const tipo = searchParams.get('tipo') ?? 'todos'
     const status = searchParams.get('status') ?? ''
     const uf = searchParams.get('uf') ?? ''
+    const tecnicoId = searchParams.get('tecnico_id') ?? ''
 
     const proponenteFilter = searchParams.get('proponente') ?? ''
     const numeroPropostaFilter = searchParams.get('numero_proposta') ?? ''
@@ -99,6 +100,11 @@ export async function GET(request: NextRequest) {
     if (uf) {
       mainParams.push(uf)
       mainConditions.push(`p.estado = $${mainParams.length}`)
+    }
+
+    if (tecnicoId) {
+      mainParams.push(tecnicoId)
+      mainConditions.push(`p.tecnico_id = $${mainParams.length}::uuid`)
     }
 
     if (tipo === 'meus_proponentes') {
