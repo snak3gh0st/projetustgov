@@ -527,8 +527,8 @@ export default function LeadsClient() {
                   <tr
                     onClick={() => handleOpenLead(lead)}
                     className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
-                      lead.is_max_priority ? 'bg-red-50 dark:bg-red-500/15 border-l-2 border-l-red-500' :
-                      !hasContact ? 'bg-red-50/50 border-l-2 border-l-red-300' : ''
+                      lead.is_max_priority ? 'bg-red-50 dark:bg-red-500/10' :
+                      !hasContact ? 'bg-red-50/50 dark:bg-red-500/5' : ''
                     }`}
                   >
                     <td className="px-3 py-2.5 max-w-[280px]">
