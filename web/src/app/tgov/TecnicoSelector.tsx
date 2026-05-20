@@ -74,7 +74,7 @@ export default function TecnicoSelector({
         value={selectedId}
         onChange={handleChange}
         disabled={disabled || saving}
-        className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
+        className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 dark:disabled:bg-gray-700 disabled:text-gray-500 dark:disabled:text-gray-400 disabled:cursor-not-allowed"
         title={disabled ? 'Apenas gestores e coordenadores de aprovação podem alterar' : undefined}
       >
         <option value="">— Não atribuído —</option>
@@ -91,12 +91,12 @@ export default function TecnicoSelector({
         )}
       </select>
       {disabled && (
-        <p className="text-[10px] text-gray-400 italic">
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 italic">
           Apenas gestores e coordenadores de aprovação podem alterar
         </p>
       )}
-      {saving && <p className="text-[10px] text-gray-500">Salvando...</p>}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {saving && <p className="text-[10px] text-gray-500 dark:text-gray-400">Salvando...</p>}
+      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   )
 }

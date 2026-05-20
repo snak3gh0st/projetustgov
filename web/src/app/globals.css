@@ -29,11 +29,11 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Custom scrollbar — dark (when html.dark) */
 html.dark ::-webkit-scrollbar-track {
-  background: #1F2937;
+  background: #111827;
 }
 html.dark ::-webkit-scrollbar-thumb {
-  background: #4B5563;
+  background: #374151;
 }
 html.dark ::-webkit-scrollbar-thumb:hover {
-  background: #6B7280;
+  background: #4B5563;
 }

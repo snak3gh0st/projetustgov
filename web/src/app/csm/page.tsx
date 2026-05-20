@@ -33,7 +33,7 @@ function CsmTabsClient({ userRole, userName, initialTab }: { userRole: string; u
   return (
     <div className="space-y-6">
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex gap-6" aria-label="Tabs">
           {tabs.map(tab => {
             const isActive = currentTab === tab.id
@@ -45,7 +45,7 @@ function CsmTabsClient({ userRole, userName, initialTab }: { userRole: string; u
                   whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors
                   ${isActive
                     ? 'border-[#0072F7] text-[#0072F7]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
                   }
                 `}
                 aria-current={isActive ? 'page' : undefined}
@@ -62,7 +62,7 @@ function CsmTabsClient({ userRole, userName, initialTab }: { userRole: string; u
       {currentTab === 'projetos' && <CsmDashboardClient userRole={userRole} userName={userName} />}
       {currentTab === 'crm' && <ExecucaoClient userRole={userRole} />}
       {currentTab === 'comissoes' && (
-        <div className="py-8 text-center text-gray-500">
+        <div className="py-8 text-center text-gray-500 dark:text-gray-400">
           <Link href="/csm/comissoes" className="text-[#0072F7] hover:underline">
             Ir para Comissões →
           </Link>

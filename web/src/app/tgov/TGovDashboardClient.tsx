@@ -96,15 +96,15 @@ const TGOV_INTERACTION_STATUSES = [
 type TGovInteractionStatus = typeof TGOV_INTERACTION_STATUSES[number]
 
 function InternalStatusBadge({ status }: { status: string | null | undefined }) {
-  if (!status || status === 'Sem Contato') return <span className="text-xs text-gray-400">—</span>
+  if (!status || status === 'Sem Contato') return <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
   const colors: Record<string, string> = {
-    'Em Contato': 'bg-blue-50 text-blue-700',
-    'Proposta Enviada': 'bg-purple-50 text-purple-700',
-    'Em Negociação': 'bg-amber-50 text-amber-700',
-    'Fechado': 'bg-green-50 text-green-700',
-    'Sem Interesse': 'bg-red-50 text-red-600',
+    'Em Contato': 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400',
+    'Proposta Enviada': 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400',
+    'Em Negociação': 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    'Fechado': 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400',
+    'Sem Interesse': 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400',
   }
-  const cls = colors[status] ?? 'bg-gray-100 text-gray-600'
+  const cls = colors[status] ?? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
   return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{status}</span>
 }
 
@@ -113,15 +113,15 @@ function InternalStatusBadge({ status }: { status: string | null | undefined }) 
 // ---------------------------------------------------------------------------
 
 function VencimentoBadge({ vencimento }: { vencimento: string | null | undefined }) {
-  if (!vencimento) return <span className="text-xs text-gray-400">—</span>
+  if (!vencimento) return <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const vDate = new Date(vencimento + 'T00:00:00') // parse as local date
   const isVencida = vDate < today
   const formatted = vDate.toLocaleDateString('pt-BR')
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className="text-xs text-gray-600">{formatted}</span>
-      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isVencida ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+      <span className="text-xs text-gray-600 dark:text-gray-300">{formatted}</span>
+      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isVencida ? 'bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400'}`}>
         {isVencida ? 'Vencida' : 'Em tempo'}
       </span>
     </span>
@@ -211,21 +211,21 @@ function TGovInteractionPanel({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">CRM Interno</p>
+    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-4 space-y-3">
+      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">CRM Interno</p>
 
       {loadError && <p className="text-xs text-red-500">{loadError}</p>}
 
       {tab === 'aprovacao' ? (
         /* Vencimento date picker for aprovacao tab */
         <div>
-          <p className="text-xs text-gray-500 mb-1.5">Vencimento</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Vencimento</p>
           <div className="flex items-center gap-2">
             <input
               type="date"
               value={vencimento}
               onChange={(e) => setVencimento(e.target.value)}
-              className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+              className="flex-1 text-sm border border-gray-200 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
             />
             {vencimento && (
               <button
@@ -249,7 +249,7 @@ function TGovInteractionPanel({
       ) : (
         /* Status selector for execucao tab */
         <div>
-          <p className="text-xs text-gray-500 mb-1.5">Status</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Status</p>
           <div className="flex flex-wrap gap-1.5">
             {TGOV_INTERACTION_STATUSES.map((s) => (
               <button
@@ -259,7 +259,7 @@ function TGovInteractionPanel({
                 className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                   status === s
                     ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-300 hover:text-blue-600'
                 }`}
               >
                 {s}
@@ -271,13 +271,13 @@ function TGovInteractionPanel({
 
       {/* Obs textarea */}
       <div>
-        <p className="text-xs text-gray-500 mb-1">Observações</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Observações</p>
         <textarea
           value={obs}
           onChange={(e) => setObs(e.target.value)}
           rows={3}
           placeholder="Notas internas..."
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+          className="w-full text-sm border border-gray-200 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
         />
       </div>
 
@@ -291,8 +291,8 @@ function TGovInteractionPanel({
         >
           {saving ? 'Salvando...' : 'Salvar'}
         </button>
-        {saved && <span className="text-xs text-green-600 font-medium">Salvo!</span>}
-        {saveError && <span className="text-xs text-red-600">{saveError}</span>}
+        {saved && <span className="text-xs text-green-600 dark:text-green-400 font-medium">Salvo!</span>}
+        {saveError && <span className="text-xs text-red-600 dark:text-red-400">{saveError}</span>}
       </div>
     </div>
   )
@@ -329,7 +329,7 @@ interface CnpjSearchResult {
   proponente: string | null
   isProjetusClient: boolean
   propostas: {
-    numeroProposta: string; titulo: string | null; proponente: string; situacao: string
+    transferGovId: string; numeroProposta: string; titulo: string | null; proponente: string; situacao: string
     valorGlobal: number | null; valorRepasse: number | null; uf: string | null; municipio: string | null; data: string | null
   }[]
   execucao: {
@@ -405,6 +405,9 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
       active = false
     }
   }, [])
+  const filterTecnicos = activeTab === 'aprovacao'
+    ? tecnicos.filter((tecnico) => tecnico.role === 'projetista')
+    : tecnicos
 
   // CNPJ search state
   const [cnpjModalOpen, setCnpjModalOpen] = useState(false)
@@ -459,6 +462,7 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
         if (mf.tipo !== 'todos') params.set('tipo', mf.tipo)
         if (mf.status) params.set('status', mf.status)
         if (mf.uf) params.set('uf', mf.uf)
+        if (mf.tecnico) params.set('tecnico_id', mf.tecnico)
         if (tf.proponente) params.set('proponente', tf.proponente)
         if (tf.numeroProposta) params.set('numero_proposta', tf.numeroProposta)
         params.set('page', String(pg))
@@ -586,21 +590,21 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
   const donutLabel = 'Distribuição por Situação'
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-800/50">
       {/* Page header */}
-      <div className="bg-white border-b border-gray-200 px-8 py-5">
-        <div className="flex items-center justify-between">
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
               {isDashboardView ? 'TGov Pipeline' : 'TGov Dashboard'}
             </h1>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {isDashboardView
                 ? 'Resumo analítico de propostas e execuções'
                 : 'Painel gerencial de propostas e projetos em execução'}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex w-full sm:w-auto flex-wrap items-center gap-2 sm:gap-3">
             <button
               onClick={async () => {
                 setCnpjModalOpen(true); setCnpjResult(null); setCnpjError(null); setCnpjInput(''); setAddedInSession(new Set())
@@ -621,14 +625,14 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                   }
                 } catch { /* ignore */ }
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               Adicionar CNPJ / Proposta
             </button>
-            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
               {(['aprovacao', 'execucao', 'prestacao_contas'] as TGovTab[])
                 .filter(tab => {
                   const isAprovacaoRole = (APROVACAO_ONLY_ROLES as readonly string[]).includes(userRole)
@@ -645,8 +649,8 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                     onClick={() => handleTabSwitch(tab)}
                     className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
                       activeTab === tab
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                     }`}
                   >
                     {tab === 'aprovacao' ? 'Aprovação' : tab === 'execucao' ? 'Execução' : 'Prestação de Contas'}
@@ -656,13 +660,13 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-end gap-3">
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Ano</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Ano</label>
             <select
               value={mainFilters.ano}
               onChange={(e) => handleMainFilterChange('ano', e.target.value)}
-              className="block h-8 rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="block h-8 rounded-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 px-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Todos</option>
               {YEAR_OPTIONS.map((y) => (
@@ -671,11 +675,11 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Tipo</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Tipo</label>
             <select
               value={mainFilters.tipo}
               onChange={(e) => handleMainFilterChange('tipo', e.target.value as TGovMainFilters['tipo'])}
-              className="block h-8 rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="block h-8 rounded-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 px-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {Object.entries(TGOV_TIPO_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
@@ -683,29 +687,46 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Status</label>
             <input
               type="text"
               value={mainFilters.status}
               onChange={(e) => handleMainFilterChange('status', e.target.value)}
               placeholder="Ex: Em Execução"
-              className="block h-8 w-44 rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="block h-8 w-full sm:w-44 rounded-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500 px-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">UF</label>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">UF</label>
             <input
               type="text"
               value={mainFilters.uf}
               onChange={(e) => handleMainFilterChange('uf', e.target.value.toUpperCase().slice(0, 2))}
               placeholder="Ex: SP"
               maxLength={2}
-              className="block h-8 w-20 rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-800 uppercase placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="block h-8 w-full sm:w-20 rounded-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500 px-2 text-sm text-gray-800 uppercase placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+              {activeTab === 'aprovacao' ? 'Projetista' : 'Técnico'}
+            </label>
+            <select
+              value={mainFilters.tecnico}
+              onChange={(e) => handleMainFilterChange('tecnico', e.target.value)}
+              className="block h-8 w-full rounded-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 px-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todos</option>
+              {filterTecnicos.map((tecnico) => (
+                <option key={tecnico.id} value={tecnico.id}>
+                  {tecnico.nome}
+                </option>
+              ))}
+            </select>
           </div>
           <button
             onClick={handleResetFilters}
-            className="h-8 px-3 rounded-lg border border-gray-200 bg-white text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+            className="h-8 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             Limpar
           </button>
@@ -713,35 +734,35 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
       </div>
 
       {/* Main content */}
-      <div className="px-8 py-6 space-y-6">
+      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6">
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-400">
             {error}
           </div>
         )}
 
         {/* KPI + Donut row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col justify-between">
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col justify-between">
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Total — {tabLabel}
               </p>
-              <p className="mt-2 text-4xl font-bold text-gray-900 tabular-nums">
+              <p className="mt-2 text-4xl font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                 {loading ? (
-                  <span className="inline-block w-20 h-9 bg-gray-100 animate-pulse rounded" />
+                  <span className="inline-block w-20 h-9 bg-gray-100 dark:bg-gray-800 animate-pulse rounded" />
                 ) : (
                   (data?.total ?? 0).toLocaleString('pt-BR')
                 )}
               </p>
-              <p className="mt-1 text-sm text-gray-400">
+              <p className="mt-1 text-sm text-gray-400 dark:text-gray-500">
                 {activeTab === 'aprovacao' ? 'propostas' : 'projetos/convênios'} com os filtros aplicados
               </p>
             </div>
           </div>
 
-          <div className="md:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">
+          <div className="md:col-span-2 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">
               {donutLabel}
             </p>
             {loading ? (
@@ -751,7 +772,7 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
             ) : data ? (
               <TGovStatusDonut data={donutData} total={data.total} onStatusClick={(s) => handleMainFilterChange('status', mainFilters.status === s ? '' : s)} />
             ) : (
-              <div className="flex items-center justify-center h-40 text-sm text-gray-400">
+              <div className="flex items-center justify-center h-40 text-sm text-gray-400 dark:text-gray-500">
                 Nenhum dado disponível
               </div>
             )}
@@ -759,13 +780,13 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
         </div>
 
         {/* Table section — pipeline only */}
-        <div className={`bg-white rounded-xl border border-gray-200${isDashboardView ? ' hidden' : ''}`}>
-          <div className="px-5 py-4 border-b border-gray-100">
+        <div className={`bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700${isDashboardView ? ' hidden' : ''}`}>
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex-1">
-                <p className="text-sm font-semibold text-gray-900">Detalhamento — {tabLabel}</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Detalhamento — {tabLabel}</p>
                 {!loading && data && (
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                     {totalRows.toLocaleString('pt-BR')} registro{totalRows !== 1 ? 's' : ''}
                     {tableFilters.proponente || tableFilters.numeroProposta ? ' (filtrado)' : ''}
                   </p>
@@ -777,14 +798,14 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                   value={tableFilters.proponente}
                   onChange={(e) => handleTableFilterChange('proponente', e.target.value)}
                   placeholder="Proponente"
-                  className="h-8 w-44 rounded-lg border border-gray-200 px-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="h-8 w-full sm:w-44 rounded-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500 px-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="text"
                   value={tableFilters.numeroProposta}
                   onChange={(e) => handleTableFilterChange('numeroProposta', e.target.value)}
                   placeholder={activeTab === 'aprovacao' ? 'Numero Proposta' : 'Nr Convênio / Proposta'}
-                  className="h-8 w-52 rounded-lg border border-gray-200 px-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="h-8 w-full sm:w-52 rounded-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500 px-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -800,11 +821,11 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                       className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                         active
                           ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                       }`}
                     >
                       {bucket.status}
-                      <span className={`rounded-full px-1 py-0.5 text-[10px] font-semibold ${active ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                      <span className={`rounded-full px-1 py-0.5 text-[10px] font-semibold ${active ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
                         {bucket.count.toLocaleString('pt-BR')}
                       </span>
                     </button>
@@ -823,7 +844,7 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                       className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                         active
                           ? 'bg-indigo-600 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                       }`}
                     >
                       {uf}
@@ -871,13 +892,13 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
           </div>
 
           {!loading && (totalPages > 1 || pageSize !== TGOV_PAGE_SIZE) && (
-            <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
+            <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <p className="text-xs text-gray-500">Página {page} de {totalPages}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Página {page} de {totalPages}</p>
                 <select
                   value={pageSize}
                   onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}
-                  className="text-xs border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 bg-white"
+                  className="text-xs border border-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 rounded px-1.5 py-0.5 text-gray-600 bg-white"
                 >
                   {TGOV_PAGE_SIZE_OPTIONS.map((s) => (
                     <option key={s} value={s}>{s} linhas</option>
@@ -889,7 +910,7 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                 <PaginationButton label="‹" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} />
                 {buildPageWindow(page, totalPages).map((p) =>
                   p === '...' ? (
-                    <span key={`e-${Math.random()}`} className="px-1 text-xs text-gray-400">…</span>
+                    <span key={`e-${Math.random()}`} className="px-1 text-xs text-gray-400 dark:text-gray-500">…</span>
                   ) : (
                     <button
                       key={p}
@@ -897,7 +918,7 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                       className={`w-7 h-6 text-xs rounded border transition-colors ${
                         Number(p) === page
                           ? 'border-blue-500 bg-blue-500 text-white font-semibold'
-                          : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                          : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300'
                       }`}
                     >
                       {p}
@@ -978,11 +999,11 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
         <>
           <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setCnpjModalOpen(false)} />
           <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
-            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
               {/* Header */}
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="text-lg font-bold text-gray-900">Buscar no SICONV</h3>
-                <button onClick={() => setCnpjModalOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
+              <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Buscar no SICONV</h3>
+                <button onClick={() => setCnpjModalOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -998,7 +1019,7 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                     onChange={(e) => setCnpjInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleCnpjSearch()}
                     placeholder="CNPJ (ex: 12.345.678/0001-90) ou NR Proposta (ex: 4822/2020)"
-                    className="flex-1 h-10 rounded-lg border border-gray-200 px-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 h-10 rounded-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500 px-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     autoFocus
                   />
                   <button
@@ -1009,40 +1030,40 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                     {cnpjLoading ? 'Buscando...' : 'Buscar'}
                   </button>
                 </div>
-                <p className="text-xs text-gray-400">Busque por CNPJ para ver todas as propostas/convênios ou por NR Proposta (ex: 4822/2020) para encontrar um instrumento específico.</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">Busque por CNPJ para ver propostas/convênios já sincronizados ou por NR Proposta para localizar e liberar uma proposta específica no whitelist, mesmo quando ela ainda não entrou no banco.</p>
               </div>
 
               {/* Results */}
               <div className="px-6 pb-6 overflow-y-auto flex-1">
                 {cnpjError && (
-                  <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{cnpjError}</div>
+                  <div className="rounded-lg border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-400">{cnpjError}</div>
                 )}
 
                 {cnpjResult && (
                   <div className="space-y-4">
-                    <div className="rounded-lg bg-gray-50 px-4 py-3">
-                      <p className="text-sm font-semibold text-gray-900">{cnpjResult.proponente || 'Proponente'}</p>
-                      <p className="text-xs text-gray-500 font-mono mt-0.5">{formatCnpj(cnpjResult.cnpj)}</p>
+                    <div className="rounded-lg bg-gray-50 dark:bg-gray-800/50 px-4 py-3">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{cnpjResult.proponente || 'Proponente'}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">{formatCnpj(cnpjResult.cnpj)}</p>
                     </div>
 
                     {/* Propostas — com botão individual por linha */}
                     {cnpjResult.propostas.length > 0 && (
                       <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
                           Propostas ({cnpjResult.propostas.length})
                         </p>
-                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                           <table className="w-full text-xs">
                             <thead>
-                              <tr className="bg-gray-50 border-b border-gray-100">
-                                <th className="text-left px-3 py-2 font-medium text-gray-500">Nr Proposta</th>
-                                <th className="text-left px-3 py-2 font-medium text-gray-500">Situação</th>
-                                <th className="text-right px-3 py-2 font-medium text-gray-500">Valor Global</th>
-                                <th className="text-left px-3 py-2 font-medium text-gray-500">UF</th>
-                                <th className="text-center px-3 py-2 font-medium text-gray-500 w-32"></th>
+                              <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                                <th className="text-left px-3 py-2 font-medium text-gray-500 dark:text-gray-400">Nr Proposta</th>
+                                <th className="text-left px-3 py-2 font-medium text-gray-500 dark:text-gray-400">Situação</th>
+                                <th className="text-right px-3 py-2 font-medium text-gray-500 dark:text-gray-400">Valor Global</th>
+                                <th className="text-left px-3 py-2 font-medium text-gray-500 dark:text-gray-400">UF</th>
+                                <th className="text-center px-3 py-2 font-medium text-gray-500 dark:text-gray-400 w-32"></th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50">
+                            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                               {cnpjResult.propostas.map((p, i) => {
                                 const nr = p.numeroProposta
                                 const nrStripped = nr.replace(/^0+/, '')
@@ -1050,14 +1071,14 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                                 const wasAdded = addedInSession.has(nr)
                                 const alreadyAdded = isInWhitelist || wasAdded
                                 return (
-                                  <tr key={i} className="hover:bg-blue-50/30">
-                                    <td className="px-3 py-2 font-mono">{nr}</td>
+                                  <tr key={i} className="hover:bg-blue-50/30 dark:hover:bg-blue-500/5">
+                                    <td className="px-3 py-2 font-mono dark:text-gray-300">{nr}</td>
                                     <td className="px-3 py-2"><SituacaoBadge situacao={p.situacao} /></td>
-                                    <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(p.valorGlobal)}</td>
-                                    <td className="px-3 py-2 text-gray-500">{p.uf || '—'}</td>
+                                    <td className="px-3 py-2 text-right tabular-nums dark:text-gray-300">{formatCurrency(p.valorGlobal)}</td>
+                                    <td className="px-3 py-2 text-gray-500 dark:text-gray-400">{p.uf || '—'}</td>
                                     <td className="px-3 py-2 text-center">
                                       {alreadyAdded ? (
-                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500 whitespace-nowrap">
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 whitespace-nowrap">
                                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                                           Já acompanhada
                                         </span>
@@ -1068,7 +1089,20 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                                             const res = await fetch('/api/tgov/whitelist', {
                                               method: 'POST',
                                               headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({ nr_proposta: nr, tab: 'aprovacao' }),
+                                              body: JSON.stringify({
+                                                nr_proposta: nr,
+                                                cnpj: cnpjResult.cnpj,
+                                                transfer_gov_id: p.transferGovId,
+                                                proponente: p.proponente,
+                                                titulo: p.titulo,
+                                                situacao: p.situacao,
+                                                valor_global: p.valorGlobal,
+                                                valor_repasse: p.valorRepasse,
+                                                uf: p.uf,
+                                                municipio: p.municipio,
+                                                data_publicacao: p.data,
+                                                tab: 'aprovacao',
+                                              }),
                                             })
                                             if (res.ok) {
                                               setAddedInSession(prev => new Set(prev).add(nr))
@@ -1094,22 +1128,22 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                     {/* Execução — com botão individual por linha */}
                     {cnpjResult.execucao.length > 0 && (
                       <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
                           Em Execução ({cnpjResult.execucao.length})
                         </p>
-                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                           <table className="w-full text-xs">
                             <thead>
-                              <tr className="bg-gray-50 border-b border-gray-100">
-                                <th className="text-left px-3 py-2 font-medium text-gray-500">Nr Convênio</th>
-                                <th className="text-left px-3 py-2 font-medium text-gray-500">Situação</th>
-                                <th className="text-right px-3 py-2 font-medium text-gray-500">Valor Global</th>
-                                <th className="text-right px-3 py-2 font-medium text-gray-500">Desembolsado</th>
-                                <th className="text-left px-3 py-2 font-medium text-gray-500">Fim Vigência</th>
-                                <th className="text-center px-3 py-2 font-medium text-gray-500 w-32"></th>
+                              <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                                <th className="text-left px-3 py-2 font-medium text-gray-500 dark:text-gray-400">Nr Convênio</th>
+                                <th className="text-left px-3 py-2 font-medium text-gray-500 dark:text-gray-400">Situação</th>
+                                <th className="text-right px-3 py-2 font-medium text-gray-500 dark:text-gray-400">Valor Global</th>
+                                <th className="text-right px-3 py-2 font-medium text-gray-500 dark:text-gray-400">Desembolsado</th>
+                                <th className="text-left px-3 py-2 font-medium text-gray-500 dark:text-gray-400">Fim Vigência</th>
+                                <th className="text-center px-3 py-2 font-medium text-gray-500 dark:text-gray-400 w-32"></th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50">
+                            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                               {cnpjResult.execucao.map((e, i) => {
                                 const nr = e.numeroProposta
                                 const nrStripped = nr.replace(/^0+/, '')
@@ -1117,18 +1151,18 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                                 const wasAdded = addedInSession.has(nr)
                                 const alreadyAdded = isInWhitelist || wasAdded
                                 return (
-                                  <tr key={i} className="hover:bg-blue-50/30">
+                                  <tr key={i} className="hover:bg-blue-50/30 dark:hover:bg-blue-500/5">
                                     <td className="px-3 py-2 font-mono">
                                       <a href={buildTGovExecucaoLink(e.idProposta || e.numeroProposta)} target="_blank" rel="noopener noreferrer"
-                                         className="text-blue-600 hover:underline">{e.nrConvenio}</a>
+                                         className="text-blue-600 dark:text-blue-400 hover:underline">{e.nrConvenio}</a>
                                     </td>
                                     <td className="px-3 py-2"><SituacaoBadge situacao={e.situacao} /></td>
-                                    <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(e.valorGlobal)}</td>
-                                    <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(e.valorDesembolsado)}</td>
-                                    <td className="px-3 py-2 text-gray-500">{formatDate(e.dataFimVigencia)}</td>
+                                    <td className="px-3 py-2 text-right tabular-nums dark:text-gray-300">{formatCurrency(e.valorGlobal)}</td>
+                                    <td className="px-3 py-2 text-right tabular-nums dark:text-gray-300">{formatCurrency(e.valorDesembolsado)}</td>
+                                    <td className="px-3 py-2 text-gray-500 dark:text-gray-400">{formatDate(e.dataFimVigencia)}</td>
                                     <td className="px-3 py-2 text-center">
                                       {alreadyAdded ? (
-                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500 whitespace-nowrap">
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 whitespace-nowrap">
                                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                                           Já acompanhada
                                         </span>
@@ -1181,7 +1215,7 @@ function PaginationButton({ label, onClick, disabled }: { label: string; onClick
     <button
       onClick={onClick}
       disabled={disabled}
-      className="px-2 py-1 text-xs rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors"
+      className="px-2 py-1 text-xs rounded border border-gray-200 dark:border-gray-700 dark:text-gray-300 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
     >
       {label}
     </button>
@@ -1216,8 +1250,8 @@ function SortableTh({
       onClick={() => onSort(col)}
     >
       <span className="inline-flex items-center gap-1">
-        <span className={active ? 'text-blue-600' : 'text-gray-500'}>{label}</span>
-        <span className="text-gray-300 text-[10px]">
+        <span className={active ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400'}>{label}</span>
+        <span className="text-gray-300 dark:text-gray-600 text-[10px]">
           {active ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
         </span>
       </span>
@@ -1266,9 +1300,9 @@ function AprovacaoTable({
   const thProps = { sortCol, sortDir, onSort: handleSort }
 
   return (
-    <table className="w-full text-sm">
+    <table className="min-w-[1080px] w-full text-sm">
       <thead>
-        <tr className="border-b border-gray-100 bg-gray-50">
+        <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
           <SortableTh label="NR Proposta" col="numeroProposta" className="text-left px-5" {...thProps} />
           <SortableTh label="Data" col="data" className="text-left px-4" {...thProps} />
           <SortableTh label="CNPJ" col="cnpj" className="text-left px-4" {...thProps} />
@@ -1279,7 +1313,7 @@ function AprovacaoTable({
           <th className="px-3 py-2.5 w-8"></th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-gray-100">
+      <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
         {loading ? (
           <SkeletonRows cols={8} />
         ) : sorted && sorted.length > 0 ? (
@@ -1300,25 +1334,25 @@ function AprovacaoTable({
                 onRowClick(row)
               }}
             >
-              <td className={`py-2.5 text-gray-700 font-mono text-xs ${isSelected ? 'pl-[18px] border-l-2 border-l-blue-500' : 'px-5'}`}>
+              <td className={`py-2.5 text-gray-700 dark:text-gray-300 font-mono text-xs ${isSelected ? 'pl-[18px] border-l-2 border-l-blue-500' : 'px-5'}`}>
                 {row.numeroProposta || '—'}
                 {row.hasNew && (
-                  <span className="ml-1.5 inline-block px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 rounded">
+                  <span className="ml-1.5 inline-block px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded">
                     NOVO
                   </span>
                 )}
               </td>
-              <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">{formatDate(row.data)}</td>
-              <td className="px-4 py-2.5 text-gray-500 font-mono text-xs whitespace-nowrap">{formatCnpj(row.cnpj) || '—'}</td>
-              <td className="px-4 py-2.5 text-gray-700">
+              <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDate(row.data)}</td>
+              <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400 font-mono text-xs whitespace-nowrap">{formatCnpj(row.cnpj) || '—'}</td>
+              <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">
                 {row.proponente || '—'}
               </td>
               <td className="px-3 py-2.5"><SituacaoBadge situacao={row.situacao ?? ''} /></td>
               <td className="px-4 py-2.5"><VencimentoBadge vencimento={row.vencimento} /></td>
-              <td className="px-3 py-2.5 text-xs text-gray-600 truncate max-w-[120px]">
-                {row.tecnicoNome || <span className="text-gray-300">—</span>}
+              <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-300 truncate max-w-[120px]">
+                {row.tecnicoNome || <span className="text-gray-300 dark:text-gray-600">—</span>}
               </td>
-              <td className="px-3 py-2.5 text-gray-300">
+              <td className="px-3 py-2.5 text-gray-300 dark:text-gray-600">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -1367,9 +1401,9 @@ function ExecucaoTable({
   const thProps = { sortCol, sortDir, onSort: handleSort }
 
   return (
-    <table className="w-full text-sm">
+    <table className="min-w-[1200px] w-full text-sm">
       <thead>
-        <tr className="border-b border-gray-100 bg-gray-50">
+        <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
           <SortableTh label="Nr Convênio" col="nrConvenio" className="text-left px-4 whitespace-nowrap" {...thProps} />
           <SortableTh label="Ano" col="anoInstrumento" className="text-left px-3" {...thProps} />
           <SortableTh label="Fim Vigência" col="dataFimVigencia" className="text-left px-3 whitespace-nowrap" {...thProps} />
@@ -1381,12 +1415,12 @@ function ExecucaoTable({
           {mode === 'prestacao_contas' ? (
             <SortableTh label="Prazo PC" col="diasPrestContas" className="text-left px-3 whitespace-nowrap" {...thProps} />
           ) : (
-            <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">Desembolso</th>
+            <th className="text-center px-3 py-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Desembolso</th>
           )}
-          <th className="px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide w-8"></th>
+          <th className="px-3 py-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide w-8"></th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-gray-100">
+      <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
         {loading ? (
           <SkeletonRows cols={10} />
         ) : sorted && sorted.length > 0 ? (
@@ -1420,23 +1454,23 @@ function ExecucaoTable({
                     {row.nrConvenio || '—'}
                   </a>
                   {row.hasNew && (
-                    <span className="ml-1.5 inline-block px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 rounded">
+                    <span className="ml-1.5 inline-block px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded">
                       NOVO
                     </span>
                   )}
                 </td>
-                <td className="px-3 py-2.5 text-gray-500 text-xs tabular-nums">{row.anoInstrumento || '—'}</td>
-                <td className="px-3 py-2.5 text-xs tabular-nums whitespace-nowrap text-gray-600">
+                <td className="px-3 py-2.5 text-gray-500 dark:text-gray-400 text-xs tabular-nums">{row.anoInstrumento || '—'}</td>
+                <td className="px-3 py-2.5 text-xs tabular-nums whitespace-nowrap text-gray-600 dark:text-gray-300">
                   {formatDate(row.dataFimVigencia)}
                 </td>
-                <td className="px-3 py-2.5 text-xs tabular-nums whitespace-nowrap text-gray-600">
+                <td className="px-3 py-2.5 text-xs tabular-nums whitespace-nowrap text-gray-600 dark:text-gray-300">
                   {formatDate(row.diaLimitePrestContas)}
                 </td>
-                <td className="px-3 py-2.5 text-gray-500 font-mono text-xs whitespace-nowrap">{formatCnpj(row.cnpj) || '—'}</td>
-                <td className="px-3 py-2.5 text-gray-700 text-xs">
+                <td className="px-3 py-2.5 text-gray-500 dark:text-gray-400 font-mono text-xs whitespace-nowrap">{formatCnpj(row.cnpj) || '—'}</td>
+                <td className="px-3 py-2.5 text-gray-700 dark:text-gray-300 text-xs">
                   {row.proponente || '—'}
                 </td>
-                <td className="px-3 py-2.5 text-gray-500 text-xs">{row.uf || '—'}</td>
+                <td className="px-3 py-2.5 text-gray-500 dark:text-gray-400 text-xs">{row.uf || '—'}</td>
                 <td className="px-3 py-2.5"><SituacaoBadge situacao={row.situacao} /></td>
                 {mode === 'prestacao_contas' ? (() => {
                   const limiteDate = row.diaLimitePrestContas ? new Date(row.diaLimitePrestContas + 'T00:00:00') : null
@@ -1446,12 +1480,12 @@ function ExecucaoTable({
                       {isAtraso === null ? (
                         <span className="text-gray-400 text-xs">—</span>
                       ) : isAtraso ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-600">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400">
                           <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
                           Atraso
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400">
                           <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
                           Em tempo
                         </span>
@@ -1462,15 +1496,15 @@ function ExecucaoTable({
                   <td className="px-3 py-2.5 text-center">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                       hasDesembolso
-                        ? 'bg-green-50 text-green-700'
-                        : 'bg-red-50 text-red-600'
+                        ? 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400'
+                        : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400'
                     }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${hasDesembolso ? 'bg-green-500' : 'bg-red-400'}`} />
                       {hasDesembolso ? 'Sim' : 'Não'}
                     </span>
                   </td>
                 )}
-                <td className="px-3 py-2.5 text-gray-300">
+                <td className="px-3 py-2.5 text-gray-300 dark:text-gray-600">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
@@ -1513,12 +1547,12 @@ function ExecucaoSidecard({
       />
 
       {/* Panel */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white shadow-2xl border-l border-gray-200 overflow-y-auto animate-slide-in-right">
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-200 dark:border-gray-700 overflow-y-auto animate-slide-in-right">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
           <div>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Convênio</p>
-            <h2 className="text-lg font-bold text-gray-900 font-mono">{row.nrConvenio}</h2>
+            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Convênio</p>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 font-mono">{row.nrConvenio}</h2>
           </div>
           <div className="flex items-center gap-2">
             <a
@@ -1534,7 +1568,7 @@ function ExecucaoSidecard({
             </a>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1550,7 +1584,7 @@ function ExecucaoSidecard({
             <SituacaoBadge situacao={row.situacao} />
             {row.pctExecucao !== null && (
               <div className="flex items-center gap-2 flex-1">
-                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all ${
                       row.pctExecucao >= 80 ? 'bg-green-500' :
@@ -1560,7 +1594,7 @@ function ExecucaoSidecard({
                     style={{ width: `${Math.min(100, row.pctExecucao)}%` }}
                   />
                 </div>
-                <span className="text-xs font-bold text-gray-700 tabular-nums whitespace-nowrap">
+                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 tabular-nums whitespace-nowrap">
                   {formatPercent(row.pctExecucao)}
                 </span>
               </div>
@@ -1615,20 +1649,20 @@ function ExecucaoSidecard({
           {/* Desembolso highlight */}
           <div className={`rounded-lg px-4 py-3 flex items-center gap-3 ${
             row.valorDesembolsado !== null && row.valorDesembolsado > 0
-              ? 'bg-green-50 border border-green-200'
-              : 'bg-red-50 border border-red-200'
+              ? 'bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20'
+              : 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20'
           }`}>
             <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
               row.valorDesembolsado !== null && row.valorDesembolsado > 0 ? 'bg-green-500' : 'bg-red-400'
             }`} />
             <div>
               <p className={`text-sm font-semibold ${
-                row.valorDesembolsado !== null && row.valorDesembolsado > 0 ? 'text-green-800' : 'text-red-700'
+                row.valorDesembolsado !== null && row.valorDesembolsado > 0 ? 'text-green-800 dark:text-green-400' : 'text-red-700 dark:text-red-400'
               }`}>
                 {row.valorDesembolsado !== null && row.valorDesembolsado > 0 ? 'Com Desembolso' : 'Sem Desembolso'}
               </p>
               {row.valorDesembolsado !== null && row.valorDesembolsado > 0 && (
-                <p className="text-xs text-green-600 font-mono">{formatCurrency(row.valorDesembolsado)}</p>
+                <p className="text-xs text-green-600 dark:text-green-400 font-mono">{formatCurrency(row.valorDesembolsado)}</p>
               )}
             </div>
           </div>
@@ -1639,7 +1673,7 @@ function ExecucaoSidecard({
             <SidecardCurrency label="Valor Repasse" value={row.valorRepasse} />
             <SidecardCurrency label="Valor Empenhado" value={row.valorEmpenhado} />
             <SidecardCurrency label="Valor Desembolsado" value={row.valorDesembolsado} />
-            <div className="border-t border-gray-100 pt-2 mt-2" />
+            <div className="border-t border-gray-100 dark:border-gray-800 pt-2 mt-2" />
             <SidecardCurrency label="Saldo em Conta" value={row.saldoConta} />
             <SidecardCurrency label="Saldo Rendimento" value={row.rendimentoAplicacao} />
             <SidecardCurrency label="Ingresso Contrapartida" value={row.ingressoContrapartida} />
@@ -1695,12 +1729,12 @@ function AprovacaoSidecard({
   return (
     <>
       <div className="fixed inset-0 bg-black/20 z-40 transition-opacity" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white shadow-2xl border-l border-gray-200 overflow-y-auto animate-slide-in-right">
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-200 dark:border-gray-700 overflow-y-auto animate-slide-in-right">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
           <div>
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Proposta</p>
-            <h2 className="text-lg font-bold text-gray-900 font-mono">{row.numeroProposta}</h2>
+            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Proposta</p>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 font-mono">{row.numeroProposta}</h2>
           </div>
           <div className="flex items-center gap-2">
             <a
@@ -1716,7 +1750,7 @@ function AprovacaoSidecard({
             </a>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1733,8 +1767,8 @@ function AprovacaoSidecard({
           {/* Titulo */}
           {row.titulo && (
             <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Objeto</p>
-              <p className="text-sm text-gray-800 leading-relaxed">{row.titulo}</p>
+              <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Objeto</p>
+              <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{row.titulo}</p>
             </div>
           )}
 
@@ -1817,7 +1851,7 @@ function AprovacaoSidecard({
 function SidecardSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">{title}</p>
+      <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">{title}</p>
       <div className="space-y-2">{children}</div>
     </div>
   )
@@ -1835,13 +1869,13 @@ function SidecardField({
   highlight?: 'danger' | 'warning'
 }) {
   const colorCls = highlight === 'danger'
-    ? 'text-red-600 font-medium'
+    ? 'text-red-600 dark:text-red-400 font-medium'
     : highlight === 'warning'
-      ? 'text-amber-600 font-medium'
-      : 'text-gray-900'
+      ? 'text-amber-600 dark:text-amber-400 font-medium'
+      : 'text-gray-900 dark:text-gray-100'
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <span className="text-xs text-gray-500 shrink-0">{label}</span>
+      <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{label}</span>
       <span className={`text-sm text-right ${colorCls} ${mono ? 'font-mono' : ''}`}>
         {value || '—'}
       </span>
@@ -1860,8 +1894,8 @@ function SidecardCurrency({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <span className="text-xs text-gray-500 shrink-0">{label}</span>
-      <span className={`text-sm tabular-nums text-right ${bold ? 'font-bold text-gray-900' : 'text-gray-700'}`}>
+      <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{label}</span>
+      <span className={`text-sm tabular-nums text-right ${bold ? 'font-bold text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>
         {formatCurrency(value ?? null)}
       </span>
     </div>
@@ -1929,15 +1963,15 @@ function AprovacaoBISummary({
   return (
     <div className="space-y-4">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Propostas', value: total.toLocaleString('pt-BR'), color: 'text-gray-900' },
-          { label: 'Valor Global Total', value: shortCurrency(valorGlobalTotal), color: 'text-blue-700' },
-          { label: 'Média por Projeto', value: avgValor !== null ? shortCurrency(avgValor) : '—', color: 'text-violet-700' },
-          { label: 'UFs Representadas', value: String(byUf.length), color: 'text-gray-900' },
+          { label: 'Total Propostas', value: total.toLocaleString('pt-BR'), color: 'text-gray-900 dark:text-gray-100' },
+          { label: 'Valor Global Total', value: shortCurrency(valorGlobalTotal), color: 'text-blue-700 dark:text-blue-400' },
+          { label: 'Média por Projeto', value: avgValor !== null ? shortCurrency(avgValor) : '—', color: 'text-violet-700 dark:text-violet-400' },
+          { label: 'UFs Representadas', value: String(byUf.length), color: 'text-gray-900 dark:text-gray-100' },
         ].map(c => (
-          <div key={c.label} className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">{c.label}</p>
+          <div key={c.label} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{c.label}</p>
             <p className={`text-xl font-bold tabular-nums ${c.color}`}>{c.value}</p>
           </div>
         ))}
@@ -1947,8 +1981,8 @@ function AprovacaoBISummary({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* 1. Barras — Valor Global por UF */}
         {byUf.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Valor Global por UF</p>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Valor Global por UF</p>
             <div className="h-52">
               <BIResponsiveContainer>
                 <BIBarChart data={byUf} layout="vertical">
@@ -1965,8 +1999,8 @@ function AprovacaoBISummary({
 
         {/* 2. Donut — Distribuição por Situação */}
         {donutData.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Distribuição por Situação</p>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Distribuição por Situação</p>
             <div className="h-52 flex items-center gap-4">
               <div className="w-36 h-36 shrink-0">
                 <BIResponsiveContainer>
@@ -1985,10 +2019,10 @@ function AprovacaoBISummary({
               </div>
               <div className="flex-1 space-y-1 min-w-0 overflow-y-auto max-h-48">
                 {donutData.map((entry, i) => (
-                  <div key={entry.status} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1 transition-colors" onClick={() => onStatusClick?.(entry.status)}>
+                  <div key={entry.status} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-1 -mx-1 transition-colors" onClick={() => onStatusClick?.(entry.status)}>
                     <span className="shrink-0 w-2 h-2 rounded-sm" style={{ background: colorFor(entry.status, i) }} />
-                    <span className="text-xs text-gray-600 truncate flex-1" title={entry.status}>{entry.status}</span>
-                    <span className="text-xs font-bold text-gray-800 tabular-nums">{entry.count}</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-300 truncate flex-1" title={entry.status}>{entry.status}</span>
+                    <span className="text-xs font-bold text-gray-800 dark:text-gray-200 tabular-nums">{entry.count}</span>
                   </div>
                 ))}
               </div>
@@ -2003,8 +2037,8 @@ function AprovacaoBISummary({
           // ~36px per row + margins, min 240px
           const chartHeight = Math.max(240, top.length * 36 + 40)
           return (
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Valor por Situação</p>
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Valor por Situação</p>
               <div style={{ height: chartHeight }}>
                 <BIResponsiveContainer>
                   <BIBarChart data={top} layout="vertical" margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
@@ -2033,8 +2067,8 @@ function AprovacaoBISummary({
 
       {/* BI: Média de Valor por UF */}
       {byAvgUf.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Média de Valor por Projeto — por UF (top 10)</p>
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Média de Valor por Projeto — por UF (top 10)</p>
           <div className="h-64">
             <BIResponsiveContainer>
               <BIBarChart data={byAvgUf.slice(0, 10)} layout="vertical">
@@ -2115,16 +2149,16 @@ function ExecucaoBISummary({
   return (
     <div className="space-y-4">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          { label: 'Total Projetos', value: total.toLocaleString('pt-BR'), color: 'text-gray-900' },
-          { label: 'Valor Global Total', value: shortCurrency(valorGlobalTotal), color: 'text-gray-900' },
-          { label: 'Média por Projeto', value: avgValor !== null ? shortCurrency(avgValor) : '—', color: 'text-violet-700' },
-          { label: 'Total Desembolsado', value: shortCurrency(valorDesembolsadoTotal), color: 'text-blue-700' },
-          { label: 'Com Desembolso', value: `${comDesembolso} / ${comDesembolso + semDesembolso}`, color: 'text-green-700' },
+          { label: 'Total Projetos', value: total.toLocaleString('pt-BR'), color: 'text-gray-900 dark:text-gray-100' },
+          { label: 'Valor Global Total', value: shortCurrency(valorGlobalTotal), color: 'text-gray-900 dark:text-gray-100' },
+          { label: 'Média por Projeto', value: avgValor !== null ? shortCurrency(avgValor) : '—', color: 'text-violet-700 dark:text-violet-400' },
+          { label: 'Total Desembolsado', value: shortCurrency(valorDesembolsadoTotal), color: 'text-blue-700 dark:text-blue-400' },
+          { label: 'Com Desembolso', value: `${comDesembolso} / ${comDesembolso + semDesembolso}`, color: 'text-green-700 dark:text-green-400' },
         ].map(c => (
-          <div key={c.label} className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">{c.label}</p>
+          <div key={c.label} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{c.label}</p>
             <p className={`text-xl font-bold tabular-nums ${c.color}`}>{c.value}</p>
           </div>
         ))}
@@ -2134,8 +2168,8 @@ function ExecucaoBISummary({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* 1. Barras — Valor Global por Ano */}
         {byYear.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Valor Global por Ano</p>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Valor Global por Ano</p>
             <div className="h-52">
               <BIResponsiveContainer>
                 <BIBarChart data={byYear}>
@@ -2152,8 +2186,8 @@ function ExecucaoBISummary({
 
         {/* 2. Donut — Distribuição por Situação */}
         {donutData.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Distribuição por Situação</p>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Distribuição por Situação</p>
             <div className="h-52 flex items-center gap-4">
               <div className="w-36 h-36 shrink-0">
                 <BIResponsiveContainer>
@@ -2172,10 +2206,10 @@ function ExecucaoBISummary({
               </div>
               <div className="flex-1 space-y-1 min-w-0 overflow-y-auto max-h-48">
                 {donutData.map((entry, i) => (
-                  <div key={entry.status} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1 transition-colors" onClick={() => onStatusClick?.(entry.status)}>
+                  <div key={entry.status} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-1 -mx-1 transition-colors" onClick={() => onStatusClick?.(entry.status)}>
                     <span className="shrink-0 w-2 h-2 rounded-sm" style={{ background: STATUS_COLORS[entry.status] ?? FALLBACK[i % FALLBACK.length] }} />
-                    <span className="text-xs text-gray-600 truncate flex-1" title={entry.status}>{entry.status}</span>
-                    <span className="text-xs font-bold text-gray-800 tabular-nums">{entry.count}</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-300 truncate flex-1" title={entry.status}>{entry.status}</span>
+                    <span className="text-xs font-bold text-gray-800 dark:text-gray-200 tabular-nums">{entry.count}</span>
                   </div>
                 ))}
               </div>
@@ -2185,8 +2219,8 @@ function ExecucaoBISummary({
 
         {/* 4. Barra empilhada — Com/Sem Desembolso por Ano */}
         {byDesembolsoYear.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Desembolso por Ano</p>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Desembolso por Ano</p>
             <div className="h-52">
               <BIResponsiveContainer>
                 <BIBarChart data={byDesembolsoYear}>
@@ -2206,28 +2240,28 @@ function ExecucaoBISummary({
 
       {/* Detalhamentos: Prazos críticos */}
       {prazos && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Detalhamentos — Prazos Críticos</p>
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Detalhamentos — Prazos Críticos</p>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Vigência */}
             <div className="space-y-2">
-              <p className="text-[11px] font-semibold text-gray-700 uppercase tracking-wide">Fim de Vigência</p>
-              <PrazoRow label="Vencidos" value={prazos.vigencia_vencido} color="bg-red-100 text-red-700" />
-              <PrazoRow label="≤ 30 dias" value={prazos.vigencia_30} color="bg-orange-100 text-orange-700" />
-              <PrazoRow label="31–60 dias" value={prazos.vigencia_60} color="bg-amber-100 text-amber-700" />
-              <PrazoRow label="61–90 dias" value={prazos.vigencia_90} color="bg-yellow-100 text-yellow-700" />
+              <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Fim de Vigência</p>
+              <PrazoRow label="Vencidos" value={prazos.vigencia_vencido} color="bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400" />
+              <PrazoRow label="≤ 30 dias" value={prazos.vigencia_30} color="bg-orange-100 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400" />
+              <PrazoRow label="31–60 dias" value={prazos.vigencia_60} color="bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400" />
+              <PrazoRow label="61–90 dias" value={prazos.vigencia_90} color="bg-yellow-100 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400" />
             </div>
             {/* Prestação de Contas */}
             <div className="space-y-2">
-              <p className="text-[11px] font-semibold text-gray-700 uppercase tracking-wide">Prestação de Contas</p>
-              <PrazoRow label="Vencidos" value={prazos.pc_vencido} color="bg-red-100 text-red-700" />
-              <PrazoRow label="≤ 30 dias" value={prazos.pc_30} color="bg-orange-100 text-orange-700" />
-              <PrazoRow label="31–60 dias" value={prazos.pc_60} color="bg-amber-100 text-amber-700" />
-              <PrazoRow label="61–90 dias" value={prazos.pc_90} color="bg-yellow-100 text-yellow-700" />
+              <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Prestação de Contas</p>
+              <PrazoRow label="Vencidos" value={prazos.pc_vencido} color="bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400" />
+              <PrazoRow label="≤ 30 dias" value={prazos.pc_30} color="bg-orange-100 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400" />
+              <PrazoRow label="31–60 dias" value={prazos.pc_60} color="bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400" />
+              <PrazoRow label="61–90 dias" value={prazos.pc_90} color="bg-yellow-100 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400" />
             </div>
             {/* Situações críticas */}
             <div className="lg:col-span-2 space-y-2">
-              <p className="text-[11px] font-semibold text-gray-700 uppercase tracking-wide">Situações que Exigem Ação</p>
+              <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Situações que Exigem Ação</p>
               {byStatus
                 .filter(s => /Inadimplente|Reprovado|Aguardando Prestação|Aguardando Envio|Rejeitada|em Complementação/i.test(s.status))
                 .slice(0, 6)
@@ -2235,14 +2269,14 @@ function ExecucaoBISummary({
                   <div
                     key={s.status}
                     onClick={() => onStatusClick?.(s.status)}
-                    className="flex items-center justify-between gap-2 cursor-pointer hover:bg-gray-50 px-2 py-1 rounded"
+                    className="flex items-center justify-between gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 px-2 py-1 rounded"
                   >
-                    <span className="text-xs text-gray-700 truncate" title={s.status}>{s.status}</span>
-                    <span className="shrink-0 text-xs font-bold tabular-nums px-2 py-0.5 rounded-full bg-red-100 text-red-700">{s.count}</span>
+                    <span className="text-xs text-gray-700 dark:text-gray-300 truncate" title={s.status}>{s.status}</span>
+                    <span className="shrink-0 text-xs font-bold tabular-nums px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400">{s.count}</span>
                   </div>
                 ))}
               {byStatus.filter(s => /Inadimplente|Reprovado|Aguardando Prestação|Aguardando Envio|Rejeitada|em Complementação/i.test(s.status)).length === 0 && (
-                <p className="text-xs text-gray-400 italic">Nenhuma situação crítica encontrada.</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 italic">Nenhuma situação crítica encontrada.</p>
               )}
             </div>
           </div>
@@ -2251,8 +2285,8 @@ function ExecucaoBISummary({
 
       {/* BI: Média de Valor por UF */}
       {byAvgUf.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Média de Valor por Projeto — por UF (top 10)</p>
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">Média de Valor por Projeto — por UF (top 10)</p>
           <div className="h-64">
             <BIResponsiveContainer>
               <BIBarChart data={byAvgUf.slice(0, 10)} layout="vertical">
@@ -2273,7 +2307,7 @@ function ExecucaoBISummary({
 function PrazoRow({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <span className="text-xs text-gray-600">{label}</span>
+      <span className="text-xs text-gray-600 dark:text-gray-300">{label}</span>
       <span className={`shrink-0 text-xs font-bold tabular-nums px-2 py-0.5 rounded-full ${color}`}>{value}</span>
     </div>
   )
@@ -2290,7 +2324,7 @@ function SkeletonRows({ cols }: { cols: number }) {
         <tr key={i}>
           {Array.from({ length: cols }).map((_, j) => (
             <td key={j} className="px-4 py-3">
-              <div className="h-4 bg-gray-100 animate-pulse rounded" />
+              <div className="h-4 bg-gray-100 dark:bg-gray-800 animate-pulse rounded" />
             </td>
           ))}
         </tr>
@@ -2302,7 +2336,7 @@ function SkeletonRows({ cols }: { cols: number }) {
 function EmptyRow({ cols }: { cols: number }) {
   return (
     <tr>
-      <td colSpan={cols} className="px-5 py-12 text-center text-sm text-gray-400">
+      <td colSpan={cols} className="px-5 py-12 text-center text-sm text-gray-400 dark:text-gray-500">
         Nenhum registro encontrado para os filtros aplicados.
       </td>
     </tr>
@@ -2312,43 +2346,43 @@ function EmptyRow({ cols }: { cols: number }) {
 function SituacaoBadge({ situacao }: { situacao: string }) {
   const colorMap: Record<string, string> = {
     // ── Aprovação (Proposta / Plano de Trabalho) ──
-    'Proposta/Plano de Trabalho Cadastrados':                                    'bg-slate-100 text-slate-700',
-    'Proposta/Plano de Trabalho em Análise':                                     'bg-yellow-100 text-yellow-800',
-    'Proposta/Plano de Trabalho em Complementação':                              'bg-amber-100 text-amber-800',
-    'Proposta/Plano de Trabalho Enviado para Análise':                           'bg-orange-100 text-orange-800',
-    'Proposta/Plano de Trabalho Complementado em Análise':                       'bg-sky-100 text-sky-700',
-    'Proposta/Plano de Trabalho Complementado Enviado para Análise':             'bg-blue-100 text-blue-700',
-    'Proposta/Plano de Trabalho Aprovados':                                      'bg-green-100 text-green-700',
-    'Proposta Aprovada e Plano de Trabalho em Análise':                          'bg-indigo-100 text-indigo-700',
-    'Proposta Aprovada e Plano de Trabalho em Complementação':                   'bg-violet-100 text-violet-700',
-    'Proposta Aprovada e Plano de Trabalho Complementado Enviado para Análise':  'bg-purple-100 text-purple-700',
+    'Proposta/Plano de Trabalho Cadastrados':                                    'bg-slate-100 dark:bg-slate-500/10 text-slate-700 dark:text-slate-300',
+    'Proposta/Plano de Trabalho em Análise':                                     'bg-yellow-100 dark:bg-yellow-500/10 text-yellow-800 dark:text-yellow-400',
+    'Proposta/Plano de Trabalho em Complementação':                              'bg-amber-100 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400',
+    'Proposta/Plano de Trabalho Enviado para Análise':                           'bg-orange-100 dark:bg-orange-500/10 text-orange-800 dark:text-orange-400',
+    'Proposta/Plano de Trabalho Complementado em Análise':                       'bg-sky-100 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400',
+    'Proposta/Plano de Trabalho Complementado Enviado para Análise':             'bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400',
+    'Proposta/Plano de Trabalho Aprovados':                                      'bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400',
+    'Proposta Aprovada e Plano de Trabalho em Análise':                          'bg-indigo-100 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400',
+    'Proposta Aprovada e Plano de Trabalho em Complementação':                   'bg-violet-100 dark:bg-violet-500/10 text-violet-700 dark:text-violet-400',
+    'Proposta Aprovada e Plano de Trabalho Complementado Enviado para Análise':  'bg-purple-100 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400',
     // ── Execução ──
-    'Cadastrada':                                'bg-slate-100 text-slate-700',
-    'Em Análise':                                'bg-yellow-100 text-yellow-800',
-    'Aprovada':                                  'bg-green-100 text-green-700',
-    'Aprovada / Aguardando Assinatura':          'bg-green-100 text-green-700',
-    'Aprovada / Aguardando Empenho':             'bg-green-100 text-green-700',
-    'Aguardando Assinatura do Convenio':         'bg-blue-100 text-blue-700',
-    'Em Execução':                               'bg-blue-100 text-blue-700',
-    'Em execução':                               'bg-blue-100 text-blue-700',
-    'Aguardando Prestação de Contas':            'bg-orange-100 text-orange-800',
-    'Prestação de Contas enviada para Análise':  'bg-orange-100 text-orange-700',
-    'Prestação de contas enviada para análise':  'bg-orange-100 text-orange-700',
-    'Prestação de Contas em Complementação':     'bg-amber-100 text-amber-800 ring-1 ring-amber-400',
-    'Prestação de Contas em Análise':            'bg-amber-100 text-amber-700',
-    'Prestação de Contas Comprovada':            'bg-teal-100 text-teal-700',
-    'Prestação de Contas Aprovada':              'bg-teal-100 text-teal-700',
-    'Prestação de Contas Concluída':             'bg-emerald-100 text-emerald-700',
-    'Prestação de Contas Rejeitada':             'bg-red-200 text-red-900 ring-1 ring-red-400',
+    'Cadastrada':                                'bg-slate-100 dark:bg-slate-500/10 text-slate-700 dark:text-slate-300',
+    'Em Análise':                                'bg-yellow-100 dark:bg-yellow-500/10 text-yellow-800 dark:text-yellow-400',
+    'Aprovada':                                  'bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400',
+    'Aprovada / Aguardando Assinatura':          'bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400',
+    'Aprovada / Aguardando Empenho':             'bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400',
+    'Aguardando Assinatura do Convenio':         'bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400',
+    'Em Execução':                               'bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400',
+    'Em execução':                               'bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400',
+    'Aguardando Prestação de Contas':            'bg-orange-100 dark:bg-orange-500/10 text-orange-800 dark:text-orange-400',
+    'Prestação de Contas enviada para Análise':  'bg-orange-100 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400',
+    'Prestação de contas enviada para análise':  'bg-orange-100 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400',
+    'Prestação de Contas em Complementação':     'bg-amber-100 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400 ring-1 ring-amber-400 dark:ring-amber-500/30',
+    'Prestação de Contas em Análise':            'bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    'Prestação de Contas Comprovada':            'bg-teal-100 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400',
+    'Prestação de Contas Aprovada':              'bg-teal-100 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400',
+    'Prestação de Contas Concluída':             'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+    'Prestação de Contas Rejeitada':             'bg-red-200 dark:bg-red-500/15 text-red-900 dark:text-red-400 ring-1 ring-red-400 dark:ring-red-500/30',
     // ── Genéricos ──
-    'Aprovado':         'bg-green-100 text-green-700',
-    'Concluído':        'bg-emerald-100 text-emerald-700',
-    'Reprovado':        'bg-red-200 text-red-900',
-    'Inadimplente':     'bg-red-200 text-red-900 ring-1 ring-red-400',
-    'Cancelado':        'bg-gray-100 text-gray-600',
-    'Sem Situação':     'bg-gray-100 text-gray-500',
+    'Aprovado':         'bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400',
+    'Concluído':        'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+    'Reprovado':        'bg-red-200 dark:bg-red-500/15 text-red-900 dark:text-red-400',
+    'Inadimplente':     'bg-red-200 dark:bg-red-500/15 text-red-900 dark:text-red-400 ring-1 ring-red-400 dark:ring-red-500/30',
+    'Cancelado':        'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
+    'Sem Situação':     'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400',
   }
-  const cls = colorMap[situacao] ?? 'bg-gray-100 text-gray-600'
+  const cls = colorMap[situacao] ?? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
   return (
     <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${cls}`}>
       {situacao}

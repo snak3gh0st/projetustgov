@@ -216,13 +216,13 @@ export default function ComissoesPage() {
   if (loading) {
     return (
       <div className="space-y-6 w-full max-w-[1800px] mx-auto">
-        <div className="h-8 w-96 bg-gray-100 rounded animate-pulse" />
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="h-8 w-96 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
           {[1,2,3,4,5].map(i => (
-            <div key={i} className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 h-28 animate-pulse" />
+            <div key={i} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 h-28 animate-pulse" />
           ))}
         </div>
-        <div className="h-96 bg-white border border-gray-200 shadow-sm rounded-xl animate-pulse" />
+        <div className="h-96 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl animate-pulse" />
       </div>
     )
   }
@@ -255,25 +255,25 @@ export default function ComissoesPage() {
     <div className="space-y-6 w-full max-w-[1800px] mx-auto">
       {/* Header */}
       <div>
-        <h1 className="font-heading text-2xl font-bold text-gray-900">
+        <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">
           Comissionamento — Campanha Emendas 2026
         </h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
           Visao completa de comissoes por lead e status
         </p>
       </div>
 
       {/* Filter bar */}
-      <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
         <div className="flex flex-wrap items-end gap-4">
           {/* Vendedor filter (gestor only) */}
           {hasVendedoresList && (
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-gray-400 uppercase tracking-wider">Vendedor</label>
+              <label className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Vendedor</label>
               <select
                 value={vendedorFilter}
                 onChange={(e) => setVendedorFilter(e.target.value)}
-                className="bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none min-w-[180px]"
+                className="bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none w-full sm:min-w-[180px]"
               >
                 <option value="">Todos os vendedores</option>
                 {data.vendedores_list.map(v => (
@@ -285,44 +285,44 @@ export default function ComissoesPage() {
 
           {/* Date range */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-400 uppercase tracking-wider">De</label>
+            <label className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">De</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none"
+              className="bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-400 uppercase tracking-wider">Ate</label>
+            <label className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Ate</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none"
+              className="bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none"
             />
           </div>
 
           {/* Quick period buttons */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-400 uppercase tracking-wider">Periodo</label>
+            <label className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Periodo</label>
             <div className="flex gap-2">
               <button
                 onClick={setCurrentMonth}
-                className="px-3 py-2 bg-gray-100 border border-gray-300 hover:border-[#0072F7] text-gray-900 text-sm rounded-lg transition-colors"
+                className="px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:border-[#0072F7] text-gray-900 dark:text-gray-100 text-sm rounded-lg transition-colors"
               >
                 Este Mes
               </button>
               <button
                 onClick={setLastMonth}
-                className="px-3 py-2 bg-gray-100 border border-gray-300 hover:border-[#0072F7] text-gray-900 text-sm rounded-lg transition-colors"
+                className="px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:border-[#0072F7] text-gray-900 dark:text-gray-100 text-sm rounded-lg transition-colors"
               >
                 Ultimo Mes
               </button>
               <button
                 onClick={setAllTime}
-                className="px-3 py-2 bg-gray-100 border border-gray-300 hover:border-[#0072F7] text-gray-900 text-sm rounded-lg transition-colors"
+                className="px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:border-[#0072F7] text-gray-900 dark:text-gray-100 text-sm rounded-lg transition-colors"
               >
                 Todos
               </button>
@@ -335,70 +335,70 @@ export default function ComissoesPage() {
       {/* Summary cards */}
       {data.role === 'coordenador' && data.paulo_breakdown ? (
         /* Paulo's view: show his personal commission total */
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white border-2 border-[#0072F7] shadow-sm rounded-xl p-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-gray-900 border-2 border-[#0072F7] shadow-sm rounded-xl p-5">
             <p className="text-xs text-[#0072F7] uppercase tracking-wider font-medium">Minha Comissao Total</p>
             <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
               {formatCurrency(data.paulo_breakdown.total_geral)}
             </p>
-            <p className="text-xs text-gray-500 mt-1">Exclusivo + Closer + Coordenador</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Exclusivo + Closer + Coordenador</p>
           </div>
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Bonus</p>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Bonus</p>
             <p className="text-3xl font-heading font-bold text-green-600 mt-2">
               {formatCurrency(data.summary.total_bonus)}
             </p>
           </div>
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Leads Fechados</p>
-            <p className="text-3xl font-heading font-bold text-gray-900 mt-2">{data.summary.total_leads}</p>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Leads Fechados</p>
+            <p className="text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-2">{data.summary.total_leads}</p>
           </div>
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Faturamento Total</p>
-            <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Faturamento Total</p>
+            <p className="text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-2">
               {formatCurrency(data.summary.total_valor_venda)}
             </p>
-            <p className="text-xs text-gray-500 mt-1">Valor vendas fechadas</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Valor vendas fechadas</p>
           </div>
         </div>
       ) : data.role === 'gestor' ? (
         /* Gestor view: show total paid out to everyone */
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Comissoes Vendedores</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Comissoes Vendedores</p>
             <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
               {formatCurrency(data.summary.total_comissao)}
             </p>
-            <p className="text-xs text-gray-500 mt-1">SDR + Exclusivo + Closer</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">SDR + Exclusivo + Closer</p>
           </div>
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Comissao Paulo (Closer)</p>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Comissao Paulo (Closer)</p>
             <p className="text-2xl font-heading font-bold text-purple-600 mt-2">
               {formatCurrency(data.summary.total_closer_comissao)}
             </p>
           </div>
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Coordenador 1%</p>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Coordenador 1%</p>
             <p className="text-2xl font-heading font-bold text-amber-600 mt-2">
               {formatCurrency(data.paulo_breakdown?.coordenador.total || 0)}
             </p>
           </div>
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Bonus</p>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Bonus</p>
             <p className="text-3xl font-heading font-bold text-green-600 mt-2">
               {formatCurrency(data.summary.total_bonus)}
             </p>
           </div>
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Faturamento Total</p>
-            <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Faturamento Total</p>
+            <p className="text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-2">
               {formatCurrency(data.summary.total_valor_venda)}
             </p>
-            <p className="text-xs text-gray-500 mt-1">Valor vendas fechadas</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Valor vendas fechadas</p>
           </div>
-          <div className="bg-white border-2 border-gray-900 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-900 uppercase tracking-wider font-medium">Total Pago</p>
-            <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
+          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-900 dark:text-gray-100 uppercase tracking-wider font-medium">Total Pago</p>
+            <p className="text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-2">
               {formatCurrency(
                 data.summary.total_comissao
                 + data.summary.total_closer_comissao
@@ -410,31 +410,31 @@ export default function ComissoesPage() {
         </div>
       ) : (
         /* Vendedor view: show their own commission */
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Minha Comissao</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Minha Comissao</p>
             <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
               {formatCurrency(data.summary.total_comissao)}
             </p>
-            <p className="text-xs text-gray-500 mt-1">Somente leads Fechados</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Somente leads Fechados</p>
           </div>
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Bonus Fechamentos</p>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Bonus Fechamentos</p>
             <p className="text-3xl font-heading font-bold text-green-600 mt-2">
               {formatCurrency(data.summary.total_bonus)}
             </p>
-            <p className="text-xs text-gray-500 mt-1">R$ 50 por lead fechado</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">R$ 50 por lead fechado</p>
           </div>
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Leads Fechados</p>
-            <p className="text-3xl font-heading font-bold text-gray-900 mt-2">{data.summary.total_leads}</p>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Leads Fechados</p>
+            <p className="text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-2">{data.summary.total_leads}</p>
           </div>
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Faturamento Total</p>
-            <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Faturamento Total</p>
+            <p className="text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-2">
               {formatCurrency(data.summary.total_valor_venda)}
             </p>
-            <p className="text-xs text-gray-500 mt-1">Valor vendas fechadas</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Valor vendas fechadas</p>
           </div>
         </div>
       )}
@@ -442,7 +442,7 @@ export default function ComissoesPage() {
       {/* Paulo's 3-type commission breakdown */}
       {data.paulo_breakdown && (
         <div>
-          <h2 className="text-lg font-heading font-semibold text-gray-900 mb-3">
+          <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100 mb-3">
             Comissao do Coordenador
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -455,8 +455,8 @@ export default function ComissoesPage() {
                 {data.paulo_breakdown.exclusivo.count} clientes • {formatCurrency(data.paulo_breakdown.exclusivo.valor_venda)} em vendas
               </p>
             </div>
-            <div className="bg-purple-50 border border-purple-200 rounded-xl p-5">
-              <p className="text-xs text-purple-600 uppercase tracking-wider font-medium">Closer (3%)</p>
+            <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 rounded-xl p-5">
+              <p className="text-xs text-purple-600 dark:text-purple-400 uppercase tracking-wider font-medium">Closer (3%)</p>
               <p className="text-2xl font-heading font-bold text-purple-700 mt-2">
                 {formatCurrency(data.paulo_breakdown.closer.total)}
               </p>
@@ -464,8 +464,8 @@ export default function ComissoesPage() {
                 {data.paulo_breakdown.closer.count} leads fechados • {formatCurrency(data.paulo_breakdown.closer.valor_venda)} em vendas
               </p>
             </div>
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
-              <p className="text-xs text-amber-600 uppercase tracking-wider font-medium">Coordenador (1%)</p>
+            <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-5">
+              <p className="text-xs text-amber-600 dark:text-amber-400 uppercase tracking-wider font-medium">Coordenador (1%)</p>
               <p className="text-2xl font-heading font-bold text-amber-700 mt-2">
                 {formatCurrency(data.paulo_breakdown.coordenador.total)}
               </p>
@@ -473,12 +473,12 @@ export default function ComissoesPage() {
                 {data.paulo_breakdown.coordenador.count} leads da equipe • {formatCurrency(data.paulo_breakdown.coordenador.valor_venda)} em vendas
               </p>
             </div>
-            <div className="bg-white border-2 border-[#0072F7] rounded-xl p-5">
+            <div className="bg-white dark:bg-gray-900 border-2 border-[#0072F7] rounded-xl p-5">
               <p className="text-xs text-[#0072F7] uppercase tracking-wider font-medium">Total Geral</p>
               <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
                 {formatCurrency(data.paulo_breakdown.total_geral)}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Exclusivo + Closer + Coordenador</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Exclusivo + Closer + Coordenador</p>
             </div>
           </div>
         </div>
@@ -487,37 +487,37 @@ export default function ComissoesPage() {
       {/* Per-vendedor breakdown (gestor only) */}
       {showPerVendedor && (
         <div>
-          <h2 className="text-lg font-heading font-semibold text-gray-900 mb-3">
+          <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100 mb-3">
             Resumo por Pessoa
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {data.per_vendedor.map(v => (
               <div
                 key={v.vendedor_id}
-                className="bg-white border border-gray-200 shadow-sm rounded-xl p-4"
+                className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-bold text-gray-900">{v.vendedor_nome}</h3>
-                  <span className="text-xs px-2 py-0.5 bg-blue-50 text-[#0072F7] rounded font-medium">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{v.vendedor_nome}</h3>
+                  <span className="text-xs px-2 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] rounded font-medium">
                     {v.fechados_count} fechados
                   </span>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400">Comissao</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">Comissao</span>
                     <span className="text-lg font-semibold text-[#0072F7]">
                       {formatCurrency(v.total_comissao)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400">Bonus</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">Bonus</span>
                     <span className="text-sm font-semibold text-green-600">
                       {formatCurrency(v.total_bonus)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between border-t border-gray-100 pt-1 mt-1">
-                    <span className="text-xs text-gray-600 font-medium">Total</span>
-                    <span className="text-base font-bold text-gray-900">
+                  <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-800 pt-1 mt-1">
+                    <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">Total</span>
+                    <span className="text-base font-bold text-gray-900 dark:text-gray-100">
                       {formatCurrency(v.total_comissao + v.total_bonus)}
                     </span>
                   </div>
@@ -526,7 +526,7 @@ export default function ComissoesPage() {
             ))}
             {/* Paulo card — closer + coordenador commissions */}
             {data.paulo_breakdown && isGestor && (
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+              <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-bold text-purple-900">Paulo (Coordenador)</h3>
                   <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded font-medium">
@@ -566,18 +566,18 @@ export default function ComissoesPage() {
       )}
 
       {/* Deals table */}
-      <div className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-heading font-semibold text-gray-900">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100">
             Detalhamento por Lead
           </h2>
         </div>
 
         {sortedLeads.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="min-w-[1100px] w-full">
               <thead>
-                <tr className="border-b border-gray-200 text-xs text-gray-400 uppercase tracking-wider">
+                <tr className="border-b border-gray-200 dark:border-gray-700 text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                   <th onClick={() => handleSort('nome')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Lead<SortIcon col="nome" /></th>
                   <th onClick={() => handleSort('vendedor')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">SDR / Vendedor<SortIcon col="vendedor" /></th>
                   <th onClick={() => handleSort('tipo')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Tipo<SortIcon col="tipo" /></th>
@@ -590,9 +590,9 @@ export default function ComissoesPage() {
                   {isGestor && <th className="text-center px-4 py-3">Acao</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {sortedLeads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={lead.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <td className="px-6 py-4">
                       <a
                         href={`/lead/${lead.cnpj}`}
@@ -600,29 +600,29 @@ export default function ComissoesPage() {
                       >
                         {lead.nome}
                       </a>
-                      <p className="text-xs text-gray-500 mt-1">{lead.cnpj}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{lead.cnpj}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900">{lead.vendedor_nome}</span>
+                      <span className="text-sm text-gray-900 dark:text-gray-100">{lead.vendedor_nome}</span>
                       {lead.closer_nome && (
-                        <p className="text-xs text-purple-600 mt-0.5">Closer: {lead.closer_nome}</p>
+                        <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">Closer: {lead.closer_nome}</p>
                       )}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`text-xs font-semibold px-2 py-1 rounded ${
                         lead.tipo_vendedor === 'SDR'
-                          ? 'bg-blue-50 text-[#0072F7]'
+                          ? 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7]'
                           : lead.tipo_vendedor === 'Exclusivo'
                           ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-purple-50 text-purple-600'
+                          : 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400'
                       }`}>
                         {lead.tipo_vendedor}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-right text-gray-900">
+                    <td className="px-6 py-4 text-sm text-right text-gray-900 dark:text-gray-100">
                       {formatCurrency(lead.valor_venda)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-right text-gray-400">
+                    <td className="px-6 py-4 text-sm text-right text-gray-400 dark:text-gray-500">
                       {Number(lead.comissao_percentual || 0).toFixed(1)}%
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -660,7 +660,7 @@ export default function ComissoesPage() {
                     <td className="px-6 py-4 text-sm text-right text-green-600 font-medium">
                       {formatCurrency(lead.comissao_bonus || 0)}
                     </td>
-                    <td className="px-6 py-4 text-xs text-gray-500">
+                    <td className="px-6 py-4 text-xs text-gray-500 dark:text-gray-400">
                       {new Date(lead.updated_at).toLocaleDateString('pt-BR', {
                         day: '2-digit',
                         month: '2-digit',
@@ -672,7 +672,7 @@ export default function ComissoesPage() {
                       <td className="px-4 py-4 text-center">
                         <button
                           onClick={() => openOverride(lead)}
-                          className="text-xs px-3 py-1.5 bg-gray-100 hover:bg-[#0072F7]/10 hover:text-[#0072F7] text-gray-600 rounded-lg transition-colors"
+                          className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-[#0072F7]/10 hover:text-[#0072F7] text-gray-600 dark:text-gray-300 rounded-lg transition-colors"
                           title="Alterar comissao deste lead"
                         >
                           Editar
@@ -685,7 +685,7 @@ export default function ComissoesPage() {
             </table>
           </div>
         ) : (
-          <div className="px-6 py-12 text-center text-gray-500">
+          <div className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
             <p className="text-base">Nenhum lead com comissao encontrado no periodo selecionado</p>
             {vendedorFilter && data.selected_vendedor_stats ? (
               <p className="text-sm mt-2">
@@ -701,18 +701,18 @@ export default function ComissoesPage() {
       {/* Override Modal */}
       {overrideForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setOverrideForm(null)}>
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-heading font-bold text-gray-900 mb-1">Alterar Comissao</h3>
-            <p className="text-sm text-gray-500 mb-4 truncate">{overrideForm.lead_nome}</p>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-heading font-bold text-gray-900 dark:text-gray-100 mb-1">Alterar Comissao</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 truncate">{overrideForm.lead_nome}</p>
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs text-gray-400 uppercase tracking-wider">Percentual Atual</label>
-                <p className="text-sm text-gray-500">{overrideForm.current_percentual}% = {formatCurrency(overrideForm.current_valor)}</p>
+                <label className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Percentual Atual</label>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{overrideForm.current_percentual}% = {formatCurrency(overrideForm.current_valor)}</p>
               </div>
 
               <div>
-                <label className="block text-xs text-gray-400 uppercase tracking-wider mb-1">Novo Percentual (%)</label>
+                <label className="block text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Novo Percentual (%)</label>
                 <input
                   type="number"
                   step="0.5"
@@ -720,30 +720,30 @@ export default function ComissoesPage() {
                   max="100"
                   value={overrideForm.percentual_override}
                   onChange={e => setOverrideForm(f => f ? { ...f, percentual_override: Number(e.target.value) } : null)}
-                  className="w-full bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none"
+                  className="w-full bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-gray-400 uppercase tracking-wider mb-1">Bonus (R$)</label>
+                <label className="block text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Bonus (R$)</label>
                 <input
                   type="number"
                   step="10"
                   min="0"
                   value={overrideForm.taxa_fixa_override}
                   onChange={e => setOverrideForm(f => f ? { ...f, taxa_fixa_override: Number(e.target.value) } : null)}
-                  className="w-full bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none"
+                  className="w-full bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-gray-400 uppercase tracking-wider mb-1">Motivo *</label>
+                <label className="block text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Motivo *</label>
                 <input
                   type="text"
                   placeholder="Ex: Ajuste negociado com vendedor"
                   value={overrideForm.motivo}
                   onChange={e => setOverrideForm(f => f ? { ...f, motivo: e.target.value } : null)}
-                  className="w-full bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none"
+                  className="w-full bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 focus:border-[#0072F7] focus:outline-none"
                 />
               </div>
             </div>
@@ -751,7 +751,7 @@ export default function ComissoesPage() {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setOverrideForm(null)}
-                className="flex-1 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition-colors"
+                className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-lg text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancelar
               </button>

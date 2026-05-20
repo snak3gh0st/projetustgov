@@ -92,27 +92,27 @@ export default function LeadAssignmentModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative bg-white border border-gray-200 rounded-xl p-6 w-full max-w-md shadow-lg">
-        <h2 className="text-xl font-heading font-bold text-gray-900 mb-1">Atribuir Lead</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          {leadNome} <span className="text-gray-400">({formatCNPJ(cnpj)})</span>
+      <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 w-full max-w-md shadow-lg">
+        <h2 className="text-xl font-heading font-bold text-gray-900 dark:text-gray-100 mb-1">Atribuir Lead</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          {leadNome} <span className="text-gray-400 dark:text-gray-500">({formatCNPJ(cnpj)})</span>
         </p>
 
         {currentVendedor && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-[#0072F7]">
+          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg text-sm text-[#0072F7]">
             Atualmente atribuído a: <strong>{currentVendedor}</strong>
           </div>
         )}
 
         {duplicateWarning && (
-          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-sm text-amber-600 mb-2">{duplicateWarning}</p>
-            <p className="text-xs text-gray-500">Clique novamente para confirmar reatribuição</p>
+          <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-lg">
+            <p className="text-sm text-amber-600 dark:text-amber-400 mb-2">{duplicateWarning}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Clique novamente para confirmar reatribuição</p>
           </div>
         )}
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-500">
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg text-sm text-red-500 dark:text-red-400">
             {error}
           </div>
         )}
@@ -143,18 +143,18 @@ export default function LeadAssignmentModal({
               }
             }}
             disabled={loading}
-            className="w-full mb-4 px-4 py-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors text-sm disabled:opacity-50"
+            className="w-full mb-4 px-4 py-2 rounded-lg border border-red-200 dark:border-red-500/20 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors text-sm disabled:opacity-50"
           >
             Remover Atribuicao
           </button>
         )}
 
         <label className="block mb-4">
-          <span className="text-sm text-gray-500 mb-2 block">Vendedor</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400 mb-2 block">Vendedor</span>
           <select
             value={selectedVendedor}
             onChange={e => setSelectedVendedor(e.target.value)}
-            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-[#0072F7]/50"
+            className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-[#0072F7]/50"
           >
             <option value="">Selecione...</option>
             {vendedores.map(v => (
@@ -168,7 +168,7 @@ export default function LeadAssignmentModal({
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+            className="flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             Cancelar
           </button>

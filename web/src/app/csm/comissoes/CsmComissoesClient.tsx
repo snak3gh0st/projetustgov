@@ -74,40 +74,40 @@ export default function CsmComissoesClient({ userRole, userName }: Props) {
     }
   }, [])
 
-  if (loading) return <div className="p-8 text-sm text-gray-500">Carregando comissoes...</div>
-  if (error) return <div className="p-8 text-sm text-red-600">Erro: {error}</div>
-  if (!data) return <div className="p-8 text-sm text-gray-500">Sem dados.</div>
+  if (loading) return <div className="p-8 text-sm text-gray-500 dark:text-gray-400">Carregando comissoes...</div>
+  if (error) return <div className="p-8 text-sm text-red-600 dark:text-red-400">Erro: {error}</div>
+  if (!data) return <div className="p-8 text-sm text-gray-500 dark:text-gray-400">Sem dados.</div>
 
   return (
     <div className="p-8">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Comissoes</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Comissoes</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           {userName ?? 'CSM'} ({userRole}) — {data.summary.total_leads} leads fechados
         </p>
       </header>
 
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white border border-gray-200 rounded-md p-4">
-          <p className="text-xs text-gray-500 uppercase tracking-wide">Total Comissao</p>
-          <p className="text-xl font-semibold text-gray-800 mt-1">{formatCurrency(data.summary.total_comissao)}</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Comissao</p>
+          <p className="text-xl font-semibold text-gray-800 dark:text-gray-100 mt-1">{formatCurrency(data.summary.total_comissao)}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-md p-4">
-          <p className="text-xs text-gray-500 uppercase tracking-wide">Total Bonus</p>
-          <p className="text-xl font-semibold text-gray-800 mt-1">{formatCurrency(data.summary.total_bonus)}</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Bonus</p>
+          <p className="text-xl font-semibold text-gray-800 dark:text-gray-100 mt-1">{formatCurrency(data.summary.total_bonus)}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-md p-4">
-          <p className="text-xs text-gray-500 uppercase tracking-wide">Total Valor Venda</p>
-          <p className="text-xl font-semibold text-gray-800 mt-1">{formatCurrency(data.summary.total_valor_venda)}</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Valor Venda</p>
+          <p className="text-xl font-semibold text-gray-800 dark:text-gray-100 mt-1">{formatCurrency(data.summary.total_valor_venda)}</p>
         </div>
       </section>
 
-      <section className="bg-white border border-gray-200 rounded-md overflow-hidden">
+      <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
         {data.leads.length === 0 ? (
-          <div className="p-6 text-sm text-gray-500">Nenhum lead fechado com comissao registrada para esta sessao CSM.</div>
+          <div className="p-6 text-sm text-gray-500 dark:text-gray-400">Nenhum lead fechado com comissao registrada para esta sessao CSM.</div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+            <thead className="bg-gray-50 dark:bg-gray-800/50 text-xs uppercase text-gray-500 dark:text-gray-400">
               <tr>
                 <th className="px-4 py-2 text-left">CNPJ</th>
                 <th className="px-4 py-2 text-left">Nome</th>
@@ -117,15 +117,15 @@ export default function CsmComissoesClient({ userRole, userName }: Props) {
                 <th className="px-4 py-2 text-left">Closer</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {data.leads.map((lead) => (
                 <tr key={lead.id}>
-                  <td className="px-4 py-2 font-mono">{lead.cnpj}</td>
-                  <td className="px-4 py-2">{lead.nome ?? '-'}</td>
-                  <td className="px-4 py-2 text-right">{formatCurrency(lead.valor_venda)}</td>
-                  <td className="px-4 py-2 text-right">{formatCurrency(lead.comissao_valor)}</td>
-                  <td className="px-4 py-2 text-right">{formatCurrency(lead.comissao_bonus)}</td>
-                  <td className="px-4 py-2 text-gray-500">{lead.closer_nome ?? '-'}</td>
+                  <td className="px-4 py-2 font-mono dark:text-gray-300">{lead.cnpj}</td>
+                  <td className="px-4 py-2 dark:text-gray-300">{lead.nome ?? '-'}</td>
+                  <td className="px-4 py-2 text-right dark:text-gray-300">{formatCurrency(lead.valor_venda)}</td>
+                  <td className="px-4 py-2 text-right dark:text-gray-300">{formatCurrency(lead.comissao_valor)}</td>
+                  <td className="px-4 py-2 text-right dark:text-gray-300">{formatCurrency(lead.comissao_bonus)}</td>
+                  <td className="px-4 py-2 text-gray-500 dark:text-gray-400">{lead.closer_nome ?? '-'}</td>
                 </tr>
               ))}
             </tbody>

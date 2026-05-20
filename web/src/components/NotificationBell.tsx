@@ -75,7 +75,7 @@ export default function NotificationBell() {
     <div className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="relative p-2 text-gray-500 hover:text-gray-700 transition-colors"
+        className="relative p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 transition-colors"
         aria-label="Notificações"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -91,13 +91,13 @@ export default function NotificationBell() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl border border-gray-200 shadow-lg z-50 max-h-96 overflow-y-auto">
-            <div className="p-3 border-b border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-800">Notificações</h3>
+          <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg z-50 max-h-96 overflow-y-auto">
+            <div className="p-3 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Notificações</h3>
             </div>
 
             {totalCount === 0 ? (
-              <div className="p-4 text-center text-gray-400 text-sm">
+              <div className="p-4 text-center text-gray-400 dark:text-gray-500 text-sm">
                 Nenhuma notificação
               </div>
             ) : (
@@ -106,7 +106,7 @@ export default function NotificationBell() {
                   <button
                     key={item.propostaKey}
                     onClick={() => handleItemClick(item.propostaKey, item.eventType, item.tab)}
-                    className="w-full text-left px-3 py-2.5 hover:bg-blue-50 border-b border-gray-50 transition-colors"
+                    className="w-full text-left px-3 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-500/15 border-b border-gray-50 dark:border-gray-700 transition-colors"
                   >
                     <div className="flex items-start gap-2">
                       <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-1" />
@@ -114,15 +114,15 @@ export default function NotificationBell() {
                         {item.eventType === 'comment' && item.commentAuthorNome ? (
                           <>
                             <div className="flex items-baseline justify-between gap-1">
-                              <span className="text-xs font-medium text-gray-800 truncate">
-                                <span className="text-blue-600">{item.commentAuthorNome}</span>
+                              <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
+                                <span className="text-blue-600 dark:text-blue-300">{item.commentAuthorNome}</span>
                                 {' comentou em '}
                                 <span className="font-semibold">{item.propostaKey}</span>
                               </span>
-                              <span className="text-[10px] text-gray-400 flex-shrink-0">{timeAgo(item.eventAt)}</span>
+                              <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0">{timeAgo(item.eventAt)}</span>
                             </div>
                             {item.commentBody && (
-                              <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">
                                 &ldquo;{item.commentBody}&rdquo;
                               </p>
                             )}
@@ -130,12 +130,12 @@ export default function NotificationBell() {
                         ) : (
                           <>
                             <div className="flex items-baseline justify-between gap-1">
-                              <span className="text-xs font-medium text-gray-800 truncate">
+                              <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
                                 {item.propostaKey}
                               </span>
-                              <span className="text-[10px] text-gray-400 flex-shrink-0">{timeAgo(item.eventAt)}</span>
+                              <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0">{timeAgo(item.eventAt)}</span>
                             </div>
-                            <p className="text-xs text-gray-500 mt-0.5 truncate">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
                               {EVENT_LABELS[item.eventType] || item.eventType}
                               {item.titulo ? ` — ${item.titulo}` : ''}
                             </p>
@@ -148,8 +148,8 @@ export default function NotificationBell() {
 
                 {data?.stale && data.stale.length > 0 && (
                   <>
-                    <div className="px-3 py-2 bg-amber-50 border-y border-amber-100">
-                      <span className="text-xs font-semibold text-amber-700">
+                    <div className="px-3 py-2 bg-amber-50 dark:bg-amber-500/15 border-y border-amber-100 dark:border-amber-700/30">
+                      <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">
                         Sem acesso há +24h
                       </span>
                     </div>
@@ -157,18 +157,18 @@ export default function NotificationBell() {
                       <button
                         key={`stale-${item.propostaKey}`}
                         onClick={() => handleItemClick(item.propostaKey)}
-                        className="w-full text-left px-3 py-2.5 hover:bg-amber-50 border-b border-gray-50 transition-colors"
+                        className="w-full text-left px-3 py-2.5 hover:bg-amber-50 dark:hover:bg-amber-500/15 border-b border-gray-50 dark:border-gray-700 transition-colors"
                       >
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
-                          <span className="text-xs font-medium text-gray-800 truncate">
+                          <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
                             {item.propostaKey}
                           </span>
-                          <span className="text-[10px] text-amber-600 ml-auto flex-shrink-0">
+                          <span className="text-[10px] text-amber-600 dark:text-amber-300 ml-auto flex-shrink-0">
                             {item.hoursWithoutAccess}h
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5 ml-4 truncate">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 ml-4 truncate">
                           {item.tecnicoNome || 'Técnico'} não acessou
                           {item.titulo ? ` — ${item.titulo}` : ''}
                         </p>

@@ -58,10 +58,10 @@ function CustomTooltip({ active, payload }: {
   if (!active || !payload?.length) return null
   const { status, count } = payload[0].payload
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-sm pointer-events-none">
-      <p className="font-semibold text-gray-900 mb-0.5 max-w-[200px] leading-snug">{status}</p>
-      <p className="text-gray-500">
-        <span className="font-bold text-gray-900">{count.toLocaleString('pt-BR')}</span>{' '}
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-3 py-2 text-sm pointer-events-none">
+      <p className="font-semibold text-gray-900 dark:text-gray-100 mb-0.5 max-w-[200px] leading-snug">{status}</p>
+      <p className="text-gray-500 dark:text-gray-400">
+        <span className="font-bold text-gray-900 dark:text-gray-100">{count.toLocaleString('pt-BR')}</span>{' '}
         proposta{count !== 1 ? 's' : ''}
       </p>
     </div>
@@ -89,7 +89,7 @@ export default function TGovStatusDonut({ data, total, onStatusClick }: TGovStat
 
   if (sorted.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 text-sm text-gray-400">
+      <div className="flex items-center justify-center h-48 text-sm text-gray-400 dark:text-gray-500">
         Sem dados para o filtro selecionado
       </div>
     )
@@ -138,10 +138,10 @@ export default function TGovStatusDonut({ data, total, onStatusClick }: TGovStat
 
         {/* Center text overlay */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
-          <span className="text-xl font-bold text-gray-900 leading-none tabular-nums">
+          <span className="text-xl font-bold text-gray-900 dark:text-gray-100 leading-none tabular-nums">
             {centerCount.toLocaleString('pt-BR')}
           </span>
-          <span className="text-[11px] text-gray-400 mt-1 font-medium tracking-wide uppercase">
+          <span className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 font-medium tracking-wide uppercase">
             {centerLabel}
           </span>
         </div>
@@ -158,7 +158,7 @@ export default function TGovStatusDonut({ data, total, onStatusClick }: TGovStat
           return (
             <div
               key={entry.status}
-              className="flex items-center justify-between gap-2 rounded-md px-2 py-1 cursor-pointer transition-colors duration-150 hover:bg-gray-50"
+              className="flex items-center justify-between gap-2 rounded-md px-2 py-1 cursor-pointer transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-gray-800"
               style={{ opacity: isDimmed ? 0.45 : 1, transition: 'opacity 150ms ease' }}
               onMouseEnter={() => setActiveIndex(index)}
               onMouseLeave={() => setActiveIndex(null)}
@@ -170,17 +170,17 @@ export default function TGovStatusDonut({ data, total, onStatusClick }: TGovStat
                   style={{ background: color }}
                 />
                 <span
-                  className={`text-xs truncate transition-colors duration-150 ${isActive ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}
+                  className={`text-xs truncate transition-colors duration-150 ${isActive ? 'text-gray-900 dark:text-gray-100 font-semibold' : 'text-gray-600 dark:text-gray-300'}`}
                   title={entry.status}
                 >
                   {entry.status}
                 </span>
               </div>
               <div className="shrink-0 flex items-baseline gap-1">
-                <span className={`text-sm font-bold tabular-nums transition-colors duration-150 ${isActive ? 'text-gray-900' : 'text-gray-700'}`}>
+                <span className={`text-sm font-bold tabular-nums transition-colors duration-150 ${isActive ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>
                   {entry.count.toLocaleString('pt-BR')}
                 </span>
-                <span className="text-[11px] text-gray-400 w-10 text-right tabular-nums">
+                <span className="text-[11px] text-gray-400 dark:text-gray-500 w-10 text-right tabular-nums">
                   {pct}%
                 </span>
               </div>

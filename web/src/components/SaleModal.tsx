@@ -107,20 +107,20 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
 
       {/* Modal */}
-      <div className="relative bg-white border border-gray-200 rounded-2xl shadow-lg w-[440px] max-w-[90vw] p-6 animate-fade-in">
+      <div className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg w-[440px] max-w-[90vw] p-6 animate-fade-in">
         {/* Glow effect */}
         <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-green-500/5 to-transparent rounded-t-2xl pointer-events-none" />
 
         <div className="relative space-y-5">
           {/* Header */}
           <div>
-            <h2 className="text-lg font-heading font-bold text-gray-900">Registrar Venda</h2>
-            <p className="text-sm text-gray-500 mt-1 truncate">{leadNome}</p>
+            <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-gray-100">Registrar Venda</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 truncate">{leadNome}</p>
           </div>
 
           {/* Valor da Venda */}
           <div>
-            <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
               Valor da Venda (R$) *
             </label>
             <input
@@ -135,7 +135,7 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
                 if (e.key === 'Enter') handleSubmit()
               }}
               placeholder="Ex: 400000"
-              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-green-500/50 transition-colors font-mono"
+              className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl px-4 py-3 text-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-green-500/50 transition-colors font-mono"
             />
             {error && (
               <p className="text-red-500 text-xs mt-1.5">{error}</p>
@@ -144,7 +144,7 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
 
           {/* Tipo Vendedor */}
           <div>
-            <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
               Tipo de Vendedor *
             </label>
             {isExclusivo ? (
@@ -158,8 +158,8 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
                   onClick={() => setTipoVendedor('SDR')}
                   className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all ${
                     tipoVendedor === 'SDR'
-                      ? 'bg-blue-50 border-blue-200 text-[#0072F7]'
-                      : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'
+                      ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20 text-[#0072F7]'
+                      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
                   {isVendedor ? 'SDR → Paulo Closer' : 'SDR (1%)'}
@@ -169,8 +169,8 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
                   onClick={() => setTipoVendedor('Closer')}
                   className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all ${
                     tipoVendedor === 'Closer'
-                      ? 'bg-purple-50 border-purple-200 text-purple-600'
-                      : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'
+                      ? 'bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-500/20 text-purple-600 dark:text-purple-400'
+                      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
                   Closer (4%)
@@ -181,39 +181,39 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
 
           {/* Preview */}
           {previewValor > 0 && (
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-1.5">
+            <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-3 space-y-1.5">
               {isSdrCloserFlow ? (
                 <>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">Sua comissao SDR (1%)</span>
+                    <span className="text-gray-500 dark:text-gray-400">Sua comissao SDR (1%)</span>
                     <span className="text-[#0072F7] font-semibold">
                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(previewComissao)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">Paulo Closer (3%)</span>
-                    <span className="text-purple-600 font-semibold">
+                    <span className="text-gray-500 dark:text-gray-400">Paulo Closer (3%)</span>
+                    <span className="text-purple-600 dark:text-purple-400 font-semibold">
                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(previewCloserComissao)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">Bonus por fechamento</span>
-                    <span className="text-green-600 font-semibold">R$ 50</span>
+                    <span className="text-gray-500 dark:text-gray-400">Bonus por fechamento</span>
+                    <span className="text-green-600 dark:text-green-400 font-semibold">R$ 50</span>
                   </div>
-                  <p className="text-xs text-amber-600 mt-1">Lead sera enviado para Paulo fechar</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Lead sera enviado para Paulo fechar</p>
                 </>
               ) : (
                 <>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">Comissao ({pct}%)</span>
+                    <span className="text-gray-500 dark:text-gray-400">Comissao ({pct}%)</span>
                     <span className="text-[#0072F7] font-semibold">
                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(previewComissao)}
                     </span>
                   </div>
                   {tipoVendedor !== 'Exclusivo' && (
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-500">Bonus por fechamento</span>
-                      <span className="text-green-600 font-semibold">R$ 50</span>
+                      <span className="text-gray-500 dark:text-gray-400">Bonus por fechamento</span>
+                      <span className="text-green-600 dark:text-green-400 font-semibold">R$ 50</span>
                     </div>
                   )}
                 </>
@@ -225,7 +225,7 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
           <div className="flex gap-3 pt-1">
             <button
               onClick={onCancel}
-              className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               Cancelar
             </button>

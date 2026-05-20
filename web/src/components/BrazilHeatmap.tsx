@@ -87,17 +87,17 @@ export default function BrazilHeatmap({ data }: { data: StateData[] }) {
   const hoveredData = hoveredState ? dataMap[hoveredState] : null
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4">
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">Mapa de Convênios por Estado</h3>
-          <p className="text-xs text-gray-500">{data.length} estados com projetos</p>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Mapa de Convênios por Estado</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{data.length} estados com projetos</p>
         </div>
         {hoveredData && (
           <div className="text-right animate-in fade-in">
-            <p className="text-sm font-bold text-gray-900">{hoveredState}</p>
+            <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{hoveredState}</p>
             <p className="text-xs text-[#0072F7]">{hoveredData.count} convênios</p>
-            <p className="text-xs text-gray-500">{formatCompact(hoveredData.saldo)}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{formatCompact(hoveredData.saldo)}</p>
           </div>
         )}
       </div>
@@ -157,7 +157,7 @@ export default function BrazilHeatmap({ data }: { data: StateData[] }) {
       </svg>
 
       {/* Legend */}
-      <div className="flex items-center justify-center gap-4 mt-2 text-xs text-gray-500">
+      <div className="flex items-center justify-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded" style={{ background: '#f3f4f6' }} />
           <span>0</span>

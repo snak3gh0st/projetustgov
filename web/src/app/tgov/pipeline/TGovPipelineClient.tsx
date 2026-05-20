@@ -121,7 +121,7 @@ function PipelineSection({
     return (
       <div className="space-y-3">
         <SectionHeader title={title} total={0} />
-        <div className="text-sm text-gray-400 py-8 text-center">Nenhuma proposta encontrada.</div>
+        <div className="text-sm text-gray-400 dark:text-gray-500 py-8 text-center">Nenhuma proposta encontrada.</div>
       </div>
     )
   }
@@ -146,7 +146,7 @@ function PipelineSection({
               tabIndex={0}
               onClick={() => onCardClick(situacao)}
               onKeyDown={e => e.key === 'Enter' && onCardClick(situacao)}
-              className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md hover:border-gray-300 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl overflow-hidden hover:shadow-md hover:border-gray-300 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             >
               <div className={`h-1.5 ${cfg.bar}`} />
               <div className="p-4">
@@ -155,18 +155,18 @@ function PipelineSection({
                   <span className={`text-3xl font-bold tabular-nums ${cfg.color}`}>
                     {count.toLocaleString('pt-BR')}
                   </span>
-                  <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
+                  <span className="text-xs text-gray-400 dark:text-gray-500 font-medium whitespace-nowrap">
                     {pct.toFixed(0)}%
                   </span>
                 </div>
 
                 {/* Short label */}
-                <p className="text-sm font-medium text-gray-700 mt-1.5 leading-snug">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mt-1.5 leading-snug">
                   {cfg.label}
                 </p>
 
                 {/* Progress bar */}
-                <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="mt-3 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                   <div
                     className={`h-full ${cfg.bar} rounded-full transition-all`}
                     style={{ width: `${Math.min(Math.max(pct, 2), 100)}%` }}
@@ -175,7 +175,7 @@ function PipelineSection({
 
                 {/* Conversion rate (short label) */}
                 {convRate && Number(convRate) <= 200 && (
-                  <p className="text-[10px] text-gray-400 mt-1.5 truncate">
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5 truncate">
                     {convRate}% de {getCfg(orderedStatuses[idx - 1]).label}
                   </p>
                 )}
@@ -196,7 +196,7 @@ function PipelineSection({
                 style={{ minWidth: '8px' }}
               />
               {idx < orderedStatuses.length - 1 && (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-gray-300 flex-shrink-0">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-gray-300 dark:text-gray-600 flex-shrink-0">
                   <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               )}
@@ -211,10 +211,10 @@ function PipelineSection({
 function SectionHeader({ title, total }: { title: string; total: number }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">{title}</p>
-      <p className="text-sm text-gray-500">Propostas por situação</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-medium">{title}</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400">Propostas por situação</p>
       {total > 0 && (
-        <p className="text-xs text-gray-400">{total.toLocaleString('pt-BR')} propostas</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500">{total.toLocaleString('pt-BR')} propostas</p>
       )}
     </div>
   )
@@ -266,26 +266,26 @@ export default function TGovPipelineClient({ userRole }: { userRole: string }) {
   const current = tabData[activeTab]
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-800/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-lg font-semibold text-gray-900">TGov Pipeline</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">TGov Pipeline</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
             Clique numa situação para filtrar no dashboard
           </p>
         </div>
 
         {/* Tab bar */}
-        <div className="flex gap-1 mb-6 border-b border-gray-200">
+        <div className="flex gap-1 mb-6 border-b border-gray-200 dark:border-gray-700">
           {visibleTabs.map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
                 activeTab === tab
-                  ? 'bg-white border border-b-white border-gray-200 -mb-px text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white dark:bg-gray-900 border border-b-white dark:border-b-gray-900 border-gray-200 dark:border-gray-700 -mb-px text-blue-600'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
             >
               {TAB_LABELS[tab]}
@@ -296,7 +296,7 @@ export default function TGovPipelineClient({ userRole }: { userRole: string }) {
         {/* Content */}
         {!current.loaded ? (
           <div className="flex items-center justify-center py-16">
-            <div className="text-sm text-gray-500">Carregando pipeline...</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Carregando pipeline...</div>
           </div>
         ) : current.error ? (
           <div className="flex items-center justify-center py-16">

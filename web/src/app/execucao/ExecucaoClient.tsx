@@ -49,15 +49,15 @@ const UF_OPTIONS = [
 const STATUS_OPTIONS = ['Não Contatado', 'Ainda Não', 'Retorno', 'Quente', 'Muito Quente', 'Proposta', 'Aguardando Closer', 'Fechado', 'Telefone Invalido']
 
 const STATUS_COLORS: Record<string, string> = {
-  'Não Contatado': 'bg-orange-50 text-orange-600',
-  'Ainda Não': 'bg-yellow-50 text-yellow-600',
-  'Retorno': 'bg-amber-50 text-amber-600',
-  'Quente': 'bg-red-50 text-red-600',
-  'Muito Quente': 'bg-red-100 text-red-700',
-  'Proposta': 'bg-blue-50 text-[#0072F7]',
-  'Aguardando Closer': 'bg-purple-50 text-purple-600',
-  'Fechado': 'bg-green-50 text-green-600',
-  'Telefone Invalido': 'bg-gray-50 text-gray-500',
+  'Não Contatado': 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400',
+  'Ainda Não': 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
+  'Retorno': 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  'Quente': 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400',
+  'Muito Quente': 'bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400',
+  'Proposta': 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] dark:text-blue-400',
+  'Aguardando Closer': 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400',
+  'Fechado': 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400',
+  'Telefone Invalido': 'bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400',
 }
 
 export default function ExecucaoClient({ userRole }: { userRole: string }) {
@@ -295,16 +295,16 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
       {/* Header */}
       <div>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="font-heading text-2xl font-bold text-gray-900">Projetos em Execucao</h1>
+          <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">Projetos em Execucao</h1>
           {refreshing && (
             <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-[#0072F7]">
               Atualizando lista...
             </span>
           )}
         </div>
-        <p className="text-sm text-gray-500 mt-1">Convenios ativos por proponente — dados TransferenciaGov</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Convenios ativos por proponente — dados TransferenciaGov</p>
         {lastSynced && (
-          <p className="text-xs text-gray-400 mt-1">Dados atualizados em {formatDate(lastSynced)}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Dados atualizados em {formatDate(lastSynced)}</p>
         )}
       </div>
 
@@ -318,12 +318,12 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
           placeholder="Buscar por CNPJ ou nome..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 min-w-[200px] bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0072F7] transition-colors"
+          className="w-full sm:flex-1 sm:min-w-[200px] bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0072F7] transition-colors"
         />
         <select
           value={uf}
           onChange={e => setUf(e.target.value)}
-          className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
+          className="bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
         >
           <option value="">UF</option>
           {UF_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -331,7 +331,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
-          className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
+          className="bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
         >
           <option value="">Todos Status</option>
           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -340,14 +340,14 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
           <select
             value={vendedorFilter}
             onChange={e => setVendedorFilter(e.target.value)}
-            className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
+            className="bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
           >
             <option value="">Todos Vendedores</option>
             <option value="unassigned">Não atribuídos</option>
             {vendedoresList.map(v => <option key={v.id} value={v.id}>{v.nome} ({v.lead_count})</option>)}
           </select>
         )}
-        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
           <input
             type="checkbox"
             checked={alertOnly}
@@ -360,7 +360,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
 
       {/* Tag filters */}
       <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-xs text-gray-500 font-medium mr-1">Tags:</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium mr-1">Tags:</span>
         {TAG_KEYS.map(tag => {
           const active = activeTags.has(tag.key)
           return (
@@ -370,7 +370,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
               className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
                 active
                   ? `${tag.bg} ${tag.text} ${tag.border} ring-2 ring-offset-1 ring-current`
-                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                  : 'bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               {tag.label}
@@ -383,7 +383,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
         {activeTags.size > 0 && (
           <button
             onClick={() => setActiveTags(new Set())}
-            className="text-xs text-gray-400 hover:text-gray-600 underline ml-1"
+            className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 underline ml-1"
           >
             Limpar
           </button>
@@ -406,7 +406,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
 
       {/* Non-blocking refresh error */}
       {error && rows.length > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        <div className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
           Nao foi possivel atualizar a lista agora. Mantendo os projetos ja carregados.
         </div>
       )}
@@ -414,56 +414,56 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
       {/* Empty state */}
       {!showBlockingLoad && !error && rows.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 gap-2">
-          <h2 className="text-lg font-medium text-gray-700">Nenhum projeto encontrado</h2>
-          <p className="text-sm text-gray-400">Nao foram encontrados projetos em execucao. Verifique os filtros ou aguarde o proximo sync.</p>
+          <h2 className="text-lg font-medium text-gray-700 dark:text-gray-300">Nenhum projeto encontrado</h2>
+          <p className="text-sm text-gray-400 dark:text-gray-500">Nao foram encontrados projetos em execucao. Verifique os filtros ou aguarde o proximo sync.</p>
         </div>
       )}
 
       {/* Table */}
       {!showBlockingLoad && rows.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="min-w-[1500px] text-sm">
+        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+          <table className="min-w-[1200px] text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th onClick={() => toggleSort('nome')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <th onClick={() => toggleSort('nome')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   Instituição<SortIcon col="nome" />
                 </th>
                 {isGestor && (
-                  <th onClick={() => toggleSort('vendedor')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                  <th onClick={() => toggleSort('vendedor')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                     Vendedor<SortIcon col="vendedor" />
                   </th>
                 )}
-                <th onClick={() => toggleSort('valor')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                <th onClick={() => toggleSort('valor')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   Valor<SortIcon col="valor" />
                 </th>
-                <th onClick={() => toggleSort('local')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                <th onClick={() => toggleSort('local')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   Local<SortIcon col="local" />
                 </th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">
                   Contato
                 </th>
-                <th onClick={() => toggleSort('ult_contato')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                <th onClick={() => toggleSort('ult_contato')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   Ult.<SortIcon col="ult_contato" />
                 </th>
-                <th onClick={() => toggleSort('desembolsado')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                <th onClick={() => toggleSort('desembolsado')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   Desemb.<SortIcon col="desembolsado" />
                 </th>
-                <th onClick={() => toggleSort('saldo')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                <th onClick={() => toggleSort('saldo')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   Saldo<SortIcon col="saldo" />
                 </th>
-                <th onClick={() => toggleSort('execucao')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                <th onClick={() => toggleSort('execucao')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   % Exec.<SortIcon col="execucao" />
                 </th>
-                <th onClick={() => toggleSort('vigencia')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                <th onClick={() => toggleSort('vigencia')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   Vigência<SortIcon col="vigencia" />
                 </th>
-                <th onClick={() => toggleSort('alerta')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                <th onClick={() => toggleSort('alerta')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   Alerta<SortIcon col="alerta" />
                 </th>
-                <th onClick={() => toggleSort('status')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                <th onClick={() => toggleSort('status')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   Status<SortIcon col="status" />
                 </th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap min-w-[180px]">
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap min-w-[180px]">
                   Tags
                 </th>
               </tr>
@@ -478,7 +478,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                   <tr
                     key={row.cnpj}
                     onClick={() => setSelectedCnpj(row.cnpj)}
-                    className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors ${
+                    className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors ${
                       !hasContact ? 'bg-red-50/30 border-l-2 border-l-red-300' :
                       row.tem_alerta ? 'border-l-2 border-l-amber-400' : ''
                     }`}
@@ -487,7 +487,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                     <td className="px-2 py-2 max-w-[240px]">
                       <div className="min-w-0">
                         <div className="flex items-center gap-1">
-                          <span className="text-gray-900 font-medium text-sm leading-tight whitespace-normal break-words">
+                          <span className="text-gray-900 dark:text-gray-100 font-medium text-sm leading-tight whitespace-normal break-words">
                             {row.nome_proponente || '-'}
                           </span>
                           <a
@@ -495,24 +495,24 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={e => e.stopPropagation()}
-                            className="flex-shrink-0 text-gray-300 hover:text-[#0072F7] transition-colors"
+                            className="flex-shrink-0 text-gray-300 dark:text-gray-600 hover:text-[#0072F7] transition-colors"
                             title="Abrir em nova aba"
                           >
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
                           </a>
                         </div>
-                        <span className="font-mono text-[11px] text-gray-400 mt-0.5 block">{formatCNPJ(row.cnpj)}</span>
+                        <span className="font-mono text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 block">{formatCNPJ(row.cnpj)}</span>
                       </div>
                     </td>
 
                     {/* VENDEDOR */}
                     {isGestor && (
-                      <td className="px-2 py-2 text-sm text-gray-600 whitespace-nowrap">
+                      <td className="px-2 py-2 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
                         <div className="flex items-center gap-1">
-                          {row.vendedor_nome || <span className="text-gray-300">Sem dono</span>}
+                          {row.vendedor_nome || <span className="text-gray-300 dark:text-gray-600">Sem dono</span>}
                           <button
                             onClick={e => { e.stopPropagation(); setAssignModal({ cnpj: row.cnpj, nome: row.nome_proponente, vendedor: row.vendedor_nome }) }}
-                            className="text-gray-300 hover:text-[#0072F7] transition-colors flex-shrink-0"
+                            className="text-gray-300 dark:text-gray-600 hover:text-[#0072F7] transition-colors flex-shrink-0"
                             title={row.vendedor_nome ? 'Reatribuir' : 'Atribuir vendedor'}
                           >
                             {row.vendedor_nome ? '\u21BB' : '+'}
@@ -530,7 +530,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
 
                     {/* LOCAL */}
                     <td className="px-2 py-2 whitespace-nowrap">
-                      <span className="text-gray-600 text-xs">
+                      <span className="text-gray-600 dark:text-gray-400 text-xs">
                         {row.municipio && row.uf ? `${row.municipio}, ${row.uf}` : row.uf || row.municipio || '-'}
                       </span>
                     </td>
@@ -540,7 +540,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                       {hasContact ? (
                         <div className="space-y-0.5">
                           {row.contact_telefone && (
-                            <div className="flex items-center text-xs text-gray-600 truncate">
+                            <div className="flex items-center text-xs text-gray-600 dark:text-gray-400 truncate">
                               {row.contact_telefone_status === 'valido' && (
                                 <span className="w-2 h-2 rounded-full bg-green-500 inline-block mr-1 flex-shrink-0" />
                               )}
@@ -567,7 +567,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                             </div>
                           )}
                           {row.contact_email && (
-                            <div className="text-xs text-gray-400 truncate">{row.contact_email}</div>
+                            <div className="text-xs text-gray-400 dark:text-gray-500 truncate">{row.contact_email}</div>
                           )}
                         </div>
                       ) : (
@@ -578,18 +578,18 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                     {/* ULT. CONTATO */}
                     <td className="px-2 py-2 whitespace-nowrap">
                       {row.days_since_last_contact == null ? (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Nunca</span>
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">Nunca</span>
                       ) : row.days_since_last_contact <= 2 ? (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">{row.days_since_last_contact}d</span>
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400">{row.days_since_last_contact}d</span>
                       ) : row.days_since_last_contact <= 7 ? (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">{row.days_since_last_contact}d</span>
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400">{row.days_since_last_contact}d</span>
                       ) : (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">{row.days_since_last_contact}d</span>
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400">{row.days_since_last_contact}d</span>
                       )}
                     </td>
 
                     {/* DESEMBOLSADO */}
-                    <td className="px-2 py-2 text-sm text-gray-700 whitespace-nowrap">
+                    <td className="px-2 py-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
                       {formatCompactCurrency(Number(row.total_desembolsado))}
                     </td>
 
@@ -602,25 +602,25 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                     <td className="px-2 py-2 whitespace-nowrap">
                       {pct != null ? (
                         <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                          pct >= 80 ? 'bg-green-100 text-green-700' :
-                          pct >= 50 ? 'bg-amber-100 text-amber-700' :
-                          'bg-red-100 text-red-700'
+                          pct >= 80 ? 'bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400' :
+                          pct >= 50 ? 'bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400' :
+                          'bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400'
                         }`}>
                           {pct.toFixed(1)}%
                         </span>
                       ) : (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">--</span>
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">--</span>
                       )}
                     </td>
 
                     {/* VIGÊNCIA */}
-                    <td className="px-2 py-2 text-xs text-gray-500 whitespace-nowrap">{formatDate(row.data_fim_vigencia_mais_proxima)}</td>
+                    <td className="px-2 py-2 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDate(row.data_fim_vigencia_mais_proxima)}</td>
 
                     {/* ALERTA */}
                     <td className="px-2 py-2">
                       {row.tem_alerta && (
                         <span
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 cursor-help"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30 cursor-help"
                           title={`${row.qtd_alertas} de ${row.total_projetos} convenio(s) com valor desembolsado = R$ 0,00`}
                         >
                           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
@@ -651,18 +651,18 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={e => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors cursor-pointer"
                             title={`Status em Aprovação: ${row.aprovacao_status} — clique para ver detalhes`}
                           >
                             <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
                             Contatado (Aprovação)
                           </a>
                         )}
-                        {row.tag_autossuficiente && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200">Autossuficiente</span>}
-                        {row.tag_iniciante && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-50 text-sky-700 border border-sky-200">Iniciante</span>}
-                        {row.tag_desembolso && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Desembolso</span>}
-                        {row.tag_lobby && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-violet-50 text-violet-700 border border-violet-200">Lobby</span>}
-                        {row.tag_rendimento && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-teal-50 text-teal-700 border border-teal-200">Rendimento</span>}
+                        {row.tag_autossuficiente && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30">Autossuficiente</span>}
+                        {row.tag_iniciante && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-500/30">Iniciante</span>}
+                        {row.tag_desembolso && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">Desembolso</span>}
+                        {row.tag_lobby && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-400 border border-violet-200 dark:border-violet-500/30">Lobby</span>}
+                        {row.tag_rendimento && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 border border-teal-200 dark:border-teal-500/30">Rendimento</span>}
                       </div>
                     </td>
                   </tr>
@@ -676,7 +676,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
       {/* Load more + Row count + Export */}
       {!showBlockingLoad && rows.length > 0 && (
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
             {activeTags.size > 0 || statusFilter
               ? `Mostrando ${visibleRows.length} de ${sortedRows.length} CNPJs (${rows.length} total)`
               : `Mostrando ${visibleRows.length} de ${rows.length} CNPJs (${rows.reduce((s, r) => s + r.total_projetos, 0)} fomentos)`
@@ -692,7 +692,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                   if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
                   window.open(`/api/execucao/export?${params}`, '_blank')
                 }}
-                className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
+                className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
               >
                 Exportar CSV
               </button>

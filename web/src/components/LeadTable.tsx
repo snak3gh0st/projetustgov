@@ -28,7 +28,7 @@ export default function LeadTable({ data }: { data: VendedorProjeto[] }) {
       }),
       columnHelper.accessor('nome', {
         header: 'Nome',
-        cell: (info) => <span className="text-gray-900 font-medium truncate max-w-[200px] block">{info.getValue()}</span>,
+        cell: (info) => <span className="text-gray-900 dark:text-gray-100 font-medium truncate max-w-[200px] block">{info.getValue()}</span>,
       }),
       columnHelper.accessor('nome_programa', {
         header: 'Programa',
@@ -72,16 +72,16 @@ export default function LeadTable({ data }: { data: VendedorProjeto[] }) {
   })
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200">
+    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
       <table className="w-full text-sm">
         <thead>
           {table.getHeaderGroups().map((hg) => (
-            <tr key={hg.id} className="border-b border-gray-200 bg-gray-50">
+            <tr key={hg.id} className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
               {hg.headers.map((header) => (
                 <th
                   key={header.id}
                   onClick={header.column.getToggleSortingHandler()}
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-800"
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-800 dark:hover:text-gray-100"
                 >
                   <div className="flex items-center gap-1">
                     {flexRender(header.column.columnDef.header, header.getContext())}
@@ -97,10 +97,10 @@ export default function LeadTable({ data }: { data: VendedorProjeto[] }) {
             <tr
               key={row.id}
               onClick={() => router.push(`/lead/${encodeURIComponent(row.original.cnpj)}`)}
-              className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
+              className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
             >
               {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="px-4 py-3 text-gray-600">
+                <td key={cell.id} className="px-4 py-3 text-gray-600 dark:text-gray-300">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}

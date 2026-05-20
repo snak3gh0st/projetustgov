@@ -48,7 +48,7 @@ const PC_PATTERN = /presta.*conta/i
 function ChevronIcon({ expanded }: { expanded: boolean }) {
   return (
     <svg
-      className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+      className={`h-4 w-4 text-gray-400 dark:text-gray-500 transition-transform ${expanded ? 'rotate-180' : ''}`}
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
@@ -62,7 +62,7 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
 function SpinnerIcon() {
   return (
     <svg
-      className="h-4 w-4 animate-spin text-gray-400"
+      className="h-4 w-4 animate-spin text-gray-400 dark:text-gray-500"
       fill="none"
       viewBox="0 0 24 24"
     >
@@ -82,34 +82,34 @@ function ProjectSubTable({
   if (projects.length === 0) return null
   return (
     <div className="mb-4">
-      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{title}</h4>
+      <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{title}</h4>
       <table className="w-full text-xs text-left">
         <thead>
-          <tr className="border-b border-gray-200">
-            <th className="py-1 pr-3 font-medium text-gray-500">Identificador</th>
-            <th className="py-1 pr-3 font-medium text-gray-500">Objeto</th>
-            <th className="py-1 pr-3 font-medium text-gray-500">Situação</th>
-            <th className="py-1 pr-3 font-medium text-gray-500 text-right">Valor Global</th>
-            <th className="py-1 pr-3 font-medium text-gray-500 text-right">Saldo</th>
-            <th className="py-1 pr-3 font-medium text-gray-500">UF</th>
-            <th className="py-1 font-medium text-gray-500">Prioridade</th>
+          <tr className="border-b border-gray-200 dark:border-gray-700">
+            <th className="py-1 pr-3 font-medium text-gray-500 dark:text-gray-400">Identificador</th>
+            <th className="py-1 pr-3 font-medium text-gray-500 dark:text-gray-400">Objeto</th>
+            <th className="py-1 pr-3 font-medium text-gray-500 dark:text-gray-400">Situação</th>
+            <th className="py-1 pr-3 font-medium text-gray-500 dark:text-gray-400 text-right">Valor Global</th>
+            <th className="py-1 pr-3 font-medium text-gray-500 dark:text-gray-400 text-right">Saldo</th>
+            <th className="py-1 pr-3 font-medium text-gray-500 dark:text-gray-400">UF</th>
+            <th className="py-1 font-medium text-gray-500 dark:text-gray-400">Prioridade</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
           {projects.map((p) => (
-            <tr key={p.identifier} className="hover:bg-gray-50">
-              <td className="py-1.5 pr-3 font-mono text-gray-700">{p.identifier}</td>
-              <td className="py-1.5 pr-3 text-gray-600 max-w-xs truncate">
+            <tr key={p.identifier} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+              <td className="py-1.5 pr-3 font-mono text-gray-700 dark:text-gray-300">{p.identifier}</td>
+              <td className="py-1.5 pr-3 text-gray-600 dark:text-gray-400 max-w-xs truncate">
                 {p.objeto ? p.objeto.slice(0, 80) : '—'}
               </td>
-              <td className="py-1.5 pr-3 text-gray-600">{p.situacao ?? '—'}</td>
-              <td className="py-1.5 pr-3 text-gray-700 text-right tabular-nums">
+              <td className="py-1.5 pr-3 text-gray-600 dark:text-gray-400">{p.situacao ?? '—'}</td>
+              <td className="py-1.5 pr-3 text-gray-700 dark:text-gray-300 text-right tabular-nums">
                 {p.valor_global != null ? formatCompactCurrency(p.valor_global) : '—'}
               </td>
-              <td className="py-1.5 pr-3 text-gray-700 text-right tabular-nums">
+              <td className="py-1.5 pr-3 text-gray-700 dark:text-gray-300 text-right tabular-nums">
                 {p.saldo_conta != null ? formatCompactCurrency(p.saldo_conta) : '—'}
               </td>
-              <td className="py-1.5 pr-3 text-gray-600">{p.uf ?? '—'}</td>
+              <td className="py-1.5 pr-3 text-gray-600 dark:text-gray-400">{p.uf ?? '—'}</td>
               <td className="py-1.5">
                 <PriorityBadge level={p.priority_level} />
               </td>
@@ -226,13 +226,13 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
     return (
       <div className="p-8">
         <header className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-800">Clientes CSM</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Clientes CSM</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Area de Customer Success — sessao ativa: {userName ?? 'sem nome'} ({userRole})
           </p>
         </header>
-        <div className="bg-white border border-gray-200 rounded-md p-8 text-center">
-          <div className="flex items-center justify-center gap-2 text-gray-400">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-8 text-center">
+          <div className="flex items-center justify-center gap-2 text-gray-400 dark:text-gray-500">
             <SpinnerIcon />
             <span className="text-sm">Carregando clientes…</span>
           </div>
@@ -246,16 +246,16 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
     return (
       <div className="p-8">
         <header className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-800">Clientes CSM</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Clientes CSM</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Area de Customer Success — sessao ativa: {userName ?? 'sem nome'} ({userRole})
           </p>
         </header>
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-md p-4">
+          <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
           <button
             onClick={() => setFetchTrigger(t => t + 1)}
-            className="mt-2 text-sm text-red-600 underline hover:text-red-800"
+            className="mt-2 text-sm text-red-600 dark:text-red-400 underline hover:text-red-800 dark:hover:text-red-300"
           >
             Tentar novamente
           </button>
@@ -270,29 +270,29 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
     <div className="p-8">
       {/* Header */}
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Clientes CSM</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Clientes CSM</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Area de Customer Success — sessao ativa: {userName ?? 'sem nome'} ({userRole})
         </p>
       </header>
 
       {/* Filters bar */}
-      <div className="bg-white border border-gray-200 rounded-md p-4 mb-4 flex flex-wrap gap-3 items-end">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-4 mb-4 flex flex-wrap gap-3 items-end">
         {/* Search input */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500 font-medium">Busca</label>
+          <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Busca</label>
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar por nome ou CNPJ"
-            className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 w-64"
+            className="border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 w-64"
           />
         </div>
 
         {/* Priority filter pills */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500 font-medium">Prioridade</label>
+          <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Prioridade</label>
           <div className="flex gap-1.5">
             {priorityLevels.map(level => (
               <button
@@ -308,56 +308,56 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
 
         {/* Saldo range */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500 font-medium">Saldo mín</label>
+          <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Saldo mín</label>
           <input
             type="number"
             value={saldoMin}
             onChange={e => setSaldoMin(e.target.value)}
             placeholder="0"
-            className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
+            className="border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-gray-500 font-medium">Saldo máx</label>
+          <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Saldo máx</label>
           <input
             type="number"
             value={saldoMax}
             onChange={e => setSaldoMax(e.target.value)}
             placeholder="sem limite"
-            className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
+            className="border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
           />
         </div>
       </div>
 
       {/* Result counter */}
-      <p className="text-xs text-gray-500 mb-2">
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
         Mostrando {filtered.length} de {clients.length} clientes
       </p>
 
       {/* Empty state */}
       {filtered.length === 0 && !loading && !error && (
-        <div className="bg-white border border-gray-200 rounded-md p-8 text-center">
-          <p className="text-sm text-gray-500">Nenhum cliente encontrado</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-8 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum cliente encontrado</p>
         </div>
       )}
 
       {/* Main table */}
       {filtered.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
           <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
               <tr>
                 <th className="w-8 px-3 py-3" />
-                <th className="px-3 py-3 font-medium text-gray-600">Cliente</th>
-                <th className="px-3 py-3 font-medium text-gray-600 text-right">Saldo em Conta</th>
-                <th className="px-3 py-3 font-medium text-gray-600 text-right">A Desembolsar</th>
-                <th className="px-3 py-3 font-medium text-gray-600 text-right">Saldo Rendimento</th>
-                <th className="px-3 py-3 font-medium text-gray-600 text-right">A Liberar</th>
-                <th className="px-3 py-3 font-medium text-gray-600">Projetos</th>
-                <th className="px-3 py-3 font-medium text-gray-600">Prioridade</th>
+                <th className="px-3 py-3 font-medium text-gray-600 dark:text-gray-400">Cliente</th>
+                <th className="px-3 py-3 font-medium text-gray-600 dark:text-gray-400 text-right">Saldo em Conta</th>
+                <th className="px-3 py-3 font-medium text-gray-600 dark:text-gray-400 text-right">A Desembolsar</th>
+                <th className="px-3 py-3 font-medium text-gray-600 dark:text-gray-400 text-right">Saldo Rendimento</th>
+                <th className="px-3 py-3 font-medium text-gray-600 dark:text-gray-400 text-right">A Liberar</th>
+                <th className="px-3 py-3 font-medium text-gray-600 dark:text-gray-400">Projetos</th>
+                <th className="px-3 py-3 font-medium text-gray-600 dark:text-gray-400">Prioridade</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {filtered.map(c => {
                 const isExpanded = expanded.has(c.cnpj)
                 const projects = projectsCache[c.cnpj]
@@ -365,23 +365,23 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
 
                 // Project count pills — only render when count > 0
                 const countPills: Array<{ label: string; count: number; color: string }> = [
-                  { label: 'Saldo', count: c.count_execucao_saldo, color: 'bg-emerald-100 text-emerald-700' },
-                  { label: 'A Desemb', count: c.count_a_desembolsar, color: 'bg-amber-100 text-amber-700' },
-                  { label: 'Aprov', count: c.count_aprovacao, color: 'bg-violet-100 text-violet-700' },
-                  { label: 'PC', count: c.count_prestacao_contas, color: 'bg-slate-100 text-slate-600' },
+                  { label: 'Saldo', count: c.count_execucao_saldo, color: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' },
+                  { label: 'A Desemb', count: c.count_a_desembolsar, color: 'bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400' },
+                  { label: 'Aprov', count: c.count_aprovacao, color: 'bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-400' },
+                  { label: 'PC', count: c.count_prestacao_contas, color: 'bg-slate-100 dark:bg-slate-500/15 text-slate-600 dark:text-slate-400' },
                 ]
 
                 return (
                   <React.Fragment key={c.cnpj}>
-                    <tr className="hover:bg-gray-50">
+                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
                       {/* Chevron */}
                       <td className="px-3 py-3 cursor-pointer" onClick={() => toggleExpand(c.cnpj)}>
                         <ChevronIcon expanded={isExpanded} />
                       </td>
                       {/* Cliente */}
                       <td className="px-3 py-3">
-                        <div className="font-medium text-gray-800">{c.nome_proponente}</div>
-                        <div className="text-xs text-gray-400 font-mono">{formatCNPJ(c.cnpj)}</div>
+                        <div className="font-medium text-gray-800 dark:text-gray-100">{c.nome_proponente}</div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 font-mono">{formatCNPJ(c.cnpj)}</div>
                         <button
                           onClick={() => setSelectedClient(c.cnpj)}
                           className="text-xs text-blue-600 hover:text-blue-800 underline mt-1"
@@ -390,19 +390,19 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
                         </button>
                       </td>
                       {/* Saldo em Conta */}
-                      <td className="px-3 py-3 text-right tabular-nums text-gray-700">
+                      <td className="px-3 py-3 text-right tabular-nums text-gray-700 dark:text-gray-300">
                         {formatCompactCurrency(c.total_saldo_conta)}
                       </td>
                       {/* A Desembolsar */}
-                      <td className="px-3 py-3 text-right tabular-nums text-gray-700">
+                      <td className="px-3 py-3 text-right tabular-nums text-gray-700 dark:text-gray-300">
                         {formatCompactCurrency(c.total_a_desembolsar)}
                       </td>
                       {/* Saldo Rendimento */}
-                      <td className="px-3 py-3 text-right tabular-nums text-gray-700">
+                      <td className="px-3 py-3 text-right tabular-nums text-gray-700 dark:text-gray-300">
                         {formatCompactCurrency(c.total_rendimento)}
                       </td>
                       {/* A Liberar */}
-                      <td className="px-3 py-3 text-right tabular-nums text-gray-700">
+                      <td className="px-3 py-3 text-right tabular-nums text-gray-700 dark:text-gray-300">
                         {formatCompactCurrency(c.total_a_liberar)}
                       </td>
                       {/* Projetos */}
@@ -429,14 +429,14 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
                     {/* Expanded row */}
                     {isExpanded && (
                       <tr>
-                        <td colSpan={8} className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                        <td colSpan={8} className="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                           {isLoadingProjects ? (
-                            <div className="flex items-center gap-2 text-gray-400 text-sm">
+                            <div className="flex items-center gap-2 text-gray-400 dark:text-gray-500 text-sm">
                               <SpinnerIcon />
                               <span>Carregando projetos…</span>
                             </div>
                           ) : !projects || projects.length === 0 ? (
-                            <p className="text-sm text-gray-500">Nenhum projeto encontrado para este CNPJ</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum projeto encontrado para este CNPJ</p>
                           ) : (
                             <div>
                               <ProjectSubTable

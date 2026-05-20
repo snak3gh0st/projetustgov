@@ -186,28 +186,28 @@ export default function LeadDetailPage() {
             &#8592; Voltar para execução
           </Link>
           <div>
-            <h1 className="font-heading text-2xl font-bold text-gray-900">{nomeInst}</h1>
-            <p className="text-sm text-gray-500 mt-1">CNPJ: {formatCNPJ(cnpj)}</p>
-            <span className="inline-block mt-2 text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full border border-blue-200">
+            <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">{nomeInst}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">CNPJ: {formatCNPJ(cnpj)}</p>
+            <span className="inline-block mt-2 text-xs bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-500/20">
               Projeto em Execução — não está em prospecção no CRM
             </span>
           </div>
           <div className="space-y-3">
             {execucaoFallback.map((conv) => (
-              <div key={conv.nr_convenio} className="border border-gray-200 rounded-xl p-4 bg-white space-y-2">
+              <div key={conv.nr_convenio} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-white dark:bg-gray-900 space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-mono text-gray-400">{conv.nr_convenio}</span>
+                  <span className="text-xs font-mono text-gray-400 dark:text-gray-500">{conv.nr_convenio}</span>
                   {conv.situacao && (
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{conv.situacao}</span>
+                    <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">{conv.situacao}</span>
                   )}
                 </div>
-                {conv.objeto && <p className="text-sm text-gray-700">{conv.objeto}</p>}
+                {conv.objeto && <p className="text-sm text-gray-700 dark:text-gray-300">{conv.objeto}</p>}
                 <div className="flex gap-4 text-sm">
                   {conv.valor_global && (
-                    <span className="text-gray-600">Valor global: <strong>{formatCurrency(Number(conv.valor_global))}</strong></span>
+                    <span className="text-gray-600 dark:text-gray-300">Valor global: <strong>{formatCurrency(Number(conv.valor_global))}</strong></span>
                   )}
                   {conv.pct_execucao && (
-                    <span className="text-gray-600">Execução: <strong>{Number(conv.pct_execucao).toFixed(1)}%</strong></span>
+                    <span className="text-gray-600 dark:text-gray-300">Execução: <strong>{Number(conv.pct_execucao).toFixed(1)}%</strong></span>
                   )}
                 </div>
               </div>
@@ -249,7 +249,7 @@ export default function LeadDetailPage() {
 
       <div>
         <div className="flex items-center gap-3">
-          <h1 className="font-heading text-2xl font-bold text-gray-900">{first.nome || 'Sem nome'}</h1>
+          <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">{first.nome || 'Sem nome'}</h1>
           {isPriority && (
             <span className="text-xs bg-red-500/20 text-red-500 px-3 py-1 rounded-full border border-red-500/30 font-medium">
               MÁXIMA PRIORIDADE
@@ -261,39 +261,39 @@ export default function LeadDetailPage() {
             </span>
           )}
         </div>
-        <p className="text-sm text-gray-500 font-mono mt-1">{formatCNPJ(cnpj)}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mt-1">{formatCNPJ(cnpj)}</p>
         {isPriority && (
-          <p className="text-sm text-gray-400 mt-2">
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
             Este CNPJ nunca executou um convênio — alta probabilidade de conversão
           </p>
         )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-          <p className="text-xs text-gray-500 uppercase">{projetos.length > 1 ? 'Total Emendas' : 'Valor Emenda'}</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{projetos.length > 1 ? 'Total Emendas' : 'Valor Emenda'}</p>
           <p className="text-xl font-heading font-bold text-sigma-neon mt-1">
             {formatCurrency(totalEmendas)}
           </p>
         </div>
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-          <p className="text-xs text-gray-500 uppercase">Projetos</p>
-          <p className="text-xl font-heading font-bold text-gray-900 mt-1">{projetos.length}</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Projetos</p>
+          <p className="text-xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-1">{projetos.length}</p>
         </div>
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-          <p className="text-xs text-gray-500 uppercase">UF</p>
-          <p className="text-xl font-heading font-bold text-gray-900 mt-1">{first.uf || '-'}</p>
-          <p className="text-xs text-gray-400">{first.municipio || ''}</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">UF</p>
+          <p className="text-xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-1">{first.uf || '-'}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">{first.municipio || ''}</p>
         </div>
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-          <p className="text-xs text-gray-500 uppercase">Vendedor</p>
-          <p className="text-xl font-heading font-bold text-gray-900 mt-1">{first.vendedor_nome || '-'}</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vendedor</p>
+          <p className="text-xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-1">{first.vendedor_nome || '-'}</p>
         </div>
       </div>
 
       {/* Aguardando Closer banner */}
       {first.status_contato === 'Aguardando Closer' && (
-        <div className="bg-purple-50 border border-purple-200 rounded-xl p-5">
+        <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 rounded-xl p-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-purple-700">Aguardando Closer (Paulo)</p>
@@ -317,7 +317,7 @@ export default function LeadDetailPage() {
                 </button>
                 <button
                   onClick={() => updateProjeto(first.id, 'status_contato', 'Proposta')}
-                  className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   Cancelar
                 </button>
@@ -337,55 +337,55 @@ export default function LeadDetailPage() {
         <div className="bg-sigma-neon/10 border border-sigma-neon/30 rounded-xl p-5">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs text-gray-500 uppercase">Tipo Vendedor</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Tipo Vendedor</p>
               {canModify && !first.closer_id ? (
                 <select
                   value={first.tipo_vendedor || 'SDR'}
                   onChange={(e) => updateProjeto(first.id, 'tipo_vendedor', e.target.value)}
-                  className="mt-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-sigma-neon/50"
+                  className="mt-1 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-sigma-neon/50"
                 >
                   <option value="SDR">SDR (1%)</option>
                   <option value="Closer">Closer (4%)</option>
                   <option value="Exclusivo">Exclusivo (3%)</option>
                 </select>
               ) : (
-                <p className="text-lg font-semibold text-gray-900 mt-1">
+                <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-1">
                   {first.tipo_vendedor || 'SDR'}
                 </p>
               )}
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase">
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">
                 {first.closer_id ? `SDR (${Number(first.comissao_percentual || 0).toFixed(1)}%)` : `Comissao (${Number(first.comissao_percentual || 0).toFixed(1)}%)`}
               </p>
               <p className="text-2xl font-heading font-bold text-sigma-neon mt-1">
                 {formatCurrency(first.comissao_valor)}
               </p>
               {first.closer_id && first.vendedor_nome && (
-                <p className="text-xs text-gray-400 mt-0.5">{first.vendedor_nome}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{first.vendedor_nome}</p>
               )}
             </div>
             {first.closer_id && first.closer_comissao_valor && first.closer_comissao_valor > 0 ? (
               <div>
-                <p className="text-xs text-gray-500 uppercase">Closer ({Number(first.closer_comissao_percentual || 0).toFixed(1)}%)</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Closer ({Number(first.closer_comissao_percentual || 0).toFixed(1)}%)</p>
                 <p className="text-2xl font-heading font-bold text-purple-600 mt-1">
                   {formatCurrency(first.closer_comissao_valor)}
                 </p>
                 {first.closer_nome && (
-                  <p className="text-xs text-gray-400 mt-0.5">{first.closer_nome}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{first.closer_nome}</p>
                 )}
               </div>
             ) : (
               <div>
-                <p className="text-xs text-gray-500 uppercase">Bonus por Fechamento</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Bonus por Fechamento</p>
                 <p className="text-lg font-semibold text-green-600 mt-1">
                   {formatCurrency(first.comissao_bonus || 0)}
                 </p>
               </div>
             )}
             <div>
-              <p className="text-xs text-gray-500 uppercase">Valor da Venda</p>
-              <p className="text-lg font-semibold text-gray-900 mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Valor da Venda</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-1">
                 {formatCurrency(first.valor_venda || 0)}
               </p>
             </div>
@@ -395,20 +395,20 @@ export default function LeadDetailPage() {
 
       {/* Contact info */}
       {(first.telefone || first.email || first.endereco || canModify) && (
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex flex-wrap gap-6">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4 flex flex-wrap gap-6">
           {first.endereco && (
             <div>
-              <p className="text-xs text-gray-500 uppercase mb-1">Endereco</p>
-              <p className="text-sm text-gray-600">{first.endereco}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase mb-1">Endereco</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">{first.endereco}</p>
               {first.municipio && first.uf && (
-                <p className="text-xs text-gray-400 mt-0.5">{first.municipio} - {first.uf}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{first.municipio} - {first.uf}</p>
               )}
             </div>
           )}
           {(first.telefone || canModify) && (
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <p className="text-xs text-gray-500 uppercase">Telefone</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Telefone</p>
                 {canModify && editingField !== 'telefone' && (
                   <button
                     onClick={() => {
@@ -448,7 +448,7 @@ export default function LeadDetailPage() {
                     }
                   }}
                   autoFocus
-                  className="text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:border-sigma-neon/50"
+                  className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md px-2 py-1 focus:outline-none focus:border-sigma-neon/50"
                 />
               ) : first.telefone ? (
                 whatsappMeUrlFromTelefone(first.telefone) ? (
@@ -456,17 +456,17 @@ export default function LeadDetailPage() {
                     {first.telefone}
                   </a>
                 ) : (
-                  <span className="text-sm text-gray-800">{first.telefone}</span>
+                  <span className="text-sm text-gray-800 dark:text-gray-200">{first.telefone}</span>
                 )
               ) : (
-                <span className="text-sm text-gray-600">Sem telefone</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Sem telefone</span>
               )}
             </div>
           )}
           {(first.email || canModify) && (
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <p className="text-xs text-gray-500 uppercase">Email</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Email</p>
                 {canModify && editingField !== 'email' && (
                   <button
                     onClick={() => {
@@ -506,14 +506,14 @@ export default function LeadDetailPage() {
                     }
                   }}
                   autoFocus
-                  className="text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:border-sigma-neon/50"
+                  className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md px-2 py-1 focus:outline-none focus:border-sigma-neon/50"
                 />
               ) : first.email ? (
                 <a href={`mailto:${first.email}`} className="text-sm text-[#0072F7] hover:text-blue-700 block">
                   {first.email}
                 </a>
               ) : (
-                <span className="text-sm text-gray-600">Sem email</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Sem email</span>
               )}
             </div>
           )}
@@ -523,27 +523,27 @@ export default function LeadDetailPage() {
       {/* Lead contacts (multi-contact per CNPJ) */}
       <LeadContacts cnpj={cnpj} canModify={canModify} />
 
-      <div className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-heading font-semibold text-gray-900">Emendas ({projetos.length})</h2>
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl overflow-hidden">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100">Emendas ({projetos.length})</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Parlamentar</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Orgao</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor Emenda</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Obs</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Link</th>
+              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Parlamentar</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Orgao</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Valor Emenda</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Obs</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Link</th>
               </tr>
             </thead>
             <tbody>
               {projetos.map(p => (
-                <tr key={p.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-gray-900 text-xs max-w-[220px] whitespace-normal break-words">{p.parlamentar || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600 text-xs max-w-[200px] whitespace-normal break-words">{p.orgao_concedente || '-'}</td>
+                <tr key={p.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <td className="px-4 py-3 text-gray-900 dark:text-gray-100 text-xs max-w-[220px] whitespace-normal break-words">{p.parlamentar || '-'}</td>
+                  <td className="px-4 py-3 text-gray-600 dark:text-gray-300 text-xs max-w-[200px] whitespace-normal break-words">{p.orgao_concedente || '-'}</td>
                   <td className="px-4 py-3 text-sigma-neon text-xs">{formatCurrency(Number(p.valor_emenda) || 0)}</td>
                   <td className="px-4 py-3">
                     <select
@@ -564,7 +564,7 @@ export default function LeadDetailPage() {
                           updateProjeto(p.id, 'observacoes', e.target.value)
                         }
                       }}
-                      className="bg-transparent border-b border-gray-200 text-xs text-gray-600 w-24 focus:outline-none focus:border-sigma-neon/50 placeholder-gray-400"
+                      className="bg-transparent border-b border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 w-24 focus:outline-none focus:border-sigma-neon/50 placeholder-gray-400"
                     />
                   </td>
                   <td className="px-4 py-3">

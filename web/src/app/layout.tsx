@@ -24,7 +24,7 @@ export default async function RootLayout({
 
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-body">
+      <body className="bg-slate-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 font-body">
         <Providers>
           {session?.user && (
             <Sidebar
@@ -45,7 +45,7 @@ export default async function RootLayout({
               }}
             />
           )}
-          <main className={session ? `${sidebarOpen ? 'md:ml-56' : 'md:ml-14'} min-h-screen p-6 transition-[margin] duration-200` : "min-h-screen p-6"}>
+          <main className={session ? `${sidebarOpen ? 'md:ml-56' : 'md:ml-14'} min-h-screen p-3 sm:p-4 lg:p-6 pb-24 md:pb-6 transition-[margin] duration-200` : "min-h-screen p-3 sm:p-4 lg:p-6"}>
             {session?.user && <NewsBanner />}
             {session?.user && ['gestor', 'admin', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'].includes(
               session.user.role as string

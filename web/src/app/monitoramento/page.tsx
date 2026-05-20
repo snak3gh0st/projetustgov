@@ -139,8 +139,8 @@ export default function MonitoramentoPage() {
     <div className="space-y-6 w-full max-w-[1800px] mx-auto">
       {/* Header */}
       <div>
-        <h1 className="font-heading text-2xl font-bold text-gray-900">Monitoramento Financeiro</h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">Monitoramento Financeiro</h1>
+        <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
           Acompanhamento de valores de emendas e execucao financeira dos leads
         </p>
       </div>
@@ -155,7 +155,7 @@ export default function MonitoramentoPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white border border-gray-200 shadow-sm rounded-lg p-4">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg p-4">
         <div className="flex flex-wrap gap-3 items-center">
           <div className="flex gap-1">
             {priorityButtons.map(btn => (
@@ -165,7 +165,7 @@ export default function MonitoramentoPage() {
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   filters.prioridade === btn.value
                     ? 'bg-[#0072F7] text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
               >
                 {btn.label}
@@ -181,7 +181,7 @@ export default function MonitoramentoPage() {
                 type="number"
                 value={filters.valor_min}
                 onChange={e => handleValorChange(Number(e.target.value) || 0)}
-                className="w-32 bg-gray-100 border border-gray-300 rounded-lg pl-8 pr-2 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-[#0072F7]"
+                className="w-32 bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-300 rounded-lg pl-8 pr-2 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-[#0072F7]"
               />
             </div>
           </div>
@@ -189,7 +189,7 @@ export default function MonitoramentoPage() {
           <select
             value={filters.uf}
             onChange={e => setFilters(f => ({ ...f, uf: e.target.value }))}
-            className="bg-gray-100 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:border-[#0072F7]"
+            className="bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-600 focus:outline-none focus:border-[#0072F7]"
           >
             <option value="">Todos os Estados</option>
             {ufs.map(uf => (
@@ -202,7 +202,7 @@ export default function MonitoramentoPage() {
             placeholder="Buscar por nome ou CNPJ"
             value={filters.search}
             onChange={e => handleSearchChange(e.target.value)}
-            className="flex-1 min-w-[180px] bg-gray-100 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0072F7]"
+            className="w-full sm:flex-1 sm:min-w-[180px] bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0072F7]"
           />
         </div>
       </div>
@@ -217,17 +217,17 @@ export default function MonitoramentoPage() {
           Nenhum lead encontrado com os filtros selecionados
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+          <table className="min-w-[980px] w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th onClick={() => handleSort('nome')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Organizacao<SortIcon col="nome" /></th>
-                <th onClick={() => handleSort('programa')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Programa<SortIcon col="programa" /></th>
-                <th onClick={() => handleSort('uf')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">UF<SortIcon col="uf" /></th>
-                <th onClick={() => handleSort('valor')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Valor Emenda<SortIcon col="valor" /></th>
-                <th onClick={() => handleSort('parlamentar')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Parlamentar<SortIcon col="parlamentar" /></th>
-                <th onClick={() => handleSort('prioridade')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Prioridade<SortIcon col="prioridade" /></th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase">Acao</th>
+              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <th onClick={() => handleSort('nome')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Organizacao<SortIcon col="nome" /></th>
+                <th onClick={() => handleSort('programa')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Programa<SortIcon col="programa" /></th>
+                <th onClick={() => handleSort('uf')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">UF<SortIcon col="uf" /></th>
+                <th onClick={() => handleSort('valor')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Valor Emenda<SortIcon col="valor" /></th>
+                <th onClick={() => handleSort('parlamentar')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Parlamentar<SortIcon col="parlamentar" /></th>
+                <th onClick={() => handleSort('prioridade')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Prioridade<SortIcon col="prioridade" /></th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Acao</th>
               </tr>
             </thead>
             <tbody>
@@ -236,19 +236,19 @@ export default function MonitoramentoPage() {
                 return (
                   <tr
                     key={c.id || i}
-                    className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${
-                      i % 2 === 0 ? '' : 'bg-gray-50/50'
+                    className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+                      i % 2 === 0 ? '' : 'bg-gray-50/50 dark:bg-gray-800/30'
                     }`}
                   >
-                    <td className="px-3 py-2 text-gray-900 font-medium truncate max-w-[250px]">
+                    <td className="px-3 py-2 text-gray-900 dark:text-gray-100 font-medium truncate max-w-[250px]">
                       {c.nome ? (c.nome.length > 50 ? c.nome.slice(0, 50) + '...' : c.nome) : '-'}
                     </td>
-                    <td className="px-3 py-2 text-gray-600 truncate max-w-[200px]">
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-300 truncate max-w-[200px]">
                       {c.nome_programa ? (c.nome_programa.length > 40 ? c.nome_programa.slice(0, 40) + '...' : c.nome_programa) : '-'}
                     </td>
-                    <td className="px-3 py-2 text-gray-600">{c.uf || '-'}</td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{c.uf || '-'}</td>
                     <td className="px-3 py-2 text-[#0072F7] font-medium">{formatCompactCurrency(c.valor_emenda || c.saldo_conta || 0)}</td>
-                    <td className="px-3 py-2 text-gray-600 truncate max-w-[150px]">{c.parlamentar || '-'}</td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-300 truncate max-w-[150px]">{c.parlamentar || '-'}</td>
                     <td className="px-3 py-2">
                       <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
@@ -272,7 +272,7 @@ export default function MonitoramentoPage() {
       )}
 
       {!loading && sortedConvenios.length > 0 && (
-        <p className="text-xs text-gray-500 text-right">{sortedConvenios.length} leads encontrados</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 text-right">{sortedConvenios.length} leads encontrados</p>
       )}
 
       {selectedConvenio && (
@@ -288,9 +288,9 @@ function StatCard({ label, value, accent }: { label: string; value: string; acce
   const dotColor = accent === 'blue' ? 'bg-[#0072F7]' : accent === 'red' ? 'bg-red-500' : accent === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'
 
   return (
-    <div className={`bg-white border border-gray-200 shadow-sm ${borderColor} rounded-lg p-4`}>
+    <div className={`bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm ${borderColor} rounded-lg p-4`}>
       <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-400">{label}</span>
+        <span className="text-xs text-gray-400 dark:text-gray-500">{label}</span>
         <span className={`w-2 h-2 rounded-full ${dotColor}`} />
       </div>
       <p className={`text-xl font-bold mt-1 ${valueColor}`}>{value}</p>
@@ -316,17 +316,17 @@ function DetailModal({ convenio, onClose }: { convenio: ConvenioMonitoramento; o
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
 
       <div
-        className="relative bg-white border border-gray-200 shadow-lg rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6"
+        className="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">{convenio.nome || 'Organizacao'}</h2>
-            <p className="text-sm text-gray-400 mt-0.5">{convenio.cnpj ? formatCNPJ(convenio.cnpj) : '-'}</p>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">{convenio.nome || 'Organizacao'}</h2>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">{convenio.cnpj ? formatCNPJ(convenio.cnpj) : '-'}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-800 transition-colors text-xl leading-none"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors text-xl leading-none"
           >
             &times;
           </button>
@@ -350,7 +350,7 @@ function DetailModal({ convenio, onClose }: { convenio: ConvenioMonitoramento; o
 
           <Section title="Financeiro">
             <div className="flex items-center justify-between py-1">
-              <span className="text-xs text-gray-400">Valor Emenda</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">Valor Emenda</span>
               <span className="text-sm font-bold text-[#0072F7]">{formatCurrency(valorPrincipal)}</span>
             </div>
             {convenio.valor_global ? <InfoRow label="Valor Global" value={formatCurrency(convenio.valor_global)} /> : null}
@@ -365,7 +365,7 @@ function DetailModal({ convenio, onClose }: { convenio: ConvenioMonitoramento; o
                 {convenio.prioridade}
               </span>
             </div>
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
               {priorityExplanations[convenio.prioridade] || ''}
             </p>
           </Section>
@@ -376,12 +376,12 @@ function DetailModal({ convenio, onClose }: { convenio: ConvenioMonitoramento; o
                 href={convenio.link_externo}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-[#0072F7] hover:bg-blue-100 transition-colors"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors"
               >
                 Ver no TransfereGov
               </a>
             ) : (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
                 Link nao disponivel
               </span>
             )}
@@ -395,8 +395,8 @@ function DetailModal({ convenio, onClose }: { convenio: ConvenioMonitoramento; o
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="text-xs font-medium text-gray-500 uppercase mb-2">{title}</h3>
-      <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+      <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">{title}</h3>
+      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 space-y-1">
         {children}
       </div>
     </div>
@@ -406,8 +406,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function InfoRow({ label, value }: { label: string; value: string | number | null | undefined }) {
   return (
     <div className="flex items-center justify-between py-1">
-      <span className="text-xs text-gray-400">{label}</span>
-      <span className="text-sm text-gray-800">{value || '-'}</span>
+      <span className="text-xs text-gray-400 dark:text-gray-500">{label}</span>
+      <span className="text-sm text-gray-800 dark:text-gray-200">{value || '-'}</span>
     </div>
   )
 }

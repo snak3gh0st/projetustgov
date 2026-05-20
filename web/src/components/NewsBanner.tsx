@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from 'react'
 
-const NEWS_VERSION = 'v4.7'
+const NEWS_VERSION = 'v4.8'
 const NEWS_ITEMS = [
+  'UI: tema escuro completo em todas as paginas',
   'UI: tema escuro disponivel em toda a plataforma (botao no menu lateral)',
   'UI: menu lateral pode ser recolhido para liberar espaco — preferencia salva entre sessoes',
   'UI: navegacao mobile com gaveta inferior (toque no botao azul no canto inferior esquerdo)',
   'UI: assinatura "Hub da PROJETUS" no lugar de "CRM de Vendas"',
 ]
-const STORAGE_KEY = `projetus-news-dismissed-${NEWS_VERSION}`
+const STORAGE_KEY = `projetus-news-dismissed-v4.8`
 
 export default function NewsBanner() {
   const [dismissed, setDismissed] = useState(true)
@@ -35,13 +36,13 @@ export default function NewsBanner() {
           <span className="text-lg" role="img" aria-label="novidades">
             &#9733;
           </span>
-          <h3 className="font-semibold text-gray-800">
+          <h3 className="font-semibold text-gray-800 dark:text-gray-200">
             Novidades &mdash; {NEWS_VERSION}
           </h3>
         </div>
         <button
           onClick={handleDismiss}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
+          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 transition-colors"
           aria-label="Fechar"
         >
           <svg
@@ -54,12 +55,12 @@ export default function NewsBanner() {
           </svg>
         </button>
       </div>
-      <ul className="list-disc list-inside text-sm text-gray-600 mt-2 space-y-1">
+      <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-2 space-y-1">
         {NEWS_ITEMS.map((item) => (
           <li key={item}>{item}</li>
         ))}
       </ul>
-      <p className="text-xs text-gray-400 mt-3">
+      <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
         Projetus CRM {NEWS_VERSION} &mdash; SigmaIntel
       </p>
     </div>

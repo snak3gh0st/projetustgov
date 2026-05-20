@@ -111,28 +111,28 @@ export default function CommentsThread({ targetType, targetKey, currentUserRole 
       <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
         {loading && (
           <div className="space-y-2">
-            <div className="h-12 bg-gray-100 rounded animate-pulse" />
-            <div className="h-12 bg-gray-100 rounded animate-pulse" />
+            <div className="h-12 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+            <div className="h-12 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
           </div>
         )}
         {!loading && fetchError && (
-          <p className="text-xs text-red-600">Erro: {fetchError}</p>
+          <p className="text-xs text-red-600 dark:text-red-400">Erro: {fetchError}</p>
         )}
         {!loading && !fetchError && comments.length === 0 && (
-          <p className="text-xs text-gray-400 italic">Sem comentários ainda.</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 italic">Sem comentários ainda.</p>
         )}
         {!loading && !fetchError && comments.map((c) => (
           <div
             key={c.id}
-            className="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50"
+            className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800/50"
           >
             <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="text-xs font-semibold text-gray-800">
+              <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
                 {c.author_nome || 'Usuário'}
               </span>
-              <span className="text-[10px] text-gray-400">{timeAgo(c.created_at)}</span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500">{timeAgo(c.created_at)}</span>
             </div>
-            <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
               {c.body}
             </p>
           </div>
@@ -149,11 +149,11 @@ export default function CommentsThread({ targetType, targetKey, currentUserRole 
             rows={3}
             maxLength={MAX_BODY}
             placeholder="Escreva um comentário..."
-            className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
           />
-          {submitError && <p className="text-xs text-red-600">{submitError}</p>}
+          {submitError && <p className="text-xs text-red-600 dark:text-red-400">{submitError}</p>}
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-400">
+            <span className="text-[10px] text-gray-400 dark:text-gray-500">
               {body.length}/{MAX_BODY}
             </span>
             <button

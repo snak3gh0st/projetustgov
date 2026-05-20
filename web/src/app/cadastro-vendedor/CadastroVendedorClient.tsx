@@ -129,11 +129,11 @@ function ResetPasswordModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl">
-        <h3 className="text-lg font-heading font-bold text-gray-900 mb-1">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-heading font-bold text-gray-900 dark:text-gray-100 mb-1">
           Resetar senha de {user.nome}
         </h3>
-        <p className="text-sm text-gray-500 mb-5">{user.email}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">{user.email}</p>
 
         <input
           type="text"
@@ -141,11 +141,11 @@ function ResetPasswordModal({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Mínimo 6 caracteres"
-          className="w-full bg-gray-50 border border-gray-300 text-gray-800 px-4 py-3 rounded-lg focus:border-[#0072F7] focus:outline-none transition-colors mb-3"
+          className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 px-4 py-3 rounded-lg focus:border-[#0072F7] focus:outline-none transition-colors mb-3"
         />
 
         {error && (
-          <p className="text-sm text-red-500 mb-3">{error}</p>
+          <p className="text-sm text-red-500 dark:text-red-400 mb-3">{error}</p>
         )}
 
         <div className="flex gap-3 justify-end">
@@ -153,7 +153,7 @@ function ResetPasswordModal({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -244,33 +244,33 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-heading font-bold text-gray-900 mb-2">
+        <h1 className="text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 mb-2">
           Usuarios
         </h1>
-        <p className="text-gray-500">
+        <p className="text-gray-500 dark:text-gray-400">
           Gerenciar usuarios do sistema
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-8">
-        <h2 className="text-xl font-heading font-bold text-gray-900 mb-6">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-8 mb-8">
+        <h2 className="text-xl font-heading font-bold text-gray-900 dark:text-gray-100 mb-6">
           Criar Novo Usuario
         </h2>
         <form action={formAction} className="space-y-6">
           {state?.error && (
-            <div className="bg-red-50 border border-red-200 text-red-500 px-4 py-3 rounded-lg">
+            <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-500 dark:text-red-400 px-4 py-3 rounded-lg">
               {state.error}
             </div>
           )}
 
           {state?.success && (
-            <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg">
+            <div className="bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 text-green-600 dark:text-green-400 px-4 py-3 rounded-lg">
               Usuario criado com sucesso!
             </div>
           )}
 
           <div>
-            <label htmlFor="nome" className="block text-sm font-medium text-gray-600 mb-2">
+            <label htmlFor="nome" className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
               Nome
             </label>
             <input
@@ -278,13 +278,13 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
               name="nome"
               type="text"
               required
-              className="w-full bg-gray-50 border border-gray-300 text-gray-800 px-4 py-3 rounded-lg focus:border-[#0072F7] focus:outline-none transition-colors"
+              className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 px-4 py-3 rounded-lg focus:border-[#0072F7] focus:outline-none transition-colors"
               placeholder="Nome completo"
             />
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-600 mb-2">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
               Email
             </label>
             <input
@@ -292,13 +292,13 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
               name="email"
               type="email"
               required
-              className="w-full bg-gray-50 border border-gray-300 text-gray-800 px-4 py-3 rounded-lg focus:border-[#0072F7] focus:outline-none transition-colors"
+              className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 px-4 py-3 rounded-lg focus:border-[#0072F7] focus:outline-none transition-colors"
               placeholder="email@exemplo.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-600 mb-2">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
               Senha
             </label>
             <input
@@ -307,20 +307,20 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
               type="password"
               required
               minLength={8}
-              className="w-full bg-gray-50 border border-gray-300 text-gray-800 px-4 py-3 rounded-lg focus:border-[#0072F7] focus:outline-none transition-colors"
+              className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 px-4 py-3 rounded-lg focus:border-[#0072F7] focus:outline-none transition-colors"
               placeholder="Minimo 8 caracteres"
             />
           </div>
 
           <div>
-            <label htmlFor="role" className="block text-sm font-medium text-gray-600 mb-2">
+            <label htmlFor="role" className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
               Cargo
             </label>
             <select
               id="role"
               name="role"
               defaultValue={roleOptions[0]?.value}
-              className="w-full bg-gray-50 border border-gray-300 text-gray-800 px-4 py-3 rounded-lg focus:border-[#0072F7] focus:outline-none transition-colors"
+              className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 px-4 py-3 rounded-lg focus:border-[#0072F7] focus:outline-none transition-colors"
             >
               {roleOptions.map(o => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -333,27 +333,27 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
       </div>
 
       {/* List of all usuarios */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-        <h2 className="text-xl font-heading font-bold text-gray-900 mb-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-8">
+        <h2 className="text-xl font-heading font-bold text-gray-900 dark:text-gray-100 mb-4">
           Usuarios Cadastrados
         </h2>
 
         {loading ? (
-          <p className="text-gray-400 text-sm">Carregando...</p>
+          <p className="text-gray-400 dark:text-gray-500 text-sm">Carregando...</p>
         ) : usuarios.length === 0 ? (
-          <p className="text-gray-400 text-sm">Nenhum usuario cadastrado ainda.</p>
+          <p className="text-gray-400 dark:text-gray-500 text-sm">Nenhum usuario cadastrado ainda.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Nome</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Email</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Cargo</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Leads</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Digest</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Ações</th>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Nome</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Email</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Cargo</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Leads</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Status</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Digest</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -362,12 +362,12 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
                   const isSelf = usuario.is_self
 
                   return (
-                    <tr key={usuario.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                      <td className="py-3 px-4 text-gray-800 font-medium">{usuario.nome}</td>
-                      <td className="py-3 px-4 text-gray-500">{usuario.email}</td>
+                    <tr key={usuario.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                      <td className="py-3 px-4 text-gray-800 dark:text-gray-200 font-medium">{usuario.nome}</td>
+                      <td className="py-3 px-4 text-gray-500 dark:text-gray-400">{usuario.email}</td>
                       <td className="py-3 px-4">
                         {isGestor || isSelf ? (
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${ROLE_BADGE_CLASSES[usuario.role] || 'bg-gray-100 text-gray-600'}`}>
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${ROLE_BADGE_CLASSES[usuario.role] || 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>
                             {ROLE_LABELS[usuario.role] || usuario.role}
                           </span>
                         ) : creatableRoles.includes(usuario.role) ? (
@@ -381,17 +381,17 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
                             ))}
                           </select>
                         ) : (
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${ROLE_BADGE_CLASSES[usuario.role] || 'bg-gray-100 text-gray-600'}`}>
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${ROLE_BADGE_CLASSES[usuario.role] || 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}>
                             {ROLE_LABELS[usuario.role] || usuario.role}
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-gray-600 text-sm">{usuario.lead_count}</td>
+                      <td className="py-3 px-4 text-gray-600 dark:text-gray-300 text-sm">{usuario.lead_count}</td>
                       <td className="py-3 px-4">
                         <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                           usuario.active
-                            ? 'bg-green-50 text-green-600'
-                            : 'bg-red-50 text-red-500'
+                            ? 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400'
+                            : 'bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400'
                         }`}>
                           {usuario.active ? 'Ativo' : 'Inativo'}
                         </span>
@@ -413,14 +413,14 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
                             }}
                             className={`text-xs px-2 py-1 rounded font-medium transition-colors ${
                               usuario.email_digest
-                                ? 'bg-green-50 text-green-600 hover:bg-green-100'
-                                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                ? 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-500/20'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
                             }`}
                           >
                             {usuario.email_digest ? 'Ativo' : 'Inativo'}
                           </button>
                         ) : (
-                          <span className="text-xs text-gray-300">—</span>
+                          <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                         )}
                       </td>
                       <td className="py-3 px-4">
@@ -429,7 +429,7 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
                             <button
                               type="button"
                               onClick={() => setResetTarget({ id: usuario.id, nome: usuario.nome, email: usuario.email })}
-                              className="text-xs font-medium px-2 py-1 rounded bg-amber-50 text-amber-600 hover:bg-amber-100"
+                              className="text-xs font-medium px-2 py-1 rounded bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20"
                             >
                               Resetar senha
                             </button>
@@ -443,7 +443,7 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
                             </button>
                           ) : (
                             (!((userRole === 'admin' || userRole === 'gestor') && !isSelf)) && (
-                              <span className="text-xs text-gray-300">—</span>
+                              <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                             )
                           )}
                         </div>

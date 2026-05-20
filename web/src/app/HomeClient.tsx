@@ -122,15 +122,15 @@ interface SyncLog {
 
 // --- Status config ---
 const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; label: string }> = {
-  'Não Contatado': { color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200', bar: 'bg-orange-500', label: 'Não Contatado' },
-  'Ainda Não': { color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-200', bar: 'bg-yellow-500', label: 'Ainda Não' },
-  'Retorno': { color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', bar: 'bg-amber-500', label: 'Retorno' },
-  'Quente': { color: 'text-red-600', bg: 'bg-red-50 border-red-200', bar: 'bg-red-500', label: 'Quente' },
-  'Muito Quente': { color: 'text-red-700', bg: 'bg-red-100 border-red-200', bar: 'bg-red-600', label: 'Muito Quente' },
-  'Proposta': { color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', bar: 'bg-blue-500', label: 'Proposta' },
-  'Aguardando Closer': { color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200', bar: 'bg-purple-500', label: 'Aguardando Closer' },
-  'Fechado': { color: 'text-green-600', bg: 'bg-green-50 border-green-200', bar: 'bg-green-500', label: 'Fechado' },
-  'Telefone Invalido': { color: 'text-gray-500', bg: 'bg-gray-50 border-gray-200', bar: 'bg-gray-400', label: 'Telefone Invalido' },
+  'Não Contatado': { color: 'text-orange-600 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-500/15 border-orange-200 dark:border-orange-500/30', bar: 'bg-orange-500', label: 'Não Contatado' },
+  'Ainda Não': { color: 'text-yellow-600 dark:text-yellow-300', bg: 'bg-yellow-50 dark:bg-yellow-500/15 border-yellow-200', bar: 'bg-yellow-500', label: 'Ainda Não' },
+  'Retorno': { color: 'text-amber-600 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-500/15 border-amber-200 dark:border-amber-500/30', bar: 'bg-amber-500', label: 'Retorno' },
+  'Quente': { color: 'text-red-600 dark:text-red-300', bg: 'bg-red-50 dark:bg-red-500/15 border-red-200 dark:border-red-500/30', bar: 'bg-red-500', label: 'Quente' },
+  'Muito Quente': { color: 'text-red-700 dark:text-red-300', bg: 'bg-red-100 dark:bg-red-500/20 border-red-200 dark:border-red-500/30', bar: 'bg-red-600', label: 'Muito Quente' },
+  'Proposta': { color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30', bar: 'bg-blue-500', label: 'Proposta' },
+  'Aguardando Closer': { color: 'text-purple-600 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-500/15 border-purple-200 dark:border-purple-500/30', bar: 'bg-purple-500', label: 'Aguardando Closer' },
+  'Fechado': { color: 'text-green-600 dark:text-green-300', bg: 'bg-green-50 dark:bg-green-500/15 border-green-200 dark:border-green-500/30', bar: 'bg-green-500', label: 'Fechado' },
+  'Telefone Invalido': { color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-50 dark:bg-gray-500/15 border-gray-200 dark:border-gray-700', bar: 'bg-gray-400', label: 'Telefone Invalido' },
 }
 
 const STATUS_ORDER = ['Não Contatado', 'Ainda Não', 'Retorno', 'Proposta', 'Aguardando Closer', 'Fechado'] as const
@@ -184,12 +184,12 @@ function PipelineSection({
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-1">
-        <p className="text-xs text-gray-500 uppercase tracking-wider">{title}</p>
-        <p className="text-sm text-gray-500">{subtitle}</p>
-        <p className="text-xs text-gray-400">{total.toLocaleString('pt-BR')} {totalLabel}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">{title}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500">{total.toLocaleString('pt-BR')} {totalLabel}</p>
       </div>
 
-      <div className={`grid grid-cols-2 gap-3 ${statuses.length > 6 ? 'md:grid-cols-3 xl:grid-cols-9' : 'md:grid-cols-6'}`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${statuses.length > 6 ? 'md:grid-cols-3 xl:grid-cols-9' : 'md:grid-cols-6'}`}>
         {statuses.map((status, idx) => {
           const count = counts[status] || 0
           const pct = total > 0 ? (count / total) * 100 : 0
@@ -202,23 +202,23 @@ function PipelineSection({
               key={`${title}-${status}`}
               role="button"
               onClick={() => { window.location.href = hrefForStatus(status) }}
-              className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
             >
               <div className={`h-1.5 ${cfg.bar}`} />
               <div className="p-4">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className={`text-3xl font-heading font-bold ${cfg.color}`}>{count}</span>
-                  <span className="text-xs text-gray-400 font-medium">{pct.toFixed(0)}%</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">{pct.toFixed(0)}%</span>
                 </div>
 
-                <p className="text-sm font-medium text-gray-700 mt-1">{cfg.label}</p>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mt-1">{cfg.label}</p>
 
-                <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="mt-2 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                   <div className={`h-full ${cfg.bar} rounded-full transition-all`} style={{ width: `${Math.min(Math.max(pct, 2), 100)}%` }} />
                 </div>
 
                 {conversionRate && Number(conversionRate) <= 100 && (
-                  <p className="text-[10px] text-gray-400 mt-1.5">
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5">
                     {conversionRate}% de {STATUS_CONFIG[statuses[idx - 1]].label}
                   </p>
                 )}
@@ -241,7 +241,7 @@ function PipelineSection({
             <div key={`${title}-flow-${status}`} className="flex items-center gap-1 flex-1">
               <div className={`h-2 ${cfg.bar} rounded-full flex-1 transition-all opacity-80`} style={{ minWidth: '8px' }} />
               {idx < statuses.length - 1 && (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-gray-300 flex-shrink-0">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-gray-300 dark:text-gray-600 flex-shrink-0">
                   <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               )}
@@ -312,10 +312,10 @@ function SyncBar({ role }: { role: string | undefined }) {
 
   return (
     <div className={`flex items-center justify-between gap-4 px-4 py-2 rounded-xl border transition-all ${
-      syncing ? 'bg-blue-50/60 border-blue-200' :
-      syncError ? 'bg-red-50/60 border-red-200' :
-      justFinished ? 'bg-green-50/60 border-green-200' :
-      'bg-gray-50/60 border-gray-200'
+      syncing ? 'bg-blue-50/60 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700' :
+      syncError ? 'bg-red-50/60 border-red-200 dark:bg-red-900/20 dark:border-red-700' :
+      justFinished ? 'bg-green-50/60 border-green-200 dark:bg-green-900/20 dark:border-green-700' :
+      'bg-gray-50/60 border-gray-200 dark:bg-gray-800/40 dark:border-gray-700'
     }`}>
       {/* Left: status info */}
       <div className="flex items-center gap-3 min-w-0">
@@ -333,11 +333,11 @@ function SyncBar({ role }: { role: string | undefined }) {
           <span className="text-xs text-red-600">{syncError}</span>
         ) : syncLog ? (
           <div className="flex items-center gap-2 flex-wrap text-xs">
-            <span className="text-gray-500">
+            <span className="text-gray-500 dark:text-gray-400">
               Sync {timeAgo(syncLog.ran_at)}
             </span>
-            <span className="text-gray-300 hidden sm:inline">|</span>
-            <span className="text-gray-500 hidden sm:inline">Leads:</span>
+            <span className="text-gray-300 dark:text-gray-600 hidden sm:inline">|</span>
+            <span className="text-gray-500 dark:text-gray-400 hidden sm:inline">Leads:</span>
             <span className="text-green-600 font-medium">{syncLog.inserted} novos</span>
             <span className="text-[#0072F7] font-medium">{syncLog.updated} atualizados</span>
             {syncLog.errors > 0 && (
@@ -345,18 +345,18 @@ function SyncBar({ role }: { role: string | undefined }) {
             )}
             {syncLog.execucao_updated !== undefined && (
               <>
-                <span className="text-gray-300 hidden sm:inline">|</span>
-                <span className="text-gray-500 hidden sm:inline">Exec:</span>
+                <span className="text-gray-300 dark:text-gray-600 hidden sm:inline">|</span>
+                <span className="text-gray-500 dark:text-gray-400 hidden sm:inline">Exec:</span>
                 <span className="text-[#0072F7] font-medium">{syncLog.execucao_updated} atualizados</span>
                 {(syncLog.execucao_errors ?? 0) > 0 && (
                   <span className="text-red-500 font-medium">{syncLog.execucao_errors} erros</span>
                 )}
               </>
             )}
-            <span className="text-gray-400">{(syncLog.duration_ms / 1000).toFixed(1)}s</span>
+            <span className="text-gray-400 dark:text-gray-500">{(syncLog.duration_ms / 1000).toFixed(1)}s</span>
           </div>
         ) : (
-          <span className="text-xs text-gray-400">Nenhum sync registrado</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">Nenhum sync registrado</span>
         )}
       </div>
 
@@ -367,7 +367,7 @@ function SyncBar({ role }: { role: string | undefined }) {
         className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all disabled:cursor-not-allowed ${
           syncing
             ? 'bg-[#0072F7]/10 text-[#0072F7]'
-            : 'bg-white border border-gray-200 text-gray-600 hover:border-[#0072F7] hover:text-[#0072F7] shadow-sm'
+            : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-[#0072F7] hover:text-[#0072F7] shadow-sm'
         }`}
       >
         {syncing ? (
@@ -406,17 +406,17 @@ export default function CRMDashboard() {
       <div className="space-y-6 w-full max-w-[1800px] mx-auto">
         <div>
           <div className="h-8 w-96 bg-gray-200 rounded animate-pulse" />
-          <div className="h-4 w-64 bg-gray-100 rounded animate-pulse mt-2" />
+          <div className="h-4 w-64 bg-gray-100 dark:bg-gray-800 rounded animate-pulse mt-2" />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {[1,2,3,4].map(i => (
-            <div key={i} className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 h-28 animate-pulse" />
+            <div key={i} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 h-28 animate-pulse" />
           ))}
         </div>
-        <div className="h-16 bg-white border border-gray-200 shadow-sm rounded-xl animate-pulse" />
+        <div className="h-16 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl animate-pulse" />
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {[1,2,3].map(i => (
-            <div key={i} className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 h-48 animate-pulse" />
+            <div key={i} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 h-48 animate-pulse" />
           ))}
         </div>
       </div>
@@ -425,7 +425,7 @@ export default function CRMDashboard() {
 
   if (error || !data) {
     return (
-      <div className="flex items-center justify-center py-20 text-gray-400">
+      <div className="flex items-center justify-center py-20 text-gray-400 dark:text-gray-500">
         Erro ao carregar dashboard CRM
       </div>
     )
@@ -442,20 +442,20 @@ export default function CRMDashboard() {
       {/* 1. Page header + Tab switcher */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-gray-900">
+          <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">
             {isVendedor ? 'Meu Pipeline — Campanha Emendas 2026' : 'Dashboard CRM — Campanha Emendas 2026'}
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {isVendedor ? 'Seus leads e desempenho pessoal' : 'Visao administrativa do trabalho da equipe de vendas'}
           </p>
         </div>
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
           <button
             onClick={() => setPipelineTab('aprovacao')}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
               pipelineTab === 'aprovacao'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
             }`}
           >
             Aprovação
@@ -464,8 +464,8 @@ export default function CRMDashboard() {
             onClick={() => setPipelineTab('execucao')}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
               pipelineTab === 'execucao'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
             }`}
           >
             Execução
@@ -475,14 +475,14 @@ export default function CRMDashboard() {
 
       {/* 2. KPI cards — change based on active tab */}
       {pipelineTab === 'aprovacao' && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div
             role="button"
             onClick={() => { window.location.href = '/leads' }}
-            className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
           >
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Total Leads</p>
-            <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Leads</p>
+            <p className="text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-2">
               {g.total_leads.toLocaleString('pt-BR')}
             </p>
           </div>
@@ -490,13 +490,13 @@ export default function CRMDashboard() {
             <div
               role="button"
               onClick={() => { window.location.href = '/leads' }}
-              className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
             >
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Atribuidos</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Atribuidos</p>
               <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
                 {g.total_assigned.toLocaleString('pt-BR')}
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                 {g.total_leads > 0 ? `${((g.total_assigned / g.total_leads) * 100).toFixed(0)}% do total` : '0%'}
               </p>
             </div>
@@ -505,13 +505,13 @@ export default function CRMDashboard() {
             <div
               role="button"
               onClick={() => { window.location.href = '/leads' }}
-              className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
             >
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Nao Atribuidos</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nao Atribuidos</p>
               <p className="text-3xl font-heading font-bold text-amber-600 mt-2">
                 {g.total_unassigned.toLocaleString('pt-BR')}
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                 {g.total_leads > 0 ? `${((g.total_unassigned / g.total_leads) * 100).toFixed(0)}% do total` : '0%'}
               </p>
             </div>
@@ -519,13 +519,13 @@ export default function CRMDashboard() {
           <div
             role="button"
             onClick={() => { window.location.href = '/leads' }}
-            className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
           >
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Valor em Emendas</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor em Emendas</p>
             <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
               {formatCompactCurrency(g.total_valor_emenda)}
             </p>
-            <p className="text-xs text-gray-400 mt-1">{formatCurrency(g.total_valor_emenda)}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatCurrency(g.total_valor_emenda)}</p>
           </div>
           {isVendedor && vendedores.length > 0 && (() => {
             const comissaoTotal = role === 'gestor'
@@ -540,24 +540,24 @@ export default function CRMDashboard() {
                 <div
                   role="button"
                   onClick={() => { window.location.href = '/comissoes' }}
-                  className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+                  className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
                 >
-                  <p className="text-xs text-gray-500 uppercase tracking-wider">Comissão Vendas</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Comissão Vendas</p>
                   <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
                     {formatCompactCurrency(comissaoTotal)}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">{formatCurrency(comissaoTotal)}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatCurrency(comissaoTotal)}</p>
                 </div>
                 <div
                   role="button"
                   onClick={() => { window.location.href = '/leads?status_contato=Fechado' }}
-                  className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+                  className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
                 >
-                  <p className="text-xs text-gray-500 uppercase tracking-wider">Taxa Fechamento</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Taxa Fechamento</p>
                   <p className="text-3xl font-heading font-bold text-green-600 mt-2">
                     {formatCompactCurrency(bonusTotal)}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                     {`${fechadoTotal} x R$50`}
                   </p>
                 </div>
@@ -568,49 +568,49 @@ export default function CRMDashboard() {
       )}
 
       {pipelineTab === 'execucao' && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div
             role="button"
             onClick={() => { window.location.href = '/execucao' }}
-            className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
           >
-            <p className="text-xs text-gray-500 uppercase tracking-wider">CNPJs em Execução</p>
-            <p className="text-3xl font-heading font-bold text-gray-900 mt-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">CNPJs em Execução</p>
+            <p className="text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-2">
               {execucao_pipeline.total_cnpjs.toLocaleString('pt-BR')}
             </p>
           </div>
           <div
             role="button"
             onClick={() => { window.location.href = '/execucao' }}
-            className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
           >
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Valor Convênios</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor Convênios</p>
             <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
               {formatCompactCurrency(execucao_pipeline.total_valor_global)}
             </p>
-            <p className="text-xs text-gray-400 mt-1">{formatCurrency(execucao_pipeline.total_valor_global)}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatCurrency(execucao_pipeline.total_valor_global)}</p>
           </div>
           <div
             role="button"
             onClick={() => { window.location.href = '/execucao' }}
-            className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
           >
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Saldo em Conta</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Saldo em Conta</p>
             <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
               {formatCompactCurrency(execucao_pipeline.total_saldo)}
             </p>
-            <p className="text-xs text-gray-400 mt-1">{formatCurrency(execucao_pipeline.total_saldo)}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatCurrency(execucao_pipeline.total_saldo)}</p>
           </div>
           <div
             role="button"
             onClick={() => { window.location.href = '/execucao?alert_only=true' }}
-            className="bg-white border border-amber-200 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-500/30 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
           >
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Alertas Ativos</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Alertas Ativos</p>
             <p className="text-3xl font-heading font-bold text-amber-600 mt-2">
               {execucao_pipeline.total_alertas.toLocaleString('pt-BR')}
             </p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
               {execucao_pipeline.total_cnpjs > 0 ? `${((execucao_pipeline.total_alertas / execucao_pipeline.total_cnpjs) * 100).toFixed(0)}% dos CNPJs` : '0%'}
             </p>
           </div>
@@ -648,31 +648,31 @@ export default function CRMDashboard() {
 
       {/* Exec: Alert CNPJs — top value at risk */}
       {pipelineTab === 'execucao' && data.execucao_alerts && data.execucao_alerts.length > 0 && (
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-heading font-semibold text-gray-900">CNPJs com Alerta</h2>
-            <p className="text-xs text-gray-400">Maiores valores com convênio sem desembolso</p>
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100">CNPJs com Alerta</h2>
+            <p className="text-xs text-gray-400 dark:text-gray-500">Maiores valores com convênio sem desembolso</p>
           </div>
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {data.execucao_alerts.map((a, i) => (
               <a
                 key={a.cnpj}
                 href={`/execucao`}
-                className={`px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors ${i % 2 === 0 ? 'bg-gray-50/50' : ''}`}
+                className={`px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${i % 2 === 0 ? 'bg-gray-50/50 dark:bg-gray-800/30' : ''}`}
               >
                 <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
                   {a.alert_count}/{a.total_convenios}
                 </span>
-                <span className="text-sm text-gray-900 font-medium truncate flex-1">{a.nome || formatCNPJ(a.cnpj)}</span>
-                <span className="text-xs text-gray-400 hidden sm:block">{a.vendedor_nome || 'Sem dono'}</span>
+                <span className="text-sm text-gray-900 dark:text-gray-100 font-medium truncate flex-1">{a.nome || formatCNPJ(a.cnpj)}</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500 hidden sm:block">{a.vendedor_nome || 'Sem dono'}</span>
                 <span className="text-sm font-semibold text-[#0072F7]">{formatCompactCurrency(a.valor_global)}</span>
                 {a.vigencia_proxima && (
-                  <span className="text-[10px] text-gray-400">{formatDate(a.vigencia_proxima)}</span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">{formatDate(a.vigencia_proxima)}</span>
                 )}
               </a>
             ))}
           </div>
-          <div className="p-3 border-t border-gray-200 text-center">
+          <div className="p-3 border-t border-gray-200 dark:border-gray-700 text-center">
             <a href="/execucao?alert_only=true" className="text-sm text-[#0072F7] hover:text-blue-800 transition-colors">
               Ver todos os alertas →
             </a>
@@ -683,17 +683,17 @@ export default function CRMDashboard() {
       {/* Exec: Per-vendedor cards */}
       {pipelineTab === 'execucao' && data.execucao_vendedores && data.execucao_vendedores.length > 0 && !isVendedor && (
         <div>
-          <h2 className="text-lg font-heading font-semibold text-gray-900 mb-3">
+          <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100 mb-3">
             Execução por Vendedor
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {data.execucao_vendedores.map(v => (
               <div
                 key={v.vendedor_id}
-                className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 hover:scale-[1.02] transition-transform"
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 hover:scale-[1.02] transition-transform"
               >
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xl font-bold text-gray-900">{v.vendedor_nome}</h3>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{v.vendedor_nome}</h3>
                   <span className="text-2xl font-heading font-bold text-[#0072F7]">{v.total_cnpjs}</span>
                 </div>
                 <div className="flex flex-wrap gap-2 mb-3">
@@ -711,9 +711,9 @@ export default function CRMDashboard() {
                     )
                   })}
                 </div>
-                <div className="pt-3 border-t border-gray-200">
+                <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500 uppercase tracking-wider">CNPJs em Execução</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">CNPJs em Execução</span>
                     <span className="text-sm font-semibold text-[#0072F7]">{v.total_cnpjs}</span>
                   </div>
                 </div>
@@ -728,31 +728,31 @@ export default function CRMDashboard() {
       {/* 3b. Contact health alerts — aprovacao only */}
       {pipelineTab === 'aprovacao' && data.contact_health && (data.contact_health.stale_count > 0 || data.contact_health.invalid_phone_count > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white border border-red-200 shadow-sm rounded-xl p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+          <div className="bg-white dark:bg-gray-800 border border-red-200 dark:border-red-500/30 shadow-sm rounded-xl p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center flex-shrink-0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-500">
                 <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
               </svg>
             </div>
             <div>
               <p className="text-2xl font-heading font-bold text-red-600">{data.contact_health.stale_count}</p>
-              <p className="text-xs text-gray-500">Leads sem contato ha +7 dias</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Leads sem contato ha +7 dias</p>
             </div>
           </div>
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400 dark:text-gray-500">
                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
                 <line x1="1" y1="1" x2="23" y2="23" strokeWidth="2"/>
               </svg>
             </div>
             <div>
-              <p className="text-2xl font-heading font-bold text-gray-600">{data.contact_health.never_contacted_count}</p>
-              <p className="text-xs text-gray-500">Nunca contatados</p>
+              <p className="text-2xl font-heading font-bold text-gray-600 dark:text-gray-300">{data.contact_health.never_contacted_count}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Nunca contatados</p>
             </div>
           </div>
           {data.contact_health.invalid_phone_count > 0 && (
-            <div className="bg-white border border-amber-200 shadow-sm rounded-xl p-4 flex items-center gap-4">
+            <div className="bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-500/30 shadow-sm rounded-xl p-4 flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-500">
                   <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
@@ -760,7 +760,7 @@ export default function CRMDashboard() {
               </div>
               <div>
                 <p className="text-2xl font-heading font-bold text-amber-600">{data.contact_health.invalid_phone_count}</p>
-                <p className="text-xs text-gray-500">Telefone invalido (principal)</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Telefone invalido (principal)</p>
               </div>
             </div>
           )}
@@ -769,21 +769,21 @@ export default function CRMDashboard() {
 
       {/* 3c. Stale leads needing follow-up — aprovacao only */}
       {pipelineTab === 'aprovacao' && data.stale_leads && data.stale_leads.length > 0 && (
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-heading font-semibold text-gray-900">Leads Precisando de Atencao</h2>
-            <p className="text-xs text-gray-400">Leads com mais tempo sem contato (exceto Fechados)</p>
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100">Leads Precisando de Atencao</h2>
+            <p className="text-xs text-gray-400 dark:text-gray-500">Leads com mais tempo sem contato (exceto Fechados)</p>
           </div>
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {data.stale_leads.map((lead, i) => {
               const cfg = STATUS_CONFIG[lead.status_contato] || STATUS_CONFIG['Não Contatado']
               const daysLabel = lead.days_since_last_contact == null
-                ? { text: 'Nunca', cls: 'bg-gray-100 text-gray-500' }
+                ? { text: 'Nunca', cls: 'bg-gray-100 text-gray-500 dark:text-gray-400' }
                 : lead.days_since_last_contact <= 2
                 ? { text: `${lead.days_since_last_contact}d`, cls: 'bg-green-100 text-green-700' }
                 : lead.days_since_last_contact <= 7
                 ? { text: `${lead.days_since_last_contact}d`, cls: 'bg-amber-100 text-amber-700' }
-                : { text: `${lead.days_since_last_contact}d`, cls: 'bg-red-100 text-red-700' }
+                : { text: `${lead.days_since_last_contact}d`, cls: 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300' }
               const phoneIcon = lead.principal_telefone_status === 'invalido'
                 ? 'bg-red-500'
                 : lead.principal_telefone_status === 'nao_atende'
@@ -795,7 +795,7 @@ export default function CRMDashboard() {
                 <a
                   key={lead.cnpj}
                   href={`/lead/${encodeURIComponent(lead.cnpj)}`}
-                  className={`px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors ${i % 2 === 0 ? 'bg-gray-50/50' : ''}`}
+                  className={`px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${i % 2 === 0 ? 'bg-gray-50/50 dark:bg-gray-800/30' : ''}`}
                 >
                   <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${daysLabel.cls}`}>
                     {daysLabel.text}
@@ -803,8 +803,8 @@ export default function CRMDashboard() {
                   {phoneIcon && (
                     <span className={`w-2 h-2 rounded-full ${phoneIcon} flex-shrink-0`} />
                   )}
-                  <span className="text-sm text-gray-900 font-medium truncate flex-1">{lead.nome || lead.cnpj}</span>
-                  <span className="text-xs text-gray-400 hidden sm:block">{lead.vendedor_nome}</span>
+                  <span className="text-sm text-gray-900 dark:text-gray-100 font-medium truncate flex-1">{lead.nome || lead.cnpj}</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 hidden sm:block">{lead.vendedor_nome}</span>
                   <span className={`px-2 py-0.5 rounded border text-[10px] font-medium ${cfg.bg} ${cfg.color}`}>
                     {lead.status_contato}
                   </span>
@@ -812,7 +812,7 @@ export default function CRMDashboard() {
               )
             })}
           </div>
-          <div className="p-3 border-t border-gray-200 text-center">
+          <div className="p-3 border-t border-gray-200 dark:border-gray-700 text-center">
             <a href="/leads" className="text-sm text-[#0072F7] hover:text-blue-800 transition-colors">
               Ver todos os leads →
             </a>
@@ -822,20 +822,20 @@ export default function CRMDashboard() {
 
       {/* Commission breakdown for vendedor — aprovacao only */}
       {pipelineTab === 'aprovacao' && isVendedor && data.commission_breakdown && data.commission_breakdown.length > 0 && (
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <h2 className="text-lg font-heading font-semibold text-gray-900 mb-3">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+          <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100 mb-3">
             Detalhamento Comissoes
           </h2>
           <div className="space-y-2">
             {data.commission_breakdown.map(item => {
               const cfg = STATUS_CONFIG[item.status_contato] || STATUS_CONFIG['Não Contatado']
               return (
-                <div key={item.status_contato} className="flex items-center justify-between py-2 border-b border-gray-200 last:border-0">
+                <div key={item.status_contato} className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 last:border-0">
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded border text-xs font-medium ${cfg.bg} ${cfg.color}`}>
                       {item.status_contato}
                     </span>
-                    <span className="text-sm text-gray-500">{item.count} leads</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{item.count} leads</span>
                     {item.locked_count > 0 && (
                       <span className="text-xs text-green-500">({item.locked_count} confirmadas)</span>
                     )}
@@ -847,7 +847,7 @@ export default function CRMDashboard() {
               )
             })}
           </div>
-          <div className="mt-3 pt-3 border-t border-gray-200">
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
             <a href="/comissoes" className="text-sm text-[#0072F7] hover:text-blue-800 transition-colors">
               Ver relatorio completo →
             </a>
@@ -858,17 +858,17 @@ export default function CRMDashboard() {
       {/* 4. Per-vendedor cards — aprovacao only */}
       {pipelineTab === 'aprovacao' && vendedores.length > 0 && !isVendedor && (
         <div>
-          <h2 className="text-lg font-heading font-semibold text-gray-900 mb-3">
+          <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100 mb-3">
             Desempenho por Vendedor
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {vendedores.map(v => (
               <div
                 key={v.vendedor_id}
-                className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 hover:scale-[1.02] transition-transform"
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 hover:scale-[1.02] transition-transform"
               >
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xl font-bold text-gray-900">{v.vendedor_nome}</h3>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{v.vendedor_nome}</h3>
                   <span className="text-2xl font-heading font-bold text-[#0072F7]">{v.total_leads}</span>
                 </div>
 
@@ -892,7 +892,7 @@ export default function CRMDashboard() {
                 {/* Today's activity */}
                 {(v.ligacoes_hoje > 0 || v.propostas_hoje > 0 || v.fechados_hoje > 0) && (
                   <div className="flex gap-3 mb-3 text-xs">
-                    <span className="text-gray-400">Hoje:</span>
+                    <span className="text-gray-400 dark:text-gray-500">Hoje:</span>
                     {v.ligacoes_hoje > 0 && (
                       <span className="text-amber-600">{v.ligacoes_hoje} ligacoes</span>
                     )}
@@ -906,20 +906,20 @@ export default function CRMDashboard() {
                 )}
 
                 {/* Valor, commission, and last activity */}
-                <div className="space-y-2 pt-3 border-t border-gray-200">
+                <div className="space-y-2 pt-3 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500 uppercase tracking-wider">Valor Emendas</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor Emendas</span>
                     <span className="text-sm font-semibold text-[#0072F7]">
                       {formatCompactCurrency(v.valor_total_emenda)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500 uppercase tracking-wider">Comissão Total</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Comissão Total</span>
                     <span className="text-lg font-heading font-bold text-[#0072F7]">
                       {formatCurrency(v.comissao_total)}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-400 text-right">
+                  <div className="text-xs text-gray-400 dark:text-gray-500 text-right">
                     Ultima atividade {timeAgo(v.last_activity)}
                   </div>
                 </div>
@@ -931,26 +931,26 @@ export default function CRMDashboard() {
 
       {/* 5. Recent activity feed — aprovacao only */}
       {pipelineTab === 'aprovacao' && recent_activity.length > 0 && (
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-heading font-semibold text-gray-900">Atividade Recente</h2>
-            <p className="text-xs text-gray-400">Ultimas atualizacoes de leads</p>
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100">Atividade Recente</h2>
+            <p className="text-xs text-gray-400 dark:text-gray-500">Ultimas atualizacoes de leads</p>
           </div>
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {recent_activity.map((a, i) => {
               const cfg = STATUS_CONFIG[a.status_contato] || STATUS_CONFIG['Não Contatado']
               return (
-                <div key={`${a.cnpj}-${i}`} className={`px-4 py-3 text-sm ${i % 2 === 0 ? 'bg-gray-50' : ''}`}>
+                <div key={`${a.cnpj}-${i}`} className={`px-4 py-3 text-sm ${i % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800/50' : ''}`}>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-gray-900 font-medium">{a.vendedor_nome}</span>
-                    <span className="text-gray-400">atualizou</span>
-                    <span className="text-gray-700">{a.nome}</span>
-                    <span className="text-gray-400 font-mono text-xs">({formatCNPJ(a.cnpj)})</span>
-                    <span className="text-gray-400">para</span>
+                    <span className="text-gray-900 dark:text-gray-100 font-medium">{a.vendedor_nome}</span>
+                    <span className="text-gray-400 dark:text-gray-500">atualizou</span>
+                    <span className="text-gray-700 dark:text-gray-300">{a.nome}</span>
+                    <span className="text-gray-400 dark:text-gray-500 font-mono text-xs">({formatCNPJ(a.cnpj)})</span>
+                    <span className="text-gray-400 dark:text-gray-500">para</span>
                     <span className={`px-2 py-0.5 rounded border text-xs font-medium ${cfg.bg} ${cfg.color}`}>
                       {a.status_contato}
                     </span>
-                    <span className="text-gray-400 text-xs ml-auto">{timeAgo(a.updated_at)}</span>
+                    <span className="text-gray-400 dark:text-gray-500 text-xs ml-auto">{timeAgo(a.updated_at)}</span>
                   </div>
                 </div>
               )

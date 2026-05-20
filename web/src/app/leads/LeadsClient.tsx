@@ -10,15 +10,15 @@ import SaleModal from '@/components/SaleModal'
 
 const STATUS_OPTIONS = ['Não Contatado', 'Ainda Não', 'Retorno', 'Quente', 'Muito Quente', 'Proposta', 'Aguardando Closer', 'Fechado', 'Telefone Invalido']
 const STATUS_COLORS: Record<string, string> = {
-  'Não Contatado': 'bg-orange-50 text-orange-600',
-  'Ainda Não': 'bg-yellow-50 text-yellow-600',
-  'Retorno': 'bg-amber-50 text-amber-600',
-  'Quente': 'bg-red-50 text-red-600',
-  'Muito Quente': 'bg-red-100 text-red-700',
-  'Proposta': 'bg-blue-50 text-[#0072F7]',
-  'Aguardando Closer': 'bg-purple-50 text-purple-600',
-  'Fechado': 'bg-green-50 text-green-600',
-  'Telefone Invalido': 'bg-gray-50 text-gray-500',
+  'Não Contatado': 'bg-orange-50 dark:bg-orange-500/15 text-orange-600 dark:text-orange-300',
+  'Ainda Não': 'bg-yellow-50 dark:bg-yellow-500/15 text-yellow-600 dark:text-yellow-300',
+  'Retorno': 'bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-amber-300',
+  'Quente': 'bg-red-50 dark:bg-red-500/15 text-red-600 dark:text-red-300',
+  'Muito Quente': 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300',
+  'Proposta': 'bg-blue-50 dark:bg-blue-500/15 text-[#0072F7]',
+  'Aguardando Closer': 'bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300',
+  'Fechado': 'bg-green-50 dark:bg-green-500/15 text-green-600 dark:text-green-300',
+  'Telefone Invalido': 'bg-gray-50 dark:bg-gray-500/15 text-gray-500 dark:text-gray-400',
 }
 
 interface Vendedor {
@@ -235,7 +235,7 @@ export default function LeadsClient() {
   }
 
   function SortIcon({ col }: { col: string }) {
-    if (sortCol !== col) return <span className="ml-1 text-gray-300">↕</span>
+    if (sortCol !== col) return <span className="ml-1 text-gray-300 dark:text-gray-600">↕</span>
     return <span className="ml-1">{sortDir === 'asc' ? '▲' : '▼'}</span>
   }
 
@@ -373,11 +373,25 @@ export default function LeadsClient() {
     a.click()
   }
 
+  function exportBitrixXlsx() {
+    if (exportDisabled) {
+      alert('Selecione um comercial para exportar para Bitrix.')
+      return
+    }
+    const params = new URLSearchParams()
+    if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
+    const query = params.toString()
+    const href = query ? `/api/leads/export-bitrix?${query}` : '/api/leads/export-bitrix'
+    const a = document.createElement('a')
+    a.href = href
+    a.click()
+  }
+
   return (
     <div className="space-y-6 w-full max-w-[1800px] mx-auto">
       <div>
-        <h1 className="font-heading text-2xl font-bold text-gray-900">Lista de Leads</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">Lista de Leads</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           {sessionUser?.role === 'vendedor'
             ? 'Seus leads atribuídos'
             : 'Todos os projetos dos vendedores'}
@@ -389,22 +403,22 @@ export default function LeadsClient() {
         placeholder="Buscar por CNPJ ou nome..."
         value={search}
         onChange={e => setSearch(e.target.value)}
-        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0072F7] transition-colors"
+        className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-[#0072F7] transition-colors"
       />
 
       <div className="flex flex-wrap gap-3">
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]">
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-[#0072F7]">
           <option value="">Todos Status</option>
           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         {(sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador') && (
           <>
-            <select value={vendedorFilter} onChange={e => setVendedorFilter(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]">
+            <select value={vendedorFilter} onChange={e => setVendedorFilter(e.target.value)} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-[#0072F7]">
               <option value="">Todos Vendedores</option>
               <option value="unassigned">Não atribuídos</option>
               {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome} ({v.lead_count})</option>)}
             </select>
-            <select value={clientFilter} onChange={e => setClientFilter(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]">
+            <select value={clientFilter} onChange={e => setClientFilter(e.target.value)} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-[#0072F7]">
               <option value="">Todos Clientes</option>
               <option value="existing">Clientes Existentes</option>
               <option value="new">Novos Clientes</option>
@@ -415,7 +429,7 @@ export default function LeadsClient() {
 
       {/* Tag filters */}
       <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-xs text-gray-500 font-medium mr-1">Tags:</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium mr-1">Tags:</span>
         {TAG_KEYS.map(tag => {
           const active = activeTags.has(tag.key)
           return (
@@ -425,7 +439,7 @@ export default function LeadsClient() {
               className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
                 active
                   ? `${tag.bg} ${tag.text} ${tag.border} ring-2 ring-offset-1 ring-current`
-                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                  : 'bg-gray-50 dark:bg-gray-500/15 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               {tag.label}
@@ -438,7 +452,7 @@ export default function LeadsClient() {
         {activeTags.size > 0 && (
           <button
             onClick={() => setActiveTags(new Set())}
-            className="text-xs text-gray-400 hover:text-gray-600 underline ml-1"
+            className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 underline ml-1"
           >
             Limpar
           </button>
@@ -447,12 +461,20 @@ export default function LeadsClient() {
 
       {/* mirrors canExportContacts() in dal.ts */}
       {canExportCSV && (
-        <div className="flex gap-2 justify-end">
+        <div className="flex flex-wrap gap-2 justify-start sm:justify-end">
+          <button
+            onClick={exportBitrixXlsx}
+            disabled={exportDisabled}
+            title={exportDisabled ? 'Selecione um comercial para exportar.' : undefined}
+            className="px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-500/30 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/15 transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Exportar Bitrix XLSX
+          </button>
           <button
             onClick={exportPendentesCSV}
             disabled={exportDisabled}
             title={exportDisabled ? 'Selecione um comercial para exportar.' : undefined}
-            className="px-3 py-1.5 rounded-lg border border-orange-200 text-orange-600 hover:bg-orange-50 transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 rounded-lg border border-orange-200 dark:border-orange-500/30 text-orange-600 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-500/15 transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Exportar Pendentes CSV
           </button>
@@ -460,7 +482,7 @@ export default function LeadsClient() {
             onClick={exportCSV}
             disabled={exportDisabled}
             title={exportDisabled ? 'Selecione um comercial para exportar.' : undefined}
-            className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Exportar CSV
           </button>
@@ -469,23 +491,23 @@ export default function LeadsClient() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-pulse text-gray-400">Carregando leads...</div>
+          <div className="animate-pulse text-gray-400 dark:text-gray-500">Carregando leads...</div>
         </div>
       ) : (
         <div>
-          <div className="overflow-x-auto rounded-xl border border-gray-200">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+            <table className="min-w-[1050px] w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th onClick={() => handleSort('nome')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Instituição<SortIcon col="nome" /></th>
-                  <th onClick={() => handleSort('valor')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Valor<SortIcon col="valor" /></th>
-                  <th onClick={() => handleSort('orgao')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Ministério<SortIcon col="orgao" /></th>
-                  <th onClick={() => handleSort('local')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Local<SortIcon col="local" /></th>
-                  <th className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Contato</th>
-                  <th onClick={() => handleSort('dias')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Ult. Contato<SortIcon col="dias" /></th>
-                  <th onClick={() => handleSort('status')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Status<SortIcon col="status" /></th>
+                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                  <th onClick={() => handleSort('nome')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Instituição<SortIcon col="nome" /></th>
+                  <th onClick={() => handleSort('valor')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Valor<SortIcon col="valor" /></th>
+                  <th onClick={() => handleSort('orgao')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Ministério<SortIcon col="orgao" /></th>
+                  <th onClick={() => handleSort('local')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Local<SortIcon col="local" /></th>
+                  <th className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">Contato</th>
+                  <th onClick={() => handleSort('dias')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Ult. Contato<SortIcon col="dias" /></th>
+                  <th onClick={() => handleSort('status')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Status<SortIcon col="status" /></th>
                   {(sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador') && (
-                    <th onClick={() => handleSort('vendedor')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                    <th onClick={() => handleSort('vendedor')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                       {sessionUser?.role === 'coordenador' ? 'SDR' : 'Vendedor'}
                       <SortIcon col="vendedor" />
                     </th>
@@ -504,8 +526,8 @@ export default function LeadsClient() {
                   <React.Fragment key={lead.cnpj}>
                   <tr
                     onClick={() => handleOpenLead(lead)}
-                    className={`border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer ${
-                      lead.is_max_priority ? 'bg-red-50 border-l-2 border-l-red-500' :
+                    className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
+                      lead.is_max_priority ? 'bg-red-50 dark:bg-red-500/15 border-l-2 border-l-red-500' :
                       !hasContact ? 'bg-red-50/50 border-l-2 border-l-red-300' : ''
                     }`}
                   >
@@ -514,7 +536,7 @@ export default function LeadsClient() {
                         {hasMultipleEmendas && (
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleExpand(lead.cnpj) }}
-                            className="mt-0.5 text-gray-400 hover:text-[#0072F7] transition-colors text-xs flex-shrink-0"
+                            className="mt-0.5 text-gray-400 dark:text-gray-500 hover:text-[#0072F7] transition-colors text-xs flex-shrink-0"
                             title={`${lead.emenda_count} emendas`}
                           >
                             {isExpanded ? '▼' : '▶'}
@@ -522,7 +544,7 @@ export default function LeadsClient() {
                         )}
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-gray-900 font-medium text-sm leading-tight whitespace-normal break-words">
+                            <span className="text-gray-900 dark:text-gray-100 font-medium text-sm leading-tight whitespace-normal break-words">
                               {lead.nome || '-'}
                             </span>
                             <a
@@ -530,23 +552,23 @@ export default function LeadsClient() {
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={e => e.stopPropagation()}
-                              className="flex-shrink-0 text-gray-300 hover:text-[#0072F7] transition-colors"
+                              className="flex-shrink-0 text-gray-300 dark:text-gray-600 hover:text-[#0072F7] transition-colors"
                               title="Abrir em nova aba"
                             >
                               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
                             </a>
                             {lead.is_existing_client && (
-                              <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-200">
+                              <span className="text-[10px] bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-500/30">
                                 CLIENTE
                               </span>
                             )}
                             {isNewLead(lead.created_at) && (
-                              <span className="text-[10px] bg-green-50 text-green-600 px-1.5 py-0.5 rounded border border-green-200 font-semibold">
+                              <span className="text-[10px] bg-green-50 dark:bg-green-500/15 text-green-600 dark:text-green-300 px-1.5 py-0.5 rounded border border-green-200 dark:border-green-500/30 font-semibold">
                                 NOVO
                               </span>
                             )}
                           </div>
-                          <span className="font-mono text-[11px] text-gray-400 mt-0.5 block">{formatCNPJ(lead.cnpj)}</span>
+                          <span className="font-mono text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 block">{formatCNPJ(lead.cnpj)}</span>
                         </div>
                       </div>
                     </td>
@@ -561,7 +583,7 @@ export default function LeadsClient() {
                               <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a4 4 0 0 0-4 4v2H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-1V5a4 4 0 0 0-4-4zm-2 4a2 2 0 1 1 4 0v2H6V5z"/></svg>
                             </span>
                           )}
-                          <span className="block text-[10px] text-gray-400">
+                          <span className="block text-[10px] text-gray-400 dark:text-gray-500">
                             comissao{allFechadoLocked ? <span className="ml-1 text-green-500">Confirmada</span> : null}
                           </span>
                         </div>
@@ -571,16 +593,16 @@ export default function LeadsClient() {
                             {formatCompactCurrency((lead as any).totalValor || Number(lead.valor_emenda) || 0)}
                           </span>
                           {hasMultipleEmendas && (
-                            <span className="ml-1 text-gray-400 text-xs">({lead.emenda_count})</span>
+                            <span className="ml-1 text-gray-400 dark:text-gray-500 text-xs">({lead.emenda_count})</span>
                           )}
                         </div>
                       )}
                     </td>
                     <td className="px-3 py-2.5 max-w-[220px]">
-                      <div className="text-gray-600 text-xs leading-tight whitespace-normal break-words">{lead.orgao_concedente || '-'}</div>
+                      <div className="text-gray-600 dark:text-gray-300 text-xs leading-tight whitespace-normal break-words">{lead.orgao_concedente || '-'}</div>
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
-                      <span className="text-gray-600 text-xs">
+                      <span className="text-gray-600 dark:text-gray-300 text-xs">
                         {lead.uf && lead.municipio ? `${lead.municipio}, ${lead.uf}` : lead.uf || lead.municipio || '-'}
                       </span>
                     </td>
@@ -588,7 +610,7 @@ export default function LeadsClient() {
                       {hasContact ? (
                         <div className="space-y-0.5">
                           {lead.telefone && (
-                            <div className="flex items-center text-xs text-gray-600 truncate">
+                            <div className="flex items-center text-xs text-gray-600 dark:text-gray-300 truncate">
                               {lead.principal_telefone_status === 'valido' && (
                                 <span className="w-2 h-2 rounded-full bg-green-500 inline-block mr-1 flex-shrink-0" title="Telefone valido" />
                               )}
@@ -615,7 +637,7 @@ export default function LeadsClient() {
                             </div>
                           )}
                           {lead.email && (
-                            <div className="text-xs text-gray-400 truncate">{lead.email}</div>
+                            <div className="text-xs text-gray-400 dark:text-gray-500 truncate">{lead.email}</div>
                           )}
                         </div>
                       ) : (
@@ -624,13 +646,13 @@ export default function LeadsClient() {
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
                       {lead.days_since_last_contact == null ? (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Nunca</span>
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">Nunca</span>
                       ) : lead.days_since_last_contact <= 2 ? (
                         <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">{lead.days_since_last_contact}d</span>
                       ) : lead.days_since_last_contact <= 7 ? (
                         <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">{lead.days_since_last_contact}d</span>
                       ) : (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">{lead.days_since_last_contact}d</span>
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300">{lead.days_since_last_contact}d</span>
                       )}
                     </td>
                     <td className="px-3 py-2.5">
@@ -648,7 +670,7 @@ export default function LeadsClient() {
                         {sessionUser?.role === 'gestor' ? (
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500">{lead.vendedor_nome || '-'}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">{lead.vendedor_nome || '-'}</span>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -658,14 +680,14 @@ export default function LeadsClient() {
                                     currentVendedor: lead.vendedor_nome || null
                                   })
                                 }}
-                                className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-[#0072F7] transition-colors"
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-blue-50 hover:text-[#0072F7] transition-colors"
                               >
                                 {lead.vendedor_nome ? '↻' : '+'}
                               </button>
                             </div>
                             {lead.closer_id && lead.status_contato === 'Aguardando Closer' && (
                               <div className="flex items-center gap-1">
-                                <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-200 font-semibold">
+                                <span className="text-[10px] bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-500/30 font-semibold">
                                   CLOSER: {lead.closer_nome || 'Paulo'}
                                 </span>
                               </div>
@@ -673,9 +695,9 @@ export default function LeadsClient() {
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-gray-500">{lead.vendedor_nome || '-'}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{lead.vendedor_nome || '-'}</span>
                             {lead.closer_id && lead.status_contato === 'Aguardando Closer' && (
-                              <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-200 font-semibold">
+                              <span className="text-[10px] bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-500/30 font-semibold">
                                 CLOSER
                               </span>
                             )}
@@ -689,14 +711,14 @@ export default function LeadsClient() {
                     <tr
                       key={sub.id}
                       onClick={() => handleOpenLead(sub)}
-                      className="border-b border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer"
+                      className="border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                     >
                       <td className="px-4 py-2 pl-10">
                         <div className="text-xs">
-                          <span className="text-gray-400 mr-1">↳</span>
+                          <span className="text-gray-400 dark:text-gray-500 mr-1">↳</span>
                           <span className="text-amber-600 font-medium">{sub.parlamentar || '-'}</span>
                           {sub.nr_emenda && (
-                            <span className="text-gray-400 ml-1.5 text-[10px]">#{sub.nr_emenda}</span>
+                            <span className="text-gray-400 dark:text-gray-500 ml-1.5 text-[10px]">#{sub.nr_emenda}</span>
                           )}
                         </div>
                       </td>
@@ -712,7 +734,7 @@ export default function LeadsClient() {
                         )}
                       </td>
                       <td className="px-4 py-2">
-                        <div className="text-gray-400 text-xs">{sub.orgao_concedente || '-'}</div>
+                        <div className="text-gray-400 dark:text-gray-500 text-xs">{sub.orgao_concedente || '-'}</div>
                       </td>
                       <td className="px-4 py-2" colSpan={sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador' ? 5 : 4}>
                         <select
@@ -733,7 +755,7 @@ export default function LeadsClient() {
             </table>
           </div>
 
-          <div className="mt-4 text-sm text-gray-500">
+          <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
             <span>{displayLeads.length} CNPJs ({leads.length} emendas)</span>
           </div>
         </div>

@@ -198,19 +198,19 @@ export default function BIDashboard() {
       <div className="space-y-6 w-full max-w-[1800px] mx-auto">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="h-8 w-80 bg-gray-200 rounded animate-pulse" />
-            <div className="h-4 w-64 bg-gray-100 rounded animate-pulse mt-2" />
+            <div className="h-8 w-80 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="h-4 w-64 bg-gray-100 dark:bg-gray-800 rounded animate-pulse mt-2" />
           </div>
-          <div className="h-10 w-56 bg-gray-200 rounded-xl animate-pulse" />
+          <div className="h-10 w-56 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
           {[1, 2, 3, 4, 5, 6, 7].map(i => (
-            <div key={i} className="bg-white border border-gray-200 shadow-sm rounded-xl p-5 h-28 animate-pulse" />
+            <div key={i} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 h-28 animate-pulse" />
           ))}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 h-64 animate-pulse" />
+            <div key={i} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4 h-64 animate-pulse" />
           ))}
         </div>
       </div>
@@ -223,7 +223,7 @@ export default function BIDashboard() {
       <div className="space-y-4 w-full max-w-[1800px] mx-auto">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="font-heading text-2xl font-bold text-gray-900">BI Analytics</h1>
+            <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">BI Analytics</h1>
           </div>
           <HeaderControls
             pipeline={pipeline}
@@ -234,10 +234,10 @@ export default function BIDashboard() {
             isGestor={isGestor}
           />
         </div>
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex flex-col items-center gap-3">
-          <p className="text-red-700 font-medium">Erro ao carregar dados do BI dashboard</p>
+        <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl p-6 flex flex-col items-center gap-3">
+          <p className="text-red-700 dark:text-red-400 font-medium">Erro ao carregar dados do BI dashboard</p>
           {error && (
-            <code className="text-red-600 text-xs bg-red-100 px-3 py-2 rounded font-mono max-w-full break-all">{error}</code>
+            <code className="text-red-600 dark:text-red-400 text-xs bg-red-100 dark:bg-red-500/10 px-3 py-2 rounded font-mono max-w-full break-all">{error}</code>
           )}
           <button
             onClick={() => fetchData()}
@@ -259,10 +259,10 @@ export default function BIDashboard() {
       {/* 1. Page Header + Tab Switcher + Vendedor Filter */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-gray-900">
+          <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">
             {isVendedor ? 'Meu Desempenho' : 'BI Analytics'}
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {pipeline === 'aprovacao'
               ? 'Indicadores de performance e tendencias da operacao de vendas'
               : 'Indicadores de performance da execucao de convenios'
@@ -306,13 +306,13 @@ function HeaderControls({
   return (
     <div className="flex flex-col items-end gap-2">
       {/* Tab switcher */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
         <button
           onClick={() => setPipeline('aprovacao')}
           className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
             pipeline === 'aprovacao'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
         >
           Aprovacao
@@ -321,8 +321,8 @@ function HeaderControls({
           onClick={() => setPipeline('execucao')}
           className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
             pipeline === 'execucao'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
         >
           Execucao
@@ -334,7 +334,7 @@ function HeaderControls({
         <select
           value={vendedorFilter}
           onChange={e => setVendedorFilter(e.target.value)}
-          className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          className="text-sm border border-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
         >
           <option value="">Todos os vendedores</option>
           {vendedoresList.map(v => (
@@ -364,86 +364,86 @@ function AprovacaoTab({ data }: { data: BIData }) {
   return (
     <>
       {/* KPI Cards — 7 cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
 
         {/* Card 1: Faturamento Fechado */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Faturamento</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Faturamento</p>
           <p className="text-3xl font-heading font-bold text-green-600 mt-2">
             {formatCompactCurrency(kpis.closed_value)}
           </p>
-          <p className="text-xs text-gray-400 mt-1">{kpis.fechado_count} vendas fechadas</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{kpis.fechado_count} vendas fechadas</p>
         </div>
 
         {/* Card 2: Taxa de Conversao */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Conversao</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Conversao</p>
           <p className={`text-3xl font-heading font-bold mt-2 ${conversionColor}`}>
             {kpis.conversion_rate.toFixed(1)}%
           </p>
-          <p className="text-xs text-gray-400 mt-1">{kpis.fechado_count}/{kpis.assigned_count} leads</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{kpis.fechado_count}/{kpis.assigned_count} leads</p>
         </div>
 
         {/* Card 3: Taxa de Contato */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Taxa de Contato</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Taxa de Contato</p>
           <p className={`text-3xl font-heading font-bold mt-2 ${contactRateColor}`}>
             {kpis.contact_rate.toFixed(0)}%
           </p>
-          <p className="text-xs text-gray-400 mt-1">{kpis.nao_contatado_count} sem abordar</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{kpis.nao_contatado_count} sem abordar</p>
         </div>
 
         {/* Card 4: Ticket Medio */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Ticket Medio</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ticket Medio</p>
           <p className={`text-3xl font-heading font-bold mt-2 ${kpis.ticket_medio > 0 ? 'text-[#0072F7]' : 'text-gray-400'}`}>
             {kpis.ticket_medio > 0 ? formatCompactCurrency(kpis.ticket_medio) : '-'}
           </p>
-          <p className="text-xs text-gray-400 mt-1">media por venda</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">media por venda</p>
         </div>
 
         {/* Card 5: Velocidade */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Velocidade</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Velocidade</p>
           <p className={`text-3xl font-heading font-bold mt-2 ${daysColor}`}>
             {kpis.avg_days_to_close != null ? `${kpis.avg_days_to_close}d` : '-'}
           </p>
-          <p className="text-xs text-gray-400 mt-1">dias p/ fechar</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">dias p/ fechar</p>
         </div>
 
         {/* Card 6: Atividade (7d) */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Atividade (7d)</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Atividade (7d)</p>
           <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
             {kpis.notes_7d}
           </p>
-          <p className="text-xs text-gray-400 mt-1">{kpis.leads_touched_7d} leads tocados</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{kpis.leads_touched_7d} leads tocados</p>
         </div>
 
         {/* Card 7: Leads Parados */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Leads Parados</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Leads Parados</p>
           <p className={`text-3xl font-heading font-bold mt-2 ${staleColor}`}>
             {kpis.stale_count}
           </p>
-          <p className="text-xs text-gray-400 mt-1">sem atividade 7d+</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">sem atividade 7d+</p>
         </div>
 
       </div>
 
       {/* Pipeline value + commission summary bar */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex items-center justify-between">
-          <span className="text-xs text-gray-500 uppercase">Pipeline Aberto</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4 flex items-center justify-between">
+          <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Pipeline Aberto</span>
           <span className="text-lg font-heading font-bold text-[#0072F7]">{formatCompactCurrency(kpis.pipeline_value)}</span>
         </div>
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex items-center justify-between">
-          <span className="text-xs text-gray-500 uppercase">Comissao Acumulada</span>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4 flex items-center justify-between">
+          <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Comissao Acumulada</span>
           <span className="text-lg font-heading font-bold text-green-600">{formatCompactCurrency(kpis.commission_earned)}</span>
         </div>
         {kpis.commission_bonus > 0 && (
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex items-center justify-between">
-            <span className="text-xs text-gray-500 uppercase">Bonus Fechamento</span>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4 flex items-center justify-between">
+            <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Bonus Fechamento</span>
             <span className="text-lg font-heading font-bold text-green-600">{formatCurrency(kpis.commission_bonus)}</span>
           </div>
         )}
@@ -453,10 +453,10 @@ function AprovacaoTab({ data }: { data: BIData }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
         {/* Chart 1: Pipeline Funnel (horizontal bar) */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">Pipeline Funnel</h3>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Pipeline Funnel</h3>
           {data.pipeline_funnel.length === 0 ? (
-            <div className="flex items-center justify-center h-48 text-gray-400 text-sm">Sem dados</div>
+            <div className="flex items-center justify-center h-48 text-gray-400 dark:text-gray-500 text-sm">Sem dados</div>
           ) : (
             <div style={{ height: 220 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -497,10 +497,10 @@ function AprovacaoTab({ data }: { data: BIData }) {
         </div>
 
         {/* Chart 2: Comissao por Vendedor */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">Comissao por Vendedor</h3>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Comissao por Vendedor</h3>
           {data.commission_by_vendedor.length === 0 ? (
-            <div className="flex items-center justify-center h-64 text-gray-400 text-sm">Sem dados</div>
+            <div className="flex items-center justify-center h-64 text-gray-400 dark:text-gray-500 text-sm">Sem dados</div>
           ) : (
             <div style={{ height: 250 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -537,10 +537,10 @@ function AprovacaoTab({ data }: { data: BIData }) {
         </div>
 
         {/* Chart 3: Leads por UF */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">Leads por UF (top 10)</h3>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Leads por UF (top 10)</h3>
           {top10uf.length === 0 ? (
-            <div className="flex items-center justify-center h-72 text-gray-400 text-sm">Sem dados</div>
+            <div className="flex items-center justify-center h-72 text-gray-400 dark:text-gray-500 text-sm">Sem dados</div>
           ) : (
             <div style={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -585,10 +585,10 @@ function AprovacaoTab({ data }: { data: BIData }) {
         </div>
 
         {/* Chart 4: Tendencia de Atividade */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">Tendencia de Atividade (6 meses)</h3>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Tendencia de Atividade (6 meses)</h3>
           {data.activity_trend.length === 0 ? (
-            <div className="flex items-center justify-center h-48 text-gray-400 text-sm">Sem dados</div>
+            <div className="flex items-center justify-center h-48 text-gray-400 dark:text-gray-500 text-sm">Sem dados</div>
           ) : (
             <div style={{ height: 200 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -665,81 +665,81 @@ function ExecucaoTab({ data }: { data: ExecucaoBIData }) {
   return (
     <>
       {/* KPI Cards — 7 cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
 
         {/* Card 1: CNPJs em Execucao */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">CNPJs Execucao</p>
-          <p className="text-3xl font-heading font-bold mt-2 text-gray-900">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">CNPJs Execucao</p>
+          <p className="text-3xl font-heading font-bold mt-2 text-gray-900 dark:text-gray-100">
             {kpis.total_cnpjs.toLocaleString('pt-BR')}
           </p>
-          <p className="text-xs text-gray-400 mt-1">projetos ativos</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">projetos ativos</p>
         </div>
 
         {/* Card 2: Valor Convenios */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Valor Convenios</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor Convenios</p>
           <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
             {formatCompactCurrency(kpis.total_valor_global)}
           </p>
-          <p className="text-xs text-gray-400 mt-1">{formatCurrency(kpis.total_valor_global)}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatCurrency(kpis.total_valor_global)}</p>
         </div>
 
         {/* Card 3: Taxa de Contato */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Taxa de Contato</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Taxa de Contato</p>
           <p className={`text-3xl font-heading font-bold mt-2 ${contactRateColor}`}>
             {kpis.contact_rate.toFixed(0)}%
           </p>
-          <p className="text-xs text-gray-400 mt-1">{kpis.nao_contatado_count} sem abordar</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{kpis.nao_contatado_count} sem abordar</p>
         </div>
 
         {/* Card 4: Saldo Disponivel */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Saldo Disponivel</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Saldo Disponivel</p>
           <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
             {formatCompactCurrency(kpis.total_saldo)}
           </p>
-          <p className="text-xs text-gray-400 mt-1">{formatCurrency(kpis.total_saldo)}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatCurrency(kpis.total_saldo)}</p>
         </div>
 
         {/* Card 5: % Execucao Medio */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">% Execucao</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">% Execucao</p>
           <p className={`text-3xl font-heading font-bold mt-2 ${pctExecColor}`}>
             {kpis.pct_execucao_medio != null ? `${kpis.pct_execucao_medio.toFixed(1)}%` : '-'}
           </p>
-          <p className="text-xs text-gray-400 mt-1">media ponderada</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">media ponderada</p>
         </div>
 
         {/* Card 6: Atividade (7d) */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Atividade (7d)</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Atividade (7d)</p>
           <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
             {kpis.notes_7d}
           </p>
-          <p className="text-xs text-gray-400 mt-1">{kpis.leads_touched_7d} leads tocados</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{kpis.leads_touched_7d} leads tocados</p>
         </div>
 
         {/* Card 7: Alertas */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Alertas</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Alertas</p>
           <p className={`text-3xl font-heading font-bold mt-2 ${alertasColor}`}>
             {kpis.total_alertas}
           </p>
-          <p className="text-xs text-gray-400 mt-1">sem desembolso</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">sem desembolso</p>
         </div>
 
       </div>
 
       {/* Financial summary bar */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex items-center justify-between">
-          <span className="text-xs text-gray-500 uppercase">Total Desembolsado</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4 flex items-center justify-between">
+          <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Total Desembolsado</span>
           <span className="text-lg font-heading font-bold text-[#0072F7]">{formatCompactCurrency(kpis.total_desembolsado)}</span>
         </div>
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4 flex items-center justify-between">
-          <span className="text-xs text-gray-500 uppercase">Saldo em Conta</span>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4 flex items-center justify-between">
+          <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Saldo em Conta</span>
           <span className="text-lg font-heading font-bold text-[#0072F7]">{formatCompactCurrency(kpis.total_saldo)}</span>
         </div>
       </div>
@@ -748,10 +748,10 @@ function ExecucaoTab({ data }: { data: ExecucaoBIData }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
         {/* Chart 1: Pipeline Funnel (horizontal bar) */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">Pipeline Funnel (Execucao)</h3>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Pipeline Funnel (Execucao)</h3>
           {data.pipeline_funnel.length === 0 ? (
-            <div className="flex items-center justify-center h-48 text-gray-400 text-sm">Sem dados</div>
+            <div className="flex items-center justify-center h-48 text-gray-400 dark:text-gray-500 text-sm">Sem dados</div>
           ) : (
             <div style={{ height: Math.max(220, data.pipeline_funnel.length * 28) }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -792,10 +792,10 @@ function ExecucaoTab({ data }: { data: ExecucaoBIData }) {
         </div>
 
         {/* Chart 2: CNPJs por Vendedor (horizontal bar) */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">CNPJs por Vendedor</h3>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">CNPJs por Vendedor</h3>
           {data.cnpjs_by_vendedor.length === 0 ? (
-            <div className="flex items-center justify-center h-64 text-gray-400 text-sm">Sem dados</div>
+            <div className="flex items-center justify-center h-64 text-gray-400 dark:text-gray-500 text-sm">Sem dados</div>
           ) : (
             <div style={{ height: Math.max(250, data.cnpjs_by_vendedor.length * 32) }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -839,10 +839,10 @@ function ExecucaoTab({ data }: { data: ExecucaoBIData }) {
         </div>
 
         {/* Chart 3: CNPJs por UF */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">CNPJs por UF (top 10)</h3>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">CNPJs por UF (top 10)</h3>
           {top10uf.length === 0 ? (
-            <div className="flex items-center justify-center h-72 text-gray-400 text-sm">Sem dados</div>
+            <div className="flex items-center justify-center h-72 text-gray-400 dark:text-gray-500 text-sm">Sem dados</div>
           ) : (
             <div style={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -887,10 +887,10 @@ function ExecucaoTab({ data }: { data: ExecucaoBIData }) {
         </div>
 
         {/* Chart 4: Tendencia de Atividade */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">Tendencia de Atividade (6 meses)</h3>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Tendencia de Atividade (6 meses)</h3>
           {data.activity_trend.length === 0 ? (
-            <div className="flex items-center justify-center h-48 text-gray-400 text-sm">Sem dados</div>
+            <div className="flex items-center justify-center h-48 text-gray-400 dark:text-gray-500 text-sm">Sem dados</div>
           ) : (
             <div style={{ height: 200 }}>
               <ResponsiveContainer width="100%" height="100%">

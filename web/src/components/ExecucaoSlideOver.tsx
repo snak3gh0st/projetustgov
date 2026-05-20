@@ -66,11 +66,11 @@ interface ExecucaoDetailRow {
 }
 
 function diasColor(dias: number | null): string {
-  if (dias == null) return 'text-gray-400'
-  if (dias < 0) return 'text-red-600 font-bold'
-  if (dias < 30) return 'text-red-500 font-medium'
-  if (dias <= 90) return 'text-amber-600'
-  return 'text-gray-600'
+  if (dias == null) return 'text-gray-400 dark:text-gray-500'
+  if (dias < 0) return 'text-red-600 dark:text-red-400 font-bold'
+  if (dias < 30) return 'text-red-500 dark:text-red-400 font-medium'
+  if (dias <= 90) return 'text-amber-600 dark:text-amber-400'
+  return 'text-gray-600 dark:text-gray-300'
 }
 
 export default function ExecucaoSlideOver({
@@ -266,7 +266,7 @@ export default function ExecucaoSlideOver({
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
 
       {/* Panel */}
-      <div className="absolute right-0 top-0 h-full w-[420px] max-w-[90vw] bg-white border-l border-gray-200 shadow-2xl flex flex-col animate-slide-in-right">
+      <div className="absolute right-0 top-0 h-full w-[420px] max-w-[90vw] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col animate-slide-in-right">
         {/* Top accent line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0072F7] to-blue-400 pointer-events-none" />
 
@@ -275,7 +275,7 @@ export default function ExecucaoSlideOver({
           <button
             onClick={onClose}
             aria-label="Fechar"
-            className="absolute top-4 right-4 p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-800 transition-colors"
+            className="absolute top-4 right-4 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M4 4l8 8M12 4l-8 8" />
@@ -283,7 +283,7 @@ export default function ExecucaoSlideOver({
           </button>
 
           <div className="flex items-start justify-between pr-8 gap-2">
-            <h2 className="text-xl font-bold text-gray-900 whitespace-normal break-words">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 whitespace-normal break-words">
               {nomeProponente || 'Sem nome'}
             </h2>
             <a
@@ -291,23 +291,23 @@ export default function ExecucaoSlideOver({
               target="_blank"
               rel="noopener noreferrer"
               onClick={e => e.stopPropagation()}
-              className="flex-shrink-0 mt-1 inline-flex items-center gap-1 text-xs text-[#0072F7] hover:text-blue-800 border border-blue-200 bg-blue-50 px-2 py-1 rounded-lg transition-colors"
+              className="flex-shrink-0 mt-1 inline-flex items-center gap-1 text-xs text-[#0072F7] hover:text-blue-800 border border-blue-200 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 px-2 py-1 rounded-lg transition-colors"
               title="Abrir perfil completo em nova aba"
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
               Nova aba
             </a>
           </div>
-          <p className="font-mono text-sm text-gray-400 mt-1">{formatCNPJ(cnpj)}</p>
+          <p className="font-mono text-sm text-gray-400 dark:text-gray-500 mt-1">{formatCNPJ(cnpj)}</p>
 
           <div className="flex flex-wrap items-center gap-2 mt-3">
             {temAlerta && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
                 Alerta
               </span>
             )}
             {contactPresent && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-[#0072F7] border border-blue-200">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border border-blue-200 dark:border-blue-500/20">
                 Contato
               </span>
             )}
@@ -339,17 +339,17 @@ export default function ExecucaoSlideOver({
           </div>
 
           {/* Summary: total valor convenio + propostas badge */}
-          <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <div>
-              <span className="text-xs text-gray-500">Valor total dos convenios</span>
-              <p className="text-lg font-bold text-gray-900">{formatCompactCurrency(totalValorGlobal)}</p>
+              <span className="text-xs text-gray-500 dark:text-gray-400">Valor total dos convenios</span>
+              <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{formatCompactCurrency(totalValorGlobal)}</p>
             </div>
             {totalPropostas > 0 && (
               <span
                 className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                  totalPropostas >= 6 ? 'bg-red-50 text-red-700 border border-red-200' :
-                  totalPropostas >= 3 ? 'bg-orange-50 text-orange-700 border border-orange-200' :
-                  'bg-gray-50 text-gray-600 border border-gray-200'
+                  totalPropostas >= 6 ? 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20' :
+                  totalPropostas >= 3 ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-500/20' :
+                  'bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
                 }`}
                 title={`${totalPropostas} proposta(s) ja executadas — quanto mais, menor a prioridade`}
               >
@@ -364,23 +364,23 @@ export default function ExecucaoSlideOver({
           {/* Contacts section */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Contatos {contacts.length > 0 && `(${contacts.length})`}
               </h3>
             </div>
             {contactsLoading && (
-              <p className="text-xs text-gray-400">Buscando contatos...</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">Buscando contatos...</p>
             )}
             {!contactsLoading && contacts.length === 0 && (
-              <p className="text-xs text-gray-400">Nenhum contato encontrado para este CNPJ.</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">Nenhum contato encontrado para este CNPJ.</p>
             )}
             {contacts.length > 0 && (
               <div className="space-y-2">
                 {contacts.map(c => (
-                  <div key={c.id} className={`bg-gray-50 rounded-lg p-3 border ${c.principal ? 'border-[#0072F7] bg-blue-50/30' : 'border-gray-200'}`}>
+                  <div key={c.id} className={`bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 border ${c.principal ? 'border-[#0072F7] bg-blue-50/30 dark:bg-blue-500/5' : 'border-gray-200 dark:border-gray-700'}`}>
                     <div className="flex items-center gap-2 mb-1">
-                      {c.nome_pessoa && <span className="text-sm font-medium text-gray-900">{c.nome_pessoa}</span>}
-                      {c.cargo && <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{c.cargo}</span>}
+                      {c.nome_pessoa && <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{c.nome_pessoa}</span>}
+                      {c.cargo && <span className="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{c.cargo}</span>}
                       {c.principal && <span className="text-[10px] text-[#0072F7] font-medium">Principal</span>}
                     </div>
                     <div className="flex flex-wrap gap-3">
@@ -405,7 +405,7 @@ export default function ExecucaoSlideOver({
 
           {/* Observações Execução — editable */}
           <div className="space-y-2">
-            <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Observações</h3>
+            <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Observações</h3>
             {canModify ? (
               <textarea
                 rows={3}
@@ -419,37 +419,37 @@ export default function ExecucaoSlideOver({
                   }).catch(() => {})
                 }}
                 placeholder="Adicione observações sobre este lead..."
-                className="w-full text-xs text-gray-700 border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#0072F7] resize-none"
+                className="w-full text-xs text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-[#0072F7] resize-none dark:placeholder:text-gray-500"
               />
             ) : (
-              <div className="bg-gray-50 rounded-lg border border-gray-200 p-3">
-                <p className="text-xs text-gray-700 whitespace-pre-wrap">{obsExecucao || 'Sem observações'}</p>
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{obsExecucao || 'Sem observações'}</p>
               </div>
             )}
           </div>
 
           {/* CRM Aprovação Status (read-only reference) */}
           {(crmStatus || crmObservacoes) && (
-            <div className="space-y-2 border border-gray-200 rounded-xl p-3 bg-gray-50">
-              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">CRM — Aprovação</h3>
+            <div className="space-y-2 border border-gray-200 dark:border-gray-700 rounded-xl p-3 bg-gray-50 dark:bg-gray-800/50">
+              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">CRM — Aprovação</h3>
               {crmStatus && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">Status:</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Status:</span>
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    crmStatus === 'Fechado' ? 'bg-green-100 text-green-700' :
-                    crmStatus === 'Muito Quente' ? 'bg-red-200 text-red-800' :
-                    crmStatus === 'Quente' ? 'bg-red-100 text-red-700' :
-                    crmStatus === 'Proposta' ? 'bg-blue-100 text-blue-700' :
-                    crmStatus === 'Aguardando Closer' ? 'bg-purple-100 text-purple-700' :
-                    crmStatus === 'Retorno' ? 'bg-amber-100 text-amber-700' :
-                    'bg-gray-100 text-gray-600'
+                    crmStatus === 'Fechado' ? 'bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400' :
+                    crmStatus === 'Muito Quente' ? 'bg-red-200 dark:bg-red-500/15 text-red-800 dark:text-red-400' :
+                    crmStatus === 'Quente' ? 'bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400' :
+                    crmStatus === 'Proposta' ? 'bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400' :
+                    crmStatus === 'Aguardando Closer' ? 'bg-purple-100 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400' :
+                    crmStatus === 'Retorno' ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400' :
+                    'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
                   }`}>{crmStatus}</span>
                 </div>
               )}
               {crmObservacoes && (
                 <div>
-                  <span className="text-xs text-gray-500">Observações:</span>
-                  <p className="text-xs text-gray-700 mt-0.5 whitespace-pre-wrap">{crmObservacoes}</p>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Observações:</span>
+                  <p className="text-xs text-gray-700 dark:text-gray-300 mt-0.5 whitespace-pre-wrap">{crmObservacoes}</p>
                 </div>
               )}
             </div>
@@ -458,11 +458,11 @@ export default function ExecucaoSlideOver({
           {/* Contact Notes Timeline */}
           <ContactNotesTimeline cnpj={cnpj} canModify={canModify} />
 
-          <div className="border-t border-gray-200" />
+          <div className="border-t border-gray-200 dark:border-gray-700" />
 
           {detailLoading && (
             <div className="flex items-center justify-center py-12">
-              <span className="text-sm text-gray-400">Carregando convenios...</span>
+              <span className="text-sm text-gray-400 dark:text-gray-500">Carregando convenios...</span>
             </div>
           )}
 
@@ -474,7 +474,7 @@ export default function ExecucaoSlideOver({
 
           {!detailLoading && !detailError && detailRows.length > 0 && (
             <>
-              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Convenios ({detailRows.length})
               </h3>
               {detailRows.map(conv => {
@@ -482,12 +482,12 @@ export default function ExecucaoSlideOver({
                 return (
                   <div
                     key={conv.nr_convenio}
-                    className={`bg-gray-50 rounded-xl p-4 border ${Number(conv.valor_desembolsado) === 0 ? 'border-amber-300 bg-amber-50/20' : 'border-gray-200'} space-y-3`}
+                    className={`bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border ${Number(conv.valor_desembolsado) === 0 ? 'border-amber-300 bg-amber-50/20 dark:bg-amber-500/5' : 'border-gray-200 dark:border-gray-700'} space-y-3`}
                   >
                     {/* Convenio number + modalidade + link */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs text-gray-400">#{conv.nr_convenio}</span>
+                        <span className="font-mono text-xs text-gray-400 dark:text-gray-500">#{conv.nr_convenio}</span>
                         <a
                           href={`https://discricionarias.transferegov.sistema.gov.br/voluntarias/ConsultarProposta/ResultadoDaConsultaDeConvenioSelecionarConvenio.do?idConvenio=${conv.nr_convenio}&destino=`}
                           target="_blank"
@@ -504,7 +504,7 @@ export default function ExecucaoSlideOver({
                             href={`https://discricionarias.transferegov.sistema.gov.br/voluntarias/ConsultarProposta/ResultadoDaConsultaDePropostaDetalharProposta.do?idProposta=${conv.id_proposta}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-0.5 text-[10px] text-gray-500 hover:text-gray-700 transition-colors"
+                            className="inline-flex items-center gap-0.5 text-[10px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                             title="Ver proposta no TransfereGov"
                             onClick={e => e.stopPropagation()}
                           >
@@ -514,22 +514,22 @@ export default function ExecucaoSlideOver({
                         )}
                       </div>
                       {conv.modalidade && (
-                        <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{conv.modalidade}</span>
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">{conv.modalidade}</span>
                       )}
                     </div>
 
                     {/* Objeto (truncated) */}
                     {conv.objeto && (
-                      <p className="text-xs text-gray-600 line-clamp-2" title={conv.objeto}>{conv.objeto}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2" title={conv.objeto}>{conv.objeto}</p>
                     )}
 
                     {/* Progress bar: % Execucao */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-gray-500">% Execucao</span>
-                        <span className="text-xs font-medium text-gray-700">{pct.toFixed(1)}%</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">% Execucao</span>
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{pct.toFixed(1)}%</span>
                       </div>
-                      <div className="bg-gray-100 rounded-full h-2">
+                      <div className="bg-gray-100 dark:bg-gray-800 rounded-full h-2">
                         <div
                           className="bg-[#0072F7] h-2 rounded-full"
                           style={{ width: `${pct}%` }}
@@ -551,45 +551,45 @@ export default function ExecucaoSlideOver({
                       const gastoEfetivo = Math.max(0, totalEntradas - saldo)
                       return (
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="col-span-2 pb-1 mb-1 border-b border-gray-200">
-                        <span className="text-xs text-gray-500">Valor do Convenio</span>
-                        <p className="text-lg font-bold text-gray-900">{formatCompactCurrency(conv.valor_global)}</p>
+                      <div className="col-span-2 pb-1 mb-1 border-b border-gray-200 dark:border-gray-700">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Valor do Convenio</span>
+                        <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{formatCompactCurrency(conv.valor_global)}</p>
                       </div>
                       <div>
-                        <span className="text-xs text-gray-500">Desembolsado (federal)</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Desembolsado (federal)</span>
                         <p className="text-sm font-bold text-[#0072F7]">{formatCompactCurrency(conv.valor_desembolsado)}</p>
                       </div>
                       <div>
-                        <span className="text-xs text-gray-500">Saldo em conta</span>
-                        <p className="text-sm font-medium text-amber-700">{formatCompactCurrency(conv.saldo_conta)}</p>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Saldo em conta</span>
+                        <p className="text-sm font-medium text-amber-700 dark:text-amber-400">{formatCompactCurrency(conv.saldo_conta)}</p>
                       </div>
                       {(contrapartida > 0 || rendimento > 0) && (
                         <>
                           {contrapartida > 0 && (
                             <div>
-                              <span className="text-xs text-gray-500">Contrapartida depositada</span>
-                              <p className="text-sm text-gray-700">{formatCompactCurrency(contrapartida)}</p>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">Contrapartida depositada</span>
+                              <p className="text-sm text-gray-700 dark:text-gray-300">{formatCompactCurrency(contrapartida)}</p>
                             </div>
                           )}
                           {rendimento > 0 && (
                             <div>
-                              <span className="text-xs text-gray-500">Rendimento aplicação</span>
-                              <p className="text-sm text-gray-700">{formatCompactCurrency(rendimento)}</p>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">Rendimento aplicação</span>
+                              <p className="text-sm text-gray-700 dark:text-gray-300">{formatCompactCurrency(rendimento)}</p>
                             </div>
                           )}
                         </>
                       )}
-                      <div className="col-span-2 bg-blue-50/60 rounded-lg px-3 py-2 border border-blue-100">
-                        <span className="text-xs text-gray-500">Gasto efetivo (entradas − saldo)</span>
-                        <p className="text-sm font-bold text-gray-900">{formatCompactCurrency(gastoEfetivo)}</p>
+                      <div className="col-span-2 bg-blue-50/60 dark:bg-blue-500/5 rounded-lg px-3 py-2 border border-blue-100 dark:border-blue-500/20">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Gasto efetivo (entradas − saldo)</span>
+                        <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{formatCompactCurrency(gastoEfetivo)}</p>
                       </div>
                       <div>
-                        <span className="text-xs text-gray-500">Fim de vigencia</span>
-                        <p className="text-sm text-gray-700">{formatDate(conv.data_fim_vigencia)}</p>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Fim de vigencia</span>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">{formatDate(conv.data_fim_vigencia)}</p>
                       </div>
                       <div>
-                        <span className="text-xs text-gray-500">Dias em execucao</span>
-                        <p className="text-sm text-gray-700">{conv.dias_em_execucao ?? '-'}</p>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Dias em execucao</span>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">{conv.dias_em_execucao ?? '-'}</p>
                       </div>
                     </div>
                       )
@@ -597,8 +597,8 @@ export default function ExecucaoSlideOver({
 
                     {/* Dias ate vencimento with color */}
                     {conv.dias_ate_vencimento != null && (
-                      <div className="flex items-center justify-between pt-1 border-t border-gray-200">
-                        <span className="text-xs text-gray-500">Dias ate vencimento</span>
+                      <div className="flex items-center justify-between pt-1 border-t border-gray-200 dark:border-gray-700">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Dias ate vencimento</span>
                         <span className={`text-sm ${diasColor(conv.dias_ate_vencimento)}`}>
                           {conv.dias_ate_vencimento < 0 ? `${Math.abs(conv.dias_ate_vencimento)}d vencido` : `${conv.dias_ate_vencimento}d`}
                         </span>
@@ -624,7 +624,7 @@ export default function ExecucaoSlideOver({
                     {/* Alert badge per-convenio */}
                     {Number(conv.valor_desembolsado) === 0 && (
                       <div className="flex items-center gap-1.5 pt-1">
-                        <span className="text-xs text-amber-700 font-medium" title="Projeto sem desembolso — repasse aprovado mas nenhum valor movimentado">Projeto sem desembolso — repasse aprovado mas nenhum valor movimentado</span>
+                        <span className="text-xs text-amber-700 dark:text-amber-400 font-medium" title="Projeto sem desembolso — repasse aprovado mas nenhum valor movimentado">Projeto sem desembolso — repasse aprovado mas nenhum valor movimentado</span>
                       </div>
                     )}
                   </div>
@@ -635,7 +635,7 @@ export default function ExecucaoSlideOver({
         </div>
 
         {/* Quick Actions */}
-        <div className="p-4 border-t border-gray-200 flex gap-3">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-3">
           <button
             disabled={!contacts.some(c => c.telefone && whatsappMeUrlFromTelefone(c.telefone))}
             onClick={() => {
@@ -643,7 +643,7 @@ export default function ExecucaoSlideOver({
               const url = principal?.telefone ? whatsappMeUrlFromTelefone(principal.telefone) : null
               if (url) window.open(url, '_blank')
             }}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-white bg-green-600 hover:bg-green-500 disabled:bg-gray-200 disabled:text-gray-400 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-white bg-green-600 hover:bg-green-500 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 1a7 7 0 00-6.1 10.4L1 15l3.7-.9A7 7 0 108 1zm3.6 9.8c-.15.43-.9.82-1.24.87-.34.05-.77.07-1.24-.08a11.4 11.4 0 01-1.12-.42 8.7 8.7 0 01-3.45-3.05c-.3-.39-.6-.8-.82-1.24-.22-.44-.11-.66.08-.87l.27-.31c.09-.1.19-.26.28-.39.1-.13.13-.22.19-.37.06-.15.03-.28-.02-.39s-.56-1.34-.76-1.84c-.2-.48-.41-.42-.56-.42h-.48c-.17 0-.43.06-.66.31s-.86.84-.86 2.06.88 2.39 1 2.56c.13.17 1.75 2.67 4.23 3.74.59.25 1.05.4 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.2-.58.2-1.08.14-1.18-.06-.1-.22-.16-.47-.28z"/>
@@ -656,7 +656,7 @@ export default function ExecucaoSlideOver({
               const principal = contacts.find(c => c.principal && c.email) || contacts.find(c => c.email)
               if (principal?.email) window.open(`mailto:${principal.email}`, '_blank')
             }}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 disabled:border-gray-200 disabled:text-gray-400 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:border-gray-200 disabled:text-gray-400 transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <rect x="1" y="3" width="14" height="10" rx="1.5"/>

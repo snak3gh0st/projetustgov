@@ -53,10 +53,10 @@ const getPadUrl = (nrConvenio: string) =>
   `https://discricionarias.transferegov.sistema.gov.br/voluntarias/ConsultarProposta/ResultadoDaConsultaDeConvenioSelecionarConvenio.do?idConvenio=${nrConvenio}&destino=`
 
 const SITUACAO_COLORS: Record<string, string> = {
-  'Em execução': 'bg-blue-50 text-blue-600 border-blue-200',
-  'Concluído': 'bg-green-50 text-green-600 border-green-200',
-  'Prestaçao de contas': 'bg-amber-50 text-amber-600 border-amber-200',
-  'Prestação de contas': 'bg-amber-50 text-amber-600 border-amber-200',
+  'Em execução': 'bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-300 border-blue-200 dark:border-blue-700/30',
+  'Concluído': 'bg-green-50 dark:bg-green-500/15 text-green-600 dark:text-green-300 border-green-200 dark:border-green-700/30',
+  'Prestaçao de contas': 'bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-200 dark:border-amber-700/30',
+  'Prestação de contas': 'bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-200 dark:border-amber-700/30',
 }
 
 export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
@@ -117,7 +117,7 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
       />
 
       {/* Panel */}
-      <div className="absolute right-0 top-0 h-full w-[420px] max-w-[90vw] bg-white border-l border-gray-200 shadow-2xl flex flex-col animate-slide-in-right">
+      <div className="absolute right-0 top-0 h-full w-[420px] max-w-[90vw] bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col animate-slide-in-right">
         {/* Top accent line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0072F7] to-blue-400 pointer-events-none" />
 
@@ -127,7 +127,7 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-800 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M4 4l8 8M12 4l-8 8" />
@@ -144,7 +144,7 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-800 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M4 4l8 8M12 4l-8 8" />
@@ -160,7 +160,7 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
                     <line x1="9" y1="9" x2="15" y2="15" />
                   </svg>
                 </div>
-                <p className="text-sm text-gray-600">{error}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">{error}</p>
               </div>
             </div>
           </>
@@ -170,7 +170,7 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
             <div className="relative p-6 pb-4">
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-800 transition-colors"
+                className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M4 4l8 8M12 4l-8 8" />
@@ -179,13 +179,13 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
 
               <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-xl font-bold text-gray-900 pr-8">Detalhes do Cliente</h2>
-                  <p className="font-mono text-sm text-gray-400 mt-1">{formatCNPJ(data.cnpj)}</p>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 pr-8">Detalhes do Cliente</h2>
+                  <p className="font-mono text-sm text-gray-400 dark:text-gray-500 mt-1">{formatCNPJ(data.cnpj)}</p>
                 </div>
               </div>
 
               {data.location.uf && (
-                <span className="inline-block mt-3 text-xs font-medium rounded-full px-3 py-1 border bg-gray-50 text-gray-600 border-gray-200">
+                <span className="inline-block mt-3 text-xs font-medium rounded-full px-3 py-1 border bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700">
                   {data.location.uf} / {data.location.municipio}
                 </span>
               )}
@@ -196,15 +196,15 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
               {/* Principal Contact */}
               {principalContact && (
                 <div className="space-y-2">
-                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Contato Principal
                   </h3>
-                  <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
-                    <p className="text-sm font-semibold text-gray-900">
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                       {principalContact.nome_pessoa || '-'}
                     </p>
                     {principalContact.cargo && (
-                      <p className="text-xs text-gray-500">{principalContact.cargo}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{principalContact.cargo}</p>
                     )}
                   </div>
                 </div>
@@ -213,7 +213,7 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
               {/* Contacts List */}
               {data.contacts.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Contatos ({data.contacts.length})
                   </h3>
                   {data.contacts.map((contact) => {
@@ -223,17 +223,17 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
                         key={contact.id}
                         className={`rounded-xl p-3 border ${
                           contact.principal
-                            ? 'bg-white border-gray-300'
-                            : 'bg-gray-50 border-gray-200'
+                            ? 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600'
+                            : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
                         }`}
                       >
                         <div className="flex items-start justify-between">
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                               {contact.nome_pessoa || '-'}
                             </p>
                             {contact.cargo && (
-                              <p className="text-xs text-gray-500">{contact.cargo}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{contact.cargo}</p>
                             )}
                           </div>
                           {contact.principal && (
@@ -249,7 +249,7 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
                                 href={waUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-700 font-medium"
+                                className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-300 hover:text-green-700 font-medium"
                                 title="Conversar no WhatsApp"
                               >
                                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="flex-shrink-0">
@@ -259,7 +259,7 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
                               </a>
                               <a
                                 href={`tel:${contact.telefone.replace(/\D/g, '')}`}
-                                className="text-[10px] text-gray-400 hover:text-[#0072F7]"
+                                className="text-[10px] text-gray-400 dark:text-gray-500 hover:text-[#0072F7]"
                                 title="Ligar"
                               >
                                 (ligar)
@@ -268,7 +268,7 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
                           )}
                           {contact.email && (
                             <div className="flex items-center gap-1">
-                              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+                              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 dark:text-gray-500">
                                 <rect x="1" y="3" width="14" height="10" rx="1.5"/>
                                 <path d="M1 4l7 5 7-5"/>
                               </svg>
@@ -290,7 +290,7 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
               {/* Projects */}
               {projectCount > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Projetos ({projectCount})
                   </h3>
                   {data.projects.map((project) => (
@@ -299,23 +299,23 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
                       href={getPadUrl(project.identifier)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block bg-gray-50 rounded-xl p-3 border border-gray-200 hover:border-[#0072F7] hover:bg-blue-50/30 transition-colors"
+                      className="block bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700 hover:border-[#0072F7] hover:bg-blue-50/30 dark:hover:bg-blue-500/10 transition-colors"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-gray-900">
+                        <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
                           {project.identifier}
                         </span>
                         <span className={`text-[10px] font-medium rounded-full px-2 py-0.5 border ${
                           SITUACAO_COLORS[project.situacao || ''] ||
-                          'bg-gray-50 text-gray-500 border-gray-200'
+                          'bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700'
                         }`}>
                           {project.situacao || '-'}
                         </span>
                       </div>
                       {project.objeto && (
-                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">{project.objeto}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">{project.objeto}</p>
                       )}
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs text-gray-500">
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs text-gray-500 dark:text-gray-400">
                         {project.valor_global != null && (
                           <span>Global: {formatCompactCurrency(project.valor_global)}</span>
                         )}
@@ -323,13 +323,13 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
                           <span>Repasse: {formatCompactCurrency(project.valor_repasse)}</span>
                         )}
                         {project.saldo_conta != null && project.saldo_conta > 0 && (
-                          <span className="text-green-600 font-medium">
+                          <span className="text-green-600 dark:text-green-300 font-medium">
                             Saldo: {formatCompactCurrency(project.saldo_conta)}
                           </span>
                         )}
                       </div>
                       {project.data_fim_vigencia && (
-                        <p className="text-[10px] text-gray-400 mt-2">
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2">
                           Vigência: {formatDate(project.data_inicio_vigencia)} — {formatDate(project.data_fim_vigencia)}
                         </p>
                       )}
@@ -341,13 +341,13 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
               {/* Empty State */}
               {data.contacts.length === 0 && projectCount === 0 && (
                 <div className="text-center py-8">
-                  <div className="text-gray-400 mb-2">
+                  <div className="text-gray-400 dark:text-gray-500 mb-2">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto">
                       <circle cx="12" cy="12" r="10" />
                       <path d="M8 12h8M12 8v8" />
                     </svg>
                   </div>
-                  <p className="text-sm text-gray-500">Nenhum dado encontrado</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum dado encontrado</p>
                 </div>
               )}
             </div>

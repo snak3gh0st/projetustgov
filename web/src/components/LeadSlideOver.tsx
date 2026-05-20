@@ -6,13 +6,13 @@ import { formatCNPJ, formatCurrency, whatsappMeUrlFromTelefone } from '@/lib/for
 import type { VendedorProjeto } from '@/lib/types'
 
 const STATUS_COLORS: Record<string, string> = {
-  'Não Contatado': 'bg-orange-50 text-orange-600 border-orange-200',
-  'Ainda Não': 'bg-yellow-50 text-yellow-600 border-yellow-300',
-  'Retorno': 'bg-amber-50 text-amber-600 border-amber-200',
-  'Proposta': 'bg-blue-50 text-[#0072F7] border-blue-200',
-  'Aguardando Closer': 'bg-purple-50 text-purple-600 border-purple-200',
-  'Fechado': 'bg-green-50 text-green-600 border-green-200',
-  'Telefone Invalido': 'bg-gray-50 text-gray-500 border-gray-300',
+  'Não Contatado': 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-500/20',
+  'Ainda Não': 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-300',
+  'Retorno': 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
+  'Proposta': 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border-blue-200 dark:border-blue-500/20',
+  'Aguardando Closer': 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-500/20',
+  'Fechado': 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20',
+  'Telefone Invalido': 'bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600',
 }
 
 interface LeadSlideOverProps {
@@ -77,7 +77,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
       />
 
       {/* Panel */}
-      <div className="absolute right-0 top-0 h-full w-[420px] max-w-[90vw] bg-white border-l border-gray-200 shadow-2xl flex flex-col animate-slide-in-right">
+      <div className="absolute right-0 top-0 h-full w-[420px] max-w-[90vw] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col animate-slide-in-right">
         {/* Top accent line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0072F7] to-blue-400 pointer-events-none" />
 
@@ -85,7 +85,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
         <div className="relative p-6 pb-4">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-800 transition-colors"
+            className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M4 4l8 8M12 4l-8 8" />
@@ -94,8 +94,8 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
 
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold text-gray-900 pr-8 whitespace-normal break-words">{lead.nome || 'Sem nome'}</h2>
-              <p className="font-mono text-sm text-gray-400 mt-1">{formatCNPJ(lead.cnpj)}</p>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 pr-8 whitespace-normal break-words">{lead.nome || 'Sem nome'}</h2>
+              <p className="font-mono text-sm text-gray-400 dark:text-gray-500 mt-1">{formatCNPJ(lead.cnpj)}</p>
             </div>
           </div>
 
@@ -108,10 +108,10 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
           {localLead.tipo_vendedor && (
             <span className={`inline-block mt-2 text-xs font-medium rounded-full px-3 py-1 border ${
               localLead.tipo_vendedor === 'SDR'
-                ? 'bg-blue-50 text-[#0072F7] border-blue-200'
+                ? 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border-blue-200 dark:border-blue-500/20'
                 : localLead.tipo_vendedor === 'Exclusivo'
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-purple-50 text-purple-600 border-purple-200'
+                : 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-500/20'
             }`}>
               {localLead.tipo_vendedor} ({localLead.tipo_vendedor === 'SDR' ? '1%' : localLead.tipo_vendedor === 'Exclusivo' ? '3%' : '4%'})
             </span>
@@ -133,11 +133,11 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
           {/* Emendas list (cascade) */}
           {allEmendas && allEmendas.length > 1 ? (
             <div className="space-y-2">
-              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Emendas ({allEmendas.length})
               </h3>
               {allEmendas.map((emenda, idx) => (
-                <div key={emenda.id} className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-1.5">
+                <div key={emenda.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[#0072F7] font-bold text-sm">
                       {formatCurrency(Number(emenda.valor_emenda) || 0)}
@@ -148,13 +148,13 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                   </div>
                   <div className="flex items-center gap-2">
                     {emenda.parlamentar && (
-                      <p className="text-xs text-amber-600 font-medium">{emenda.parlamentar}</p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">{emenda.parlamentar}</p>
                     )}
                     {emenda.nr_emenda && (
-                      <span className="text-[10px] text-gray-600">#{emenda.nr_emenda}</span>
+                      <span className="text-[10px] text-gray-600 dark:text-gray-300">#{emenda.nr_emenda}</span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 whitespace-normal break-words">{emenda.orgao_concedente || '-'}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-normal break-words">{emenda.orgao_concedente || '-'}</p>
                   {emenda.link_externo && (
                     <a
                       href={emenda.link_externo}
@@ -180,7 +180,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                   href={lead.link_externo}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full text-center px-4 py-2.5 rounded-xl text-sm font-medium text-[#0072F7] border border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors"
+                  className="block w-full text-center px-4 py-2.5 rounded-xl text-sm font-medium text-[#0072F7] border border-blue-200 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 transition-colors"
                 >
                   Abrir no TransferGov &rarr;
                 </a>
@@ -190,16 +190,16 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
 
           {/* Sale Value & Commission Info */}
           {localLead.status_contato === 'Fechado' && localLead.valor_venda && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-2">
+            <div className="bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">Valor da Venda</span>
-                <span className="text-sm font-semibold text-green-600">
+                <span className="text-xs text-gray-400 dark:text-gray-500">Valor da Venda</span>
+                <span className="text-sm font-semibold text-green-600 dark:text-green-400">
                   {formatCurrency(localLead.valor_venda)}
                 </span>
               </div>
               {localLead.comissao_valor != null && localLead.comissao_valor > 0 && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
                     Comissao ({Number(localLead.comissao_percentual || 0).toFixed(1)}%)
                   </span>
                   <span className="text-sm font-semibold text-[#0072F7]">
@@ -209,8 +209,8 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
               )}
               {localLead.comissao_bonus != null && localLead.comissao_bonus > 0 && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-400">Bonus por fechamento</span>
-                  <span className="text-sm font-semibold text-green-600">
+                  <span className="text-xs text-gray-400 dark:text-gray-500">Bonus por fechamento</span>
+                  <span className="text-sm font-semibold text-green-600 dark:text-green-400">
                     {formatCurrency(localLead.comissao_bonus)}
                   </span>
                 </div>
@@ -218,9 +218,9 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
             </div>
           )}
           {!localLead.valor_venda && localLead.comissao_valor != null && localLead.comissao_valor > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-gray-400 dark:text-gray-500">
                   Comissao ({localLead.tipo_vendedor || 'SDR'} - {Number(localLead.comissao_percentual || 0).toFixed(1)}%)
                 </span>
                 <span className="text-sm font-semibold text-[#0072F7]">
@@ -233,10 +233,10 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
           {/* Address */}
           {localLead.endereco && (
             <div className="space-y-2">
-              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Endereco</h3>
-              <p className="text-sm text-gray-600">{localLead.endereco}</p>
+              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Endereco</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300">{localLead.endereco}</p>
               {localLead.municipio && localLead.uf && (
-                <p className="text-xs text-gray-500">{localLead.municipio} - {localLead.uf}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{localLead.municipio} - {localLead.uf}</p>
               )}
             </div>
           )}
@@ -244,9 +244,9 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
           {/* Contact */}
           {(localLead.telefone || localLead.email || canModify) && (
             <div className="space-y-2">
-              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Contato</h3>
+              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contato</h3>
               {(localLead.telefone || canModify) && (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M1 3c0-1.1.9-2 2-2h2.5a1 1 0 01.98.8l.5 3a1 1 0 01-.27.9L5.1 7.3a10 10 0 004.6 4.6l1.6-1.6a1 1 0 01.9-.27l3 .5a1 1 0 01.8.98V14a2 2 0 01-2 2A13 13 0 011 3z"/>
                   </svg>
@@ -274,7 +274,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                         }
                       }}
                       autoFocus
-                      className="flex-1 text-sm text-gray-900 bg-white border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:border-[#0072F7]"
+                      className="flex-1 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 focus:outline-none focus:border-[#0072F7] dark:placeholder:text-gray-500"
                     />
                   ) : (
                     <>
@@ -288,7 +288,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                             localLead.telefone
                           )
                         ) : (
-                          <span className="text-gray-600">Sem telefone</span>
+                          <span className="text-gray-600 dark:text-gray-300">Sem telefone</span>
                         )}
                       </span>
                       {canModify && (
@@ -297,7 +297,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                             setEditingField('telefone')
                             setEditValue(localLead.telefone || '')
                           }}
-                          className="text-gray-500 hover:text-[#0072F7] transition-colors"
+                          className="text-gray-500 dark:text-gray-400 hover:text-[#0072F7] transition-colors"
                           title="Editar telefone"
                         >
                           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -310,7 +310,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                 </div>
               )}
               {(localLead.email || canModify) && (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="1" y="3" width="14" height="10" rx="1.5"/>
                     <path d="M1 4l7 5 7-5"/>
@@ -339,18 +339,18 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                         }
                       }}
                       autoFocus
-                      className="flex-1 text-sm text-gray-900 bg-white border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:border-[#0072F7]"
+                      className="flex-1 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 focus:outline-none focus:border-[#0072F7] dark:placeholder:text-gray-500"
                     />
                   ) : (
                     <>
-                      <span className="flex-1">{localLead.email || <span className="text-gray-600">Sem email</span>}</span>
+                      <span className="flex-1">{localLead.email || <span className="text-gray-600 dark:text-gray-300">Sem email</span>}</span>
                       {canModify && (
                         <button
                           onClick={() => {
                             setEditingField('email')
                             setEditValue(localLead.email || '')
                           }}
-                          className="text-gray-500 hover:text-[#0072F7] transition-colors"
+                          className="text-gray-500 dark:text-gray-400 hover:text-[#0072F7] transition-colors"
                           title="Editar email"
                         >
                           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -368,7 +368,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
           {/* Observacoes/Detalhes */}
           {(lead.observacoes || canModify) && (
             <div className="space-y-2">
-              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Detalhes</h3>
+              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Detalhes</h3>
               {canModify ? (
                 <textarea
                   defaultValue={localLead.observacoes || ''}
@@ -389,11 +389,11 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                     }
                   }}
                   rows={4}
-                  className="w-full bg-gray-50 rounded-xl p-3 border border-gray-200 text-sm text-gray-600 placeholder-gray-400 focus:outline-none focus:border-[#0072F7] resize-none"
+                  className="w-full bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 placeholder-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-[#0072F7] resize-none"
                 />
               ) : (
-                <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
-                  <p className="text-sm text-gray-400 italic">{lead.observacoes || 'Sem observações'}</p>
+                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700">
+                  <p className="text-sm text-gray-400 dark:text-gray-500 italic">{lead.observacoes || 'Sem observações'}</p>
                 </div>
               )}
             </div>
@@ -401,13 +401,13 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
         </div>
 
         {/* Quick Actions */}
-        <div className="p-4 border-t border-gray-200 flex gap-3">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-3">
           <button
             disabled={!waUrl}
             onClick={() => {
               if (waUrl) window.open(waUrl, '_blank')
             }}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-white bg-green-600 hover:bg-green-500 disabled:bg-gray-200 disabled:text-gray-400 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-white bg-green-600 hover:bg-green-500 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 1a7 7 0 00-6.1 10.4L1 15l3.7-.9A7 7 0 108 1zm3.6 9.8c-.15.43-.9.82-1.24.87-.34.05-.77.07-1.24-.08a11.4 11.4 0 01-1.12-.42 8.7 8.7 0 01-3.45-3.05c-.3-.39-.6-.8-.82-1.24-.22-.44-.11-.66.08-.87l.27-.31c.09-.1.19-.26.28-.39.1-.13.13-.22.19-.37.06-.15.03-.28-.02-.39s-.56-1.34-.76-1.84c-.2-.48-.41-.42-.56-.42h-.48c-.17 0-.43.06-.66.31s-.86.84-.86 2.06.88 2.39 1 2.56c.13.17 1.75 2.67 4.23 3.74.59.25 1.05.4 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.2-.58.2-1.08.14-1.18-.06-.1-.22-.16-.47-.28z"/>
@@ -417,7 +417,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
           <button
             disabled={!lead.email}
             onClick={() => window.open(`mailto:${lead.email}`, '_blank')}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 disabled:border-gray-200 disabled:text-gray-400 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:border-gray-200 disabled:text-gray-400 transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <rect x="1" y="3" width="14" height="10" rx="1.5"/>
@@ -442,9 +442,9 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
 
 function InfoCard({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
-      <p className={`text-sm font-medium whitespace-normal break-words ${highlight ? 'text-[#0072F7] font-bold' : 'text-gray-800'}`}>{value}</p>
+    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700">
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</p>
+      <p className={`text-sm font-medium whitespace-normal break-words ${highlight ? 'text-[#0072F7] font-bold' : 'text-gray-800 dark:text-gray-200'}`}>{value}</p>
     </div>
   )
 }

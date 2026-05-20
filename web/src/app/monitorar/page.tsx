@@ -184,17 +184,17 @@ export default function MonitorarPage() {
     <div className="w-full max-w-[1800px] mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 font-heading">CNPJs Monitorados</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 font-heading">CNPJs Monitorados</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Acompanhe CNPJs de interesse e receba alertas de novas emendas
         </p>
       </div>
 
       {/* Push notification toggle */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex items-center justify-between">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6 flex flex-wrap items-start gap-3 justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-800">Notificações Push</p>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Notificações Push</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             Receba alertas quando um CNPJ monitorado receber nova emenda
           </p>
         </div>
@@ -226,8 +226,8 @@ export default function MonitorarPage() {
       </div>
 
       {/* Add CNPJ form */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-        <form onSubmit={handleAddCnpj} className="flex gap-3 items-start">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
+        <form onSubmit={handleAddCnpj} className="flex flex-wrap gap-3 items-start">
           <div className="flex-1">
             <input
               type="text"
@@ -237,7 +237,7 @@ export default function MonitorarPage() {
                 setAddError(null)
               }}
               placeholder="Digite o CNPJ (somente numeros ou com mascara)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
             {addError && (
               <p className="text-xs text-red-600 mt-1">{addError}</p>
@@ -257,67 +257,67 @@ export default function MonitorarPage() {
       {loading ? (
         <div className="text-center py-12 text-gray-400 text-sm">Carregando...</div>
       ) : cnpjs.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-          <p className="text-gray-400 text-sm">Nenhum CNPJ monitorado.</p>
-          <p className="text-gray-400 text-xs mt-1">Adicione um CNPJ acima para comecar.</p>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-12 text-center">
+          <p className="text-gray-400 dark:text-gray-500 text-sm">Nenhum CNPJ monitorado.</p>
+          <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Adicione um CNPJ acima para comecar.</p>
         </div>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="min-w-[1050px] w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CNPJ</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contato</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UF / Municipio</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor Emenda</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parlamentar / Nr Emenda</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adicionado em</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acao</th>
+                <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nome</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">CNPJ</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contato</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">UF / Municipio</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor Emenda</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Parlamentar / Nr Emenda</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Adicionado em</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acao</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {cnpjs.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <td className="px-4 py-3">
-                      <span className="font-medium text-gray-900">{row.nome || '-'}</span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">{row.nome || '-'}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-mono text-xs text-gray-600">{formatCnpj(row.cnpj)}</span>
+                      <span className="font-mono text-xs text-gray-600 dark:text-gray-300">{formatCnpj(row.cnpj)}</span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="space-y-0.5">
                         {row.telefone ? (
-                          <p className="text-gray-700">{row.telefone}</p>
+                          <p className="text-gray-700 dark:text-gray-300">{row.telefone}</p>
                         ) : null}
                         {row.email ? (
-                          <p className="text-xs text-gray-500 truncate max-w-[160px]">{row.email}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[160px]">{row.email}</p>
                         ) : null}
                         {!row.telefone && !row.email && (
-                          <span className="text-gray-400 text-xs">-</span>
+                          <span className="text-gray-400 dark:text-gray-500 text-xs">-</span>
                         )}
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       {row.uf || row.municipio ? (
                         <div>
-                          {row.uf && <span className="inline-block px-1.5 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 mr-1">{row.uf}</span>}
-                          {row.municipio && <span className="text-gray-600 text-xs">{row.municipio}</span>}
+                          {row.uf && <span className="inline-block px-1.5 py-0.5 rounded text-xs font-medium bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 mr-1">{row.uf}</span>}
+                          {row.municipio && <span className="text-gray-600 dark:text-gray-300 text-xs">{row.municipio}</span>}
                         </div>
                       ) : '-'}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-medium text-gray-800">{formatCurrency(row.valor_emenda)}</span>
+                      <span className="font-medium text-gray-800 dark:text-gray-200">{formatCurrency(row.valor_emenda)}</span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="space-y-0.5">
-                        {row.parlamentar && <p className="text-gray-700 text-xs">{row.parlamentar}</p>}
-                        {row.nr_emenda && <p className="text-gray-400 text-xs">{row.nr_emenda}</p>}
-                        {!row.parlamentar && !row.nr_emenda && <span className="text-gray-400 text-xs">-</span>}
+                        {row.parlamentar && <p className="text-gray-700 dark:text-gray-300 text-xs">{row.parlamentar}</p>}
+                        {row.nr_emenda && <p className="text-gray-400 dark:text-gray-500 text-xs">{row.nr_emenda}</p>}
+                        {!row.parlamentar && !row.nr_emenda && <span className="text-gray-400 dark:text-gray-500 text-xs">-</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">
+                    <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
                       {formatDate(row.created_at)}
                     </td>
                     <td className="px-4 py-3">

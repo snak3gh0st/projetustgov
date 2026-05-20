@@ -421,8 +421,8 @@ export default function DistribuirPage() {
   return (
     <div className="space-y-6 w-full max-w-[1800px] mx-auto">
       <div>
-        <h1 className="font-heading text-2xl font-bold text-gray-900">Distribuir Leads</h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">Distribuir Leads</h1>
+        <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
           {tab === 'unassigned'
             ? 'Atribua leads nao atribuidos aos vendedores'
             : 'Visualize e redistribua leads ja atribuidos'
@@ -432,7 +432,7 @@ export default function DistribuirPage() {
 
       {/* Roleta — balanced auto-distribution */}
       {tab === 'unassigned' && leads.length > 0 && vendedores.length > 0 && (
-        <div className="border border-blue-200 bg-blue-50/50 rounded-xl p-4 flex items-center justify-between gap-4">
+        <div className="border border-blue-200 dark:border-blue-500/20 bg-blue-50/50 dark:bg-blue-500/10 rounded-xl p-4 flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-blue-800">Distribuir Igualmente (Roleta)</p>
             <p className="text-xs text-blue-600 mt-0.5">
@@ -451,7 +451,7 @@ export default function DistribuirPage() {
 
       {/* Execution pipeline distribution — gestor only */}
       {userRole === 'gestor' && (
-        <div className="border border-green-200 bg-green-50/50 rounded-xl p-4 flex items-center justify-between gap-4">
+        <div className="border border-green-200 dark:border-green-500/20 bg-green-50/50 dark:bg-green-500/10 rounded-xl p-4 flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-green-800">Distribuir Execucao Automaticamente</p>
             <p className="text-xs text-green-600 mt-0.5">
@@ -470,7 +470,7 @@ export default function DistribuirPage() {
 
       {/* CNPJ Monitoring section - gestor only, assign directly to Paulo Gabriel */}
       {userRole === 'gestor' && (
-        <div className="border border-amber-200 bg-amber-50 rounded-xl p-4">
+        <div className="border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 rounded-xl p-4">
           <h2 className="text-sm font-semibold text-amber-800 mb-3">Adicionar CNPJ Monitorado (Paulo Gabriel)</h2>
           <div className="flex flex-wrap gap-3 items-start">
             <input
@@ -478,7 +478,7 @@ export default function DistribuirPage() {
               placeholder="CNPJ (somente números ou formatado)"
               value={monitorCnpj}
               onChange={e => { setMonitorCnpj(e.target.value); setMonitorResult(null); setPendingForce(false) }}
-              className="flex-1 min-w-[200px] bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-amber-400 transition-colors"
+              className="w-full sm:flex-1 sm:min-w-[200px] bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-amber-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-amber-400 transition-colors"
             />
             <button
               onClick={() => handleMonitorCnpj(false)}
@@ -491,10 +491,10 @@ export default function DistribuirPage() {
           {monitorResult && (
             <div className={`mt-3 text-sm rounded-lg px-3 py-2 ${
               monitorResult.type === 'success'
-                ? 'bg-green-50 text-green-700 border border-green-200'
+                ? 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-500/20'
                 : monitorResult.type === 'conflict'
-                  ? 'bg-orange-50 text-orange-700 border border-orange-200'
-                  : 'bg-red-50 text-red-700 border border-red-200'
+                  ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-500/20'
+                  : 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20'
             }`}>
               {monitorResult.message}
               {monitorResult.type === 'conflict' && pendingForce && (
@@ -512,18 +512,18 @@ export default function DistribuirPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-xl bg-gray-50 border border-gray-200 p-1 w-fit">
+      <div className="flex gap-1 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-1 w-fit">
         <button
           onClick={() => setTab('unassigned')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             tab === 'unassigned'
-              ? 'bg-blue-50 text-[#0072F7] border border-blue-200'
-              : 'text-gray-400 hover:text-gray-800 border border-transparent'
+              ? 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border border-blue-200 dark:border-blue-500/20'
+              : 'text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 border border-transparent'
           }`}
         >
           Nao Atribuidos
           <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
-            tab === 'unassigned' ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-500'
+            tab === 'unassigned' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
           }`}>
             {uniqueUnassignedCount}
           </span>
@@ -532,13 +532,13 @@ export default function DistribuirPage() {
           onClick={() => setTab('assigned')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             tab === 'assigned'
-              ? 'bg-blue-50 text-[#0072F7] border border-blue-200'
-              : 'text-gray-400 hover:text-gray-800 border border-transparent'
+              ? 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border border-blue-200 dark:border-blue-500/20'
+              : 'text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 border border-transparent'
           }`}
         >
           Distribuidos
           <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
-            tab === 'assigned' ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-500'
+            tab === 'assigned' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
           }`}>
             {uniqueAssignedCount}
           </span>
@@ -547,25 +547,25 @@ export default function DistribuirPage() {
 
       {/* Vendedor cards - for unassigned tab: target selection; for assigned tab: summary */}
       {tab === 'unassigned' ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           {vendedores.map(v => (
             <div
               key={v.id}
               onClick={() => setSelectedVendedorId(v.id)}
               className={`rounded-xl p-3 border cursor-pointer transition-all ${
                 selectedVendedorId === v.id
-                  ? 'border-[#0072F7] bg-blue-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
+                  ? 'border-[#0072F7] bg-blue-50 dark:bg-blue-500/10'
+                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
-              <p className="text-sm font-medium text-gray-900 truncate">{v.nome}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{v.email}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{v.nome}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{v.email}</p>
               <p className="text-xs text-[#0072F7] mt-1">{v.lead_count} leads</p>
             </div>
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           {vendedores.map(v => {
             const info = assignedByVendedor[v.id]
             const count = info?.count || 0
@@ -596,12 +596,12 @@ export default function DistribuirPage() {
           placeholder="Buscar por CNPJ ou nome..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 min-w-[200px] bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0072F7] transition-colors"
+          className="w-full sm:flex-1 sm:min-w-[200px] bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0072F7] transition-colors"
         />
         <select
           value={ufFilter}
           onChange={e => setUfFilter(e.target.value)}
-          className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
+          className="bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
         >
           <option value="">Todas UFs</option>
           {ufs.map(uf => <option key={uf} value={uf!}>{uf}</option>)}
@@ -610,7 +610,7 @@ export default function DistribuirPage() {
           <select
             value={filterVendedorId}
             onChange={e => setFilterVendedorId(e.target.value)}
-            className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
+            className="bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
           >
             <option value="">Todos Vendedores</option>
             {vendedores.map(v => (
@@ -622,7 +622,7 @@ export default function DistribuirPage() {
 
       {/* CNPJ grouping note */}
       {extraByCnpj > 0 && selectedLeadIds.size > 0 && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50/50 px-4 py-2.5 text-sm text-blue-700">
+        <div className="rounded-lg border border-blue-200 dark:border-blue-500/20 bg-blue-50/50 dark:bg-blue-500/10 px-4 py-2.5 text-sm text-blue-700 dark:text-blue-400">
           {extraByCnpj} lead{extraByCnpj > 1 ? 's' : ''} adicional{extraByCnpj > 1 ? 'is' : ''} do mesmo CNPJ ser{extraByCnpj > 1 ? 'ao' : 'a'} incluido{extraByCnpj > 1 ? 's' : ''} automaticamente
         </div>
       )}
@@ -642,10 +642,10 @@ export default function DistribuirPage() {
           }
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+          <table className="min-w-[980px] w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
+              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                 <th className="px-3 py-3 text-left">
                   <input
                     type="checkbox"
@@ -654,16 +654,16 @@ export default function DistribuirPage() {
                     className="rounded border-gray-600 bg-transparent text-blue-500 focus:ring-blue-500/30"
                   />
                 </th>
-                <th onClick={() => handleSort('cnpj')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">CNPJ<SortIcon col="cnpj" /></th>
+                <th onClick={() => handleSort('cnpj')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">CNPJ<SortIcon col="cnpj" /></th>
                 {tab === 'assigned' && (
-                  <th onClick={() => handleSort('vendedor')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Vendedor<SortIcon col="vendedor" /></th>
+                  <th onClick={() => handleSort('vendedor')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Vendedor<SortIcon col="vendedor" /></th>
                 )}
-                <th onClick={() => handleSort('leads')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Leads<SortIcon col="leads" /></th>
-                <th onClick={() => handleSort('nome')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Nome<SortIcon col="nome" /></th>
-                <th onClick={() => handleSort('programa')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Programa<SortIcon col="programa" /></th>
-                <th onClick={() => handleSort('valor')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Valor Emenda<SortIcon col="valor" /></th>
-                <th onClick={() => handleSort('uf')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">UF<SortIcon col="uf" /></th>
-                <th onClick={() => handleSort('status')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-[#0072F7] select-none">Status<SortIcon col="status" /></th>
+                <th onClick={() => handleSort('leads')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Leads<SortIcon col="leads" /></th>
+                <th onClick={() => handleSort('nome')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Nome<SortIcon col="nome" /></th>
+                <th onClick={() => handleSort('programa')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Programa<SortIcon col="programa" /></th>
+                <th onClick={() => handleSort('valor')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Valor Emenda<SortIcon col="valor" /></th>
+                <th onClick={() => handleSort('uf')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">UF<SortIcon col="uf" /></th>
+                <th onClick={() => handleSort('status')} className="px-3 py-3 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase cursor-pointer hover:text-[#0072F7] select-none">Status<SortIcon col="status" /></th>
               </tr>
             </thead>
             <tbody>
@@ -671,8 +671,8 @@ export default function DistribuirPage() {
                 <tr
                   key={lead.id}
                   onClick={() => toggleLead(lead.id)}
-                  className={`border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer ${
-                    selectedLeadIds.has(lead.id) ? 'bg-blue-50/50' : ''
+                  className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
+                    selectedLeadIds.has(lead.id) ? 'bg-blue-50/50 dark:bg-blue-500/10' : ''
                   }`}
                 >
                   <td className="px-3 py-2">
@@ -684,10 +684,10 @@ export default function DistribuirPage() {
                       className="rounded border-gray-600 bg-transparent text-blue-500 focus:ring-blue-500/30"
                     />
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs text-gray-600">{formatCNPJ(lead.cnpj)}</td>
+                  <td className="px-3 py-2 font-mono text-xs text-gray-600 dark:text-gray-300">{formatCNPJ(lead.cnpj)}</td>
                   {tab === 'assigned' && (
                     <td className="px-3 py-2 text-xs">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-[#0072F7] border border-blue-200">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border border-blue-200 dark:border-blue-500/20">
                         {lead.vendedor_nome || '-'}
                       </span>
                     </td>
@@ -699,20 +699,20 @@ export default function DistribuirPage() {
                       <span className="text-gray-500">1</span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-gray-900 font-medium truncate max-w-[180px]">{lead.nome || '-'}</td>
-                  <td className="px-3 py-2 text-gray-600 text-xs truncate max-w-[150px]">{lead.nome_programa || '-'}</td>
+                  <td className="px-3 py-2 text-gray-900 dark:text-gray-100 font-medium truncate max-w-[180px]">{lead.nome || '-'}</td>
+                  <td className="px-3 py-2 text-gray-600 dark:text-gray-300 text-xs truncate max-w-[150px]">{lead.nome_programa || '-'}</td>
                   <td className="px-3 py-2 text-[#0072F7] text-xs">{formatCompactCurrency(lead.valor_emenda)}</td>
-                  <td className="px-3 py-2 text-gray-600">{lead.uf || '-'}</td>
+                  <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{lead.uf || '-'}</td>
                   <td className="px-3 py-2 text-xs">
                     {tab === 'assigned' ? (
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${
                         lead.status_contato === 'Fechado'
-                          ? 'bg-green-50 text-green-600 border border-green-200'
+                          ? 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-500/20'
                           : lead.status_contato === 'Proposta'
-                            ? 'bg-amber-50 text-amber-600 border border-amber-200'
+                            ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20'
                             : lead.status_contato === 'Retorno'
-                              ? 'bg-blue-50 text-[#0072F7] border border-blue-200'
-                              : 'bg-gray-50 text-gray-400 border border-gray-200'
+                              ? 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border border-blue-200 dark:border-blue-500/20'
+                              : 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700'
                       }`}>
                         {lead.status_contato}
                       </span>
@@ -728,8 +728,8 @@ export default function DistribuirPage() {
       )}
 
       {/* Bottom action bar */}
-      <div className="sticky bottom-4 flex items-center justify-between rounded-xl border border-gray-200 bg-white/90 backdrop-blur-md px-4 py-3 shadow-sm">
-        <span className="text-sm text-gray-400">
+      <div className="sticky bottom-4 flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-4 py-3 shadow-sm">
+        <span className="text-sm text-gray-400 dark:text-gray-500">
           {selectedLeadIds.size > 0
             ? `${selectedLeadIds.size} leads selecionados${extraByCnpj > 0 ? ` (+${extraByCnpj} por CNPJ)` : ''}`
             : tab === 'unassigned'
@@ -742,7 +742,7 @@ export default function DistribuirPage() {
             <button
               onClick={handleUnassign}
               disabled={assigning}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 border border-red-200 dark:border-red-500/20 hover:bg-red-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               {assigning ? 'Removendo...' : 'Desatribuir'}
             </button>
@@ -750,7 +750,7 @@ export default function DistribuirPage() {
           <select
             value={selectedVendedorId}
             onChange={e => setSelectedVendedorId(e.target.value)}
-            className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
+            className="bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
           >
             <option value="">{tab === 'assigned' ? 'Redistribuir para...' : 'Selecione vendedor...'}</option>
             {vendedores.map(v => (
@@ -774,7 +774,7 @@ export default function DistribuirPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 right-6 max-w-md bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-lg text-sm backdrop-blur-md">
+        <div className="fixed bottom-6 right-6 max-w-md bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-700 dark:text-blue-400 px-4 py-2 rounded-lg text-sm backdrop-blur-md">
           {toast}
         </div>
       )}
@@ -782,35 +782,35 @@ export default function DistribuirPage() {
       {/* Execucao distribution result modal */}
       {showExecucaoModal && execucaoResult && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900">Resultado da Distribuicao (Execucao)</h2>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Resultado da Distribuicao (Execucao)</h2>
               <button
                 onClick={() => setShowExecucaoModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none"
               >
                 &times;
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="bg-green-50 rounded-xl p-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+              <div className="bg-green-50 dark:bg-green-500/10 rounded-xl p-3">
                 <p className="text-2xl font-bold text-green-700">{execucaoResult.distributed}</p>
-                <p className="text-xs text-green-600 mt-0.5">CNPJs distribuidos</p>
+                <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">CNPJs distribuidos</p>
               </div>
-              <div className="bg-blue-50 rounded-xl p-3">
+              <div className="bg-blue-50 dark:bg-blue-500/10 rounded-xl p-3">
                 <p className="text-2xl font-bold text-blue-700">{execucaoResult.updated}</p>
-                <p className="text-xs text-blue-600 mt-0.5">Atualizados</p>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">Atualizados</p>
               </div>
-              <div className="bg-purple-50 rounded-xl p-3">
+              <div className="bg-purple-50 dark:bg-purple-500/10 rounded-xl p-3">
                 <p className="text-2xl font-bold text-purple-700">{execucaoResult.inserted}</p>
-                <p className="text-xs text-purple-600 mt-0.5">Inseridos</p>
+                <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">Inseridos</p>
               </div>
             </div>
 
             {execucaoResult.coordenador && execucaoResult.coordenador.assigned > 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                <p className="text-sm text-amber-800">
+              <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-3">
+                <p className="text-sm text-amber-800 dark:text-amber-400">
                   <span className="font-semibold">{execucaoResult.coordenador.assigned}</span> CNPJs de clientes existentes atribuidos ao coordenador <span className="font-semibold">{execucaoResult.coordenador.nome}</span>
                 </p>
               </div>
@@ -819,7 +819,7 @@ export default function DistribuirPage() {
             {execucaoResult.vendedores.length > 0 && (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-gray-500 border-b border-gray-100">
+                  <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
                     <th className="py-2 font-medium">Vendedor</th>
                     <th className="py-2 font-medium text-center">Antes</th>
                     <th className="py-2 font-medium text-center">Atribuidos</th>
@@ -828,11 +828,11 @@ export default function DistribuirPage() {
                 </thead>
                 <tbody>
                   {execucaoResult.vendedores.map((v, i) => (
-                    <tr key={i} className="border-b border-gray-50">
-                      <td className="py-2 text-gray-900">{v.nome}</td>
-                      <td className="py-2 text-center text-gray-500">{v.before}</td>
+                    <tr key={i} className="border-b border-gray-50 dark:border-gray-800">
+                      <td className="py-2 text-gray-900 dark:text-gray-100">{v.nome}</td>
+                      <td className="py-2 text-center text-gray-500 dark:text-gray-400">{v.before}</td>
                       <td className="py-2 text-center font-semibold text-green-700">{v.assigned > 0 ? `+${v.assigned}` : '0'}</td>
-                      <td className="py-2 text-center text-gray-900">{v.after}</td>
+                      <td className="py-2 text-center text-gray-900 dark:text-gray-100">{v.after}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -840,14 +840,14 @@ export default function DistribuirPage() {
             )}
 
             {execucaoResult.distributed === 0 && (
-              <p className="text-sm text-gray-500 text-center py-2">
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-2">
                 Nenhum lead em execucao pendente de distribuicao.
               </p>
             )}
 
             <button
               onClick={() => setShowExecucaoModal(false)}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+              className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             >
               Fechar
             </button>
