@@ -455,7 +455,7 @@ export default function DistribuirPage() {
           <div>
             <p className="text-sm font-semibold text-green-800">Distribuir Execucao Automaticamente</p>
             <p className="text-xs text-green-600 mt-0.5">
-              Atribui leads em execucao ao vendedor com menos leads. Clientes existentes vao ao coordenador.
+              Atribui leads em execucao ao vendedor com menos leads. Clientes existentes vao ao gestor.
             </p>
           </div>
           <button
@@ -811,7 +811,7 @@ export default function DistribuirPage() {
             {execucaoResult.coordenador && execucaoResult.coordenador.assigned > 0 && (
               <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-3">
                 <p className="text-sm text-amber-800 dark:text-amber-400">
-                  <span className="font-semibold">{execucaoResult.coordenador.assigned}</span> CNPJs de clientes existentes atribuidos ao coordenador <span className="font-semibold">{execucaoResult.coordenador.nome}</span>
+                  <span className="font-semibold">{execucaoResult.coordenador.assigned}</span> CNPJs de clientes existentes atribuidos ao gestor <span className="font-semibold">{execucaoResult.coordenador.nome}</span>
                 </p>
               </div>
             )}

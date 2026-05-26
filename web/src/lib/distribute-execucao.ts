@@ -17,7 +17,7 @@ const DISTRIBUTE_LOCK_KEY = 19876543210
 
 /**
  * Round-robin distribution of unassigned execucao CNPJs among active vendedores.
- * Client CNPJs (found in existing_clients table) are routed to the coordenador user
+ * Client CNPJs (found in existing_clients table) are routed to the current lead manager
  * instead of entering the equalization queue.
  *
  * Uses pg_try_advisory_lock on a dedicated connection to prevent double-assignment
@@ -80,14 +80,16 @@ export async function distributeUnassignedExecucao(): Promise<DistributeResult> 
         return { distributed: 0, updated: 0, inserted: 0, vendedores: vendedores.map(v => ({ nome: v.nome, before: v.current_count, assigned: 0, after: v.current_count })) }
       }
 
-      // 3. Client-routing pre-step: find coordenador and split unassigned CNPJs
+      // 3. Client-routing pre-step: find current lead manager and split unassigned CNPJs
+      const managerEmail = process.env.PRIMARY_LEAD_MANAGER_EMAIL || 'rooger@projetus.org'
       const { rows: coordRows } = await client.query<{ id: string; nome: string }>(
-        `SELECT id, nome FROM users WHERE role = 'coordenador' AND active = true ORDER BY nome ASC LIMIT 1`
+        `SELECT id, nome FROM users WHERE email = $1 AND active = true LIMIT 1`,
+        [managerEmail]
       )
       const coordenador = coordRows[0] ?? null
 
       if (!coordenador) {
-        console.log('[distribute-execucao] No active coordenador found, client leads will enter round-robin')
+        console.log(`[distribute-execucao] No active lead manager found for ${managerEmail}, client leads will enter round-robin`)
       }
 
       // Check which unassigned CNPJs are existing clients (normalize both sides)
@@ -105,7 +107,7 @@ export async function distributeUnassignedExecucao(): Promise<DistributeResult> 
         ? unassigned.filter(r => !clientCnpjs.has(r.cnpj))
         : unassigned
 
-      // 4. Assign client leads to coordenador
+      // 4. Assign client leads to lead manager
       let clientAssigned = 0
       if (coordenador && clientLeads.length > 0) {
         for (const lead of clientLeads) {
@@ -128,7 +130,7 @@ export async function distributeUnassignedExecucao(): Promise<DistributeResult> 
           }
           clientAssigned++
         }
-        console.log(`[distribute-execucao] Routed ${clientAssigned} client CNPJs to coordenador ${coordenador.nome}`)
+        console.log(`[distribute-execucao] Routed ${clientAssigned} client CNPJs to lead manager ${coordenador.nome}`)
       }
 
       // 5. Round-robin: assign remaining CNPJs to vendedor with fewest leads
