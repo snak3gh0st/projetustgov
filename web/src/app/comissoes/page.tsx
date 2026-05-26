@@ -62,6 +62,7 @@ interface ComissaoData {
     fechados_count: number
   }>
   paulo_breakdown: PauloBreakdown | null
+  lead_manager_name?: string
   leads: ComissaoLead[]
   vendedores_list: Array<{ id: string; nome: string }>
   filters_applied: {
@@ -334,7 +335,7 @@ export default function ComissoesPage() {
 
       {/* Summary cards */}
       {data.role === 'coordenador' && data.paulo_breakdown ? (
-        /* Paulo's view: show his personal commission total */
+        /* Lead manager's view: show personal commission total */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-gray-900 border-2 border-[#0072F7] shadow-sm rounded-xl p-5">
             <p className="text-xs text-[#0072F7] uppercase tracking-wider font-medium">Minha Comissao Total</p>
@@ -372,7 +373,7 @@ export default function ComissoesPage() {
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">SDR + Exclusivo + Closer</p>
           </div>
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Comissao Paulo (Closer)</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Comissao {data.lead_manager_name || 'Rooger'} (Closer)</p>
             <p className="text-2xl font-heading font-bold text-purple-600 mt-2">
               {formatCurrency(data.summary.total_closer_comissao)}
             </p>
@@ -439,7 +440,7 @@ export default function ComissoesPage() {
         </div>
       )}
 
-      {/* Paulo's 3-type commission breakdown */}
+      {/* Lead manager's 3-type commission breakdown */}
       {data.paulo_breakdown && (
         <div>
           <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100 mb-3">
@@ -524,11 +525,11 @@ export default function ComissoesPage() {
                 </div>
               </div>
             ))}
-            {/* Paulo card — closer + coordenador commissions */}
+            {/* Lead manager card — closer + coordenador commissions */}
             {data.paulo_breakdown && isGestor && (
               <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-bold text-purple-900">Paulo (Coordenador)</h3>
+                  <h3 className="text-lg font-bold text-purple-900">{data.lead_manager_name || 'Rooger'} (Gestor)</h3>
                   <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded font-medium">
                     {data.paulo_breakdown.closer.count + data.paulo_breakdown.exclusivo.count} fechados
                   </span>
@@ -553,7 +554,7 @@ export default function ComissoesPage() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between border-t border-purple-200 pt-1 mt-1">
-                    <span className="text-xs text-purple-700 font-medium">Total Paulo</span>
+                    <span className="text-xs text-purple-700 font-medium">Total {data.lead_manager_name || 'Rooger'}</span>
                     <span className="text-base font-bold text-purple-900">
                       {formatCurrency(data.paulo_breakdown.total_geral)}
                     </span>

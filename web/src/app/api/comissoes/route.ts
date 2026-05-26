@@ -52,8 +52,9 @@ export async function GET(request: NextRequest) {
 
     const whereClause = filters.join(' AND ')
 
-    // Show Paulo's 3-type breakdown for coordenador (Paulo himself) and gestor (admins)
-    const isPauloView = session.role === 'coordenador' || session.role === 'gestor'
+    // Show the current lead manager's 3-type breakdown for gestores and the manager themself.
+    const managerEmail = process.env.PRIMARY_LEAD_MANAGER_EMAIL || 'rooger@projetus.org'
+    const isManagerBreakdownView = session.role === 'gestor' || session.email === managerEmail
 
     // Run all queries in parallel
     const showPerVendedor = (session.role !== 'vendedor') && !vendedorId
@@ -165,22 +166,21 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Paulo's 3-type commission breakdown (visible to Paulo and gestors)
+    // Current lead manager's 3-type commission breakdown (visible to manager and gestors)
     let pauloBreakdown = null
-    if (isPauloView) {
-      // Resolve Paulo's ID: if gestor is viewing, look up Paulo; if Paulo himself, use session
-      let pauloUserId = session.userId
-      if (session.role === 'gestor') {
-        const pauloLookup = await query(
-          "SELECT id FROM users WHERE email = 'paulo@projetus.org' AND active = true LIMIT 1"
-        )
-        pauloUserId = pauloLookup[0]?.id as string ?? null
-      }
+    let leadManagerName = 'Rooger'
+    if (isManagerBreakdownView) {
+      const managerLookup = await query(
+        'SELECT id, nome FROM users WHERE email = $1 AND active = true LIMIT 1',
+        [managerEmail]
+      )
+      const managerUserId = managerLookup[0]?.id as string ?? null
+      leadManagerName = (managerLookup[0]?.nome as string | undefined) || leadManagerName
 
-      if (!pauloUserId) {
-        // Paulo not found — skip breakdown
+      if (!managerUserId) {
+        // Lead manager not found — skip breakdown
       } else {
-      // Build date filters for Paulo queries
+      // Build date filters for lead manager queries
       const pauloFilters: string[] = ["vp.status_contato = 'Fechado'"]
       const pauloParams: unknown[] = []
       let pIdx = 1
@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
       const pauloWhere = pauloFilters.join(' AND ')
 
       const [exclusivoRows, closerRows, coordenadorRows] = await Promise.all([
-        // Exclusivo: Paulo's own clients (tipo_vendedor = 'Exclusivo', vendedor_id = Paulo)
+        // Exclusivo: manager's own clients (tipo_vendedor = 'Exclusivo', vendedor_id = manager)
         query(`
           SELECT
             COALESCE(SUM(vp.comissao_valor), 0)::numeric as total,
@@ -199,9 +199,9 @@ export async function GET(request: NextRequest) {
           WHERE ${pauloWhere}
             AND vp.tipo_vendedor = 'Exclusivo'
             AND vp.vendedor_id = $${pIdx}
-        `, [...pauloParams, pauloUserId]),
+        `, [...pauloParams, managerUserId]),
 
-        // Closer: leads where Paulo is closer_id + Fechado
+        // Closer: leads where manager is closer_id + Fechado
         query(`
           SELECT
             COALESCE(SUM(vp.closer_comissao_valor), 0)::numeric as total,
@@ -212,10 +212,10 @@ export async function GET(request: NextRequest) {
             AND vp.closer_id = $${pIdx}
             AND vp.closer_comissao_valor IS NOT NULL
             AND vp.closer_comissao_valor > 0
-        `, [...pauloParams, pauloUserId]),
+        `, [...pauloParams, managerUserId]),
 
         // Coordenador: 1% of regular vendedores' Fechado sales
-        // Excludes gestor-role leads and Paulo's own leads (coordenador role)
+        // Excludes gestor-role leads and manager's own leads.
         query(`
           SELECT
             COALESCE(SUM(vp.valor_venda) * 0.01, 0)::numeric as total,
@@ -228,7 +228,7 @@ export async function GET(request: NextRequest) {
             AND vp.valor_venda > 0
             AND u.role = 'vendedor'
             AND vp.vendedor_id != $${pIdx}
-        `, [...pauloParams, pauloUserId]),
+        `, [...pauloParams, managerUserId]),
       ])
 
       const exclusivoTotal = Number(exclusivoRows[0]?.total) || 0
@@ -253,8 +253,8 @@ export async function GET(request: NextRequest) {
         },
         total_geral: exclusivoTotal + closerTotal + coordenadorTotal,
       }
-    } // else pauloUserId found
-    } // isPauloView
+    } // else managerUserId found
+    } // isManagerBreakdownView
 
     // Map leads, zeroing out comissao_bonus for coordenador on split leads
     // where they are the closer but not the vendedor (bonus belongs to the SDR).
@@ -308,6 +308,7 @@ export async function GET(request: NextRequest) {
       },
       per_vendedor: perVendedor,
       paulo_breakdown: pauloBreakdown,
+      lead_manager_name: leadManagerName,
       leads: mappedLeads,
       vendedores_list: vendedoresRows.map(v => ({
         id: v.id,

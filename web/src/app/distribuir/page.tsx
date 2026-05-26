@@ -468,10 +468,10 @@ export default function DistribuirPage() {
         </div>
       )}
 
-      {/* CNPJ Monitoring section - gestor only, assign directly to Paulo Gabriel */}
+      {/* CNPJ Monitoring section - gestor only, assign directly to Rooger */}
       {userRole === 'gestor' && (
         <div className="border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 rounded-xl p-4">
-          <h2 className="text-sm font-semibold text-amber-800 mb-3">Adicionar CNPJ Monitorado (Paulo Gabriel)</h2>
+          <h2 className="text-sm font-semibold text-amber-800 mb-3">Adicionar CNPJ Monitorado (Rooger)</h2>
           <div className="flex flex-wrap gap-3 items-start">
             <input
               type="text"
@@ -485,7 +485,7 @@ export default function DistribuirPage() {
               disabled={monitorLoading || monitorCnpj.replace(/\D/g, '').length !== 14}
               className="px-4 py-2 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              {monitorLoading ? 'Atribuindo...' : 'Atribuir a Paulo'}
+              {monitorLoading ? 'Atribuindo...' : 'Atribuir a Rooger'}
             </button>
           </div>
           {monitorResult && (

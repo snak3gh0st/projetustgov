@@ -24,6 +24,8 @@ const VENDEDOR_MAP: Record<string, string> = {
   'vitoria': 'vitoria@projetus.org',
   'paulo': 'paulo@projetus.org',
   'paulo gabriel': 'paulo@projetus.org',
+  'rooger': 'rooger@projetus.org',
+  'rooger cordeiro': 'rooger@projetus.org',
 }
 
 function normalizeHeader(h: string): string {

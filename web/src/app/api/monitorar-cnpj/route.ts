@@ -20,12 +20,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'CNPJ deve ter 14 dígitos' }, { status: 400 })
   }
 
-  // Look up Paulo Gabriel's user id
-  const pauloRows = await query(
-    "SELECT id FROM users WHERE email = 'paulo@projetus.org' AND active = true LIMIT 1"
+  // Look up the current lead manager's user id
+  const managerEmail = process.env.PRIMARY_LEAD_MANAGER_EMAIL || 'rooger@projetus.org'
+  const managerRows = await query(
+    'SELECT id, nome FROM users WHERE email = $1 AND active = true LIMIT 1',
+    [managerEmail]
   )
-  const pauloId = pauloRows[0]?.id
-  if (!pauloId) return NextResponse.json({ error: 'Paulo Gabriel não encontrado no sistema' }, { status: 404 })
+  const managerId = managerRows[0]?.id
+  const managerName = (managerRows[0]?.nome as string | undefined) || 'Rooger'
+  if (!managerId) return NextResponse.json({ error: 'Gestor de leads não encontrado no sistema' }, { status: 404 })
 
   // Check if CNPJ exists in vendedor_projetos
   const existingLeads = await query(
@@ -40,7 +43,7 @@ export async function POST(request: NextRequest) {
   // Check if already assigned to someone else (unless force override)
   if (!force) {
     const alreadyAssigned = existingLeads.find(
-      (l) => l.vendedor_id && l.vendedor_id !== pauloId
+      (l) => l.vendedor_id && l.vendedor_id !== managerId
     )
     if (alreadyAssigned) {
       return NextResponse.json({
@@ -51,18 +54,18 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Assign all rows for this CNPJ to Paulo (tipo_vendedor = 'Exclusivo')
+  // Assign all rows for this CNPJ to the current lead manager (tipo_vendedor = 'Exclusivo')
   await query(
     `UPDATE vendedor_projetos
      SET vendedor_id = $1, tipo_vendedor = 'Exclusivo', updated_at = NOW()
      WHERE cnpj = $2`,
-    [pauloId, cleanCnpj]
+    [managerId, cleanCnpj]
   )
 
   const nomeLead = existingLeads[0]?.nome || cleanCnpj
   return NextResponse.json({
     success: true,
-    message: `${nomeLead} atribuído a Paulo Gabriel como Exclusivo`,
+    message: `${nomeLead} atribuído a ${managerName} como Exclusivo`,
     cnpj: cleanCnpj,
     nome: nomeLead,
     rows_updated: existingLeads.length,

@@ -599,15 +599,18 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       if (cc) existingClients.add(cc)
     }
 
-    // Look up Paulo Gabriel for existing client routing
-    const pauloRes = await client.query(
-      "SELECT id FROM users WHERE email = 'paulo@projetus.org' AND active = true LIMIT 1"
+    // Look up the current lead manager for existing client routing.
+    const managerEmail = process.env.PRIMARY_LEAD_MANAGER_EMAIL || 'rooger@projetus.org'
+    const managerRes = await client.query(
+      'SELECT id, nome FROM users WHERE email = $1 AND active = true LIMIT 1',
+      [managerEmail]
     )
-    const pauloId: string | null = pauloRes.rows[0]?.id ?? null
-    if (!pauloId) {
-      console.warn('[repo-sync] WARNING: Paulo Gabriel (paulo@projetus.org) not found or inactive, existing clients will use normal round-robin')
+    const managerId: string | null = managerRes.rows[0]?.id ?? null
+    const managerName: string = managerRes.rows[0]?.nome ?? managerEmail
+    if (!managerId) {
+      console.warn(`[repo-sync] WARNING: lead manager (${managerEmail}) not found or inactive, existing clients will use normal round-robin`)
     }
-    console.log(`[repo-sync] Existing client routing: Paulo ID=${pauloId}, existing client CNPJs=${existingClients.size}`)
+    console.log(`[repo-sync] Existing client routing: manager=${managerName} (${managerEmail}), existing client CNPJs=${existingClients.size}`)
 
     // ========================================================================
     // STEP 7: UPSERT leads in batches
@@ -666,10 +669,10 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
         // Existing lead: keep current vendedor assignment.
         // Prefer exact emenda key match; fall back to CNPJ-level assignment (migration case).
         vendedorId = existingAssignments.get(assignmentKey) ?? cnpjAssignments.get(lead.cnpj) ?? null
-      } else if (isExistingClient && pauloId) {
-        // New lead from existing paying client: route directly to Paulo Gabriel
-        vendedorId = pauloId
-        vendedorCounts.set(pauloId, (vendedorCounts.get(pauloId) ?? 0) + 1)
+      } else if (isExistingClient && managerId) {
+        // New lead from existing paying client: route directly to the current lead manager.
+        vendedorId = managerId
+        vendedorCounts.set(managerId, (vendedorCounts.get(managerId) ?? 0) + 1)
       } else if (cnpjAssignments.has(lead.cnpj)) {
         // New emenda for a CNPJ that already has rows — inherit the existing vendedor.
         // This ensures all emendas of the same organization go to the same vendedor,
@@ -688,8 +691,8 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       }
 
       const obs = isExistingClient ? 'JA E CLIENTE PROJETUS' : null
-      // Existing clients routed to Paulo get tipo_vendedor = 'Exclusivo'
-      const tipoVendedor = (isExistingClient && pauloId && vendedorId === pauloId) ? 'Exclusivo' : 'SDR'
+      // Existing clients routed to the lead manager get tipo_vendedor = 'Exclusivo'
+      const tipoVendedor = (isExistingClient && managerId && vendedorId === managerId) ? 'Exclusivo' : 'SDR'
 
       // Conflict key mirrors the DB constraint: (cnpj, codigo_programa, COALESCE(nr_emenda, ''))
       const conflictKey = `${lead.cnpj}|${lead.codigo_programa}|${lead.nr_emenda ?? ''}`

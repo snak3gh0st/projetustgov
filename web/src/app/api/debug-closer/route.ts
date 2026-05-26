@@ -5,7 +5,7 @@ import { getApiSession } from '@/lib/dal'
 export const dynamic = 'force-dynamic'
 
 // Temporary debug endpoint — gestor-only access
-// Returns Paulo's user record + closer_id statistics to verify Aguardando Closer flow
+// Returns the current lead manager user record + closer_id statistics to verify Aguardando Closer flow
 export async function GET() {
   try {
     const session = await getApiSession()
@@ -17,9 +17,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden — gestor access only' }, { status: 403 })
     }
 
-    // Paulo's user record
-    const pauloRows = await query(
-      `SELECT id, email, nome, role, active FROM users WHERE email = 'paulo@projetus.org'`
+    const managerEmail = process.env.PRIMARY_LEAD_MANAGER_EMAIL || 'rooger@projetus.org'
+
+    // Current lead manager user record
+    const managerRows = await query(
+      `SELECT id, email, nome, role, active FROM users WHERE email = $1`,
+      [managerEmail]
     )
 
     // Count of leads with closer_id set
@@ -42,7 +45,7 @@ export async function GET() {
     )
 
     return NextResponse.json({
-      paulo_user: pauloRows[0] ?? null,
+      lead_manager_user: managerRows[0] ?? null,
       leads_with_closer_id_count: closerCountRows[0]?.count ?? 0,
       aguardando_closer_sample: sampleRows,
       recent_closer_assignments: recentRows,

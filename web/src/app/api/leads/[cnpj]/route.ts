@@ -105,25 +105,27 @@ export async function PATCH(
     // Commission lock/unlock logic (COM-01: vendedor vinculado ao lead quando marca Fechado)
     if (body.status_contato === 'Aguardando Closer') {
       console.log(`[PATCH] Aguardando Closer triggered for project ${projectId} by user ${session.userId} (${session.role})`)
-      // SDR → Closer flow: SDR sends lead to Paulo as Closer
-      // Set closer_id = Paulo, keep vendedor_id = SDR original
+      // SDR → Closer flow: SDR sends lead to the current lead manager as Closer
+      // Set closer_id = manager, keep vendedor_id = SDR original
       // Note: active filter removed so inactive accounts are still found (avoids silent failures)
-      const pauloRes = await query(
-        "SELECT id, active FROM users WHERE email = 'paulo@projetus.org' LIMIT 1"
+      const managerEmail = process.env.PRIMARY_LEAD_MANAGER_EMAIL || 'rooger@projetus.org'
+      const managerRes = await query(
+        'SELECT id, nome, active FROM users WHERE email = $1 LIMIT 1',
+        [managerEmail]
       )
-      const pauloCloserId = pauloRes[0]?.id ?? null
-      if (pauloCloserId) {
-        if (!pauloRes[0]?.active) {
-          console.warn('[PATCH] Paulo Gabriel account is inactive — still assigning as closer')
+      const managerCloserId = managerRes[0]?.id ?? null
+      if (managerCloserId) {
+        if (!managerRes[0]?.active) {
+          console.warn(`[PATCH] lead manager account (${managerEmail}) is inactive — still assigning as closer`)
         }
         await query(`
           UPDATE vendedor_projetos
           SET closer_id = $2, updated_at = NOW()
           WHERE id = $1
-        `, [projectId, pauloCloserId])
-        console.log(`[PATCH] closer_id set to ${pauloCloserId} for project ${projectId}`)
+        `, [projectId, managerCloserId])
+        console.log(`[PATCH] closer_id set to ${managerCloserId} for project ${projectId}`)
       } else {
-        console.error('[PATCH] Paulo Gabriel (paulo@projetus.org) NOT FOUND in users table — closer_id not set')
+        console.error(`[PATCH] lead manager (${managerEmail}) NOT FOUND in users table — closer_id not set`)
       }
     } else if (body.status_contato === 'Fechado') {
       // Step 1: Ensure vendedor_id is set. If NULL, assign current user as vendedor.

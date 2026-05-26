@@ -92,6 +92,15 @@ export async function POST(request: NextRequest) {
         : [{ count: '0' }]
       const skippedClosed = parseInt(skippedClosedResult[0]?.count || '0', 10)
 
+      if (rowCount === 0 && skippedClosed > 0 && !force) {
+        return NextResponse.json({
+          warning: 'closed_or_locked_assignment',
+          message: `Este CNPJ tem apenas lead(s) Fechado(s) ou com comissão travada. Clique novamente para confirmar reatribuição histórica.`,
+          skipped_closed: skippedClosed,
+          can_override: true,
+        }, { status: 409 })
+      }
+
       await query(
         `UPDATE vendedor_projetos
          SET vendedor_id = $1, updated_at = NOW()

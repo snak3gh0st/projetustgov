@@ -296,12 +296,12 @@ export default function LeadDetailPage() {
         <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 rounded-xl p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-purple-700">Aguardando Closer (Paulo)</p>
+              <p className="text-sm font-semibold text-purple-700">Aguardando Closer ({first.closer_nome || 'Rooger'})</p>
               <p className="text-xs text-purple-500 mt-1">
                 Este lead foi enviado pelo SDR e aguarda fechamento pelo coordenador
               </p>
             </div>
-            {userRole === 'coordenador' && canModify && (
+            {(userRole === 'coordenador' || userRole === 'gestor') && canModify && (
               <div className="flex gap-2">
                 <button
                   onClick={() => {
