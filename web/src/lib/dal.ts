@@ -39,6 +39,13 @@ export const verifySession = cache(async () => {
   if (!session?.user?.id) {
     redirect('/login')
   }
+  const rows = await query<{ active: boolean }>(
+    'SELECT active FROM users WHERE id = $1',
+    [session.user.id]
+  )
+  if (!rows[0]?.active) {
+    redirect('/login')
+  }
   return {
     isAuth: true,
     userId: session.user.id,
@@ -52,6 +59,11 @@ export const verifySession = cache(async () => {
 export async function getApiSession() {
   const session = await auth()
   if (!session?.user?.id) return null
+  const rows = await query<{ active: boolean }>(
+    'SELECT active FROM users WHERE id = $1',
+    [session.user.id]
+  )
+  if (!rows[0]?.active) return null
   return {
     userId: session.user.id,
     role: session.user.role as Role,

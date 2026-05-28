@@ -17,31 +17,24 @@ export async function DELETE(
     const actorRole = session.role as Role
     const targetUserId = params.id
 
-    // Can't delete yourself
     if (targetUserId === session.userId) {
       return NextResponse.json({ error: 'Nao pode deletar seu proprio usuario' }, { status: 400 })
     }
 
-    // Get target user info
-    const targetUser = await query(
-      'SELECT role FROM users WHERE id = $1',
-      [targetUserId]
-    )
-
+    const targetUser = await query('SELECT role FROM users WHERE id = $1', [targetUserId])
     if (targetUser.length === 0) {
       return NextResponse.json({ error: 'Usuario nao encontrado' }, { status: 404 })
     }
 
     const targetRole = targetUser[0].role as Role
     const deletableRoles = ROLE_CAN_DELETE[actorRole] ?? []
-
-    // Check permission
     if (!deletableRoles.includes(targetRole)) {
       return NextResponse.json({ error: 'Sem permissao para deletar este usuario' }, { status: 403 })
     }
 
-    // Delete user
-    await query('DELETE FROM users WHERE id = $1', [targetUserId])
+    // Soft delete preserves ownership, comments, and commission history.
+    // Lead reassignment must be an explicit audited action, not a delete side effect.
+    await query('UPDATE users SET active = false WHERE id = $1', [targetUserId])
 
     return NextResponse.json({ success: true })
   } catch (error) {

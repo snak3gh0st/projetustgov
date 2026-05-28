@@ -21,21 +21,32 @@ export async function GET(request: NextRequest) {
     const conditions: string[] = ['1=1']
     const params: unknown[] = []
     let paramIndex = 1
+    let scopedRowFilter = ''
+    let scopedNoteFilter = ''
 
     // Check for exclude_existing parameter (for gestor assignment view)
     const excludeExisting = searchParams.get('exclude_existing')
 
-    // vendedor -> only their assigned leads (or as closer for Aguardando Closer)
-    // gestor / coordenador -> see all leads (no personal filter)
-    if (session.role === 'vendedor') {
-      conditions.push(`(vp.vendedor_id = $${paramIndex} OR (vp.closer_id = $${paramIndex} AND vp.status_contato = 'Aguardando Closer'))`)
+    const personalScopeUserId =
+      session.role === 'vendedor' || session.role === 'coordenador'
+        ? session.userId
+        : null
+
+    // Vendedores/coordenadores only see leads they own or where they are the closer.
+    if (personalScopeUserId) {
+      conditions.push(`(vp.vendedor_id = $${paramIndex} OR vp.closer_id = $${paramIndex})`)
+      scopedRowFilter = `AND (vp2.vendedor_id = $${paramIndex} OR vp2.closer_id = $${paramIndex})`
+      scopedNoteFilter = `AND cn.vendedor_id = $${paramIndex}`
       params.push(session.userId)
       paramIndex++
     } else if (vendedorId === 'unassigned') {
       conditions.push(`vp.vendedor_id IS NULL`)
     } else if (vendedorId) {
-      conditions.push(`vp.vendedor_id = $${paramIndex++}`)
+      conditions.push(`vp.vendedor_id = $${paramIndex}`)
+      scopedRowFilter = `AND vp2.vendedor_id = $${paramIndex}`
+      scopedNoteFilter = `AND cn.vendedor_id = $${paramIndex}`
       params.push(vendedorId)
+      paramIndex++
     }
 
     // Optional filter for gestor to exclude existing clients
@@ -77,17 +88,19 @@ export async function GET(request: NextRequest) {
           SELECT COUNT(*)
           FROM vendedor_projetos vp2
           WHERE vp2.cnpj = vp.cnpj
+            ${scopedRowFilter}
         ) as emenda_count,
         (
           SELECT SUM(vp2.valor_emenda)
           FROM vendedor_projetos vp2
           WHERE vp2.cnpj = vp.cnpj
+            ${scopedRowFilter}
         ) as total_valor_emendas,
         (
           SELECT EXTRACT(DAY FROM NOW() - GREATEST(
-            (SELECT MAX(cn.created_at) FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj),
+            (SELECT MAX(cn.created_at) FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj ${scopedNoteFilter}),
             (SELECT MAX(vp2.updated_at) FROM vendedor_projetos vp2
-             WHERE vp2.cnpj = vp.cnpj AND vp2.status_contato != 'Não Contatado')
+             WHERE vp2.cnpj = vp.cnpj AND vp2.status_contato != 'Não Contatado' ${scopedRowFilter})
           ))::int
         ) as days_since_last_contact,
         (
