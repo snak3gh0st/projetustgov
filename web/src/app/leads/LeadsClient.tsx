@@ -373,20 +373,6 @@ export default function LeadsClient() {
     a.click()
   }
 
-  function exportBitrixXlsx() {
-    if (exportDisabled) {
-      alert('Selecione um comercial para exportar para Bitrix.')
-      return
-    }
-    const params = new URLSearchParams()
-    if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
-    const query = params.toString()
-    const href = query ? `/api/leads/export-bitrix?${query}` : '/api/leads/export-bitrix'
-    const a = document.createElement('a')
-    a.href = href
-    a.click()
-  }
-
   return (
     <div className="space-y-6 w-full max-w-[1800px] mx-auto">
       <div>
@@ -462,14 +448,6 @@ export default function LeadsClient() {
       {/* mirrors canExportContacts() in dal.ts */}
       {canExportCSV && (
         <div className="flex flex-wrap gap-2 justify-start sm:justify-end">
-          <button
-            onClick={exportBitrixXlsx}
-            disabled={exportDisabled}
-            title={exportDisabled ? 'Selecione um comercial para exportar.' : undefined}
-            className="px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-500/30 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/15 transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Exportar Bitrix XLSX
-          </button>
           <button
             onClick={exportPendentesCSV}
             disabled={exportDisabled}

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
-import { enqueueBitrixEvent } from '@/lib/bitrix-sync'
 
 export const dynamic = 'force-dynamic'
 
@@ -301,38 +300,6 @@ export async function PATCH(
       `SELECT comissao_percentual, comissao_valor, comissao_bonus, tipo_vendedor, valor_venda, status_contato, closer_id, closer_comissao_percentual, closer_comissao_valor FROM vendedor_projetos WHERE id = $1`,
       [projectId]
     )
-
-    const changedFields = ['status_contato', 'observacoes', 'telefone', 'email', 'valor_venda', 'tipo_vendedor']
-      .filter((field) => body[field] !== undefined)
-    const leadCnpj = decodeURIComponent(params.cnpj)
-
-    try {
-      await enqueueBitrixEvent({
-        eventType: 'lead.upsert',
-        leadCnpj,
-        payload: {
-          lead_id: projectId,
-          changed_fields: changedFields,
-          actor_id: session.userId,
-          actor_role: session.role,
-        },
-      })
-
-      if (body.status_contato !== undefined) {
-        await enqueueBitrixEvent({
-          eventType: 'lead.status_changed',
-          leadCnpj,
-          payload: {
-            lead_id: projectId,
-            new_status: body.status_contato,
-            actor_id: session.userId,
-            actor_role: session.role,
-          },
-        })
-      }
-    } catch (syncError) {
-      console.error('[bitrix-sync] failed to enqueue lead PATCH events:', syncError)
-    }
 
     return NextResponse.json({ success: true, ...(updated[0] || {}) })
   } catch (error) {
