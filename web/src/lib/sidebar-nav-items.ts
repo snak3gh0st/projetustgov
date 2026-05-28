@@ -75,7 +75,7 @@ export function getNavItemsForRole(role: NavRole): NavItem[] {
   }
   if (role === 'csm') {
     return [
-      { href: '/csm', label: 'Clientes CSM', icon: 'leads' },
+      { href: '/csm', label: 'CSM', icon: 'csm' },
       { href: '/csm/comissoes', label: 'Comissoes', icon: 'comissoes' },
       { href: '/csm/bi', label: 'BI Dashboard CSM', icon: 'bi' },
       { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
