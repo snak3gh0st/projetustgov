@@ -7,16 +7,17 @@ import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
 import SaleModal from '@/components/SaleModal'
+import { normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
-const STATUS_OPTIONS = ['Não Contatado', 'Ainda Não', 'Retorno', 'Quente', 'Muito Quente', 'Proposta', 'Aguardando Closer', 'Fechado', 'Telefone Invalido']
+const STATUS_OPTIONS = ['Não Contatado', 'Sem Interesse', 'Em Atendimento', 'Quente', 'Muito Quente', 'Proposta Enviada', 'Em Aprovação', 'Fechado', 'Telefone Invalido']
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-orange-50 dark:bg-orange-500/15 text-orange-600 dark:text-orange-300',
-  'Ainda Não': 'bg-yellow-50 dark:bg-yellow-500/15 text-yellow-600 dark:text-yellow-300',
-  'Retorno': 'bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-amber-300',
+  'Sem Interesse': 'bg-yellow-50 dark:bg-yellow-500/15 text-yellow-600 dark:text-yellow-300',
+  'Em Atendimento': 'bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-amber-300',
   'Quente': 'bg-red-50 dark:bg-red-500/15 text-red-600 dark:text-red-300',
   'Muito Quente': 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300',
-  'Proposta': 'bg-blue-50 dark:bg-blue-500/15 text-[#0072F7]',
-  'Aguardando Closer': 'bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300',
+  'Proposta Enviada': 'bg-blue-50 dark:bg-blue-500/15 text-[#0072F7]',
+  'Em Aprovação': 'bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300',
   'Fechado': 'bg-green-50 dark:bg-green-500/15 text-green-600 dark:text-green-300',
   'Telefone Invalido': 'bg-gray-50 dark:bg-gray-500/15 text-gray-500 dark:text-gray-400',
 }
@@ -635,10 +636,10 @@ export default function LeadsClient() {
                     </td>
                     <td className="px-3 py-2.5">
                       <select
-                        value={lead.status_contato || 'Não Contatado'}
+                        value={normalizeCrmStatus(lead.status_contato)}
                         onClick={e => e.stopPropagation()}
                         onChange={e => updateLead(lead.id, 'status_contato', e.target.value)}
-                        className={`text-xs font-medium rounded-full px-3 py-1 border-0 cursor-pointer ${STATUS_COLORS[lead.status_contato] || STATUS_COLORS['Não Contatado']}`}
+                        className={`text-xs font-medium rounded-full px-3 py-1 border-0 cursor-pointer ${STATUS_COLORS[normalizeCrmStatus(lead.status_contato)] || STATUS_COLORS['Não Contatado']}`}
                       >
                         {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
@@ -663,7 +664,7 @@ export default function LeadsClient() {
                                 {lead.vendedor_nome ? '↻' : '+'}
                               </button>
                             </div>
-                            {lead.closer_id && lead.status_contato === 'Aguardando Closer' && (
+                            {lead.closer_id && normalizeCrmStatus(lead.status_contato) === 'Em Aprovação' && (
                               <div className="flex items-center gap-1">
                                 <span className="text-[10px] bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-500/30 font-semibold">
                                   CLOSER: {lead.closer_nome || 'Paulo'}
@@ -674,7 +675,7 @@ export default function LeadsClient() {
                         ) : (
                           <div className="flex items-center gap-1.5">
                             <span className="text-xs text-gray-500 dark:text-gray-400">{lead.vendedor_nome || '-'}</span>
-                            {lead.closer_id && lead.status_contato === 'Aguardando Closer' && (
+                            {lead.closer_id && normalizeCrmStatus(lead.status_contato) === 'Em Aprovação' && (
                               <span className="text-[10px] bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-500/30 font-semibold">
                                 CLOSER
                               </span>
@@ -716,10 +717,10 @@ export default function LeadsClient() {
                       </td>
                       <td className="px-4 py-2" colSpan={sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador' ? 5 : 4}>
                         <select
-                          value={sub.status_contato || 'Não Contatado'}
+                          value={normalizeCrmStatus(sub.status_contato)}
                           onClick={e => e.stopPropagation()}
                           onChange={e => updateLead(sub.id, 'status_contato', e.target.value)}
-                          className={`text-xs font-medium rounded-full px-2 py-0.5 border-0 cursor-pointer ${STATUS_COLORS[sub.status_contato] || STATUS_COLORS['Não Contatado']}`}
+                          className={`text-xs font-medium rounded-full px-2 py-0.5 border-0 cursor-pointer ${STATUS_COLORS[normalizeCrmStatus(sub.status_contato)] || STATUS_COLORS['Não Contatado']}`}
                         >
                           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
@@ -772,7 +773,7 @@ export default function LeadsClient() {
         leadNome={saleModal?.leadNome || ''}
         currentTipoVendedor={saleModal?.tipoVendedor}
         userRole={sessionUser?.role || null}
-        isExclusivo={saleModal?.tipoVendedor === 'Exclusivo'}
+        isExclusivo={saleModal?.tipoVendedor === 'In-Sites Sells' || saleModal?.tipoVendedor === 'Exclusivo'}
         onCancel={() => setSaleModal(null)}
         onConfirm={(data) => {
           if (saleModal) {

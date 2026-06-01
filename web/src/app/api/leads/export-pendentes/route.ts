@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     let paramIndex = 1
 
     if (filter === 'pendentes') {
-      whereConditions.push(`vp.status_contato IN ('Não Contatado', 'Retorno')`)
+      whereConditions.push(`COALESCE(vp.status_contato, 'Não Contatado') IN ('Não Contatado', 'Retorno', 'Em Atendimento')`)
     }
 
     if (vendedorId === 'unassigned') {

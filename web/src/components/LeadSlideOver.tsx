@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatCNPJ, formatCurrency, whatsappMeUrlFromTelefone } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
+import { normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-500/20',
-  'Ainda Não': 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-300',
-  'Retorno': 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
-  'Proposta': 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border-blue-200 dark:border-blue-500/20',
-  'Aguardando Closer': 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-500/20',
+  'Sem Interesse': 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-300',
+  'Em Atendimento': 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
+  'Proposta Enviada': 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border-blue-200 dark:border-blue-500/20',
+  'Em Aprovação': 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-500/20',
   'Fechado': 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20',
   'Telefone Invalido': 'bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600',
 }
@@ -100,20 +101,20 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
           </div>
 
           {lead.status_contato && (
-            <span className={`inline-block mt-3 text-xs font-medium rounded-full px-3 py-1 border ${STATUS_COLORS[lead.status_contato] || STATUS_COLORS['Não Contatado']}`}>
-              {lead.status_contato}
+            <span className={`inline-block mt-3 text-xs font-medium rounded-full px-3 py-1 border ${STATUS_COLORS[normalizeCrmStatus(lead.status_contato)] || STATUS_COLORS['Não Contatado']}`}>
+              {normalizeCrmStatus(lead.status_contato)}
             </span>
           )}
 
           {localLead.tipo_vendedor && (
             <span className={`inline-block mt-2 text-xs font-medium rounded-full px-3 py-1 border ${
-              localLead.tipo_vendedor === 'SDR'
+              normalizeTipoVendedor(localLead.tipo_vendedor) === 'SDR'
                 ? 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border-blue-200 dark:border-blue-500/20'
-                : localLead.tipo_vendedor === 'Exclusivo'
+                : normalizeTipoVendedor(localLead.tipo_vendedor) === 'In-Sites Sells'
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 : 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-500/20'
             }`}>
-              {localLead.tipo_vendedor} ({localLead.tipo_vendedor === 'SDR' ? '1%' : localLead.tipo_vendedor === 'Exclusivo' ? '3%' : '4%'})
+              {normalizeTipoVendedor(localLead.tipo_vendedor)} ({normalizeTipoVendedor(localLead.tipo_vendedor) === 'SDR' ? '1,5%' : normalizeTipoVendedor(localLead.tipo_vendedor) === 'In-Sites Sells' ? '5%' : '3,5%'})
             </span>
           )}
         </div>
@@ -142,8 +143,8 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                     <span className="text-[#0072F7] font-bold text-sm">
                       {formatCurrency(Number(emenda.valor_emenda) || 0)}
                     </span>
-                    <span className={`text-[10px] font-medium rounded-full px-2 py-0.5 border ${STATUS_COLORS[emenda.status_contato] || STATUS_COLORS['Não Contatado']}`}>
-                      {emenda.status_contato}
+                    <span className={`text-[10px] font-medium rounded-full px-2 py-0.5 border ${STATUS_COLORS[normalizeCrmStatus(emenda.status_contato)] || STATUS_COLORS['Não Contatado']}`}>
+                      {normalizeCrmStatus(emenda.status_contato)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -221,7 +222,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
             <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-400 dark:text-gray-500">
-                  Comissao ({localLead.tipo_vendedor || 'SDR'} - {Number(localLead.comissao_percentual || 0).toFixed(1)}%)
+                Comissao ({normalizeTipoVendedor(localLead.tipo_vendedor) || 'SDR'} - {Number(localLead.comissao_percentual || 0).toFixed(1)}%)
                 </span>
                 <span className="text-sm font-semibold text-[#0072F7]">
                   {formatCurrency(localLead.comissao_valor)}

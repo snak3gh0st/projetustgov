@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { CRM_COMMISSIONS, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
 interface SaleModalProps {
   open: boolean
@@ -27,9 +28,9 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
     if (open) {
       setValorStr('')
       if (isExclusivo) {
-        setTipoVendedor('Exclusivo')
+        setTipoVendedor('In-Sites Sells')
       } else {
-        setTipoVendedor(currentTipoVendedor || 'SDR')
+        setTipoVendedor(normalizeTipoVendedor(currentTipoVendedor))
       }
       setError('')
       // Focus input after a brief delay for animation
@@ -94,11 +95,15 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
 
   // Compute preview commission
   const previewValor = parseCurrencyInput(valorStr) || 0
-  const pct = tipoVendedor === 'Closer' ? 4 : tipoVendedor === 'Exclusivo' ? 3 : 1
+  const pct = tipoVendedor === 'Closer'
+    ? CRM_COMMISSIONS.CLOSER
+    : tipoVendedor === 'In-Sites Sells'
+      ? CRM_COMMISSIONS.IN_SITES_SELLS
+      : CRM_COMMISSIONS.SDR
   const previewComissao = previewValor * (pct / 100)
   // For SDR → Closer flow: show split preview
   const isSdrCloserFlow = isVendedor && tipoVendedor === 'SDR'
-  const closerPct = 3
+  const closerPct = CRM_COMMISSIONS.CLOSER
   const previewCloserComissao = previewValor * (closerPct / 100)
 
   return (
@@ -149,7 +154,7 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
             </label>
             {isExclusivo ? (
               <div className="px-4 py-3 rounded-xl text-sm font-semibold border bg-emerald-50 border-emerald-200 text-emerald-700">
-                Exclusivo (3%)
+                In-Sites Sells (5%)
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3">
@@ -162,7 +167,7 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
                       : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
-                  {isVendedor ? 'SDR → Paulo Closer' : 'SDR (1%)'}
+                  {isVendedor ? 'SDR → Paulo Closer' : 'SDR (1,5%)'}
                 </button>
                 <button
                   type="button"
@@ -173,7 +178,7 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
                       : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
-                  Closer (4%)
+                  Closer (3,5%)
                 </button>
               </div>
             )}
@@ -185,13 +190,13 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
               {isSdrCloserFlow ? (
                 <>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">Sua comissao SDR (1%)</span>
+                    <span className="text-gray-500 dark:text-gray-400">Sua comissao SDR (1,5%)</span>
                     <span className="text-[#0072F7] font-semibold">
                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(previewComissao)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">Paulo Closer (3%)</span>
+                    <span className="text-gray-500 dark:text-gray-400">Paulo Closer (3,5%)</span>
                     <span className="text-purple-600 dark:text-purple-400 font-semibold">
                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(previewCloserComissao)}
                     </span>
@@ -210,7 +215,7 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(previewComissao)}
                     </span>
                   </div>
-                  {tipoVendedor !== 'Exclusivo' && (
+                  {tipoVendedor !== 'In-Sites Sells' && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500 dark:text-gray-400">Bonus por fechamento</span>
                       <span className="text-green-600 dark:text-green-400 font-semibold">R$ 50</span>

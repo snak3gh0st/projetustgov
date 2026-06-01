@@ -34,16 +34,7 @@ export default function DistribuirPage() {
   const [monitorLoading, setMonitorLoading] = useState(false)
   const [monitorResult, setMonitorResult] = useState<{ type: 'success' | 'error' | 'conflict'; message: string } | null>(null)
   const [pendingForce, setPendingForce] = useState(false)
-  const [distributingExecucao, setDistributingExecucao] = useState(false)
-  const [execucaoResult, setExecucaoResult] = useState<{
-    distributed: number
-    updated: number
-    inserted: number
-    skipped?: boolean
-    vendedores: { nome: string; before: number; assigned: number; after: number }[]
-    coordenador?: { nome: string; assigned: number }
-  } | null>(null)
-  const [showExecucaoModal, setShowExecucaoModal] = useState(false)
+  const [randomPickCount, setRandomPickCount] = useState('')
 
   const fetchLeads = useCallback(async () => {
     setLoading(true)
@@ -227,74 +218,45 @@ export default function DistribuirPage() {
     }
   }
 
-  async function handleAutoDistribute() {
-    if (vendedores.length === 0 || leads.length === 0) return
-    setAssigning(true)
-    try {
-      // Unique unassigned CNPJs, each counted as 1 lead slot
-      const uniqueCnpjs = Array.from(new Set(leads.map(l => l.cnpj)))
-      // Sort vendedores by current lead_count ASC (least loaded first)
-      const sorted = [...vendedores].sort((a, b) => a.lead_count - b.lead_count)
-      // Round-robin assignment batches
-      const batches: Record<string, string[]> = {}
-      sorted.forEach(v => { batches[v.id] = [] })
-      uniqueCnpjs.forEach((cnpj, i) => {
-        const v = sorted[i % sorted.length]
-        batches[v.id].push(cnpj)
-      })
-      let total = 0
-      for (const [vendedorId, cnpjs] of Object.entries(batches)) {
-        if (cnpjs.length === 0) continue
-        // Collect lead_ids for these CNPJs
-        const ids = leads.filter(l => cnpjs.includes(l.cnpj)).map(l => l.id)
-        const res = await fetch('/api/leads/assign', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lead_ids: ids, vendedor_id: vendedorId }),
-        })
-        if (res.ok) {
-          const d = await res.json()
-          total += d.assigned_count ?? ids.length
-        }
-      }
-      setToast(`Roleta concluída! ${total} leads distribuídos igualmente entre ${sorted.length} vendedores.`)
-      setSelectedLeadIds(new Set())
-      fetchLeads()
-      fetchAssignedLeads()
-      fetchVendedores()
-      setTimeout(() => setToast(''), 6000)
-    } catch {
-      setToast('Erro na distribuição automática')
+  function handleRandomSelection() {
+    if (tab !== 'unassigned') {
+      setToast('Use a aba de leads nao atribuidos para sortear por CNPJ.')
       setTimeout(() => setToast(''), 3000)
-    } finally {
-      setAssigning(false)
+      return
     }
-  }
 
-  async function handleDistribuirExecucao() {
-    setDistributingExecucao(true)
-    setExecucaoResult(null)
-    try {
-      const res = await fetch('/api/execucao/distribute', { method: 'POST' })
-      const data = await res.json()
-      if (res.status === 409) {
-        setToast('Distribuicao ja em andamento. Tente novamente em instantes.')
-        setTimeout(() => setToast(''), 5000)
-        return
-      }
-      if (!res.ok) {
-        setToast(data.error || 'Erro na distribuicao de execucao')
-        setTimeout(() => setToast(''), 3000)
-        return
-      }
-      setExecucaoResult(data)
-      setShowExecucaoModal(true)
-    } catch {
-      setToast('Erro de conexao ao distribuir execucao')
+    const requested = Number.parseInt(randomPickCount, 10)
+    if (!Number.isFinite(requested) || requested <= 0) {
+      setToast('Informe uma quantidade valida maior que zero.')
       setTimeout(() => setToast(''), 3000)
-    } finally {
-      setDistributingExecucao(false)
+      return
     }
+
+    const uniqueCnpjs = Array.from(new Set(filteredLeads.map(l => l.cnpj)))
+    if (uniqueCnpjs.length === 0) {
+      setToast('Nao ha CNPJs disponiveis para sortear.')
+      setTimeout(() => setToast(''), 3000)
+      return
+    }
+
+    const limit = Math.min(requested, uniqueCnpjs.length)
+    const shuffled = [...uniqueCnpjs]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+
+    const picked = new Set(shuffled.slice(0, limit))
+    const nextSelected = new Set<number>()
+    for (const lead of filteredLeads) {
+      if (picked.has(lead.cnpj)) {
+        nextSelected.add(lead.id)
+      }
+    }
+
+    setSelectedLeadIds(nextSelected)
+    setToast(`${picked.size} CNPJ(s) sorteados para distribuicao manual.`)
+    setTimeout(() => setToast(''), 4000)
   }
 
   async function handleAssign() {
@@ -430,41 +392,39 @@ export default function DistribuirPage() {
         </p>
       </div>
 
-      {/* Roleta — balanced auto-distribution */}
-      {tab === 'unassigned' && leads.length > 0 && vendedores.length > 0 && (
-        <div className="border border-blue-200 dark:border-blue-500/20 bg-blue-50/50 dark:bg-blue-500/10 rounded-xl p-4 flex items-center justify-between gap-4">
+      {/* Manual distribution helper */}
+      {tab === 'unassigned' && leads.length > 0 && (
+        <div className="border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 rounded-xl p-4 space-y-3">
           <div>
-            <p className="text-sm font-semibold text-blue-800">Distribuir Igualmente (Roleta)</p>
-            <p className="text-xs text-blue-600 mt-0.5">
-              {uniqueUnassignedCount} CNPJs não atribuídos → distribuídos em round-robin entre {vendedores.length} vendedores (~{Math.ceil(uniqueUnassignedCount / vendedores.length)} cada)
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Distribuição manual ativa</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+              {uniqueUnassignedCount} CNPJs sem vendedor. Use o sorteio por quantidade para montar uma seleção e depois atribuir manualmente.
             </p>
           </div>
-          <button
-            onClick={handleAutoDistribute}
-            disabled={assigning}
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-[#0072F7] text-white hover:bg-[#0058C4] disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-          >
-            {assigning ? 'Distribuindo...' : '🎲 Distribuir Igualmente'}
-          </button>
-        </div>
-      )}
-
-      {/* Execution pipeline distribution — gestor only */}
-      {userRole === 'gestor' && (
-        <div className="border border-green-200 dark:border-green-500/20 bg-green-50/50 dark:bg-green-500/10 rounded-xl p-4 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-green-800">Distribuir Execucao Automaticamente</p>
-            <p className="text-xs text-green-600 mt-0.5">
-              Atribui leads em execucao ao vendedor com menos leads. Clientes existentes vao ao gestor.
+          <div className="flex flex-wrap gap-3 items-end">
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Quantidade de CNPJs</span>
+              <input
+                type="number"
+                min={1}
+                max={uniqueUnassignedCount}
+                value={randomPickCount}
+                onChange={e => setRandomPickCount(e.target.value)}
+                className="w-36 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-slate-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0072F7] transition-colors"
+                placeholder="Ex: 100"
+              />
+            </label>
+            <button
+              onClick={handleRandomSelection}
+              disabled={assigning || uniqueUnassignedCount === 0}
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-[#0072F7] text-white hover:bg-[#0058C4] disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            >
+              Sortear seleção
+            </button>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              O sorteio pega CNPJs únicos e seleciona todas as emendas do grupo.
             </p>
           </div>
-          <button
-            onClick={handleDistribuirExecucao}
-            disabled={distributingExecucao}
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-          >
-            {distributingExecucao ? 'Distribuindo...' : 'Distribuir Automaticamente'}
-          </button>
         </div>
       )}
 
@@ -776,82 +736,6 @@ export default function DistribuirPage() {
       {toast && (
         <div className="fixed bottom-6 right-6 max-w-md bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-700 dark:text-blue-400 px-4 py-2 rounded-lg text-sm backdrop-blur-md">
           {toast}
-        </div>
-      )}
-
-      {/* Execucao distribution result modal */}
-      {showExecucaoModal && execucaoResult && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Resultado da Distribuicao (Execucao)</h2>
-              <button
-                onClick={() => setShowExecucaoModal(false)}
-                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none"
-              >
-                &times;
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
-              <div className="bg-green-50 dark:bg-green-500/10 rounded-xl p-3">
-                <p className="text-2xl font-bold text-green-700">{execucaoResult.distributed}</p>
-                <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">CNPJs distribuidos</p>
-              </div>
-              <div className="bg-blue-50 dark:bg-blue-500/10 rounded-xl p-3">
-                <p className="text-2xl font-bold text-blue-700">{execucaoResult.updated}</p>
-                <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">Atualizados</p>
-              </div>
-              <div className="bg-purple-50 dark:bg-purple-500/10 rounded-xl p-3">
-                <p className="text-2xl font-bold text-purple-700">{execucaoResult.inserted}</p>
-                <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">Inseridos</p>
-              </div>
-            </div>
-
-            {execucaoResult.coordenador && execucaoResult.coordenador.assigned > 0 && (
-              <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-3">
-                <p className="text-sm text-amber-800 dark:text-amber-400">
-                  <span className="font-semibold">{execucaoResult.coordenador.assigned}</span> CNPJs de clientes existentes atribuidos ao gestor <span className="font-semibold">{execucaoResult.coordenador.nome}</span>
-                </p>
-              </div>
-            )}
-
-            {execucaoResult.vendedores.length > 0 && (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
-                    <th className="py-2 font-medium">Vendedor</th>
-                    <th className="py-2 font-medium text-center">Antes</th>
-                    <th className="py-2 font-medium text-center">Atribuidos</th>
-                    <th className="py-2 font-medium text-center">Depois</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {execucaoResult.vendedores.map((v, i) => (
-                    <tr key={i} className="border-b border-gray-50 dark:border-gray-800">
-                      <td className="py-2 text-gray-900 dark:text-gray-100">{v.nome}</td>
-                      <td className="py-2 text-center text-gray-500 dark:text-gray-400">{v.before}</td>
-                      <td className="py-2 text-center font-semibold text-green-700">{v.assigned > 0 ? `+${v.assigned}` : '0'}</td>
-                      <td className="py-2 text-center text-gray-900 dark:text-gray-100">{v.after}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            {execucaoResult.distributed === 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-2">
-                Nenhum lead em execucao pendente de distribuicao.
-              </p>
-            )}
-
-            <button
-              onClick={() => setShowExecucaoModal(false)}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-            >
-              Fechar
-            </button>
-          </div>
         </div>
       )}
     </div>

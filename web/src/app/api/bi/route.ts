@@ -126,10 +126,12 @@ export async function GET(request: Request) {
           SELECT
             CASE
               WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 'Não Contatado'
-              WHEN vp.status_contato = 'Ainda Não' THEN 'Ainda Não'
-              WHEN vp.status_contato = 'Retorno' THEN 'Retorno'
-              WHEN vp.status_contato = 'Proposta' THEN 'Proposta'
-              WHEN vp.status_contato = 'Aguardando Closer' THEN 'Aguardando Closer'
+              WHEN vp.status_contato IN ('Ainda Não', 'Sem Interesse') THEN 'Sem Interesse'
+              WHEN vp.status_contato IN ('Retorno', 'Em Atendimento') THEN 'Em Atendimento'
+              WHEN vp.status_contato = 'Quente' THEN 'Quente'
+              WHEN vp.status_contato = 'Muito Quente' THEN 'Muito Quente'
+              WHEN vp.status_contato IN ('Proposta', 'Proposta Enviada') THEN 'Proposta Enviada'
+              WHEN vp.status_contato IN ('Aguardando Closer', 'Em Aprovação') THEN 'Em Aprovação'
               WHEN vp.status_contato = 'Fechado' THEN 'Fechado'
               ELSE vp.status_contato
             END as status,
@@ -142,12 +144,14 @@ export async function GET(request: Request) {
         ORDER BY
           CASE status
             WHEN 'Não Contatado' THEN 1
-            WHEN 'Ainda Não' THEN 2
-            WHEN 'Retorno' THEN 3
-            WHEN 'Proposta' THEN 4
-            WHEN 'Aguardando Closer' THEN 5
-            WHEN 'Fechado' THEN 6
-            ELSE 7
+            WHEN 'Sem Interesse' THEN 2
+            WHEN 'Em Atendimento' THEN 3
+            WHEN 'Quente' THEN 4
+            WHEN 'Muito Quente' THEN 5
+            WHEN 'Proposta Enviada' THEN 6
+            WHEN 'Em Aprovação' THEN 7
+            WHEN 'Fechado' THEN 8
+            ELSE 9
           END
       `, vendedorParams),
 

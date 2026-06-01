@@ -123,6 +123,10 @@ export async function GET(request: NextRequest) {
           SELECT
             CASE
               WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 'Não Contatado'
+              WHEN COALESCE(vp.status_contato_execucao, '') IN ('Ainda Não', 'Sem Interesse') THEN 'Sem Interesse'
+              WHEN COALESCE(vp.status_contato_execucao, '') IN ('Retorno', 'Em Atendimento') THEN 'Em Atendimento'
+              WHEN COALESCE(vp.status_contato_execucao, '') IN ('Proposta', 'Proposta Enviada') THEN 'Proposta Enviada'
+              WHEN COALESCE(vp.status_contato_execucao, '') IN ('Aguardando Closer', 'Em Aprovação') THEN 'Em Aprovação'
               ELSE COALESCE(vp.status_contato_execucao, 'Não Contatado')
             END AS status,
             COUNT(DISTINCT REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'))::int AS count
@@ -137,12 +141,12 @@ export async function GET(request: NextRequest) {
         ORDER BY
           CASE status
             WHEN 'Não Contatado' THEN 1
-            WHEN 'Ainda Não' THEN 2
-            WHEN 'Retorno' THEN 3
+            WHEN 'Sem Interesse' THEN 2
+            WHEN 'Em Atendimento' THEN 3
             WHEN 'Quente' THEN 4
             WHEN 'Muito Quente' THEN 5
-            WHEN 'Proposta' THEN 6
-            WHEN 'Aguardando Closer' THEN 7
+            WHEN 'Proposta Enviada' THEN 6
+            WHEN 'Em Aprovação' THEN 7
             WHEN 'Telefone Invalido' THEN 8
             WHEN 'Fechado' THEN 9
             ELSE 10

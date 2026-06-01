@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
+import { normalizeCrmStatus } from '@/lib/crm-catalog'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,6 +54,32 @@ interface ExecucaoAggRow {
 //   1. The GROUP BY SELECT (BOOL_OR) — computes tem_alerta per CNPJ
 //   2. The alert_only filter — restricts rows to those with tem_alerta = true
 const ALERT_ZERO_EXECUTION = 'pe.valor_desembolsado = 0'
+
+const normalizedStatusSql = (columnRef: string) => `
+  CASE
+    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado', 'Novo', 'Contactado') THEN 'Não Contatado'
+    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Ainda Não', 'Sem Interesse') THEN 'Sem Interesse'
+    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Retorno', 'Em Atendimento') THEN 'Em Atendimento'
+    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Proposta', 'Proposta Enviada') THEN 'Proposta Enviada'
+    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Aguardando Closer', 'Em Aprovação') THEN 'Em Aprovação'
+    ELSE COALESCE(${columnRef}, 'Não Contatado')
+  END
+`
+
+const normalizedStatusOrderSql = (normalizedExpr: string) => `
+  CASE ${normalizedExpr}
+    WHEN 'Fechado' THEN 1
+    WHEN 'Em Aprovação' THEN 2
+    WHEN 'Proposta Enviada' THEN 3
+    WHEN 'Em Atendimento' THEN 4
+    WHEN 'Sem Interesse' THEN 5
+    WHEN 'Quente' THEN 6
+    WHEN 'Muito Quente' THEN 7
+    WHEN 'Telefone Invalido' THEN 8
+    WHEN 'Não Contatado' THEN 10
+    ELSE 9
+  END
+`
 
 export async function GET(request: NextRequest) {
   void ALERT_ZERO_EXECUTION
@@ -212,49 +239,21 @@ export async function GET(request: NextRequest) {
       crm_statuses AS (
         SELECT DISTINCT ON (REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'))
           REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
-          CASE
-            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 'Não Contatado'
-            ELSE COALESCE(vp.status_contato_execucao, 'Não Contatado')
-          END AS crm_status
+          ${normalizedStatusSql('vp.status_contato_execucao')} AS crm_status
         FROM vendedor_projetos vp
         ORDER BY
           REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'),
-          CASE
-            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Fechado' THEN 1
-            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Aguardando Closer' THEN 2
-            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Proposta' THEN 3
-            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Retorno' THEN 4
-            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Ainda Não' THEN 5
-            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Quente' THEN 6
-            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Muito Quente' THEN 7
-            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') = 'Telefone Invalido' THEN 8
-            WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 10
-            ELSE 9
-          END ASC,
+          ${normalizedStatusOrderSql(normalizedStatusSql('vp.status_contato_execucao'))} ASC,
           vp.updated_at DESC NULLS LAST
       ),
       aprovacao_statuses AS (
         SELECT DISTINCT ON (REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'))
           REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
-          CASE
-            WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 'Não Contatado'
-            ELSE COALESCE(vp.status_contato, 'Não Contatado')
-          END AS aprovacao_status
+          ${normalizedStatusSql('vp.status_contato')} AS aprovacao_status
         FROM vendedor_projetos vp
         ORDER BY
           REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'),
-          CASE
-            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Fechado' THEN 1
-            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Aguardando Closer' THEN 2
-            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Proposta' THEN 3
-            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Retorno' THEN 4
-            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Ainda Não' THEN 5
-            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Quente' THEN 6
-            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Muito Quente' THEN 7
-            WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Telefone Invalido' THEN 8
-            WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 10
-            ELSE 9
-          END ASC,
+          ${normalizedStatusOrderSql(normalizedStatusSql('vp.status_contato'))} ASC,
           vp.updated_at DESC NULLS LAST
       )
       SELECT
@@ -296,8 +295,13 @@ export async function GET(request: NextRequest) {
       `SELECT ran_at FROM cron_sync_log WHERE source = 'sync-execucao' ORDER BY ran_at DESC LIMIT 1`
     )
     const last_synced: string | null = syncLogResult[0]?.ran_at ?? null
+    const normalizedRows = rows.map(row => ({
+      ...row,
+      crm_status: normalizeCrmStatus(String(row.crm_status || 'Não Contatado')),
+      aprovacao_status: normalizeCrmStatus(String(row.aprovacao_status || 'Não Contatado')),
+    }))
 
-    return NextResponse.json({ rows, last_synced })
+    return NextResponse.json({ rows: normalizedRows, last_synced })
   } catch (error) {
     console.error('[api/execucao] Query error:', error)
     return NextResponse.json({ error: 'Failed to fetch execucao data' }, { status: 500 })

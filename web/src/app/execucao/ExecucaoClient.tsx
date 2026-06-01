@@ -5,6 +5,7 @@ import { formatCNPJ, formatCompactCurrency, formatCurrency, formatDate, whatsapp
 import KPIRow from '@/components/KPIRow'
 import ExecucaoSlideOver from '@/components/ExecucaoSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
+import { normalizeCrmStatus } from '@/lib/crm-catalog'
 
 interface ExecucaoAggRow {
   cnpj: string
@@ -46,16 +47,16 @@ const UF_OPTIONS = [
   'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'
 ]
 
-const STATUS_OPTIONS = ['Não Contatado', 'Ainda Não', 'Retorno', 'Quente', 'Muito Quente', 'Proposta', 'Aguardando Closer', 'Fechado', 'Telefone Invalido']
+const STATUS_OPTIONS = ['Não Contatado', 'Sem Interesse', 'Em Atendimento', 'Quente', 'Muito Quente', 'Proposta Enviada', 'Em Aprovação', 'Fechado', 'Telefone Invalido']
 
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400',
-  'Ainda Não': 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
-  'Retorno': 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  'Sem Interesse': 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
+  'Em Atendimento': 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400',
   'Quente': 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400',
   'Muito Quente': 'bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400',
-  'Proposta': 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] dark:text-blue-400',
-  'Aguardando Closer': 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400',
+  'Proposta Enviada': 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] dark:text-blue-400',
+  'Em Aprovação': 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400',
   'Fechado': 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400',
   'Telefone Invalido': 'bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400',
 }
@@ -109,7 +110,11 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
       const res = await fetch(`/api/execucao?${params}`, { signal: controller.signal })
       if (!res.ok) throw new Error('fetch failed')
       const data = await res.json()
-      setRows(data.rows ?? [])
+      setRows((data.rows ?? []).map((row: ExecucaoAggRow) => ({
+        ...row,
+        crm_status: normalizeCrmStatus(row.crm_status),
+        aprovacao_status: normalizeCrmStatus(row.aprovacao_status),
+      })))
       setLastSynced(data.last_synced ?? null)
       hasLoadedRef.current = true
     } catch (err) {

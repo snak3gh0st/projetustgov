@@ -31,7 +31,7 @@ export interface VendedorProjeto {
   email: string | null
   endereco: string | null
   status_contato: string
-  tipo_vendedor: 'SDR' | 'Closer' | 'Exclusivo' | null
+  tipo_vendedor: 'SDR' | 'Closer' | 'In-Sites Sells' | 'Exclusivo' | null
   comissao_percentual: number | null
   comissao_valor: number | null
   comissao_bonus: number | null
@@ -76,9 +76,10 @@ export interface DashboardStats {
   total_valor_emenda: number
   by_status: {
     'Não Contatado': number
-    Retorno: number
-    Proposta: number
-    'Aguardando Closer': number
+    'Sem Interesse': number
+    'Em Atendimento': number
+    'Proposta Enviada': number
+    'Em Aprovação': number
     Fechado: number
   }
 }

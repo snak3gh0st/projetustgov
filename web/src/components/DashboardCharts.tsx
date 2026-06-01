@@ -8,9 +8,12 @@ import {
 
 // ─── Category Donut ───
 const CAT_COLORS: Record<string, string> = {
-  'PROPOSTA': '#3b82f6',
-  'Ainda Não': '#ca8a04',
-  'RETORNO': '#22c55e',
+  'Não Contatado': '#f97316',
+  'Sem Interesse': '#ca8a04',
+  'Em Atendimento': '#22c55e',
+  'Proposta Enviada': '#3b82f6',
+  'Em Aprovação': '#8b5cf6',
+  'Fechado': '#16a34a',
 }
 
 interface CatData {

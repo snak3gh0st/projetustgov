@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Pool } from 'pg'
 import * as XLSX from 'xlsx'
+import { AUTO_DISTRIBUTION_ENABLED } from '@/lib/distribution-policy'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -239,7 +240,7 @@ export async function POST(request: NextRequest) {
       usersByEmail[u.email] = u.id
     }
 
-    // Round-robin counter: start balanced by checking current distribution
+    // Current load for the optional round-robin fallback.
     const countRes = await pool.query(
       `SELECT vendedor_id, COUNT(DISTINCT cnpj)::int as cnt
        FROM vendedor_projetos WHERE vendedor_id IS NOT NULL
@@ -251,14 +252,16 @@ export async function POST(request: NextRequest) {
       if (vendedorCounts.has(r.vendedor_id)) vendedorCounts.set(r.vendedor_id, r.cnt)
     }
 
-    // Pick the vendedor with fewest CNPJs assigned (least-loaded)
     const pickNextVendedor = (): string | null => {
       if (vendedorIds.length === 0) return null
       let minId = vendedorIds[0]
       let minCount = vendedorCounts.get(minId) ?? 0
       for (const vid of vendedorIds) {
         const c = vendedorCounts.get(vid) ?? 0
-        if (c < minCount) { minCount = c; minId = vid }
+        if (c < minCount) {
+          minCount = c
+          minId = vid
+        }
       }
       return minId
     }
@@ -356,13 +359,13 @@ export async function POST(request: NextRequest) {
 
         // Determine vendedor for this lead:
         // 1. CRM format: use sheet-based vendedor
-        // 2. If CNPJ already assigned to a vendedor, use same vendedor
-        // 3. Otherwise: round-robin auto-distribute
+        // 2. If CNPJ already assigned to a vendedor, keep the existing owner
+        // 3. Otherwise: leave unassigned unless automatic distribution is explicitly enabled
         let vendedorId = sheetVendedorId
         if (!vendedorId && cnpjToVendedor.has(cnpj)) {
           vendedorId = cnpjToVendedor.get(cnpj)!
         }
-        if (!vendedorId) {
+        if (!vendedorId && AUTO_DISTRIBUTION_ENABLED) {
           vendedorId = pickNextVendedor()
           if (vendedorId) {
             vendedorCounts.set(vendedorId, (vendedorCounts.get(vendedorId) ?? 0) + 1)
@@ -512,7 +515,7 @@ export async function POST(request: NextRequest) {
       errors: totalErrors,
       enriched: totalEnriched,
       existing_clients: totalExistingClients,
-      auto_distributed: format !== 'crm' ? totalInserted : 0,
+      auto_distributed: AUTO_DISTRIBUTION_ENABLED ? totalInserted : 0,
       api_enriched: apiEnriched,
       api_phone_added: apiPhoneAdded,
       api_email_added: apiEmailAdded,

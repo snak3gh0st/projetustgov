@@ -1,4 +1,5 @@
 import { getPool } from './db'
+import { AUTO_DISTRIBUTION_ENABLED } from './distribution-policy'
 
 export interface DistributeResult {
   distributed: number
@@ -27,6 +28,11 @@ const DISTRIBUTE_LOCK_KEY = 19876543210
  * Called automatically after sync-execucao cron job and via POST /api/execucao/distribute.
  */
 export async function distributeUnassignedExecucao(): Promise<DistributeResult> {
+  if (!AUTO_DISTRIBUTION_ENABLED) {
+    console.log('[distribute-execucao] Auto distribution disabled; skipping round-robin assignment')
+    return { distributed: 0, updated: 0, inserted: 0, vendedores: [], skipped: true }
+  }
+
   console.log('[distribute-execucao] Attempting advisory lock...')
   const client = await getPool().connect()
   try {

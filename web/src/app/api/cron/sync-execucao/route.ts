@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server'
 import { syncProjetosExecucao } from '@/lib/execucao-sync'
 import { distributeUnassignedExecucao } from '@/lib/distribute-execucao'
+import { AUTO_DISTRIBUTION_ENABLED } from '@/lib/distribution-policy'
 import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
@@ -27,10 +28,15 @@ export async function GET(request: Request) {
     const stats = await syncProjetosExecucao()
     console.log('[cron/sync-execucao] Sync complete:', JSON.stringify(stats))
 
-    // Auto-distribute unassigned CNPJs among vendedores (round-robin)
-    console.log('[cron/sync-execucao] Starting auto-distribute...')
-    const distResult = await distributeUnassignedExecucao()
-    console.log(`[cron/sync-execucao] Distributed ${distResult.distributed} CNPJs:`, distResult.vendedores.map(v => `${v.nome}: +${v.assigned}`).join(', '))
+    type DistResult = Awaited<ReturnType<typeof distributeUnassignedExecucao>>
+    let distResult: DistResult = { distributed: 0, updated: 0, inserted: 0, vendedores: [], skipped: true }
+    if (AUTO_DISTRIBUTION_ENABLED) {
+      console.log('[cron/sync-execucao] Starting auto-distribute...')
+      distResult = await distributeUnassignedExecucao()
+      console.log(`[cron/sync-execucao] Distributed ${distResult.distributed} CNPJs:`, distResult.vendedores.map(v => `${v.nome}: +${v.assigned}`).join(', '))
+    } else {
+      console.log('[cron/sync-execucao] Auto-distribution disabled; skipping round-robin step')
+    }
 
     return NextResponse.json({
       success: true,

@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import { formatCNPJ, formatCompactCurrency, formatCurrency, formatDate } from '@/lib/format'
+import { normalizeCrmStatus } from '@/lib/crm-catalog'
 
 // --- Types ---
 interface StatusCounts {
   'Não Contatado': number
-  'Retorno': number
-  'Proposta': number
-  'Aguardando Closer'?: number
+  'Sem Interesse': number
+  'Em Atendimento': number
+  'Proposta Enviada': number
+  'Em Aprovação'?: number
   'Fechado': number
   'Telefone Invalido'?: number
   [key: string]: number | undefined
@@ -90,10 +92,19 @@ interface ExecucaoAlert {
   vendedor_nome: string | null
 }
 
+interface PrestacaoContasPipelineStats {
+  total_cnpjs: number
+  total_valor_global: number
+  em_risco: number
+  concluidas: number
+  by_status: { [situacao: string]: number }
+}
+
 interface DashboardData {
   role?: string
   global: GlobalStats
   execucao_pipeline: ExecucaoPipelineStats
+  prestacao_contas_pipeline?: PrestacaoContasPipelineStats
   vendedores: VendedorStats[]
   recent_activity: RecentActivity[]
   commission_breakdown?: {
@@ -123,27 +134,52 @@ interface SyncLog {
 // --- Status config ---
 const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; label: string }> = {
   'Não Contatado': { color: 'text-orange-600 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-500/15 border-orange-200 dark:border-orange-500/30', bar: 'bg-orange-500', label: 'Não Contatado' },
-  'Ainda Não': { color: 'text-yellow-600 dark:text-yellow-300', bg: 'bg-yellow-50 dark:bg-yellow-500/15 border-yellow-200', bar: 'bg-yellow-500', label: 'Ainda Não' },
-  'Retorno': { color: 'text-amber-600 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-500/15 border-amber-200 dark:border-amber-500/30', bar: 'bg-amber-500', label: 'Retorno' },
+  'Sem Interesse': { color: 'text-yellow-600 dark:text-yellow-300', bg: 'bg-yellow-50 dark:bg-yellow-500/15 border-yellow-200', bar: 'bg-yellow-500', label: 'Sem Interesse' },
+  'Em Atendimento': { color: 'text-amber-600 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-500/15 border-amber-200 dark:border-amber-500/30', bar: 'bg-amber-500', label: 'Em Atendimento' },
   'Quente': { color: 'text-red-600 dark:text-red-300', bg: 'bg-red-50 dark:bg-red-500/15 border-red-200 dark:border-red-500/30', bar: 'bg-red-500', label: 'Quente' },
   'Muito Quente': { color: 'text-red-700 dark:text-red-300', bg: 'bg-red-100 dark:bg-red-500/20 border-red-200 dark:border-red-500/30', bar: 'bg-red-600', label: 'Muito Quente' },
-  'Proposta': { color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30', bar: 'bg-blue-500', label: 'Proposta' },
-  'Aguardando Closer': { color: 'text-purple-600 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-500/15 border-purple-200 dark:border-purple-500/30', bar: 'bg-purple-500', label: 'Aguardando Closer' },
+  'Proposta Enviada': { color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30', bar: 'bg-blue-500', label: 'Proposta Enviada' },
+  'Em Aprovação': { color: 'text-purple-600 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-500/15 border-purple-200 dark:border-purple-500/30', bar: 'bg-purple-500', label: 'Em Aprovação' },
   'Fechado': { color: 'text-green-600 dark:text-green-300', bg: 'bg-green-50 dark:bg-green-500/15 border-green-200 dark:border-green-500/30', bar: 'bg-green-500', label: 'Fechado' },
   'Telefone Invalido': { color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-50 dark:bg-gray-500/15 border-gray-200 dark:border-gray-700', bar: 'bg-gray-400', label: 'Telefone Invalido' },
+  'Aguardando Prestação de Contas': { color: 'text-orange-600 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-500/15 border-orange-200', bar: 'bg-orange-500', label: 'Aguard. PC' },
+  'Prestação de Contas enviada para Análise': { color: 'text-orange-500 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-500/10 border-orange-200', bar: 'bg-orange-400', label: 'PC Enviada' },
+  'Prestação de Contas em Complementação': { color: 'text-amber-600 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-500/15 border-amber-200', bar: 'bg-amber-500', label: 'PC Complement.' },
+  'Prestação de Contas em Análise': { color: 'text-amber-500 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200', bar: 'bg-amber-400', label: 'PC em Análise' },
+  'Prestação de Contas Comprovada': { color: 'text-teal-600 dark:text-teal-300', bg: 'bg-teal-50 dark:bg-teal-500/15 border-teal-200', bar: 'bg-teal-500', label: 'PC Comprovada' },
+  'Prestação de Contas Comprovada em Análise': { color: 'text-teal-500 dark:text-teal-300', bg: 'bg-teal-50 dark:bg-teal-500/10 border-teal-200', bar: 'bg-teal-400', label: 'PC Comprov. Análise' },
+  'Prestação de Contas Aprovada': { color: 'text-teal-700 dark:text-teal-300', bg: 'bg-teal-50 dark:bg-teal-500/15 border-teal-300', bar: 'bg-teal-600', label: 'PC Aprovada' },
+  'Prestação de Contas Aprovada com Ressalvas': { color: 'text-teal-500 dark:text-teal-200', bg: 'bg-teal-50 dark:bg-teal-500/10 border-teal-200', bar: 'bg-teal-300', label: 'PC Aprov. Ressalvas' },
+  'Prestação de Contas Concluída': { color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200', bar: 'bg-emerald-600', label: 'PC Concluída' },
+  'Prestação de Contas Rejeitada': { color: 'text-red-600 dark:text-red-300', bg: 'bg-red-50 dark:bg-red-500/15 border-red-200', bar: 'bg-red-500', label: 'PC Rejeitada' },
+  'Prestação de Contas Iniciada Por Antecipação': { color: 'text-orange-400 dark:text-orange-200', bg: 'bg-orange-50 dark:bg-orange-500/10 border-orange-200', bar: 'bg-orange-300', label: 'PC Antecipada' },
 }
 
-const STATUS_ORDER = ['Não Contatado', 'Ainda Não', 'Retorno', 'Proposta', 'Aguardando Closer', 'Fechado'] as const
+const STATUS_ORDER = ['Não Contatado', 'Sem Interesse', 'Em Atendimento', 'Proposta Enviada', 'Em Aprovação', 'Fechado'] as const
 const EXECUCAO_STATUS_ORDER = [
   'Não Contatado',
-  'Ainda Não',
-  'Retorno',
+  'Sem Interesse',
+  'Em Atendimento',
   'Quente',
   'Muito Quente',
-  'Proposta',
-  'Aguardando Closer',
+  'Proposta Enviada',
+  'Em Aprovação',
   'Telefone Invalido',
   'Fechado',
+] as const
+
+const PC_STATUS_ORDER = [
+  'Aguardando Prestação de Contas',
+  'Prestação de Contas Iniciada Por Antecipação',
+  'Prestação de Contas enviada para Análise',
+  'Prestação de Contas em Análise',
+  'Prestação de Contas em Complementação',
+  'Prestação de Contas Comprovada',
+  'Prestação de Contas Comprovada em Análise',
+  'Prestação de Contas Aprovada com Ressalvas',
+  'Prestação de Contas Aprovada',
+  'Prestação de Contas Concluída',
+  'Prestação de Contas Rejeitada',
 ] as const
 
 function timeAgo(date: string | null): string {
@@ -175,7 +211,7 @@ function PipelineSection({
   subtitle: string
   total: number
   statuses: readonly string[]
-  counts: StatusCounts
+  counts: Record<string, number | undefined>
   hrefForStatus: (status: string) => string
   isVendedor?: boolean
   role?: string
@@ -388,7 +424,7 @@ export default function CRMDashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
-  const [pipelineTab, setPipelineTab] = useState<'aprovacao' | 'execucao'>('aprovacao')
+  const [pipelineTab, setPipelineTab] = useState<'aprovacao' | 'execucao' | 'prestacao_contas'>('aprovacao')
 
   useEffect(() => {
     fetch('/api/dashboard-crm')
@@ -469,6 +505,16 @@ export default function CRMDashboard() {
             }`}
           >
             Execução
+          </button>
+          <button
+            onClick={() => setPipelineTab('prestacao_contas')}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              pipelineTab === 'prestacao_contas'
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            Prest. Contas
           </button>
         </div>
       </div>
@@ -699,8 +745,8 @@ export default function CRMDashboard() {
                 <div className="flex flex-wrap gap-2 mb-3">
                   {[
                     { status: 'Não Contatado', count: v.nao_contatado },
-                    { status: 'Retorno', count: v.retorno },
-                    { status: 'Proposta', count: v.proposta },
+                    { status: 'Em Atendimento', count: v.retorno },
+                    { status: 'Proposta Enviada', count: v.proposta },
                     { status: 'Fechado', count: v.fechado },
                   ].map(({ status, count }) => {
                     const cfg = STATUS_CONFIG[status]
@@ -722,6 +768,66 @@ export default function CRMDashboard() {
           </div>
         </div>
       )}
+
+      {/* === PRESTAÇÃO DE CONTAS SECTIONS === */}
+
+      {pipelineTab === 'prestacao_contas' && data.prestacao_contas_pipeline && (() => {
+        const pc = data.prestacao_contas_pipeline!
+        const pcStatuses = PC_STATUS_ORDER.filter(s => (pc.by_status[s] || 0) > 0)
+        return (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div
+                role="button"
+                onClick={() => { window.location.href = '/tgov?view=dashboard&tab=prestacao_contas' }}
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+              >
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">CNPJs em PC</p>
+                <p className="text-3xl font-heading font-bold text-orange-600 dark:text-orange-300 mt-1">{pc.total_cnpjs.toLocaleString('pt-BR')}</p>
+              </div>
+              <div
+                role="button"
+                onClick={() => { window.location.href = '/tgov?view=dashboard&tab=prestacao_contas' }}
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+              >
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor Global</p>
+                <p className="text-3xl font-heading font-bold text-gray-800 dark:text-gray-100 mt-1">{formatCompactCurrency(pc.total_valor_global)}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatCurrency(pc.total_valor_global)}</p>
+              </div>
+              <div
+                role="button"
+                onClick={() => { window.location.href = '/tgov?view=dashboard&tab=prestacao_contas' }}
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+              >
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Em Risco</p>
+                <p className="text-3xl font-heading font-bold text-red-600 dark:text-red-400 mt-1">{pc.em_risco.toLocaleString('pt-BR')}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Rejeitada ou Complementação</p>
+              </div>
+              <div
+                role="button"
+                onClick={() => { window.location.href = '/tgov?view=dashboard&tab=prestacao_contas' }}
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+              >
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Concluídas</p>
+                <p className="text-3xl font-heading font-bold text-emerald-600 dark:text-emerald-400 mt-1">{pc.concluidas.toLocaleString('pt-BR')}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Aprovada ou Concluída</p>
+              </div>
+            </div>
+
+            {pcStatuses.length > 0 && (
+              <PipelineSection
+                title="Pipeline Prestação de Contas"
+                subtitle="Status por convenio no TransfereGov"
+                total={pc.total_cnpjs}
+                statuses={pcStatuses}
+                counts={pc.by_status}
+                hrefForStatus={() => '/tgov?view=dashboard&tab=prestacao_contas'}
+                totalLabel="CNPJs"
+              />
+            )}
+          </>
+        )
+      })()}
 
       {/* === APPROVAL-ONLY SECTIONS === */}
 
@@ -776,7 +882,8 @@ export default function CRMDashboard() {
           </div>
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {data.stale_leads.map((lead, i) => {
-              const cfg = STATUS_CONFIG[lead.status_contato] || STATUS_CONFIG['Não Contatado']
+              const normalizedLeadStatus = normalizeCrmStatus(lead.status_contato)
+              const cfg = STATUS_CONFIG[normalizedLeadStatus] || STATUS_CONFIG['Não Contatado']
               const daysLabel = lead.days_since_last_contact == null
                 ? { text: 'Nunca', cls: 'bg-gray-100 text-gray-500 dark:text-gray-400' }
                 : lead.days_since_last_contact <= 2
@@ -806,7 +913,7 @@ export default function CRMDashboard() {
                   <span className="text-sm text-gray-900 dark:text-gray-100 font-medium truncate flex-1">{lead.nome || lead.cnpj}</span>
                   <span className="text-xs text-gray-400 dark:text-gray-500 hidden sm:block">{lead.vendedor_nome}</span>
                   <span className={`px-2 py-0.5 rounded border text-[10px] font-medium ${cfg.bg} ${cfg.color}`}>
-                    {lead.status_contato}
+                    {normalizedLeadStatus}
                   </span>
                 </a>
               )
@@ -828,12 +935,13 @@ export default function CRMDashboard() {
           </h2>
           <div className="space-y-2">
             {data.commission_breakdown.map(item => {
-              const cfg = STATUS_CONFIG[item.status_contato] || STATUS_CONFIG['Não Contatado']
+              const normalizedItemStatus = normalizeCrmStatus(item.status_contato)
+              const cfg = STATUS_CONFIG[normalizedItemStatus] || STATUS_CONFIG['Não Contatado']
               return (
                 <div key={item.status_contato} className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 last:border-0">
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded border text-xs font-medium ${cfg.bg} ${cfg.color}`}>
-                      {item.status_contato}
+                      {normalizedItemStatus}
                     </span>
                     <span className="text-sm text-gray-500 dark:text-gray-400">{item.count} leads</span>
                     {item.locked_count > 0 && (
@@ -876,8 +984,8 @@ export default function CRMDashboard() {
                 <div className="flex flex-wrap gap-2 mb-3">
                   {[
                     { key: 'nao_contatado' as const, status: 'Não Contatado', count: v.nao_contatado },
-                    { key: 'retorno' as const, status: 'Retorno', count: v.retorno },
-                    { key: 'proposta' as const, status: 'Proposta', count: v.proposta },
+                    { key: 'retorno' as const, status: 'Em Atendimento', count: v.retorno },
+                    { key: 'proposta' as const, status: 'Proposta Enviada', count: v.proposta },
                     { key: 'fechado' as const, status: 'Fechado', count: v.fechado },
                   ].map(({ status, count }) => {
                     const cfg = STATUS_CONFIG[status]
@@ -938,7 +1046,7 @@ export default function CRMDashboard() {
           </div>
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {recent_activity.map((a, i) => {
-              const cfg = STATUS_CONFIG[a.status_contato] || STATUS_CONFIG['Não Contatado']
+              const cfg = STATUS_CONFIG[normalizeCrmStatus(a.status_contato)] || STATUS_CONFIG['Não Contatado']
               return (
                 <div key={`${a.cnpj}-${i}`} className={`px-4 py-3 text-sm ${i % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800/50' : ''}`}>
                   <div className="flex items-center gap-2 flex-wrap">

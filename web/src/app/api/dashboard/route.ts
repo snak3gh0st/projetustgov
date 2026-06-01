@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
+import { normalizeCrmStatus } from '@/lib/crm-catalog'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -30,17 +31,28 @@ export async function GET(request: NextRequest) {
     `, params)
 
     // Compute stats
-    const projetos = rows as Record<string, unknown>[]
+    const projetos = rows as Array<{ cnpj?: string | null; valor_global?: string | number | null; status_contato?: string | null }>
     const uniqueCnpjs = new Set(projetos.map(p => p.cnpj))
 
     const volumeFinanceiro = projetos.reduce((sum, p) => sum + (Number(p.valor_global) || 0), 0)
 
-    const porCategoria = {
-      'Ainda Não': projetos.filter(p => !p.status_contato || p.status_contato === 'Ainda Não' || p.status_contato === 'Novo' || p.status_contato === 'Contactado').length,
-      'Retorno': projetos.filter(p => p.status_contato === 'Retorno').length,
-      'Proposta': projetos.filter(p => p.status_contato === 'Proposta').length,
-      'Fechado': projetos.filter(p => p.status_contato === 'Fechado').length,
-    }
+    const porCategoria = projetos.reduce((acc, projeto) => {
+      const status = normalizeCrmStatus(projeto.status_contato || 'Não Contatado')
+      if (status === 'Não Contatado') acc['Não Contatado'] += 1
+      else if (status === 'Sem Interesse') acc['Sem Interesse'] += 1
+      else if (status === 'Em Atendimento') acc['Em Atendimento'] += 1
+      else if (status === 'Proposta Enviada') acc['Proposta Enviada'] += 1
+      else if (status === 'Em Aprovação') acc['Em Aprovação'] += 1
+      else if (status === 'Fechado') acc['Fechado'] += 1
+      return acc
+    }, {
+      'Não Contatado': 0,
+      'Sem Interesse': 0,
+      'Em Atendimento': 0,
+      'Proposta Enviada': 0,
+      'Em Aprovação': 0,
+      'Fechado': 0,
+    } as Record<string, number>)
 
     return NextResponse.json({
       stats: {

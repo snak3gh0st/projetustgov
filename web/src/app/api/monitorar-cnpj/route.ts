@@ -54,10 +54,10 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Assign all rows for this CNPJ to the current lead manager (tipo_vendedor = 'Exclusivo')
+  // Assign all rows for this CNPJ to the current lead manager (tipo_vendedor = 'In-Sites Sells')
   await query(
     `UPDATE vendedor_projetos
-     SET vendedor_id = $1, tipo_vendedor = 'Exclusivo', updated_at = NOW()
+     SET vendedor_id = $1, tipo_vendedor = 'In-Sites Sells', updated_at = NOW()
      WHERE cnpj = $2`,
     [managerId, cleanCnpj]
   )
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
   const nomeLead = existingLeads[0]?.nome || cleanCnpj
   return NextResponse.json({
     success: true,
-    message: `${nomeLead} atribuído a ${managerName} como Exclusivo`,
+    message: `${nomeLead} atribuído a ${managerName} como In-Sites Sells`,
     cnpj: cleanCnpj,
     nome: nomeLead,
     rows_updated: existingLeads.length,

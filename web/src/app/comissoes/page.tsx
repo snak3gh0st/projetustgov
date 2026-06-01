@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency } from '@/lib/format'
+import { normalizeTipoVendedor } from '@/lib/crm-catalog'
 
 interface ComissaoLead {
   id: string
@@ -9,7 +10,7 @@ interface ComissaoLead {
   nome: string
   valor_emenda: number
   valor_venda: number
-  tipo_vendedor: 'SDR' | 'Closer' | 'Exclusivo'
+  tipo_vendedor: 'SDR' | 'Closer' | 'In-Sites Sells' | 'Exclusivo'
   comissao_percentual: number
   comissao_valor: number
   comissao_bonus: number
@@ -27,7 +28,7 @@ interface ComissaoLead {
 }
 
 interface PauloBreakdown {
-  exclusivo: { total: number; count: number; valor_venda: number }
+  in_sites_sells: { total: number; count: number; valor_venda: number }
   closer: { total: number; count: number; valor_venda: number }
   coordenador: { total: number; count: number; valor_venda: number }
   total_geral: number
@@ -81,8 +82,9 @@ interface ComissaoData {
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string }> = {
   'Não Contatado': { color: 'text-red-500', bg: 'bg-red-50 border-red-200' },
-  'Retorno': { color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
-  'Proposta': { color: 'text-[#0072F7]', bg: 'bg-blue-50 border-blue-200' },
+  'Sem Interesse': { color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-200' },
+  'Em Atendimento': { color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
+  'Proposta Enviada': { color: 'text-[#0072F7]', bg: 'bg-blue-50 border-blue-200' },
   'Fechado': { color: 'text-green-600', bg: 'bg-green-50 border-green-200' },
 }
 
@@ -342,7 +344,7 @@ export default function ComissoesPage() {
             <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
               {formatCurrency(data.paulo_breakdown.total_geral)}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Exclusivo + Closer + Coordenador</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">In-Sites Sells + Closer + Coordenador</p>
           </div>
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
             <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Bonus</p>
@@ -370,7 +372,7 @@ export default function ComissoesPage() {
             <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
               {formatCurrency(data.summary.total_comissao)}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">SDR + Exclusivo + Closer</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">SDR + In-Sites Sells + Closer</p>
           </div>
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
             <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Comissao {data.lead_manager_name || 'Rooger'} (Closer)</p>
@@ -448,16 +450,16 @@ export default function ComissoesPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
-              <p className="text-xs text-emerald-600 uppercase tracking-wider font-medium">Exclusivo (3%)</p>
+              <p className="text-xs text-emerald-600 uppercase tracking-wider font-medium">In-Sites Sells (5%)</p>
               <p className="text-2xl font-heading font-bold text-emerald-700 mt-2">
-                {formatCurrency(data.paulo_breakdown.exclusivo.total)}
+                {formatCurrency(data.paulo_breakdown.in_sites_sells.total)}
               </p>
               <p className="text-xs text-emerald-500 mt-1">
-                {data.paulo_breakdown.exclusivo.count} clientes • {formatCurrency(data.paulo_breakdown.exclusivo.valor_venda)} em vendas
+                {data.paulo_breakdown.in_sites_sells.count} clientes • {formatCurrency(data.paulo_breakdown.in_sites_sells.valor_venda)} em vendas
               </p>
             </div>
             <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 rounded-xl p-5">
-              <p className="text-xs text-purple-600 dark:text-purple-400 uppercase tracking-wider font-medium">Closer (3%)</p>
+              <p className="text-xs text-purple-600 dark:text-purple-400 uppercase tracking-wider font-medium">Closer (3,5%)</p>
               <p className="text-2xl font-heading font-bold text-purple-700 mt-2">
                 {formatCurrency(data.paulo_breakdown.closer.total)}
               </p>
@@ -479,7 +481,7 @@ export default function ComissoesPage() {
               <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
                 {formatCurrency(data.paulo_breakdown.total_geral)}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Exclusivo + Closer + Coordenador</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">In-Sites Sells + Closer + Coordenador</p>
             </div>
           </div>
         </div>
@@ -531,18 +533,18 @@ export default function ComissoesPage() {
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-bold text-purple-900">{data.lead_manager_name || 'Rooger'} (Gestor)</h3>
                   <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded font-medium">
-                    {data.paulo_breakdown.closer.count + data.paulo_breakdown.exclusivo.count} fechados
+                    {data.paulo_breakdown.closer.count + data.paulo_breakdown.in_sites_sells.count} fechados
                   </span>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-purple-500">Exclusivo (3%)</span>
+                    <span className="text-xs text-purple-500">In-Sites Sells (5%)</span>
                     <span className="text-sm font-semibold text-emerald-700">
-                      {formatCurrency(data.paulo_breakdown.exclusivo.total)}
+                      {formatCurrency(data.paulo_breakdown.in_sites_sells.total)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-purple-500">Closer (3%)</span>
+                    <span className="text-xs text-purple-500">Closer (3,5%)</span>
                     <span className="text-sm font-semibold text-purple-700">
                       {formatCurrency(data.paulo_breakdown.closer.total)}
                     </span>
@@ -611,13 +613,13 @@ export default function ComissoesPage() {
                     </td>
                     <td className="px-6 py-4">
                       <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                        lead.tipo_vendedor === 'SDR'
+                        normalizeTipoVendedor(lead.tipo_vendedor) === 'SDR'
                           ? 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7]'
-                          : lead.tipo_vendedor === 'Exclusivo'
+                          : normalizeTipoVendedor(lead.tipo_vendedor) === 'In-Sites Sells'
                           ? 'bg-emerald-50 text-emerald-700'
                           : 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400'
                       }`}>
-                        {lead.tipo_vendedor}
+                        {normalizeTipoVendedor(lead.tipo_vendedor)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-right text-gray-900 dark:text-gray-100">

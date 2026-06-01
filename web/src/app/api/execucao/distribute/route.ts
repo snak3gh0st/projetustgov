@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getApiSession } from '@/lib/dal'
 import { distributeUnassignedExecucao } from '@/lib/distribute-execucao'
+import { AUTO_DISTRIBUTION_ENABLED } from '@/lib/distribution-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,6 +10,9 @@ export async function POST() {
     const session = await getApiSession()
     if (!session || session.role !== 'gestor') {
       return NextResponse.json({ error: 'Forbidden: gestor only' }, { status: 403 })
+    }
+    if (!AUTO_DISTRIBUTION_ENABLED) {
+      return NextResponse.json({ skipped: true, distributed: 0, updated: 0, inserted: 0, vendedores: [] })
     }
     const result = await distributeUnassignedExecucao()
     if (result.skipped) {

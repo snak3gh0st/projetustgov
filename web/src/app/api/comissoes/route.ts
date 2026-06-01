@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
+import { normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
 export const dynamic = 'force-dynamic'
 
@@ -188,8 +189,8 @@ export async function GET(request: NextRequest) {
       if (endDate) { pauloFilters.push(`${dateField} <= $${pIdx++}::timestamp`); pauloParams.push(`${endDate} 23:59:59`) }
       const pauloWhere = pauloFilters.join(' AND ')
 
-      const [exclusivoRows, closerRows, coordenadorRows] = await Promise.all([
-        // Exclusivo: manager's own clients (tipo_vendedor = 'Exclusivo', vendedor_id = manager)
+      const [inSitesRows, closerRows, coordenadorRows] = await Promise.all([
+        // In-Sites Sells: manager's own clients (tipo_vendedor = 'In-Sites Sells', vendedor_id = manager)
         query(`
           SELECT
             COALESCE(SUM(vp.comissao_valor), 0)::numeric as total,
@@ -197,7 +198,7 @@ export async function GET(request: NextRequest) {
             COALESCE(SUM(vp.valor_venda), 0)::numeric as valor_venda
           FROM vendedor_projetos vp
           WHERE ${pauloWhere}
-            AND vp.tipo_vendedor = 'Exclusivo'
+            AND vp.tipo_vendedor IN ('Exclusivo', 'In-Sites Sells')
             AND vp.vendedor_id = $${pIdx}
         `, [...pauloParams, managerUserId]),
 
@@ -231,15 +232,15 @@ export async function GET(request: NextRequest) {
         `, [...pauloParams, managerUserId]),
       ])
 
-      const exclusivoTotal = Number(exclusivoRows[0]?.total) || 0
+      const inSitesTotal = Number(inSitesRows[0]?.total) || 0
       const closerTotal = Number(closerRows[0]?.total) || 0
       const coordenadorTotal = Number(coordenadorRows[0]?.total) || 0
 
       pauloBreakdown = {
-        exclusivo: {
-          total: exclusivoTotal,
-          count: Number(exclusivoRows[0]?.count) || 0,
-          valor_venda: Number(exclusivoRows[0]?.valor_venda) || 0,
+        in_sites_sells: {
+          total: inSitesTotal,
+          count: Number(inSitesRows[0]?.count) || 0,
+          valor_venda: Number(inSitesRows[0]?.valor_venda) || 0,
         },
         closer: {
           total: closerTotal,
@@ -251,7 +252,7 @@ export async function GET(request: NextRequest) {
           count: Number(coordenadorRows[0]?.count) || 0,
           valor_venda: Number(coordenadorRows[0]?.valor_venda) || 0,
         },
-        total_geral: exclusivoTotal + closerTotal + coordenadorTotal,
+        total_geral: inSitesTotal + closerTotal + coordenadorTotal,
       }
     } // else managerUserId found
     } // isManagerBreakdownView
@@ -266,21 +267,23 @@ export async function GET(request: NextRequest) {
         lead.closer_id === session.userId &&
         lead.vendedor_id !== session.userId
       const isGestorLead = lead.vendedor_role === 'gestor'
-      return {
-        id: lead.id,
-        cnpj: lead.cnpj,
-        nome: lead.nome,
-        valor_emenda: Number(lead.valor_emenda) || 0,
-        valor_venda: Number(lead.valor_venda) || 0,
-        tipo_vendedor: lead.tipo_vendedor,
-        comissao_percentual: Number(lead.comissao_percentual) || 0,
-        comissao_valor: isGestorLead ? 0 : (Number(lead.comissao_valor) || 0),
-        comissao_bonus: (isCloserNotVendedor || isGestorLead) ? 0 : (Number(lead.comissao_bonus) || 0),
-        comissao_locked: Boolean(lead.comissao_locked),
-        status_contato: lead.status_contato,
-        vendedor_nome: lead.vendedor_nome,
-        vendedor_id: lead.vendedor_id,
-        closer_id: lead.closer_id || null,
+      const tipoVendedor = normalizeTipoVendedor(String(lead.tipo_vendedor ?? null))
+      const statusContato = normalizeCrmStatus(String(lead.status_contato ?? null))
+        return {
+          id: lead.id,
+          cnpj: lead.cnpj,
+          nome: lead.nome,
+          valor_emenda: Number(lead.valor_emenda) || 0,
+          valor_venda: Number(lead.valor_venda) || 0,
+          tipo_vendedor: tipoVendedor,
+          comissao_percentual: Number(lead.comissao_percentual) || 0,
+          comissao_valor: isGestorLead ? 0 : (Number(lead.comissao_valor) || 0),
+          comissao_bonus: (isCloserNotVendedor || isGestorLead) ? 0 : (Number(lead.comissao_bonus) || 0),
+          comissao_locked: Boolean(lead.comissao_locked),
+          status_contato: statusContato,
+          vendedor_nome: lead.vendedor_nome,
+          vendedor_id: lead.vendedor_id,
+          closer_id: lead.closer_id || null,
         closer_nome: lead.closer_nome || null,
         closer_comissao_percentual: Number(lead.closer_comissao_percentual) || 0,
         closer_comissao_valor: isGestorLead ? 0 : (Number(lead.closer_comissao_valor) || 0),

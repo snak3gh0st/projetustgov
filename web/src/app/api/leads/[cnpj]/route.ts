@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
+import { CRM_COMMISSIONS, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,7 +49,7 @@ export async function PATCH(
     }
     if (body.tipo_vendedor !== undefined) {
       updates.push(`tipo_vendedor = $${paramIndex++}`)
-      values.push(body.tipo_vendedor)
+      values.push(normalizeTipoVendedor(String(body.tipo_vendedor)))
     }
 
     if (updates.length === 0) {
@@ -84,7 +85,7 @@ export async function PATCH(
     // Exception: setting Aguardando Closer is allowed on ANY lead (SDR hands off to closer)
     let vendedorCondition = ''
     if (session.role === 'vendedor' || session.role === 'coordenador') {
-      if (body.status_contato !== 'Aguardando Closer') {
+      if (normalizeCrmStatus(body.status_contato) !== 'Em Aprovação') {
         values.push(session.userId)
         vendedorCondition = `AND (vendedor_id = $${paramIndex + 1} OR closer_id = $${paramIndex + 1})`
       }
@@ -102,8 +103,8 @@ export async function PATCH(
     }
 
     // Commission lock/unlock logic (COM-01: vendedor vinculado ao lead quando marca Fechado)
-    if (body.status_contato === 'Aguardando Closer') {
-      console.log(`[PATCH] Aguardando Closer triggered for project ${projectId} by user ${session.userId} (${session.role})`)
+    if (normalizeCrmStatus(body.status_contato) === 'Em Aprovação') {
+      console.log(`[PATCH] Em Aprovação triggered for project ${projectId} by user ${session.userId} (${session.role})`)
       // SDR → Closer flow: SDR sends lead to the current lead manager as Closer
       // Set closer_id = manager, keep vendedor_id = SDR original
       // Note: active filter removed so inactive accounts are still found (avoids silent failures)
@@ -143,16 +144,16 @@ export async function PATCH(
       const hasCloser = leadRow?.closer_id != null
 
       if (hasCloser) {
-        // SPLIT COMMISSION: SDR gets 1%, Closer (Paulo) gets 3%
+        // SPLIT COMMISSION: SDR gets 1.5%, Closer (Paulo) gets 3.5%
         // SDR commission (comissao_valor on vendedor_id)
         // Closer commission (closer_comissao_valor on closer_id)
         await query(`
           UPDATE vendedor_projetos
-          SET comissao_percentual = 1.00,
-              comissao_valor = COALESCE(valor_venda, 0) * 0.01,
+          SET comissao_percentual = 1.50,
+              comissao_valor = COALESCE(valor_venda, 0) * 0.015,
               comissao_bonus = 50.00,
-              closer_comissao_percentual = 3.00,
-              closer_comissao_valor = COALESCE(valor_venda, 0) * 0.03,
+              closer_comissao_percentual = 3.50,
+              closer_comissao_valor = COALESCE(valor_venda, 0) * 0.035,
               comissao_locked = true,
               fechamento_at = COALESCE(fechamento_at, NOW()),
               updated_at = NOW()
@@ -161,7 +162,7 @@ export async function PATCH(
       } else {
         // Standard commission: no closer involved
         // Recalculate and lock commission when setting Fechado
-        // SDR 1%, Closer 4%, Exclusivo 3%
+        // SDR 1.5%, Closer 3.5%, In-Sites Sells 5%
         await query(`
           WITH lead_info AS (
             SELECT id, tipo_vendedor, valor_venda
@@ -185,9 +186,9 @@ export async function PATCH(
                 (SELECT percentual_override FROM override_check),
                 (SELECT percentual_default FROM config_check),
                 CASE
-                  WHEN tipo_vendedor = 'SDR' THEN 1.00
-                  WHEN tipo_vendedor = 'Exclusivo' THEN 3.00
-                  ELSE 4.00
+                  WHEN tipo_vendedor = 'SDR' THEN 1.50
+                  WHEN tipo_vendedor IN ('In-Sites Sells', 'Exclusivo') THEN 5.00
+                  ELSE 3.50
                 END
               ),
               comissao_valor = (
@@ -196,15 +197,15 @@ export async function PATCH(
                     (SELECT percentual_override FROM override_check),
                     (SELECT percentual_default FROM config_check),
                     CASE
-                      WHEN tipo_vendedor = 'SDR' THEN 1.00
-                      WHEN tipo_vendedor = 'Exclusivo' THEN 3.00
-                      ELSE 4.00
+                      WHEN tipo_vendedor = 'SDR' THEN 1.50
+                      WHEN tipo_vendedor IN ('In-Sites Sells', 'Exclusivo') THEN 5.00
+                      ELSE 3.50
                     END
                   ) / 100
                 )
               ),
               comissao_bonus = CASE
-                WHEN tipo_vendedor = 'Exclusivo' THEN 0
+                WHEN tipo_vendedor IN ('In-Sites Sells', 'Exclusivo') THEN 0
                 ELSE COALESCE(
                   (SELECT taxa_fixa_override FROM override_check),
                   (SELECT taxa_fixa FROM config_check),
@@ -217,9 +218,9 @@ export async function PATCH(
           WHERE id = $1
         `, [projectId])
       }
-    } else if (body.status_contato !== undefined && body.status_contato !== 'Fechado' && body.status_contato !== 'Aguardando Closer') {
+    } else if (body.status_contato !== undefined && normalizeCrmStatus(body.status_contato) !== 'Fechado' && normalizeCrmStatus(body.status_contato) !== 'Em Aprovação') {
       // Unlock commission if status changes away from Fechado
-      // Always clear closer_id when status is not 'Aguardando Closer' or 'Fechado'
+      // Always clear closer_id when status is not 'Em Aprovação' or 'Fechado'
       // This ensures stale closer_id values don't cause Paulo to see leads he should not see
       await query(`
         UPDATE vendedor_projetos
@@ -239,14 +240,14 @@ export async function PATCH(
       const closerRow = closerCheck[0]
 
       if (closerRow?.closer_id != null && closerRow?.status_contato === 'Fechado') {
-        // SPLIT COMMISSION re-apply: SDR 1% + R$50, Closer 3%
+        // SPLIT COMMISSION re-apply: SDR 1.5% + R$50, Closer 3.5%
         await query(`
           UPDATE vendedor_projetos
-          SET comissao_percentual = 1.00,
-              comissao_valor = COALESCE(valor_venda, 0) * 0.01,
+          SET comissao_percentual = 1.50,
+              comissao_valor = COALESCE(valor_venda, 0) * 0.015,
               comissao_bonus = 50.00,
-              closer_comissao_percentual = 3.00,
-              closer_comissao_valor = COALESCE(valor_venda, 0) * 0.03,
+              closer_comissao_percentual = 3.50,
+              closer_comissao_valor = COALESCE(valor_venda, 0) * 0.035,
               updated_at = NOW()
           WHERE id = $1
         `, [projectId])
@@ -268,9 +269,9 @@ export async function PATCH(
           SET comissao_percentual = COALESCE(
                 (SELECT percentual_default FROM config_check),
                 CASE
-                  WHEN tipo_vendedor = 'SDR' THEN 1.00
-                  WHEN tipo_vendedor = 'Exclusivo' THEN 3.00
-                  ELSE 4.00
+                  WHEN tipo_vendedor = 'SDR' THEN 1.50
+                  WHEN tipo_vendedor IN ('In-Sites Sells', 'Exclusivo') THEN 5.00
+                  ELSE 3.50
                 END
               ),
               comissao_valor = (
@@ -278,15 +279,15 @@ export async function PATCH(
                   COALESCE(
                     (SELECT percentual_default FROM config_check),
                     CASE
-                      WHEN tipo_vendedor = 'SDR' THEN 1.00
-                      WHEN tipo_vendedor = 'Exclusivo' THEN 3.00
-                      ELSE 4.00
+                      WHEN tipo_vendedor = 'SDR' THEN 1.50
+                      WHEN tipo_vendedor IN ('In-Sites Sells', 'Exclusivo') THEN 5.00
+                      ELSE 3.50
                     END
                   ) / 100
                 )
               ),
               comissao_bonus = CASE
-                WHEN tipo_vendedor = 'Exclusivo' THEN 0
+                WHEN tipo_vendedor IN ('In-Sites Sells', 'Exclusivo') THEN 0
                 ELSE COALESCE((SELECT taxa_fixa FROM config_check), 50.00)
               END,
               updated_at = NOW()

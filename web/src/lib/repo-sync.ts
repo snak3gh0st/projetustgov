@@ -37,6 +37,7 @@ import { Readable } from 'stream'
 import { createInflateRaw } from 'zlib'
 import { createInterface } from 'readline'
 import { getPool } from '@/lib/db'
+import { AUTO_DISTRIBUTION_ENABLED } from '@/lib/distribution-policy'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -662,8 +663,8 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       const isExisting = existingAssignments.has(assignmentKey)
       const isExistingClient = existingClients.has(lead.cnpj)
 
-      // For new leads, assign vendedor via round-robin — but keep all emendas of a CNPJ
-      // under the same vendedor. If a CNPJ already has any assignment, inherit it.
+      // For new leads, keep CNPJs together.
+      // Existing assignments are preserved; new CNPJs stay unassigned unless auto distribution is enabled.
       let vendedorId: string | null = null
       if (isExisting) {
         // Existing lead: keep current vendedor assignment.
@@ -679,8 +680,8 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
         // preventing split assignments where two vendedores unknowingly work the same org.
         vendedorId = cnpjAssignments.get(lead.cnpj)!
         // Do NOT increment vendedorCounts — this isn't a new allocation, it's inheritance.
-      } else {
-        // Truly new CNPJ: normal round-robin
+      } else if (AUTO_DISTRIBUTION_ENABLED) {
+        // Truly new CNPJ: round-robin only when automatic distribution is enabled.
         vendedorId = pickNextVendedor()
         if (vendedorId) {
           vendedorCounts.set(vendedorId, (vendedorCounts.get(vendedorId) ?? 0) + 1)
@@ -688,6 +689,9 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
           // also inherit this vendedor (handles multiple new emendas in same sync run).
           cnpjAssignments.set(lead.cnpj, vendedorId)
         }
+      } else {
+        // Manual distribution default: leave the new CNPJ unassigned for the gestor.
+        vendedorId = null
       }
 
       const obs = isExistingClient ? 'JA E CLIENTE PROJETUS' : null

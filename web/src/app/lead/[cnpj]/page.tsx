@@ -8,16 +8,17 @@ import type { VendedorProjeto } from '@/lib/types'
 import ContactNotesTimeline from '@/components/ContactNotesTimeline'
 import LeadContacts from '@/components/LeadContacts'
 import SaleModal from '@/components/SaleModal'
+import { CRM_STATUS_CANONICAL, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
-const STATUS_OPTIONS = ['Não Contatado', 'Ainda Não', 'Retorno', 'Quente', 'Muito Quente', 'Proposta', 'Aguardando Closer', 'Fechado', 'Telefone Invalido']
+const STATUS_OPTIONS = CRM_STATUS_CANONICAL
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-red-500/20 text-red-500',
-  'Ainda Não': 'bg-yellow-500/20 text-yellow-600',
-  'Retorno': 'bg-amber-500/20 text-amber-600',
+  'Sem Interesse': 'bg-yellow-500/20 text-yellow-600',
+  'Em Atendimento': 'bg-amber-500/20 text-amber-600',
   'Quente': 'bg-red-500/30 text-red-600',
   'Muito Quente': 'bg-red-600/40 text-red-700',
-  'Proposta': 'bg-blue-500/20 text-[#0072F7]',
-  'Aguardando Closer': 'bg-purple-500/20 text-purple-600',
+  'Proposta Enviada': 'bg-blue-500/20 text-[#0072F7]',
+  'Em Aprovação': 'bg-purple-500/20 text-purple-600',
   'Fechado': 'bg-green-500/20 text-green-600',
   'Telefone Invalido': 'bg-gray-500/20 text-gray-600',
 }
@@ -61,7 +62,11 @@ export default function LeadDetailPage() {
     ]).then(([leadsData, execData]) => {
         const filtered = (Array.isArray(leadsData) ? leadsData : []).filter(
           (p: VendedorProjeto) => p.cnpj?.replace(/\D/g, '') === cnpjClean
-        )
+        ).map((p: VendedorProjeto) => ({
+          ...p,
+          status_contato: normalizeCrmStatus(p.status_contato),
+          tipo_vendedor: normalizeTipoVendedor(p.tipo_vendedor),
+        }))
         setProjetos(filtered)
         if (filtered.length > 0) {
           setIsPriority(filtered[0].is_max_priority || false)
@@ -90,13 +95,13 @@ export default function LeadDetailPage() {
   async function updateProjeto(id: number, field: string, value: string) {
     try {
       // If status is changing to "Fechado", open SaleModal to collect valor_venda
-      // "Aguardando Closer" does NOT open SaleModal — it goes directly to PATCH API
+      // "Em Aprovação" does NOT open SaleModal — it goes directly to PATCH API
       if (field === 'status_contato' && value === 'Fechado') {
         const projeto = projetos.find(p => p.id === id)
         setSaleModal({
           projetoId: id,
           tipoVendedor: projeto?.tipo_vendedor || null,
-          isExclusivo: projeto?.tipo_vendedor === 'Exclusivo',
+          isExclusivo: projeto?.tipo_vendedor === 'In-Sites Sells' || projeto?.tipo_vendedor === 'Exclusivo',
         })
         return
       }
@@ -154,7 +159,7 @@ export default function LeadDetailPage() {
           ...p,
           status_contato: finalStatus,
           valor_venda: saleData.valor_venda,
-          tipo_vendedor: saleData.tipo_vendedor as 'SDR' | 'Closer' | 'Exclusivo',
+          tipo_vendedor: normalizeTipoVendedor(saleData.tipo_vendedor),
           ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
           ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
           ...(data.comissao_bonus != null ? { comissao_bonus: Number(data.comissao_bonus) } : {}),
@@ -292,11 +297,11 @@ export default function LeadDetailPage() {
       </div>
 
       {/* Aguardando Closer banner */}
-      {first.status_contato === 'Aguardando Closer' && (
+      {normalizeCrmStatus(first.status_contato) === 'Em Aprovação' && (
         <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 rounded-xl p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-purple-700">Aguardando Closer ({first.closer_nome || 'Rooger'})</p>
+              <p className="text-sm font-semibold text-purple-700">Em Aprovação ({first.closer_nome || 'Rooger'})</p>
               <p className="text-xs text-purple-500 mt-1">
                 Este lead foi enviado pelo SDR e aguarda fechamento pelo coordenador
               </p>
@@ -305,18 +310,18 @@ export default function LeadDetailPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => {
-                    setSaleModal({
-                      projetoId: first.id,
-                      tipoVendedor: first.tipo_vendedor || null,
-                      isExclusivo: false,
-                    })
+                  setSaleModal({
+                    projetoId: first.id,
+                    tipoVendedor: first.tipo_vendedor || null,
+                    isExclusivo: false,
+                  })
                   }}
                   className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-500 transition-colors"
                 >
                   Fechar Venda
                 </button>
                 <button
-                  onClick={() => updateProjeto(first.id, 'status_contato', 'Proposta')}
+                  onClick={() => updateProjeto(first.id, 'status_contato', 'Proposta Enviada')}
                   className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   Cancelar
@@ -340,17 +345,17 @@ export default function LeadDetailPage() {
               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Tipo Vendedor</p>
               {canModify && !first.closer_id ? (
                 <select
-                  value={first.tipo_vendedor || 'SDR'}
+                  value={normalizeTipoVendedor(first.tipo_vendedor)}
                   onChange={(e) => updateProjeto(first.id, 'tipo_vendedor', e.target.value)}
                   className="mt-1 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-sigma-neon/50"
                 >
-                  <option value="SDR">SDR (1%)</option>
-                  <option value="Closer">Closer (4%)</option>
-                  <option value="Exclusivo">Exclusivo (3%)</option>
+                  <option value="SDR">SDR (1,5%)</option>
+                  <option value="Closer">Closer (3,5%)</option>
+                  <option value="In-Sites Sells">In-Sites Sells (5%)</option>
                 </select>
               ) : (
                 <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-1">
-                  {first.tipo_vendedor || 'SDR'}
+                  {normalizeTipoVendedor(first.tipo_vendedor)}
                 </p>
               )}
             </div>
