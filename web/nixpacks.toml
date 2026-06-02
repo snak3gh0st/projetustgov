@@ -1,0 +1,2 @@
+[start]
+cmd = "cp -r /app/.next/static /app/.next/standalone/.next/static && cp -r /app/public /app/.next/standalone/public && node /app/.next/standalone/server.js"
