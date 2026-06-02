@@ -1,6 +1,7 @@
 import NextAuth, { type NextAuthConfig } from 'next-auth'
 
 export const authConfig = {
+  trustHost: true,
   pages: {
     signIn: '/login',
   },
