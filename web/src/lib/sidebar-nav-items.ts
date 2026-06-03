@@ -52,6 +52,7 @@ export function getNavItemsForRole(role: NavRole): NavItem[] {
       { href: '/csm/bi', label: 'CSM BI', icon: 'bi' },
       { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
       { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
+      { href: '/admin/system-health', label: 'Saúde do Sistema', icon: 'monitoramento' },
       { href: '/cadastro-vendedor', label: 'Usuarios', icon: 'vendedores' },
     ]
   }
