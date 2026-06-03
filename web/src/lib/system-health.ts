@@ -13,6 +13,20 @@ export interface CriticalAccountStatus {
   status: HealthStatus
 }
 
+export interface UserActivityStatus {
+  id: string
+  nome: string
+  email: string
+  role: string
+  active: boolean
+  login_count: number
+  last_login_at: string | null
+  last_seen_at: string | null
+  last_login_ip: string | null
+  last_login_user_agent: string | null
+  presence: 'online' | 'recent' | 'offline'
+}
+
 export interface SystemHealthSnapshot {
   status: HealthStatus
   checked_at: string
@@ -38,6 +52,9 @@ export interface SystemHealthSnapshot {
     inactive: number
     active_admins: number
     active_gestores: number
+    online_now: number
+    recent_logins: UserActivityStatus[]
+    active_users: UserActivityStatus[]
     by_role: Array<{ role: string; active: boolean; count: number }>
     critical_accounts: CriticalAccountStatus[]
   }
@@ -106,8 +123,12 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
     inactive: 0,
     active_admins: 0,
     active_gestores: 0,
+    online_now: 0,
   }
   let byRole: Array<{ role: string; active: boolean; count: number }> = []
+  let activeUsers: UserActivityStatus[] = []
+  let recentLogins: UserActivityStatus[] = []
+  let activitySupported = false
   let criticalAccounts: CriticalAccountStatus[] = CRITICAL_ACCOUNTS.map(account => ({
     ...account,
     expectedRole: account.expectedRole ?? null,
@@ -137,13 +158,19 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
       inactive: number
       active_admins: number
       active_gestores: number
+      online_now: number
     }>(`
       SELECT
         COUNT(*)::int AS total,
         COUNT(*) FILTER (WHERE active = true)::int AS active,
         COUNT(*) FILTER (WHERE active = false)::int AS inactive,
         COUNT(*) FILTER (WHERE role = 'admin' AND active = true)::int AS active_admins,
-        COUNT(*) FILTER (WHERE role = 'gestor' AND active = true)::int AS active_gestores
+        COUNT(*) FILTER (WHERE role = 'gestor' AND active = true)::int AS active_gestores,
+        COUNT(*) FILTER (
+          WHERE active = true
+            AND last_seen_at IS NOT NULL
+            AND last_seen_at >= NOW() - INTERVAL '15 minutes'
+        )::int AS online_now
       FROM users
     `)
     userTotals = totalsRows[0] ?? userTotals
@@ -154,6 +181,99 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
       GROUP BY role, active
       ORDER BY role, active DESC
     `)
+
+    const activityColumnRows = await query<{ column_name: string }>(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_name = 'users'
+        AND column_name = ANY($1::text[])
+    `, [[
+      'login_count',
+      'last_login_at',
+      'last_seen_at',
+      'last_login_ip',
+      'last_login_user_agent',
+    ]])
+
+    activitySupported = activityColumnRows.length === 5
+
+    if (activitySupported) {
+      const activityRows = await query<{
+        id: string
+        nome: string
+        email: string
+        role: string
+        active: boolean
+        login_count: number
+        last_login_at: string | null
+        last_seen_at: string | null
+        last_login_ip: string | null
+        last_login_user_agent: string | null
+      }>(`
+        SELECT
+          id,
+          nome,
+          email,
+          role,
+          active,
+          COALESCE(login_count, 0)::int AS login_count,
+          last_login_at,
+          last_seen_at,
+          last_login_ip,
+          last_login_user_agent
+        FROM users
+        WHERE active = true
+        ORDER BY COALESCE(last_seen_at, last_login_at) DESC NULLS LAST, nome
+        LIMIT 12
+      `)
+
+      const recentLoginRows = await query<{
+        id: string
+        nome: string
+        email: string
+        role: string
+        active: boolean
+        login_count: number
+        last_login_at: string | null
+        last_seen_at: string | null
+        last_login_ip: string | null
+        last_login_user_agent: string | null
+      }>(`
+        SELECT
+          id,
+          nome,
+          email,
+          role,
+          active,
+          COALESCE(login_count, 0)::int AS login_count,
+          last_login_at,
+          last_seen_at,
+          last_login_ip,
+          last_login_user_agent
+        FROM users
+        WHERE active = true AND last_login_at IS NOT NULL
+        ORDER BY last_login_at DESC
+        LIMIT 10
+      `)
+
+      activeUsers = activityRows.map(user => ({
+        ...user,
+        presence: user.last_seen_at && new Date(user.last_seen_at).getTime() >= Date.now() - 15 * 60 * 1000
+          ? 'online'
+          : user.last_login_at && new Date(user.last_login_at).getTime() >= Date.now() - 24 * 60 * 60 * 1000
+            ? 'recent'
+            : 'offline',
+      }))
+
+      recentLogins = recentLoginRows.map(user => ({
+        ...user,
+        presence: user.last_seen_at && new Date(user.last_seen_at).getTime() >= Date.now() - 15 * 60 * 1000
+          ? 'online'
+          : user.last_login_at && new Date(user.last_login_at).getTime() >= Date.now() - 24 * 60 * 60 * 1000
+            ? 'recent'
+            : 'offline',
+      }))
+    }
 
     const criticalRows = await query<{
       nome: string
@@ -223,6 +343,12 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
   if (userTotals.inactive > 0) {
     notes.push(`${userTotals.inactive} usuário(s) inativo(s) no cadastro.`)
   }
+  if (!activitySupported) {
+    notes.push('Telemetria de login ainda não migrada no banco.')
+  }
+  if (userTotals.online_now === 0) {
+    notes.push('Nenhum usuário com presença recente nas últimas 15 minutos.')
+  }
   for (const account of criticalAccounts) {
     if (!account.found) {
       notes.push(`Conta crítica ausente: ${account.email}.`)
@@ -252,6 +378,9 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
       inactive: userTotals.inactive,
       active_admins: userTotals.active_admins,
       active_gestores: userTotals.active_gestores,
+      online_now: userTotals.online_now,
+      recent_logins: recentLogins,
+      active_users: activeUsers,
       by_role: byRole,
       critical_accounts: criticalAccounts,
     },

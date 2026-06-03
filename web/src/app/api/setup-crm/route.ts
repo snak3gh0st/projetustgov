@@ -71,6 +71,13 @@ async function runSetup() {
     `).catch(() => {}) // Ignore if constraint doesn't exist or already updated
 
     await pool.query(`ALTER TABLE users ALTER COLUMN role TYPE VARCHAR(40)`).catch(() => {})
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE`).catch(() => {})
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP WITH TIME ZONE`).catch(() => {})
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_ip VARCHAR(64)`).catch(() => {})
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_user_agent TEXT`).catch(() => {})
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS login_count INTEGER NOT NULL DEFAULT 0`).catch(() => {})
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_last_login_at ON users(last_login_at DESC)`).catch(() => {})
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_last_seen_at ON users(last_seen_at DESC)`).catch(() => {})
 
     // 1c. Migrate gestor_vendedor -> coordenador (quick-48 hotfix)
     await pool.query(`

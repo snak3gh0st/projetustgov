@@ -5,6 +5,7 @@ import { query } from './db'
 import { CRMUser } from './types'
 import { authConfig } from '@/auth.config'
 import type { Role } from '@/lib/dal'
+import { recordSuccessfulLogin } from '@/lib/user-activity'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -41,6 +42,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!passwordMatch) {
           return null
         }
+
+        await recordSuccessfulLogin(user.id)
 
         // Return user object (without password_hash)
         return {

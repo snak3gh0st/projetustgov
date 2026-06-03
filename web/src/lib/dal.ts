@@ -3,6 +3,7 @@ import { cache } from 'react'
 import { auth } from '@/lib/auth'
 import { query } from '@/lib/db'
 import { redirect } from 'next/navigation'
+import { touchUserPresence } from '@/lib/user-activity'
 
 export type Role = 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao'
 
@@ -46,6 +47,7 @@ export const verifySession = cache(async () => {
   if (!rows[0]?.active) {
     redirect('/login')
   }
+  await touchUserPresence(session.user.id)
   return {
     isAuth: true,
     userId: session.user.id,
@@ -64,6 +66,7 @@ export async function getApiSession() {
     [session.user.id]
   )
   if (!rows[0]?.active) return null
+  await touchUserPresence(session.user.id)
   return {
     userId: session.user.id,
     role: session.user.role as Role,

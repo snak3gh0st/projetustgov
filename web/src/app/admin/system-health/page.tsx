@@ -100,6 +100,68 @@ export default async function SystemHealthPage() {
         <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
           <div className="flex items-center justify-between gap-3 mb-5">
             <div>
+              <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-gray-100">Usuários online agora</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Sessões com presença recente nos últimos 15 minutos.</p>
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20">
+              {health.users.online_now} ativos
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {health.users.active_users.filter(user => user.presence === 'online').length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum usuário online agora.</p>
+            ) : (
+              health.users.active_users
+                .filter(user => user.presence === 'online')
+                .map(user => (
+                  <ActivityCard
+                    key={user.id}
+                    user={user}
+                    label="Online"
+                    tone="ok"
+                    meta={user.last_seen_at}
+                    subtext={`Entrou ${formatDateTime(user.last_login_at)} · ${user.login_count} login(s)`}
+                  />
+                ))
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+          <div className="flex items-center justify-between gap-3 mb-5">
+            <div>
+              <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-gray-100">Logins recentes</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Últimos acessos autenticados do sistema.</p>
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/20">
+              {health.users.recent_logins.length} registros
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {health.users.recent_logins.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Ainda não há logins registrados com a nova telemetria.</p>
+            ) : (
+              health.users.recent_logins.map(user => (
+                <ActivityCard
+                  key={user.id}
+                  user={user}
+                  label={user.presence === 'online' ? 'Agora' : 'Recente'}
+                  tone={user.presence === 'online' ? 'ok' : user.presence === 'recent' ? 'warning' : 'error'}
+                  meta={user.last_login_at}
+                  subtext={`${user.role} · ${user.login_count} login(s) · ${user.last_login_ip || 'sem IP'}`}
+                />
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+          <div className="flex items-center justify-between gap-3 mb-5">
+            <div>
               <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-gray-100">Configuração do Runtime</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">Sinais rápidos de ambiente e conexão.</p>
             </div>
@@ -200,4 +262,52 @@ function Row({ label, value, tone }: { label: string; value: string; tone: Healt
       <span className={`font-semibold ${toneStyles[tone]}`}>{value}</span>
     </div>
   )
+}
+
+function ActivityCard({
+  user,
+  label,
+  tone,
+  meta,
+  subtext,
+}: {
+  user: {
+    nome: string
+    email: string
+    role: string
+  }
+  label: string
+  tone: HealthStatus
+  meta: string | null
+  subtext: string
+}) {
+  const toneStyles: Record<HealthStatus, string> = {
+    ok: 'text-emerald-600 dark:text-emerald-300',
+    warning: 'text-amber-600 dark:text-amber-300',
+    error: 'text-red-600 dark:text-red-300',
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-200 dark:border-gray-800 px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="font-medium text-gray-900 dark:text-gray-100">{user.nome}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{user.email} · {user.role}</p>
+        </div>
+        <span className={`text-xs font-semibold ${toneStyles[tone]}`}>{label}</span>
+      </div>
+      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        {meta ? `Último evento: ${formatDateTime(meta)}` : 'Sem registro de evento'}
+      </p>
+      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{subtext}</p>
+    </div>
+  )
+}
+
+function formatDateTime(value: string | null): string {
+  if (!value) return 'nunca'
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(value))
 }
