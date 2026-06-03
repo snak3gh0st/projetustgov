@@ -96,32 +96,53 @@ export default async function SystemHealthPage() {
         />
       </div>
 
+      <div className="grid gap-3 md:grid-cols-3">
+        <StatCard
+          label="Online agora"
+          value={String(health.users.online_now)}
+          helper="Presença nos últimos 15 minutos"
+          status={health.users.online_now > 0 ? 'ok' : 'warning'}
+        />
+        <StatCard
+          label="Login 24h"
+          value={String(health.users.recent_24h)}
+          helper="Usuários com login nas últimas 24 horas"
+          status={health.users.recent_24h > 0 ? 'ok' : 'warning'}
+        />
+        <StatCard
+          label="Nunca logou"
+          value={String(health.users.never_logged_in)}
+          helper="Contas ativas sem histórico de login"
+          status={health.users.never_logged_in === 0 ? 'ok' : 'warning'}
+        />
+      </div>
+
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
           <div className="flex items-center justify-between gap-3 mb-5">
             <div>
-              <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-gray-100">Usuários online agora</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Sessões com presença recente nos últimos 15 minutos.</p>
+              <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-gray-100">Quem está usando agora</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Sessões online e acessos recentes nas últimas 24 horas.</p>
             </div>
             <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20">
-              {health.users.online_now} ativos
+              {health.users.active_users.filter(user => user.presence !== 'offline').length} visíveis
             </span>
           </div>
 
           <div className="space-y-3">
-            {health.users.active_users.filter(user => user.presence === 'online').length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum usuário online agora.</p>
+            {health.users.active_users.filter(user => user.presence !== 'offline').length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum usuário com atividade recente.</p>
             ) : (
               health.users.active_users
-                .filter(user => user.presence === 'online')
+                .filter(user => user.presence !== 'offline')
                 .map(user => (
                   <ActivityCard
                     key={user.id}
                     user={user}
-                    label="Online"
-                    tone="ok"
-                    meta={user.last_seen_at}
-                    subtext={`Entrou ${formatDateTime(user.last_login_at)} · ${user.login_count} login(s)`}
+                    label={user.presence === 'online' ? 'Online' : 'Recente'}
+                    tone={user.presence === 'online' ? 'ok' : 'warning'}
+                    meta={user.last_seen_at || user.last_login_at}
+                    subtext={`${user.login_count} login(s) · ${user.last_login_ip || 'sem IP'}`}
                   />
                 ))
             )}
@@ -210,6 +231,51 @@ export default async function SystemHealthPage() {
           </div>
         </section>
       </div>
+
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-gray-100">Contas sem histórico</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Contas ativas que ainda não registraram login.</p>
+          </div>
+          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+            {health.users.active_users.filter(user => user.login_count === 0).length} contas
+          </span>
+        </div>
+
+        {health.users.active_users.filter(user => user.login_count === 0).length === 0 ? (
+          <p className="text-sm text-emerald-600 dark:text-emerald-300">Todas as contas ativas já fizeram pelo menos um login.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-800 text-left text-gray-500 dark:text-gray-400">
+                  <th className="py-2 pr-4 font-medium">Nome</th>
+                  <th className="py-2 pr-4 font-medium">Cargo</th>
+                  <th className="py-2 pr-4 font-medium">Status</th>
+                  <th className="py-2 pr-4 font-medium">Login</th>
+                </tr>
+              </thead>
+              <tbody>
+                {health.users.active_users
+                  .filter(user => user.login_count === 0)
+                  .slice(0, 10)
+                  .map(user => (
+                    <tr key={user.id} className="border-b border-gray-100 dark:border-gray-800/70 last:border-b-0">
+                      <td className="py-3 pr-4">
+                        <div className="font-medium text-gray-900 dark:text-gray-100">{user.nome}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{user.email}</div>
+                      </td>
+                      <td className="py-3 pr-4 text-gray-600 dark:text-gray-400">{user.role}</td>
+                      <td className="py-3 pr-4 text-gray-600 dark:text-gray-400">{user.presence === 'offline' ? 'Sem presença' : user.presence}</td>
+                      <td className="py-3 pr-4 text-gray-900 dark:text-gray-100 font-medium">Nunca</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
         <h2 className="text-lg font-heading font-bold text-gray-900 dark:text-gray-100 mb-4">Distribuição por Cargo</h2>

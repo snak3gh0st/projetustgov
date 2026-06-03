@@ -53,6 +53,8 @@ export interface SystemHealthSnapshot {
     active_admins: number
     active_gestores: number
     online_now: number
+    recent_24h: number
+    never_logged_in: number
     recent_logins: UserActivityStatus[]
     active_users: UserActivityStatus[]
     by_role: Array<{ role: string; active: boolean; count: number }>
@@ -124,6 +126,8 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
     active_admins: 0,
     active_gestores: 0,
     online_now: 0,
+    recent_24h: 0,
+    never_logged_in: 0,
   }
   let byRole: Array<{ role: string; active: boolean; count: number }> = []
   let activeUsers: UserActivityStatus[] = []
@@ -175,6 +179,8 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
         active_admins: number
         active_gestores: number
         online_now: number
+        recent_24h: number
+        never_logged_in: number
       }>(`
         SELECT
           COUNT(*)::int AS total,
@@ -187,6 +193,16 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
               AND last_seen_at IS NOT NULL
               AND last_seen_at >= NOW() - INTERVAL '15 minutes'
           )::int AS online_now
+          ,
+          COUNT(*) FILTER (
+            WHERE active = true
+              AND last_login_at IS NOT NULL
+              AND last_login_at >= NOW() - INTERVAL '24 hours'
+          )::int AS recent_24h,
+          COUNT(*) FILTER (
+            WHERE active = true
+              AND COALESCE(login_count, 0) = 0
+          )::int AS never_logged_in
         FROM users
       `)
       const totalsRow = totalsRows[0]
@@ -198,6 +214,8 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
           active_admins: totalsRow.active_admins,
           active_gestores: totalsRow.active_gestores,
           online_now: totalsRow.online_now ?? 0,
+          recent_24h: totalsRow.recent_24h ?? 0,
+          never_logged_in: totalsRow.never_logged_in ?? 0,
         }
       }
     } else {
@@ -225,6 +243,8 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
           active_admins: totalsRow.active_admins,
           active_gestores: totalsRow.active_gestores,
           online_now: 0,
+          recent_24h: 0,
+          never_logged_in: 0,
         }
       }
     }
@@ -418,6 +438,8 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
       active_admins: userTotals.active_admins,
       active_gestores: userTotals.active_gestores,
       online_now: userTotals.online_now,
+      recent_24h: userTotals.recent_24h,
+      never_logged_in: userTotals.never_logged_in,
       recent_logins: recentLogins,
       active_users: activeUsers,
       by_role: byRole,
