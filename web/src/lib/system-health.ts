@@ -152,36 +152,6 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
       latency_ms: latencyMs,
     }
 
-    const totalsRows = await query<{
-      total: number
-      active: number
-      inactive: number
-      active_admins: number
-      active_gestores: number
-      online_now: number
-    }>(`
-      SELECT
-        COUNT(*)::int AS total,
-        COUNT(*) FILTER (WHERE active = true)::int AS active,
-        COUNT(*) FILTER (WHERE active = false)::int AS inactive,
-        COUNT(*) FILTER (WHERE role = 'admin' AND active = true)::int AS active_admins,
-        COUNT(*) FILTER (WHERE role = 'gestor' AND active = true)::int AS active_gestores,
-        COUNT(*) FILTER (
-          WHERE active = true
-            AND last_seen_at IS NOT NULL
-            AND last_seen_at >= NOW() - INTERVAL '15 minutes'
-        )::int AS online_now
-      FROM users
-    `)
-    userTotals = totalsRows[0] ?? userTotals
-
-    byRole = await query<{ role: string; active: boolean; count: number }>(`
-      SELECT role, active, COUNT(*)::int AS count
-      FROM users
-      GROUP BY role, active
-      ORDER BY role, active DESC
-    `)
-
     const activityColumnRows = await query<{ column_name: string }>(`
       SELECT column_name
       FROM information_schema.columns
@@ -196,6 +166,75 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
     ]])
 
     activitySupported = activityColumnRows.length === 5
+
+    if (activitySupported) {
+      const totalsRows = await query<{
+        total: number
+        active: number
+        inactive: number
+        active_admins: number
+        active_gestores: number
+        online_now: number
+      }>(`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE active = true)::int AS active,
+          COUNT(*) FILTER (WHERE active = false)::int AS inactive,
+          COUNT(*) FILTER (WHERE role = 'admin' AND active = true)::int AS active_admins,
+          COUNT(*) FILTER (WHERE role = 'gestor' AND active = true)::int AS active_gestores,
+          COUNT(*) FILTER (
+            WHERE active = true
+              AND last_seen_at IS NOT NULL
+              AND last_seen_at >= NOW() - INTERVAL '15 minutes'
+          )::int AS online_now
+        FROM users
+      `)
+      const totalsRow = totalsRows[0]
+      if (totalsRow) {
+        userTotals = {
+          total: totalsRow.total,
+          active: totalsRow.active,
+          inactive: totalsRow.inactive,
+          active_admins: totalsRow.active_admins,
+          active_gestores: totalsRow.active_gestores,
+          online_now: totalsRow.online_now ?? 0,
+        }
+      }
+    } else {
+      const totalsRows = await query<{
+        total: number
+        active: number
+        inactive: number
+        active_admins: number
+        active_gestores: number
+      }>(`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE active = true)::int AS active,
+          COUNT(*) FILTER (WHERE active = false)::int AS inactive,
+          COUNT(*) FILTER (WHERE role = 'admin' AND active = true)::int AS active_admins,
+          COUNT(*) FILTER (WHERE role = 'gestor' AND active = true)::int AS active_gestores
+        FROM users
+      `)
+      const totalsRow = totalsRows[0]
+      if (totalsRow) {
+        userTotals = {
+          total: totalsRow.total,
+          active: totalsRow.active,
+          inactive: totalsRow.inactive,
+          active_admins: totalsRow.active_admins,
+          active_gestores: totalsRow.active_gestores,
+          online_now: 0,
+        }
+      }
+    }
+
+    byRole = await query<{ role: string; active: boolean; count: number }>(`
+      SELECT role, active, COUNT(*)::int AS count
+      FROM users
+      GROUP BY role, active
+      ORDER BY role, active DESC
+    `)
 
     if (activitySupported) {
       const activityRows = await query<{
