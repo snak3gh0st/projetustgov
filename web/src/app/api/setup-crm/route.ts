@@ -494,7 +494,10 @@ async function runSetup() {
     // Update passwords and roles for all existing users
     for (const u of allUsers) {
       const hash = await bcrypt.hash(u.password, 10)
-      await pool.query('UPDATE users SET password_hash = $1, role = $3 WHERE email = $2', [hash, u.email, u.role])
+      await pool.query(
+        'UPDATE users SET password_hash = $1, role = $3, active = true, updated_at = NOW() WHERE email = $2',
+        [hash, u.email, u.role]
+      )
     }
 
     const created: string[] = []

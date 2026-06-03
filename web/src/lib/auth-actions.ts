@@ -24,6 +24,13 @@ export async function login(
 
     const validatedData = LoginSchema.parse(rawData) as LoginInput
 
+    try {
+      await query(`SELECT 1`)
+    } catch (dbError) {
+      console.error('[LOGIN] Database unavailable:', dbError)
+      return { error: 'Sistema indisponível no momento. Tente novamente em instantes.' }
+    }
+
     console.log('[LOGIN] Attempting sign-in for:', validatedData.email)
 
     // Attempt sign-in
