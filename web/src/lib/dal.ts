@@ -127,7 +127,7 @@ export function canCsm(role: string | undefined): boolean {
 
 // Helper: check if user has admin-level access (full control)
 export function isAdmin(role: string): boolean {
-  return role === 'gestor'
+  return role === 'admin'
 }
 
 /**

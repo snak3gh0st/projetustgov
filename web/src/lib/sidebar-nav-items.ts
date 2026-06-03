@@ -42,6 +42,11 @@ const BASE_WITH_EXECUCAO: NavItem[] = [
 
 export function getNavItemsForRole(role: NavRole): NavItem[] {
   if (role === 'gestor' || role === 'admin') {
+    const adminOnlyItems =
+      role === 'admin'
+        ? [{ href: '/admin/system-health', label: 'Saúde do Sistema', icon: 'monitoramento' }]
+        : []
+
     return [
       ...BASE_WITH_EXECUCAO,
       { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
@@ -52,7 +57,7 @@ export function getNavItemsForRole(role: NavRole): NavItem[] {
       { href: '/csm/bi', label: 'CSM BI', icon: 'bi' },
       { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
       { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
-      { href: '/admin/system-health', label: 'Saúde do Sistema', icon: 'monitoramento' },
+      ...adminOnlyItems,
       { href: '/cadastro-vendedor', label: 'Usuarios', icon: 'vendedores' },
     ]
   }

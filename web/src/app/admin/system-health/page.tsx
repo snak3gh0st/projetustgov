@@ -60,7 +60,7 @@ export default async function SystemHealthPage() {
         <div>
           <h1 className="font-heading text-3xl font-bold text-gray-900 dark:text-gray-100">Saúde do Sistema</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Visão geral do runtime, banco, autenticação e contas críticas. Acesso exclusivo de admin.
+            Visão geral do runtime, banco, autenticação e contas críticas. Acesso exclusivo do admin.
           </p>
         </div>
         <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold ${STATUS_STYLES[health.status]}`}>
@@ -140,7 +140,7 @@ export default async function SystemHealthPage() {
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {account.found
-                    ? `${account.nome || 'Sem nome'} · ${account.role || 'sem role'} · ${account.active ? 'ativo' : 'inativo'}`
+                    ? `${account.nome || 'Sem nome'} · ${account.role || 'sem role'}${account.expectedRole ? ` · esperado ${account.expectedRole}` : ''} · ${account.active ? 'ativo' : 'inativo'}`
                     : 'Conta não encontrada no banco de produção'}
                 </p>
               </div>

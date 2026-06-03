@@ -489,7 +489,7 @@ async function runSetup() {
       { nome: 'Philipe', email: 'philipe@projetus.org', role: 'gestor', password: 'Philipe#268' },
       { nome: 'Tito', email: 'tito@projetus.org', role: 'gestor', password: 'Tito#351' },
       { nome: 'Paulo', email: 'paulo@projetus.org', role: 'coordenador', password: 'Paulo#649' },
-      { nome: 'Admin', email: 'admin@projetus.org', role: 'gestor', password: 'admin123' },
+      { nome: 'Admin', email: 'admin@projetus.org', role: 'admin', password: 'admin123' },
     ]
 
     // Update passwords and roles for all existing users

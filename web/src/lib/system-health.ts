@@ -5,6 +5,7 @@ export type HealthStatus = 'ok' | 'warning' | 'error'
 export interface CriticalAccountStatus {
   label: string
   email: string
+  expectedRole: string | null
   found: boolean
   active: boolean | null
   role: string | null
@@ -43,8 +44,8 @@ export interface SystemHealthSnapshot {
   notes: string[]
 }
 
-const CRITICAL_ACCOUNTS = [
-  { label: 'Admin', email: 'admin@projetus.org' },
+const CRITICAL_ACCOUNTS: Array<{ label: string; email: string; expectedRole?: string }> = [
+  { label: 'Admin', email: 'admin@projetus.org', expectedRole: 'admin' },
   { label: 'Rooger', email: 'rooger@projetus.org' },
   { label: 'Philipe', email: 'philipe@projetus.org' },
   { label: 'Tito', email: 'tito@projetus.org' },
@@ -109,6 +110,7 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
   let byRole: Array<{ role: string; active: boolean; count: number }> = []
   let criticalAccounts: CriticalAccountStatus[] = CRITICAL_ACCOUNTS.map(account => ({
     ...account,
+    expectedRole: account.expectedRole ?? null,
     found: false,
     active: null,
     role: null,
@@ -173,6 +175,7 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
       if (!row) {
         return {
           ...account,
+          expectedRole: account.expectedRole ?? null,
           found: false,
           active: null,
           role: null,
@@ -181,9 +184,11 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
         }
       }
 
-      const status: HealthStatus = row.active ? 'ok' : 'warning'
+      const roleMatches = !account.expectedRole || row.role === account.expectedRole
+      const status: HealthStatus = row.active ? (roleMatches ? 'ok' : 'error') : 'warning'
       return {
         ...account,
+        expectedRole: account.expectedRole ?? null,
         found: true,
         active: row.active,
         role: row.role,
@@ -221,6 +226,8 @@ export async function collectSystemHealth(): Promise<SystemHealthSnapshot> {
   for (const account of criticalAccounts) {
     if (!account.found) {
       notes.push(`Conta crítica ausente: ${account.email}.`)
+    } else if (account.expectedRole && account.role !== account.expectedRole) {
+      notes.push(`Conta crítica com role incorreto: ${account.email} (esperado ${account.expectedRole}, atual ${account.role || 'sem role'}).`)
     } else if (!account.active) {
       notes.push(`Conta crítica inativa: ${account.email}.`)
     }
