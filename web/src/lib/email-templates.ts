@@ -175,6 +175,17 @@ export function passwordResetEmail(opts: { nome: string; newPassword: string; lo
   return { subject: 'PROJETUS — Sua senha foi alterada', html: baseLayout('Senha alterada', body) }
 }
 
+// ——— Template: Forgot Password ———
+export function forgotPasswordEmail(opts: { nome: string; resetUrl: string }): { subject: string; html: string } {
+  const body = `
+    ${heading('Redefinição de senha')}
+    ${paragraph(`Olá <strong>${escapeHtml(opts.nome.split(' ')[0])}</strong>, recebemos uma solicitação para redefinir a senha da sua conta <strong>PROJETUS</strong>.`)}
+    ${button(opts.resetUrl, 'Redefinir minha senha')}
+    ${muted('Este link expira em <strong>1 hora</strong>. Se você não solicitou a redefinição, pode ignorar este email com segurança.')}
+  `
+  return { subject: 'PROJETUS — Redefinição de senha', html: baseLayout('Redefinição de senha', body) }
+}
+
 // ——— Template: New Comment ———
 export function commentNotificationEmail(opts: {
   nome: string

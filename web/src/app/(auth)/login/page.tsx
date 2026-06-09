@@ -1,6 +1,7 @@
 'use client'
 
 import { useFormState, useFormStatus } from 'react-dom'
+import Link from 'next/link'
 import { login } from '@/lib/auth-actions'
 
 function SubmitButton() {
@@ -72,6 +73,11 @@ export default function LoginPage() {
 
           {/* Submit Button */}
           <SubmitButton />
+          <div className="text-center">
+            <Link href="/esqueci-senha" className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#0072F7] transition-colors">
+              Esqueci minha senha
+            </Link>
+          </div>
         </form>
       </div>
     </div>

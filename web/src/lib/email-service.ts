@@ -6,6 +6,7 @@ import { query } from './db'
 import {
   welcomeEmail,
   passwordResetEmail,
+  forgotPasswordEmail,
   commentNotificationEmail,
   situacaoChangeEmail,
   assignmentEmail,
@@ -87,6 +88,11 @@ export async function sendPasswordResetEmail(params: { nome: string; email: stri
     newPassword: params.newPassword,
     loginUrl: `${appUrl()}/login`,
   })
+  await sendOne(params.email, subject, html)
+}
+
+export async function sendForgotPasswordEmail(params: { nome: string; email: string; resetUrl: string }): Promise<void> {
+  const { subject, html } = forgotPasswordEmail({ nome: params.nome, resetUrl: params.resetUrl })
   await sendOne(params.email, subject, html)
 }
 
