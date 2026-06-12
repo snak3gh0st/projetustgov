@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   const lower = email.toLowerCase().trim()
 
   const rows = await query<{ id: string; email: string; name: string; password: string; role: string }>(
-    `SELECT id, email, name, password_hash AS password, role FROM users
+    `SELECT id, email, nome AS name, password_hash AS password, role FROM users
      WHERE email = $1 AND role IN ('admin', 'gestor')`,
     [lower],
   )
