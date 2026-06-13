@@ -34,7 +34,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
                 'slug', l.slug,
                 'title', l.title,
                 'position', l.position,
-                'content_type', l.content_type,
+                'lesson_type', l.lesson_type,
                 'duration_seconds', l.duration_seconds,
                 'is_preview', l.is_preview,
                 'video_id', a.provider_asset_id,
