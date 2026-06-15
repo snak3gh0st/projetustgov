@@ -35,6 +35,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
                      'id', l.id,
                      'slug', l.slug,
                      'title', l.title,
+                     'summary', l.summary,
+                     'content_html', l.content_html,
                      'position', l.position,
                      'lesson_type', l.lesson_type,
                      'duration_seconds', l.duration_seconds,

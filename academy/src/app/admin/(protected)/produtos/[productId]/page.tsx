@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-type Lesson = { id: string; slug: string; title: string; position: number; lesson_type: string; duration_seconds: number | null; status: string }
+type Lesson = { id: string; slug: string; title: string; position: number; lesson_type: string; duration_seconds: number | null; status: string; summary?: string | null; content_html?: string | null }
 type Module = { id: string; slug: string; title: string; position: number; status: string; lesson_count: number; lessons?: Lesson[] }
 type Product = { id: string; slug: string; title: string; subtitle: string | null; status: string; visibility: string; default_price_cents: number | null; cover_image_url: string | null; modules: Module[] | null }
 
@@ -25,6 +25,11 @@ export default function AdminProductDetailPage() {
   const [coverUrl, setCoverUrl] = useState('')
   const [coverSaving, setCoverSaving] = useState(false)
   const [coverError, setCoverError] = useState('')
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const [editingLesson, setEditingLesson] = useState<string | null>(null)
+  const [lessonEditForms, setLessonEditForms] = useState<Record<string, { title: string; summary: string; content_html: string }>>({})
+  const [materialForms, setMaterialForms] = useState<Record<string, string>>({})
+  const [materialDone, setMaterialDone] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     fetch(`/api/admin/products/${productId}`)
@@ -122,6 +127,117 @@ export default function AdminProductDetailPage() {
     setCoverSaving(false)
   }
 
+  async function uploadCover(file: File) {
+    setUploadingCover(true)
+    setCoverError('')
+    try {
+      const pres = await fetch('/api/admin/images/presigned', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+      }).then(r => r.json())
+      if (!pres.data) throw new Error('presign failed')
+      await fetch(pres.data.uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file })
+      await fetch(`/api/admin/products/${productId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cover_image_url: pres.data.publicUrl }),
+      })
+      setCoverUrl(pres.data.publicUrl)
+      setProduct(p => p ? { ...p, cover_image_url: pres.data.publicUrl } : p)
+    } catch {
+      setCoverError('Falha no upload')
+    } finally {
+      setUploadingCover(false)
+    }
+  }
+
+  function startEditLesson(lesson: Lesson) {
+    setLessonEditForms(f => ({
+      ...f,
+      [lesson.id]: {
+        title: lesson.title ?? '',
+        summary: lesson.summary ?? '',
+        content_html: lesson.content_html ?? '',
+      },
+    }))
+    setEditingLesson(v => v === lesson.id ? null : lesson.id)
+  }
+
+  async function saveLessonEdit(moduleId: string, lessonId: string) {
+    const f = lessonEditForms[lessonId]
+    if (!f) return
+    setSaving(true)
+    await fetch(`/api/admin/lessons/${lessonId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: f.title, summary: f.summary || null, content_html: f.content_html || null }),
+    })
+    setProduct(p => p ? {
+      ...p,
+      modules: (p.modules ?? []).map(m => m.id === moduleId ? {
+        ...m,
+        lessons: (m.lessons ?? []).map(l => l.id === lessonId
+          ? { ...l, title: f.title, summary: f.summary || null, content_html: f.content_html || null }
+          : l),
+      } : m),
+    } : p)
+    setSaving(false)
+    setEditingLesson(null)
+  }
+
+  async function swapModules(moduleId: string, dir: -1 | 1) {
+    const mods = [...(product?.modules ?? [])]
+    const idx = mods.findIndex(m => m.id === moduleId)
+    const other = idx + dir
+    if (other < 0 || other >= mods.length) return
+    const a = mods[idx], b = mods[other]
+    setSaving(true)
+    await Promise.all([
+      fetch(`/api/admin/modules/${a.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: b.position }) }),
+      fetch(`/api/admin/modules/${b.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: a.position }) }),
+    ])
+    const swappedA = { ...a, position: b.position }
+    const swappedB = { ...b, position: a.position }
+    mods[idx] = swappedB
+    mods[other] = swappedA
+    setProduct(p => p ? { ...p, modules: mods } : p)
+    setSaving(false)
+  }
+
+  async function swapLessons(moduleId: string, lessonId: string, dir: -1 | 1) {
+    const mod = (product?.modules ?? []).find(m => m.id === moduleId)
+    if (!mod) return
+    const lessons = [...(mod.lessons ?? [])]
+    const idx = lessons.findIndex(l => l.id === lessonId)
+    const other = idx + dir
+    if (other < 0 || other >= lessons.length) return
+    const a = lessons[idx], b = lessons[other]
+    setSaving(true)
+    await Promise.all([
+      fetch(`/api/admin/lessons/${a.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: b.position }) }),
+      fetch(`/api/admin/lessons/${b.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: a.position }) }),
+    ])
+    lessons[idx] = { ...b, position: a.position }
+    lessons[other] = { ...a, position: b.position }
+    setProduct(p => p ? {
+      ...p,
+      modules: (p.modules ?? []).map(m => m.id === moduleId ? { ...m, lessons } : m),
+    } : p)
+    setSaving(false)
+  }
+
+  async function addMaterial(lessonId: string) {
+    const url = materialForms[lessonId]
+    if (!url) return
+    const res = await fetch(`/api/admin/lessons/${lessonId}/materials`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    })
+    if (res.ok) {
+      setMaterialForms(f => ({ ...f, [lessonId]: '' }))
+      setMaterialDone(d => ({ ...d, [lessonId]: true }))
+      setTimeout(() => setMaterialDone(d => ({ ...d, [lessonId]: false })), 2500)
+    }
+  }
+
   if (loading) return <div className="text-slate-400">Carregando…</div>
   if (!product) return <div className="text-red-400">Produto não encontrado</div>
 
@@ -158,14 +274,29 @@ export default function AdminProductDetailPage() {
               placeholder="https://..."
               className="w-full rounded-lg bg-slate-700 px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-academy-gold"
             />
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={saveCoverImage}
-                disabled={coverSaving}
+                disabled={coverSaving || uploadingCover}
                 className="rounded-lg bg-academy-gold px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
               >
                 {coverSaving ? 'Salvando…' : 'Salvar imagem'}
               </button>
+              <span className="text-xs text-slate-500">ou</span>
+              <label className="cursor-pointer rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-600">
+                {uploadingCover ? 'Enviando…' : 'Enviar arquivo'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploadingCover}
+                  onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (file) uploadCover(file)
+                    e.target.value = ''
+                  }}
+                />
+              </label>
               {coverError && <p className="text-xs text-red-400">{coverError}</p>}
             </div>
           </div>
@@ -242,19 +373,36 @@ export default function AdminProductDetailPage() {
       )}
 
       <div className="space-y-2">
-        {(product.modules ?? []).map(mod => (
+        {(product.modules ?? []).map((mod, modIdx, modArr) => (
           <div key={mod.id} className="rounded-xl border border-slate-700 bg-slate-800">
-            <button
-              onClick={() => setExpandedModule(v => v === mod.id ? null : mod.id)}
-              className="flex w-full items-center justify-between px-4 py-3 text-left"
-            >
-              <div>
+            <div className="flex w-full items-center justify-between px-4 py-3">
+              <button
+                onClick={() => setExpandedModule(v => v === mod.id ? null : mod.id)}
+                className="flex flex-1 items-center text-left"
+              >
                 <span className="font-medium text-white">{mod.title}</span>
                 <span className="ml-3 text-xs text-slate-400">{mod.lesson_count} aula(s)</span>
                 <span className="ml-2 rounded bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-300">{mod.status}</span>
+              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => swapModules(mod.id, -1)}
+                  disabled={saving || modIdx === 0}
+                  className="rounded px-1.5 py-0.5 text-xs text-slate-400 hover:bg-slate-700 hover:text-white disabled:opacity-30"
+                  title="Mover para cima"
+                >▲</button>
+                <button
+                  onClick={() => swapModules(mod.id, 1)}
+                  disabled={saving || modIdx === modArr.length - 1}
+                  className="rounded px-1.5 py-0.5 text-xs text-slate-400 hover:bg-slate-700 hover:text-white disabled:opacity-30"
+                  title="Mover para baixo"
+                >▼</button>
+                <button
+                  onClick={() => setExpandedModule(v => v === mod.id ? null : mod.id)}
+                  className="ml-1 text-slate-400"
+                >{expandedModule === mod.id ? '▲' : '▼'}</button>
               </div>
-              <span className="text-slate-400">{expandedModule === mod.id ? '▲' : '▼'}</span>
-            </button>
+            </div>
 
             {expandedModule === mod.id && (
               <div className="border-t border-slate-700 px-4 py-3">
@@ -305,30 +453,109 @@ export default function AdminProductDetailPage() {
                   <p className="text-xs text-slate-500">Nenhuma aula</p>
                 )}
                 <ul className="space-y-1">
-                  {(mod.lessons ?? []).map(l => (
-                    <li key={l.id} className="flex items-center justify-between rounded-lg bg-slate-700 px-3 py-2">
-                      <div>
-                        <span className="text-sm text-slate-200">{l.title}</span>
-                        <span className="ml-2 text-xs text-slate-500">{l.lesson_type}</span>
+                  {(mod.lessons ?? []).map((l, lIdx, lArr) => (
+                    <li key={l.id} className="rounded-lg bg-slate-700 px-3 py-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <div className="mr-1 flex flex-col">
+                            <button
+                              onClick={() => swapLessons(mod.id, l.id, -1)}
+                              disabled={saving || lIdx === 0}
+                              className="leading-none text-[10px] text-slate-400 hover:text-white disabled:opacity-30"
+                              title="Mover para cima"
+                            >▲</button>
+                            <button
+                              onClick={() => swapLessons(mod.id, l.id, 1)}
+                              disabled={saving || lIdx === lArr.length - 1}
+                              className="leading-none text-[10px] text-slate-400 hover:text-white disabled:opacity-30"
+                              title="Mover para baixo"
+                            >▼</button>
+                          </div>
+                          <span className="text-sm text-slate-200">{l.title}</span>
+                          <span className="ml-2 text-xs text-slate-500">{l.lesson_type}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => startEditLesson(l)}
+                            className="text-xs text-slate-300 hover:text-white"
+                          >
+                            {editingLesson === l.id ? 'Fechar' : 'Editar'}
+                          </button>
+                          <select
+                            value={l.status}
+                            onChange={e => updateLessonStatus(mod.id, l.id, e.target.value)}
+                            disabled={saving}
+                            className="rounded bg-slate-600 px-2 py-1 text-xs text-white outline-none"
+                          >
+                            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                          {l.lesson_type === 'video' && !l.duration_seconds && (
+                            <Link href={`/admin/aulas/${l.id}/video`} className="text-xs text-academy-gold hover:underline">
+                              Upload vídeo
+                            </Link>
+                          )}
+                          {l.duration_seconds && (
+                            <span className="text-xs text-green-400">✓ {Math.round(l.duration_seconds / 60)}min</span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <select
-                          value={l.status}
-                          onChange={e => updateLessonStatus(mod.id, l.id, e.target.value)}
-                          disabled={saving}
-                          className="rounded bg-slate-600 px-2 py-1 text-xs text-white outline-none"
-                        >
-                          {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                        {l.lesson_type === 'video' && !l.duration_seconds && (
-                          <Link href={`/admin/aulas/${l.id}/video`} className="text-xs text-academy-gold hover:underline">
-                            Upload vídeo
-                          </Link>
-                        )}
-                        {l.duration_seconds && (
-                          <span className="text-xs text-green-400">✓ {Math.round(l.duration_seconds / 60)}min</span>
-                        )}
-                      </div>
+
+                      {editingLesson === l.id && (
+                        <div className="mt-3 space-y-2 border-t border-slate-600 pt-3">
+                          <div>
+                            <label className="mb-1 block text-xs text-slate-400">Título</label>
+                            <input
+                              value={lessonEditForms[l.id]?.title ?? ''}
+                              onChange={e => setLessonEditForms(f => ({ ...f, [l.id]: { ...f[l.id], title: e.target.value } }))}
+                              className="w-full rounded bg-slate-600 px-2 py-1.5 text-xs text-white outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs text-slate-400">Resumo</label>
+                            <textarea
+                              rows={2}
+                              value={lessonEditForms[l.id]?.summary ?? ''}
+                              onChange={e => setLessonEditForms(f => ({ ...f, [l.id]: { ...f[l.id], summary: e.target.value } }))}
+                              className="w-full rounded bg-slate-600 px-2 py-1.5 text-xs text-white outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs text-slate-400">Conteúdo (HTML)</label>
+                            <textarea
+                              rows={6}
+                              value={lessonEditForms[l.id]?.content_html ?? ''}
+                              onChange={e => setLessonEditForms(f => ({ ...f, [l.id]: { ...f[l.id], content_html: e.target.value } }))}
+                              className="w-full rounded bg-slate-600 px-2 py-1.5 font-mono text-xs text-white outline-none"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => saveLessonEdit(mod.id, l.id)}
+                              disabled={saving}
+                              className="rounded bg-academy-gold px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
+                            >Salvar</button>
+                            <button onClick={() => setEditingLesson(null)} className="text-xs text-slate-400">Cancelar</button>
+                          </div>
+
+                          <div className="border-t border-slate-600 pt-2">
+                            <label className="mb-1 block text-xs text-slate-400">+ Material (URL)</label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="url"
+                                placeholder="https://..."
+                                value={materialForms[l.id] ?? ''}
+                                onChange={e => setMaterialForms(f => ({ ...f, [l.id]: e.target.value }))}
+                                className="flex-1 rounded bg-slate-600 px-2 py-1.5 text-xs text-white outline-none"
+                              />
+                              <button
+                                onClick={() => addMaterial(l.id)}
+                                className="rounded bg-slate-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-400"
+                              >Adicionar</button>
+                              {materialDone[l.id] && <span className="text-xs text-green-400">✓</span>}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
