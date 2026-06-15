@@ -406,9 +406,9 @@ export default function CourseDetailPage() {
             <p className="text-sm text-white/50">Ainda sem avaliações. Seja o primeiro a avaliar!</p>
           ) : (
             <div className="flex items-center gap-3">
-              <span className="text-4xl font-bold text-white">{course.avg_rating.toFixed(1)}</span>
+              <span className="text-4xl font-bold text-white">{Number(course.avg_rating).toFixed(1)}</span>
               <div className="flex flex-col">
-                <Stars value={course.avg_rating} />
+                <Stars value={Number(course.avg_rating)} />
                 <span className="mt-1 text-xs text-white/50">
                   ({course.review_count} avaliações)
                 </span>

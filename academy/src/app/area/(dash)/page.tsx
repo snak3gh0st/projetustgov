@@ -83,7 +83,7 @@ export default function AreaPage() {
               {course.review_count > 0 && (
                 <span className="flex items-center gap-1">
                   <span className="text-academy-gold">★</span>
-                  <span className="text-white/45">{course.avg_rating.toFixed(1)} ({course.review_count})</span>
+                  <span className="text-white/45">{Number(course.avg_rating).toFixed(1)} ({course.review_count})</span>
                 </span>
               )}
             </span>

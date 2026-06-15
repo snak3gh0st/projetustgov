@@ -31,7 +31,7 @@ export async function GET() {
              WHERE pr.enrollment_id = e.id AND pr.status = 'in_progress' AND l.status = 'published'
              ORDER BY pr.updated_at DESC NULLS LAST LIMIT 1
            ) AS resume_lesson_title,
-           (SELECT COALESCE(AVG(rating),0)::numeric(3,2) FROM education_reviews rv WHERE rv.product_id = p.id) AS avg_rating,
+           (SELECT COALESCE(AVG(rating),0)::float FROM education_reviews rv WHERE rv.product_id = p.id) AS avg_rating,
            (SELECT COUNT(*)::int FROM education_reviews rv WHERE rv.product_id = p.id) AS review_count,
            EXISTS(SELECT 1 FROM education_watchlist w WHERE w.product_id = p.id AND w.learner_id = $2) AS in_watchlist
     FROM education_enrollments e
