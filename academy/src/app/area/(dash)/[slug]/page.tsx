@@ -188,7 +188,7 @@ export default function CourseDetailPage() {
           </div>
 
           {/* CTA */}
-          <div className="mt-7">
+          <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link
               href={ctaHref}
               className="inline-flex items-center gap-2 rounded-md bg-white px-6 py-3 text-sm font-bold text-black transition hover:bg-academy-gold hover:text-white"
@@ -196,6 +196,15 @@ export default function CourseDetailPage() {
               <span>▶</span>
               {hasStarted ? 'Continuar' : 'Começar'}
             </Link>
+            {progressPct === 100 && totalCount > 0 && (
+              <Link
+                href={`/area/${slug}/certificado`}
+                className="inline-flex items-center gap-2 rounded-md border border-academy-gold bg-academy-gold/10 px-6 py-3 text-sm font-bold text-academy-gold transition hover:bg-academy-gold hover:text-white"
+              >
+                <span>🏆</span>
+                Baixar certificado
+              </Link>
+            )}
           </div>
         </div>
       </section>
