@@ -21,6 +21,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const productRows = await query(`
     SELECT p.*,
+      (SELECT COALESCE(AVG(rating),0)::numeric(3,2) FROM education_reviews rv WHERE rv.product_id = p.id) AS avg_rating,
+      (SELECT COUNT(*)::int FROM education_reviews rv WHERE rv.product_id = p.id) AS review_count,
+      EXISTS(SELECT 1 FROM education_watchlist w WHERE w.product_id = p.id AND w.learner_id = $2) AS in_watchlist,
       json_agg(
         json_build_object(
           'id', m.id,
@@ -55,7 +58,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     LEFT JOIN education_modules m ON m.product_id = p.id AND m.status = 'published'
     WHERE p.slug = $1
     GROUP BY p.id
-  `, [slug])
+  `, [slug, session.sub])
 
   if (!productRows[0]) return err(404, 'Curso não encontrado')
   return ok(productRows[0])

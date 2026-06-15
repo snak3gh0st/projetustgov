@@ -27,6 +27,38 @@ type Course = {
   subtitle: string | null
   cover_image_url: string | null
   modules: Module[]
+  description: string | null
+  avg_rating: number
+  review_count: number
+  in_watchlist: boolean
+}
+
+type Review = {
+  id: string
+  rating: number
+  comment: string
+  created_at: string
+  learner_name: string | null
+}
+
+type ReviewsData = {
+  reviews: Review[]
+  avg: number
+  count: number
+  mine: { rating: number; comment: string } | null
+}
+
+function Stars({ value }: { value: number }) {
+  const rounded = Math.round(value)
+  return (
+    <span className="inline-flex">
+      {[1, 2, 3, 4, 5].map(i => (
+        <span key={i} className={i <= rounded ? 'text-academy-gold' : 'text-white/20'}>
+          {i <= rounded ? '★' : '☆'}
+        </span>
+      ))}
+    </span>
+  )
 }
 
 type ProgressEntry = { status: string; position: number | null }
@@ -55,6 +87,12 @@ export default function CourseDetailPage() {
   const [notFound, setNotFound] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
+  const [inWatchlist, setInWatchlist] = useState(false)
+  const [reviewsData, setReviewsData] = useState<ReviewsData | null>(null)
+  const [reviewRating, setReviewRating] = useState(0)
+  const [reviewComment, setReviewComment] = useState('')
+  const [submittingReview, setSubmittingReview] = useState(false)
+
   useEffect(() => {
     fetch(`/api/area/courses/${slug}`)
       .then(r => r.json())
@@ -62,11 +100,68 @@ export default function CourseDetailPage() {
         if (!d.data) { setNotFound(true); setLoading(false); return }
         const c: Course = d.data
         setCourse(c)
+        setInWatchlist(!!c.in_watchlist)
         setExpanded(new Set((c.modules ?? []).map(m => m.id)))
         setLoading(false)
       })
       .catch(() => { setNotFound(true); setLoading(false) })
   }, [slug])
+
+  const loadReviews = (productId: string) => {
+    fetch(`/api/area/reviews?productId=${productId}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.data) {
+          setReviewsData(d.data)
+          if (d.data.mine) {
+            setReviewRating(d.data.mine.rating)
+            setReviewComment(d.data.mine.comment ?? '')
+          }
+        }
+      })
+      .catch(() => {})
+  }
+
+  useEffect(() => {
+    if (course?.id) loadReviews(course.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course?.id])
+
+  const toggleWatchlist = async () => {
+    if (!course) return
+    const optimistic = !inWatchlist
+    setInWatchlist(optimistic)
+    try {
+      const res = await fetch('/api/area/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: course.id }),
+      })
+      const d = await res.json()
+      if (d.data && typeof d.data.inWatchlist === 'boolean') {
+        setInWatchlist(d.data.inWatchlist)
+      }
+    } catch {
+      setInWatchlist(!optimistic)
+    }
+  }
+
+  const submitReview = async () => {
+    if (!course || reviewRating < 1 || submittingReview) return
+    setSubmittingReview(true)
+    try {
+      await fetch('/api/area/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: course.id, rating: reviewRating, comment: reviewComment }),
+      })
+      loadReviews(course.id)
+    } catch {
+      // ignore
+    } finally {
+      setSubmittingReview(false)
+    }
+  }
 
   useEffect(() => {
     fetch('/api/area/progress')
@@ -196,6 +291,13 @@ export default function CourseDetailPage() {
               <span>▶</span>
               {hasStarted ? 'Continuar' : 'Começar'}
             </Link>
+            <button
+              type="button"
+              onClick={toggleWatchlist}
+              className="rounded-md border border-white/20 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
+            >
+              {inWatchlist ? '✓ Na sua lista' : '+ Minha Lista'}
+            </button>
             {progressPct === 100 && totalCount > 0 && (
               <Link
                 href={`/area/${slug}/certificado`}
@@ -208,6 +310,16 @@ export default function CourseDetailPage() {
           </div>
         </div>
       </section>
+
+      {/* About the course */}
+      {course.description && course.description.trim() && (
+        <section className="mb-10">
+          <h2 className="mb-4 text-base font-semibold text-white">Sobre o curso</h2>
+          <p className="max-w-3xl whitespace-pre-line text-sm leading-relaxed text-white/70">
+            {course.description}
+          </p>
+        </section>
+      )}
 
       {/* Module list */}
       <section>
@@ -282,6 +394,81 @@ export default function CourseDetailPage() {
             )
           })}
         </div>
+      </section>
+
+      {/* Reviews */}
+      <section className="mt-12">
+        <h2 className="mb-4 text-base font-semibold text-white">Avaliações</h2>
+
+        {/* Summary */}
+        <div className="mb-6">
+          {course.review_count === 0 ? (
+            <p className="text-sm text-white/50">Ainda sem avaliações. Seja o primeiro a avaliar!</p>
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className="text-4xl font-bold text-white">{course.avg_rating.toFixed(1)}</span>
+              <div className="flex flex-col">
+                <Stars value={course.avg_rating} />
+                <span className="mt-1 text-xs text-white/50">
+                  ({course.review_count} avaliações)
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Your review form */}
+        <div className="mb-8 max-w-2xl rounded-lg bg-white/5 p-4">
+          <h3 className="mb-3 text-sm font-semibold text-white">Sua avaliação</h3>
+          <div className="mb-3 flex items-center gap-1 text-2xl">
+            {[1, 2, 3, 4, 5].map(i => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setReviewRating(i)}
+                className={i <= reviewRating ? 'text-academy-gold' : 'text-white/20 hover:text-white/40'}
+                aria-label={`${i} estrela${i === 1 ? '' : 's'}`}
+              >
+                {i <= reviewRating ? '★' : '☆'}
+              </button>
+            ))}
+          </div>
+          <textarea
+            value={reviewComment}
+            onChange={e => setReviewComment(e.target.value)}
+            placeholder="Deixe um comentário (opcional)"
+            rows={3}
+            className="mb-3 w-full resize-none rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/30 focus:border-academy-gold focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={submitReview}
+            disabled={reviewRating < 1 || submittingReview}
+            className="rounded-md bg-academy-gold px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-academy-gold/80 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {reviewsData?.mine ? 'Atualizar avaliação' : 'Enviar avaliação'}
+          </button>
+        </div>
+
+        {/* Reviews list */}
+        {reviewsData && reviewsData.reviews.length > 0 && (
+          <div className="space-y-3">
+            {reviewsData.reviews.map(rev => (
+              <div key={rev.id} className="rounded-lg bg-white/5 p-4">
+                <div className="mb-1.5 flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold text-white">{rev.learner_name || 'Aluno'}</span>
+                  <span className="text-xs text-white/40">
+                    {new Date(rev.created_at).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+                <Stars value={rev.rating} />
+                {rev.comment && (
+                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-white/70">{rev.comment}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   )

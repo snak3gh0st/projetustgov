@@ -51,5 +51,43 @@ export async function POST(req: NextRequest, { params }: Params) {
     [enrollmentId, lessonId, status, position_seconds ?? null, now],
   )
 
+  if (status === 'completed') {
+    try {
+      const prodRows = await query<{ product_id: string; slug: string; title: string }>(
+        `SELECT les.product_id, p.slug, p.title
+         FROM education_lessons les JOIN education_products p ON p.id = les.product_id
+         WHERE les.id = $1`,
+        [lessonId],
+      )
+      const product = prodRows[0]
+      if (product) {
+        const countRows = await query<{ total: number; done: number }>(
+          `SELECT
+             (SELECT COUNT(*) FROM education_lessons l WHERE l.product_id = $1 AND l.status = 'published')::int AS total,
+             (SELECT COUNT(*) FROM education_progress pr
+                JOIN education_lessons l ON l.id = pr.lesson_id
+                WHERE pr.enrollment_id = $2 AND pr.status = 'completed' AND l.status = 'published')::int AS done`,
+          [product.product_id, enrollmentId],
+        )
+        const counts = countRows[0]
+        if (counts && counts.total > 1 && counts.done === counts.total - 1) {
+          const link = `/area/${product.slug}`
+          const body = `Falta só 1 aula para concluir "${product.title}". Termine e garanta seu certificado!`
+          await query(
+            `INSERT INTO education_notifications (learner_id, type, title, body, link)
+             SELECT $1, 'almost_done', 'Você está quase lá! 🎯', $2, $3
+             WHERE NOT EXISTS (
+               SELECT 1 FROM education_notifications n
+               WHERE n.learner_id = $1 AND n.type = 'almost_done' AND n.link = $3
+             )`,
+            [session.sub, body, link],
+          )
+        }
+      }
+    } catch {
+      // nudge is best-effort; never break the progress save
+    }
+  }
+
   return ok({ status })
 }

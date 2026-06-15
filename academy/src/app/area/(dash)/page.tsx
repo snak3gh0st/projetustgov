@@ -9,6 +9,7 @@ type Course = {
   enrollment_status: string; enrolled_at: string; lesson_count: number; completed_count: number
   resume_lesson_slug: string | null
   resume_lesson_title: string | null
+  avg_rating: number; review_count: number; in_watchlist: boolean
 }
 
 export default function AreaPage() {
@@ -34,6 +35,7 @@ export default function AreaPage() {
   const readyToStart = courses.filter(c => c.completed_count === 0)
   const completed = courses.filter(c => c.lesson_count > 0 && c.completed_count >= c.lesson_count)
   const continueWatching = courses.filter(c => c.resume_lesson_slug)
+  const watchlist = courses.filter(c => c.in_watchlist)
 
   const q = search.trim().toLowerCase()
   const filtered = q ? courses.filter(c => c.title.toLowerCase().includes(q) || (c.subtitle ?? '').toLowerCase().includes(q)) : []
@@ -76,7 +78,15 @@ export default function AreaPage() {
           <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-white">{course.title}</h3>
           {course.subtitle && <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-white/45">{course.subtitle}</p>}
           <div className="mt-4 flex items-center justify-between text-xs text-white/45">
-            <span>{course.completed_count}/{course.lesson_count} aulas</span>
+            <span className="flex items-center gap-2">
+              <span>{course.completed_count}/{course.lesson_count} aulas</span>
+              {course.review_count > 0 && (
+                <span className="flex items-center gap-1">
+                  <span className="text-academy-gold">★</span>
+                  <span className="text-white/45">{course.avg_rating.toFixed(1)} ({course.review_count})</span>
+                </span>
+              )}
+            </span>
             <span className="font-semibold text-white/70">{progress}%</span>
           </div>
         </div>
@@ -179,6 +189,7 @@ export default function AreaPage() {
           )}
 
           <CourseRail title="Continuar assistindo" items={continueWatching} resume />
+          <CourseRail title="Minha Lista" items={watchlist} />
           <CourseRail title="Continue de onde parou" items={inProgress} />
           <CourseRail title="Comece agora" items={readyToStart} />
           <CourseRail title="Concluídos" items={completed} />
