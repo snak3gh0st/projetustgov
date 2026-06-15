@@ -6,7 +6,7 @@ import Link from 'next/link'
 
 type Lesson = { id: string; slug: string; title: string; position: number; lesson_type: string; duration_seconds: number | null; status: string }
 type Module = { id: string; slug: string; title: string; position: number; status: string; lesson_count: number; lessons?: Lesson[] }
-type Product = { id: string; slug: string; title: string; subtitle: string | null; status: string; visibility: string; default_price_cents: number | null; modules: Module[] | null }
+type Product = { id: string; slug: string; title: string; subtitle: string | null; status: string; visibility: string; default_price_cents: number | null; cover_image_url: string | null; modules: Module[] | null }
 
 const STATUS_OPTIONS = ['draft', 'published', 'archived']
 const VIS_OPTIONS = ['private', 'unlisted', 'public']
@@ -22,11 +22,14 @@ export default function AdminProductDetailPage() {
   const [moduleForm, setModuleForm] = useState({ slug: '', title: '', position: '0' })
   const [lessonForms, setLessonForms] = useState<Record<string, { slug: string; title: string; position: string; lesson_type: string }>>({})
   const [showLessonForm, setShowLessonForm] = useState<string | null>(null)
+  const [coverUrl, setCoverUrl] = useState('')
+  const [coverSaving, setCoverSaving] = useState(false)
+  const [coverError, setCoverError] = useState('')
 
   useEffect(() => {
     fetch(`/api/admin/products/${productId}`)
       .then(r => r.json())
-      .then(d => { setProduct(d.data); setLoading(false) })
+      .then(d => { setProduct(d.data); setCoverUrl(d.data?.cover_image_url ?? ''); setLoading(false) })
   }, [productId])
 
   async function updateStatus(status: string) {
@@ -104,6 +107,21 @@ export default function AdminProductDetailPage() {
     setLessonForms(f => ({ ...f, [moduleId]: { slug: '', title: '', position: '0', lesson_type: 'video' } }))
   }
 
+  async function saveCoverImage() {
+    setCoverSaving(true)
+    setCoverError('')
+    const res = await fetch(`/api/admin/products/${productId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cover_image_url: coverUrl || null }),
+    })
+    if (!res.ok) {
+      setCoverError('Erro ao salvar. Tente novamente.')
+    } else {
+      setProduct(p => p ? { ...p, cover_image_url: coverUrl || null } : p)
+    }
+    setCoverSaving(false)
+  }
+
   if (loading) return <div className="text-slate-400">Carregando…</div>
   if (!product) return <div className="text-red-400">Produto não encontrado</div>
 
@@ -113,6 +131,45 @@ export default function AdminProductDetailPage() {
         <Link href="/admin/produtos" className="text-sm text-slate-400 hover:text-white">← Produtos</Link>
         <span className="text-slate-600">/</span>
         <h1 className="text-lg font-semibold text-white">{product.title}</h1>
+      </div>
+
+      <div className="mb-6 rounded-xl bg-slate-800 p-5">
+        <p className="mb-3 text-xs text-slate-400">Imagem de capa</p>
+        <div className="flex gap-5">
+          <div className="w-40 shrink-0">
+            {product.cover_image_url ? (
+              <img
+                src={product.cover_image_url}
+                alt="Capa do produto"
+                className="aspect-video w-full rounded-lg object-cover"
+              />
+            ) : (
+              <div className="flex aspect-video w-full items-center justify-center rounded-lg bg-slate-700 text-xs text-slate-500">
+                Sem imagem
+              </div>
+            )}
+          </div>
+          <div className="flex flex-1 flex-col gap-2">
+            <label className="text-xs text-slate-400">URL da imagem</label>
+            <input
+              type="text"
+              value={coverUrl}
+              onChange={e => setCoverUrl(e.target.value)}
+              placeholder="https://..."
+              className="w-full rounded-lg bg-slate-700 px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-academy-gold"
+            />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={saveCoverImage}
+                disabled={coverSaving}
+                className="rounded-lg bg-academy-gold px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {coverSaving ? 'Salvando…' : 'Salvar imagem'}
+              </button>
+              {coverError && <p className="text-xs text-red-400">{coverError}</p>}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="mb-6 flex gap-3 rounded-xl bg-slate-800 p-5">
