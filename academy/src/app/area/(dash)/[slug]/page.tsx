@@ -37,6 +37,15 @@ function fmt(s: number) {
   return `${m}:${String(s % 60).padStart(2, '0')}`
 }
 
+function fmtDuration(totalSeconds: number): string {
+  if (totalSeconds === 0) return ''
+  const h = Math.floor(totalSeconds / 3600)
+  const m = Math.floor((totalSeconds % 3600) / 60)
+  if (h === 0) return `${m} min`
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}min`
+}
+
 export default function CourseDetailPage() {
   const { slug } = useParams<{ slug: string }>()
 
@@ -99,6 +108,10 @@ export default function CourseDetailPage() {
   const progressPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
   const hasStarted = doneCount > 0
 
+  const totalDurationSeconds = (course.modules ?? [])
+    .flatMap(m => m.lessons ?? [])
+    .reduce((sum, l) => sum + (l.duration_seconds ?? 0), 0)
+
   // Find the first non-completed lesson for "Continuar", or first lesson for "Começar"
   const continueLesson = allLessons.find(l => progress[l.id]?.status !== 'completed') ?? allLessons[0]
   const ctaHref = continueLesson
@@ -137,6 +150,27 @@ export default function CourseDetailPage() {
           <h1 className="text-3xl font-bold text-white sm:text-4xl leading-tight">{course.title}</h1>
           {course.subtitle && (
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/65 sm:text-base">{course.subtitle}</p>
+          )}
+
+          {/* Course stats */}
+          {(totalDurationSeconds > 0 || totalCount > 0) && (
+            <div className="mt-4 flex items-center gap-4 text-xs text-white/40">
+              {totalCount > 0 && (
+                <span>{totalCount} aula{totalCount === 1 ? '' : 's'}</span>
+              )}
+              {totalDurationSeconds > 0 && (
+                <>
+                  <span className="text-white/20">·</span>
+                  <span>{fmtDuration(totalDurationSeconds)}</span>
+                </>
+              )}
+              {doneCount > 0 && (
+                <>
+                  <span className="text-white/20">·</span>
+                  <span>{progressPct}% concluído</span>
+                </>
+              )}
+            </div>
           )}
 
           {/* Progress */}
