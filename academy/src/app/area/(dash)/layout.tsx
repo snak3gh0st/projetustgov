@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getSession } from '@/lib/auth'
+import NotificationBell from '@/components/NotificationBell'
 
 export default async function DashLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
@@ -14,6 +15,7 @@ export default async function DashLayout({ children }: { children: React.ReactNo
           </Link>
           <div className="flex min-w-0 items-center gap-4 text-sm text-white/55">
             <span className="hidden truncate sm:block">{session?.email}</span>
+            <NotificationBell />
             <form action="/api/auth/learner/logout" method="POST">
               <button type="submit" className="rounded-md border border-white/10 px-3 py-1.5 text-xs font-semibold text-white/70 transition hover:border-white/25 hover:text-white">Sair</button>
             </form>
