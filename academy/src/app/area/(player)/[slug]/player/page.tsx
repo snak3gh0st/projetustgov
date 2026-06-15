@@ -39,6 +39,15 @@ type Course = {
 type ProgressEntry = { status: string; position: number | null }
 type Progress = Record<string, ProgressEntry>
 
+type Comment = {
+  id: string
+  parent_id: string | null
+  body: string
+  created_at: string
+  author_name: string | null
+  is_mine: boolean
+}
+
 function fmt(s: number) {
   const m = Math.floor(s / 60)
   return `${m}:${String(s % 60).padStart(2, '0')}`
@@ -76,6 +85,13 @@ function PlayerContent() {
   const [notesOpen, setNotesOpen] = useState(false)
   const notesDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const notesLessonRef = useRef<string | null>(null)
+
+  // Comments panel
+  const [comments, setComments] = useState<Comment[]>([])
+  const [commentBody, setCommentBody] = useState('')
+  const [replyTo, setReplyTo] = useState<string | null>(null)
+  const [commentsOpen, setCommentsOpen] = useState(false)
+  const [posting, setPosting] = useState(false)
 
   useEffect(() => {
     fetch(`/api/area/courses/${slug}`)
@@ -210,6 +226,54 @@ function PlayerContent() {
       if (notesLessonRef.current === lessonId) setNotesSaving(false)
     }, 800)
   }, [activeLesson])
+
+  // Load comments when the active lesson changes
+  useEffect(() => {
+    if (!activeLesson) {
+      setComments([])
+      setReplyTo(null)
+      setCommentBody('')
+      return
+    }
+    const lessonId = activeLesson.id
+    setComments([])
+    setReplyTo(null)
+    setCommentBody('')
+    let cancelled = false
+    fetch(`/api/area/comments?lessonId=${lessonId}`)
+      .then(r => r.json())
+      .then(d => {
+        if (cancelled) return
+        setComments(d.data?.comments ?? [])
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [activeLesson])
+
+  const submitComment = useCallback(async () => {
+    const text = commentBody.trim()
+    if (!text || !activeLesson || posting) return
+    setPosting(true)
+    try {
+      const res = await fetch('/api/area/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId: activeLesson.id, body: text, parentId: replyTo }),
+      })
+      const d = await res.json()
+      if (res.ok && d.data?.comment) {
+        setComments(c => [...c, d.data.comment as Comment])
+        setCommentBody('')
+        setReplyTo(null)
+      }
+    } catch {
+      // ignore
+    } finally {
+      setPosting(false)
+    }
+  }, [commentBody, activeLesson, replyTo, posting])
 
   const toggleModule = (id: string) =>
     setExpanded(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
@@ -388,6 +452,100 @@ function PlayerContent() {
                       />
                     ) : (
                       <div className="h-[80px] rounded-lg bg-slate-800/50 animate-pulse" />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Comments panel */}
+            {activeLesson && (
+              <div className="mt-3 border-t border-white/5 pt-3">
+                <button
+                  onClick={() => setCommentsOpen(o => !o)}
+                  className="flex w-full items-center justify-between text-left"
+                >
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    💬 Comentários e dúvidas ({comments.length})
+                  </span>
+                  <span className="text-slate-600 text-xs">{commentsOpen ? '▲' : '▼'}</span>
+                </button>
+                {commentsOpen && (
+                  <div className="mt-3 space-y-4 bg-slate-800/60 rounded-lg p-3">
+                    {/* Composer */}
+                    <div className="space-y-2">
+                      {replyTo && (
+                        <div className="flex items-center justify-between text-[11px] text-slate-400">
+                          <span>Respondendo…</span>
+                          <button
+                            onClick={() => setReplyTo(null)}
+                            className="text-slate-500 hover:text-white"
+                            title="Cancelar resposta"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                      <textarea
+                        value={commentBody}
+                        onChange={e => setCommentBody(e.target.value)}
+                        placeholder={replyTo ? 'Escreva sua resposta…' : 'Escreva um comentário ou tire uma dúvida…'}
+                        className="bg-slate-800 border border-white/10 rounded-lg p-3 text-sm text-slate-200 w-full min-h-[70px] outline-none focus:border-academy-gold"
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          onClick={submitComment}
+                          disabled={posting || !commentBody.trim()}
+                          className="bg-academy-gold text-white rounded-lg px-4 py-2 text-xs font-semibold disabled:opacity-50"
+                        >
+                          {posting ? 'Enviando…' : 'Comentar'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Thread */}
+                    {comments.length === 0 ? (
+                      <p className="text-xs text-slate-500">Seja o primeiro a comentar nesta aula.</p>
+                    ) : (
+                      <ul className="space-y-4">
+                        {comments.filter(c => c.parent_id === null).map(comment => {
+                          const replies = comments.filter(r => r.parent_id === comment.id)
+                          return (
+                            <li key={comment.id} className="space-y-2">
+                              <div className="text-sm text-slate-200">
+                                <div className="flex items-baseline gap-2">
+                                  <span className="font-semibold text-white">{comment.author_name ?? 'Aluno'}</span>
+                                  <span className="text-[10px] text-slate-500">
+                                    {new Date(comment.created_at).toLocaleDateString('pt-BR')}
+                                  </span>
+                                </div>
+                                <p className="whitespace-pre-line text-slate-300 mt-0.5">{comment.body}</p>
+                                <button
+                                  onClick={() => setReplyTo(comment.id)}
+                                  className="text-[11px] text-academy-gold hover:underline mt-1"
+                                >
+                                  Responder
+                                </button>
+                              </div>
+                              {replies.length > 0 && (
+                                <ul className="ml-8 border-l border-white/10 pl-3 space-y-3">
+                                  {replies.map(reply => (
+                                    <li key={reply.id} className="text-sm text-slate-200">
+                                      <div className="flex items-baseline gap-2">
+                                        <span className="font-semibold text-white">{reply.author_name ?? 'Aluno'}</span>
+                                        <span className="text-[10px] text-slate-500">
+                                          {new Date(reply.created_at).toLocaleDateString('pt-BR')}
+                                        </span>
+                                      </div>
+                                      <p className="whitespace-pre-line text-slate-300 mt-0.5">{reply.body}</p>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </li>
+                          )
+                        })}
+                      </ul>
                     )}
                   </div>
                 )}
