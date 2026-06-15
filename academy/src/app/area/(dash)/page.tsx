@@ -121,7 +121,7 @@ export default function AreaPage() {
                   </div>
                 </div>
                 <div className="mt-7 flex flex-wrap gap-3">
-                  <Link href={`/area/${featured.slug}`} className="rounded-md bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-academy-gold hover:text-white">
+                  <Link href={`/area/${featured.slug}/player`} className="rounded-md bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-academy-gold hover:text-white">
                     Assistir agora
                   </Link>
                   <Link href={`/area/${featured.slug}`} className="rounded-md border border-white/20 bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15">

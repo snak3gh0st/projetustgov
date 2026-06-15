@@ -128,7 +128,7 @@ function PlayerContent() {
       {/* Top bar */}
       <header className="h-12 flex-shrink-0 bg-black/70 backdrop-blur border-b border-white/5 flex items-center px-4 gap-3">
         <Link
-          href="/area"
+          href={`/area/${slug}`}
           className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors shrink-0"
         >
           <span className="text-lg leading-none">←</span>
