@@ -108,7 +108,9 @@ export default function AreaPage() {
               <div className="absolute inset-0 bg-gradient-to-r from-black via-black/78 to-black/10" />
               <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black to-transparent" />
               <div className="relative z-10 flex min-h-[420px] max-w-2xl flex-col justify-end p-6 sm:p-10">
-                <p className="text-xs font-black uppercase tracking-[0.35em] text-academy-gold">Continuar assistindo</p>
+                <p className="text-xs font-black uppercase tracking-[0.35em] text-academy-gold">
+                  {progressFor(featured) === 0 ? 'Em destaque' : progressFor(featured) === 100 ? 'Concluído' : 'Continue de onde parou'}
+                </p>
                 <h1 className="mt-3 text-3xl font-bold leading-tight text-white sm:text-5xl">{featured.title}</h1>
                 {featured.subtitle && <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/65 sm:text-base">{featured.subtitle}</p>}
                 <div className="mt-6 max-w-md">
@@ -134,7 +136,6 @@ export default function AreaPage() {
 
           <CourseRail title="Continue de onde parou" items={inProgress} />
           <CourseRail title="Comece agora" items={readyToStart} />
-          <CourseRail title="Todos os seus cursos" items={courses} />
           <CourseRail title="Concluídos" items={completed} />
         </>
       )}
