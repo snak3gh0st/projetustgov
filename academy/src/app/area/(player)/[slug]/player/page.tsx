@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
@@ -61,6 +61,8 @@ function PlayerContent() {
   const [progress, setProgress] = useState<Progress>({})
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [countdown, setCountdown] = useState<number | null>(null)
+  const activeLessonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     fetch(`/api/area/courses/${slug}`)
@@ -113,8 +115,25 @@ function PlayerContent() {
 
   const handleEnded = useCallback(() => {
     if (activeLesson) markComplete(activeLesson.id)
-    if (nextLesson) setTimeout(() => setActiveLesson(nextLesson), 1200)
+    if (nextLesson) {
+      setCountdown(5)
+    }
   }, [activeLesson, nextLesson, markComplete])
+
+  useEffect(() => {
+    if (countdown === null) return
+    if (countdown === 0) {
+      setCountdown(null)
+      if (nextLesson) setActiveLesson(nextLesson)
+      return
+    }
+    const t = setTimeout(() => setCountdown(c => c !== null ? c - 1 : null), 1000)
+    return () => clearTimeout(t)
+  }, [countdown, nextLesson])
+
+  useEffect(() => {
+    activeLessonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [activeLesson])
 
   const toggleModule = (id: string) =>
     setExpanded(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
@@ -172,7 +191,7 @@ function PlayerContent() {
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
 
           {/* Video */}
-          <div className="flex-1 bg-black min-h-0">
+          <div className="relative flex-1 bg-black min-h-0">
             {activeLesson?.playback_url ? (
               <VideoPlayer
                 key={activeLesson.id}
@@ -185,6 +204,19 @@ function PlayerContent() {
             ) : (
               <div className="w-full h-full flex items-center justify-center text-slate-600 text-sm">
                 {activeLesson ? 'Vídeo não disponível ainda.' : 'Selecione uma aula na lista →'}
+              </div>
+            )}
+            {countdown !== null && nextLesson && (
+              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 rounded-full bg-black/80 backdrop-blur px-5 py-3 shadow-xl">
+                <span className="text-sm text-white font-medium">
+                  Próxima aula em <span className="font-bold text-academy-gold">{countdown}s</span>
+                </span>
+                <button
+                  onClick={() => setCountdown(null)}
+                  className="text-xs text-slate-400 hover:text-white transition-colors border border-white/20 rounded-full px-3 py-1"
+                >
+                  Cancelar
+                </button>
               </div>
             )}
           </div>
@@ -207,7 +239,7 @@ function PlayerContent() {
                 {activeLesson && progress[activeLesson.id]?.status !== 'completed' && (
                   <button
                     onClick={() => activeLesson && markComplete(activeLesson.id)}
-                    className="hidden sm:flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/10 hover:border-white/30 transition-colors"
+                    className="flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/10 hover:border-white/30 transition-colors"
                   >
                     <span>✓</span> Concluída
                   </button>
@@ -227,7 +259,12 @@ function PlayerContent() {
 
         {/* Episode sidebar */}
         {sidebarOpen && (
-          <aside className="w-72 xl:w-80 flex-shrink-0 border-l border-white/5 bg-slate-900 flex flex-col overflow-hidden">
+          <>
+          <div
+            className="fixed inset-0 z-20 bg-black/50 sm:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <aside className="fixed inset-y-0 right-0 z-30 w-80 sm:w-72 xl:w-80 flex-shrink-0 border-l border-white/5 bg-slate-900 flex flex-col overflow-hidden sm:relative sm:inset-auto sm:z-auto">
             <div className="px-4 py-3 border-b border-white/5 flex-shrink-0">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Conteúdo</p>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -244,7 +281,16 @@ function PlayerContent() {
             </div>
 
             <div className="flex-1 overflow-y-auto py-1">
-              {(course.modules ?? []).map(mod => {
+              {(() => {
+                const lessonIndexMap = new Map<string, number>()
+                let idx = 0
+                for (const mod of course.modules ?? []) {
+                  for (const l of mod.lessons ?? []) {
+                    lessonIndexMap.set(l.id, idx + 1)
+                    idx++
+                  }
+                }
+                return (course.modules ?? []).map(mod => {
                 const modLessons = mod.lessons ?? []
                 const modDone = modLessons.filter(l => progress[l.id]?.status === 'completed').length
                 const isOpen = expanded.has(mod.id)
@@ -269,8 +315,9 @@ function PlayerContent() {
                           const isDone = progress[lesson.id]?.status === 'completed'
 
                           return (
-                            <li key={lesson.id}>
+                            <li key={lesson.id} className="relative">
                               <button
+                                ref={isActive ? activeLessonRef : undefined}
                                 onClick={() => setActiveLesson(lesson)}
                                 className={`flex w-full items-center gap-2.5 pl-4 pr-3 py-2.5 text-left transition-colors border-l-2 ${
                                   isActive
@@ -278,6 +325,11 @@ function PlayerContent() {
                                     : 'hover:bg-white/5 border-transparent'
                                 }`}
                               >
+                                {/* Lesson number */}
+                                <span className="flex-shrink-0 text-[10px] text-slate-600 w-5 text-right font-mono">
+                                  {lessonIndexMap.get(lesson.id)}
+                                </span>
+
                                 {/* Status circle */}
                                 <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
                                   isDone
@@ -301,6 +353,15 @@ function PlayerContent() {
                                   </span>
                                 )}
                               </button>
+                              {/* Mini progress bar for in_progress */}
+                              {progress[lesson.id]?.status === 'in_progress' && lesson.duration_seconds && progress[lesson.id]?.position && (
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/5">
+                                  <div
+                                    className="h-full bg-academy-gold/60"
+                                    style={{ width: `${Math.min(100, Math.round(((progress[lesson.id]?.position ?? 0) / lesson.duration_seconds) * 100))}%` }}
+                                  />
+                                </div>
+                              )}
                             </li>
                           )
                         })}
@@ -308,9 +369,11 @@ function PlayerContent() {
                     )}
                   </div>
                 )
-              })}
+              })
+              })()}
             </div>
           </aside>
+          </>
         )}
       </div>
     </div>
