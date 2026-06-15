@@ -12,11 +12,18 @@ type Props = {
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
 
+function fmt(s: number) {
+  const m = Math.floor(s / 60)
+  return `${m}:${String(s % 60).padStart(2, '0')}`
+}
+
 export default function VideoPlayer({ src, title, onEnded, initialPosition, onPositionUpdate }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [speed, setSpeed] = useState(1)
   const [showSpeedMenu, setShowSpeedMenu] = useState(false)
+  const [showResumeToast, setShowResumeToast] = useState(false)
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false)
 
   // HLS / MP4 source setup
   useEffect(() => {
@@ -46,17 +53,26 @@ export default function VideoPlayer({ src, title, onEnded, initialPosition, onPo
     return () => hls?.destroy()
   }, [src])
 
-  // initialPosition: seek once video can play
+  // initialPosition: seek once video can play + show resume toast
   useEffect(() => {
     const video = videoRef.current
     if (!video || initialPosition === undefined) return
 
+    let toastTimer: ReturnType<typeof setTimeout> | null = null
+
     function onCanPlay() {
       video!.currentTime = initialPosition!
+      if (initialPosition! > 30) {
+        setShowResumeToast(true)
+        toastTimer = setTimeout(() => setShowResumeToast(false), 3000)
+      }
     }
 
     video.addEventListener('canplay', onCanPlay, { once: true })
-    return () => video.removeEventListener('canplay', onCanPlay)
+    return () => {
+      video.removeEventListener('canplay', onCanPlay)
+      if (toastTimer !== null) clearTimeout(toastTimer)
+    }
   }, [initialPosition])
 
   // onPositionUpdate: call every 15 seconds with current time
@@ -150,6 +166,46 @@ export default function VideoPlayer({ src, title, onEnded, initialPosition, onPo
         className="w-full aspect-video"
         aria-label={title}
       />
+
+      {/* Resume toast */}
+      {showResumeToast && initialPosition && initialPosition > 30 && (
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+          <div className="bg-black/80 backdrop-blur text-white text-xs font-medium rounded-full px-4 py-2 opacity-90">
+            Retomando de {fmt(Math.floor(initialPosition))}
+          </div>
+        </div>
+      )}
+
+      {/* Keyboard shortcut help button */}
+      <div className="absolute bottom-14 right-14">
+        <div className="relative">
+          <button
+            type="button"
+            onMouseEnter={() => setShowShortcutHelp(true)}
+            onMouseLeave={() => setShowShortcutHelp(false)}
+            className="bg-black/60 backdrop-blur text-white/60 text-xs font-bold rounded px-2 py-1 hover:bg-black/80 hover:text-white"
+          >
+            ?
+          </button>
+
+          {showShortcutHelp && (
+            <div className="absolute bottom-8 right-0 bg-zinc-900 border border-white/10 rounded-lg p-3 shadow-xl w-44 pointer-events-none">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Atalhos</p>
+              {[
+                ['Espaço', 'Play / Pause'],
+                ['← →', '± 10 segundos'],
+                ['M', 'Mudo'],
+                ['F', 'Tela cheia'],
+              ].map(([key, label]) => (
+                <div key={key} className="flex justify-between gap-3 py-0.5">
+                  <kbd className="text-[10px] font-mono text-academy-gold">{key}</kbd>
+                  <span className="text-[10px] text-slate-400">{label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Speed selector overlay */}
       <div
