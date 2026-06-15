@@ -9,6 +9,8 @@ type Props = {
   initialPosition?: number
   onPositionUpdate?: (pos: number) => void
   onProgress?: (fraction: number) => void
+  poster?: string
+  subtitleUrl?: string
 }
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
@@ -18,7 +20,7 @@ function fmt(s: number) {
   return `${m}:${String(s % 60).padStart(2, '0')}`
 }
 
-export default function VideoPlayer({ src, title, onEnded, initialPosition, onPositionUpdate, onProgress }: Props) {
+export default function VideoPlayer({ src, title, onEnded, initialPosition, onPositionUpdate, onProgress, poster, subtitleUrl }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [speed, setSpeed] = useState(1)
@@ -179,10 +181,16 @@ export default function VideoPlayer({ src, title, onEnded, initialPosition, onPo
         ref={videoRef}
         controls
         playsInline
+        crossOrigin="anonymous"
+        poster={poster}
         onEnded={onEnded}
         className="w-full aspect-video"
         aria-label={title}
-      />
+      >
+        {subtitleUrl && (
+          <track kind="subtitles" src={subtitleUrl} srcLang="pt" label="Português" default />
+        )}
+      </video>
 
       {/* Resume toast */}
       {showResumeToast && initialPosition && initialPosition > 30 && (

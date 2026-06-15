@@ -39,6 +39,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
                 'summary', l.summary,
                 'content_html', l.content_html,
                 'attachments', (SELECT json_agg(json_build_object('id', a2.id, 'url', COALESCE(a2.download_url, a2.url)) ) FROM education_assets a2 WHERE a2.lesson_id = l.id AND a2.asset_type = 'attachment'),
+                'subtitle_url', (SELECT COALESCE(a3.download_url, a3.url) FROM education_assets a3 WHERE a3.lesson_id = l.id AND a3.asset_type = 'subtitle' LIMIT 1),
+                'poster_url', (SELECT a4.url FROM education_assets a4 WHERE a4.lesson_id = l.id AND a4.asset_type = 'thumbnail' LIMIT 1),
                 'video_id', a.provider_asset_id,
                 'playback_url', a.playback_url
               ) ORDER BY l.position

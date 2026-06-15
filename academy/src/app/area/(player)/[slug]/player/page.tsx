@@ -18,6 +18,8 @@ type Lesson = {
   summary: string | null
   content_html: string | null
   attachments: { id: string; url: string }[] | null
+  subtitle_url: string | null
+  poster_url: string | null
 }
 
 type Module = {
@@ -66,6 +68,14 @@ function PlayerContent() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [countdown, setCountdown] = useState<number | null>(null)
   const activeLessonRef = useRef<HTMLButtonElement>(null)
+
+  // Notes panel
+  const [notes, setNotes] = useState('')
+  const [notesSaving, setNotesSaving] = useState(false)
+  const [notesLoaded, setNotesLoaded] = useState(false)
+  const [notesOpen, setNotesOpen] = useState(false)
+  const notesDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const notesLessonRef = useRef<string | null>(null)
 
   useEffect(() => {
     fetch(`/api/area/courses/${slug}`)
@@ -145,6 +155,62 @@ function PlayerContent() {
     activeLessonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [activeLesson])
 
+  // Load notes when the active lesson changes
+  useEffect(() => {
+    if (notesDebounceRef.current) {
+      clearTimeout(notesDebounceRef.current)
+      notesDebounceRef.current = null
+    }
+    if (!activeLesson) {
+      notesLessonRef.current = null
+      setNotes('')
+      setNotesLoaded(false)
+      return
+    }
+    const lessonId = activeLesson.id
+    notesLessonRef.current = lessonId
+    setNotesLoaded(false)
+    setNotes('')
+    setNotesSaving(false)
+    let cancelled = false
+    fetch(`/api/area/notes/${lessonId}`)
+      .then(r => r.json())
+      .then(d => {
+        if (cancelled || notesLessonRef.current !== lessonId) return
+        setNotes(d.data?.content ?? '')
+        setNotesLoaded(true)
+      })
+      .catch(() => {
+        if (cancelled || notesLessonRef.current !== lessonId) return
+        setNotesLoaded(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeLesson])
+
+  // Clear pending debounce on unmount
+  useEffect(() => () => {
+    if (notesDebounceRef.current) clearTimeout(notesDebounceRef.current)
+  }, [])
+
+  const handleNotesChange = useCallback((value: string) => {
+    setNotes(value)
+    const lessonId = activeLesson?.id
+    if (!lessonId) return
+    if (notesDebounceRef.current) clearTimeout(notesDebounceRef.current)
+    notesDebounceRef.current = setTimeout(async () => {
+      setNotesSaving(true)
+      await fetch(`/api/area/notes/${lessonId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: value }),
+      }).catch(() => {})
+      // Only clear the saving state if we're still on the same lesson
+      if (notesLessonRef.current === lessonId) setNotesSaving(false)
+    }, 800)
+  }, [activeLesson])
+
   const toggleModule = (id: string) =>
     setExpanded(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
 
@@ -211,6 +277,8 @@ function PlayerContent() {
                 initialPosition={initialPosition}
                 onPositionUpdate={handlePositionUpdate}
                 onProgress={handleProgress}
+                poster={activeLesson.poster_url ?? undefined}
+                subtitleUrl={activeLesson.subtitle_url ?? undefined}
               />
             ) : activeLesson?.content_html ? (
               <div className="w-full h-full overflow-y-auto bg-slate-950 px-6 py-8">
@@ -285,6 +353,42 @@ function PlayerContent() {
                         </a>
                       ))}
                     </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Notes panel */}
+            {activeLesson && (
+              <div className="mt-3 border-t border-white/5 pt-3">
+                <button
+                  onClick={() => setNotesOpen(o => !o)}
+                  className="flex w-full items-center justify-between text-left"
+                >
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    📝 Minhas anotações
+                  </span>
+                  <span className="flex items-center gap-2">
+                    {notesOpen && notesLoaded && (
+                      <span className="text-[10px] text-slate-500">
+                        {notesSaving ? 'Salvando…' : 'Salvo ✓'}
+                      </span>
+                    )}
+                    <span className="text-slate-600 text-xs">{notesOpen ? '▲' : '▼'}</span>
+                  </span>
+                </button>
+                {notesOpen && (
+                  <div className="mt-2">
+                    {notesLoaded ? (
+                      <textarea
+                        value={notes}
+                        onChange={e => handleNotesChange(e.target.value)}
+                        placeholder="Escreva suas anotações desta aula…"
+                        className="bg-slate-800 border border-white/10 rounded-lg text-sm text-slate-200 p-3 w-full min-h-[80px] outline-none focus:border-academy-gold"
+                      />
+                    ) : (
+                      <div className="h-[80px] rounded-lg bg-slate-800/50 animate-pulse" />
+                    )}
                   </div>
                 )}
               </div>
