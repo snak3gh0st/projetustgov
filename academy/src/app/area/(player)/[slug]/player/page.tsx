@@ -368,8 +368,8 @@ function PlayerContent() {
             )}
           </div>
 
-          {/* Lesson info */}
-          <div className="flex-shrink-0 bg-slate-900/80 border-t border-white/5 px-5 py-3.5">
+          {/* Lesson info + Notes + Comments (scrollable) */}
+          <div className="flex-shrink-0 max-h-[40vh] overflow-y-auto bg-slate-900/80 border-t border-white/5 px-5 py-3.5">
             <div className="flex items-center gap-4">
               <div className="min-w-0 flex-1">
                 {activeModule && (
