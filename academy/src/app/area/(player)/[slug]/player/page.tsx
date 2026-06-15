@@ -328,10 +328,10 @@ function PlayerContent() {
       <div className="flex flex-1 overflow-hidden">
 
         {/* Video + info */}
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <div className="flex flex-col flex-1 min-w-0 overflow-y-auto">
 
-          {/* Video */}
-          <div className="relative flex-1 bg-black min-h-0">
+          {/* Video — fixed 16:9, never shrinks */}
+          <div className="relative w-full aspect-video bg-black flex-shrink-0">
             {activeLesson?.playback_url ? (
               <VideoPlayer
                 key={activeLesson.id}
@@ -368,8 +368,8 @@ function PlayerContent() {
             )}
           </div>
 
-          {/* Lesson info + Notes + Comments (scrollable) */}
-          <div className="flex-shrink-0 max-h-[40vh] overflow-y-auto bg-slate-900/80 border-t border-white/5 px-5 py-3.5">
+          {/* Lesson info + Notes + Comments */}
+          <div className="flex-shrink-0 bg-slate-900/80 border-t border-white/5 px-5 py-3.5">
             <div className="flex items-center gap-4">
               <div className="min-w-0 flex-1">
                 {activeModule && (
