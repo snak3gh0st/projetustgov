@@ -58,10 +58,31 @@ export async function POST(req: NextRequest) {
     [result.durationSeconds, lessonId],
   )
 
+  // Store the auto-generated poster frame as a thumbnail asset for the lesson
+  if (result.posterUrl) {
+    const lessonRows = await query<{ product_id: string; module_id: string }>(
+      'SELECT product_id, module_id FROM education_lessons WHERE id = $1',
+      [lessonId],
+    )
+    if (lessonRows[0]) {
+      const { product_id, module_id } = lessonRows[0]
+      await query(
+        `DELETE FROM education_assets WHERE lesson_id = $1 AND asset_type = 'thumbnail'`,
+        [lessonId],
+      )
+      await query(
+        `INSERT INTO education_assets (product_id, module_id, lesson_id, asset_type, provider, url)
+         VALUES ($1, $2, $3, 'thumbnail', 'r2', $4)`,
+        [product_id, module_id, lessonId, result.posterUrl],
+      )
+    }
+  }
+
   return ok({
     videoId,
     manifestKey: result.manifestKey,
     manifestUrl: result.manifestUrl,
     durationSeconds: result.durationSeconds,
+    posterUrl: result.posterUrl,
   })
 }

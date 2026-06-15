@@ -10,6 +10,7 @@ export type TranscodeResult = {
   manifestKey: string
   manifestUrl: string
   durationSeconds: number
+  posterUrl: string
 }
 
 // Produces 360p, 720p, and 1080p (if source allows) HLS with master playlist
@@ -79,6 +80,29 @@ export async function transcodeToHls(
   const masterKey = `${base}/master.m3u8`
   await uploadBuffer(masterKey, Buffer.from(masterContent), 'application/vnd.apple.mpegurl')
 
+  // Extract a poster frame at ~10% of duration (fallback 3s) and upload to R2.
+  // Wrapped in try/catch so a poster failure never fails the whole transcode.
+  let posterUrl = ''
+  try {
+    const seekTo = durationSeconds > 0 ? Math.max(1, Math.floor(durationSeconds * 0.1)) : 3
+    const posterPath = join(outDir, 'poster.jpg')
+    await execFileAsync('ffmpeg', [
+      '-ss', String(seekTo),
+      '-i', inputPath,
+      '-frames:v', '1',
+      '-vf', 'scale=1280:-2',
+      '-q:v', '3',
+      '-y', posterPath,
+    ])
+    const posterData = await readFile(posterPath)
+    const posterKey = `${base}/poster.jpg`
+    await uploadBuffer(posterKey, posterData, 'image/jpeg')
+    posterUrl = publicUrl(posterKey)
+  } catch (e) {
+    console.error('[transcode] poster frame extraction failed:', e)
+    posterUrl = ''
+  }
+
   // Cleanup temp dir
   await rm(outDir, { recursive: true, force: true })
 
@@ -86,5 +110,6 @@ export async function transcodeToHls(
     manifestKey: masterKey,
     manifestUrl: publicUrl(masterKey),
     durationSeconds,
+    posterUrl,
   }
 }

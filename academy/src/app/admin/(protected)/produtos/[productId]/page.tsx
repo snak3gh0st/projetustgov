@@ -30,6 +30,8 @@ export default function AdminProductDetailPage() {
   const [lessonEditForms, setLessonEditForms] = useState<Record<string, { title: string; summary: string; content_html: string }>>({})
   const [materialForms, setMaterialForms] = useState<Record<string, string>>({})
   const [materialDone, setMaterialDone] = useState<Record<string, boolean>>({})
+  const [subtitleForms, setSubtitleForms] = useState<Record<string, string>>({})
+  const [subtitleDone, setSubtitleDone] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     fetch(`/api/admin/products/${productId}`)
@@ -235,6 +237,19 @@ export default function AdminProductDetailPage() {
       setMaterialForms(f => ({ ...f, [lessonId]: '' }))
       setMaterialDone(d => ({ ...d, [lessonId]: true }))
       setTimeout(() => setMaterialDone(d => ({ ...d, [lessonId]: false })), 2500)
+    }
+  }
+
+  async function saveSubtitle(lessonId: string) {
+    const url = subtitleForms[lessonId]
+    if (!url) return
+    const res = await fetch(`/api/admin/lessons/${lessonId}/subtitle`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    })
+    if (res.ok) {
+      setSubtitleDone(d => ({ ...d, [lessonId]: true }))
+      setTimeout(() => setSubtitleDone(d => ({ ...d, [lessonId]: false })), 2500)
     }
   }
 
@@ -552,6 +567,24 @@ export default function AdminProductDetailPage() {
                                 className="rounded bg-slate-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-400"
                               >Adicionar</button>
                               {materialDone[l.id] && <span className="text-xs text-green-400">✓</span>}
+                            </div>
+                          </div>
+
+                          <div className="border-t border-slate-600 pt-2">
+                            <label className="mb-1 block text-xs text-slate-400">Legenda (URL .vtt)</label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="url"
+                                placeholder="https://....vtt"
+                                value={subtitleForms[l.id] ?? ''}
+                                onChange={e => setSubtitleForms(f => ({ ...f, [l.id]: e.target.value }))}
+                                className="flex-1 rounded bg-slate-600 px-2 py-1.5 text-xs text-white outline-none"
+                              />
+                              <button
+                                onClick={() => saveSubtitle(l.id)}
+                                className="rounded bg-academy-gold px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+                              >Salvar legenda</button>
+                              {subtitleDone[l.id] && <span className="text-xs text-green-400">✓</span>}
                             </div>
                           </div>
                         </div>
