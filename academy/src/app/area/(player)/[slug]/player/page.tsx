@@ -31,7 +31,8 @@ type Course = {
   modules: Module[] | null
 }
 
-type Progress = Record<string, 'not_started' | 'in_progress' | 'completed'>
+type ProgressEntry = { status: string; position: number | null }
+type Progress = Record<string, ProgressEntry>
 
 function fmt(s: number) {
   const m = Math.floor(s / 60)
@@ -88,10 +89,21 @@ function PlayerContent() {
     ? allLessons[allLessons.findIndex(l => l.id === activeLesson.id) + 1] ?? null
     : null
   const activeModule = course?.modules?.find(m => m.lessons?.some(l => l.id === activeLesson?.id))
-  const doneCount = allLessons.filter(l => progress[l.id] === 'completed').length
+  const doneCount = allLessons.filter(l => progress[l.id]?.status === 'completed').length
+
+  const initialPosition = activeLesson ? (progress[activeLesson.id]?.position ?? undefined) : undefined
+
+  const handlePositionUpdate = useCallback(async (pos: number) => {
+    if (!activeLesson) return
+    await fetch(`/api/area/progress/${activeLesson.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'in_progress', position_seconds: Math.floor(pos) }),
+    }).catch(() => {})
+  }, [activeLesson])
 
   const markComplete = useCallback(async (lessonId: string) => {
-    setProgress(p => ({ ...p, [lessonId]: 'completed' }))
+    setProgress(p => ({ ...p, [lessonId]: { status: 'completed', position: p[lessonId]?.position ?? null } }))
     await fetch(`/api/area/progress/${lessonId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -167,6 +179,8 @@ function PlayerContent() {
                 src={activeLesson.playback_url}
                 title={activeLesson.title}
                 onEnded={handleEnded}
+                initialPosition={initialPosition}
+                onPositionUpdate={handlePositionUpdate}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-slate-600 text-sm">
@@ -190,7 +204,7 @@ function PlayerContent() {
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                {activeLesson && progress[activeLesson.id] !== 'completed' && (
+                {activeLesson && progress[activeLesson.id]?.status !== 'completed' && (
                   <button
                     onClick={() => activeLesson && markComplete(activeLesson.id)}
                     className="hidden sm:flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/10 hover:border-white/30 transition-colors"
@@ -232,7 +246,7 @@ function PlayerContent() {
             <div className="flex-1 overflow-y-auto py-1">
               {(course.modules ?? []).map(mod => {
                 const modLessons = mod.lessons ?? []
-                const modDone = modLessons.filter(l => progress[l.id] === 'completed').length
+                const modDone = modLessons.filter(l => progress[l.id]?.status === 'completed').length
                 const isOpen = expanded.has(mod.id)
 
                 return (
@@ -252,7 +266,7 @@ function PlayerContent() {
                       <ul>
                         {modLessons.map(lesson => {
                           const isActive = lesson.id === activeLesson?.id
-                          const isDone = progress[lesson.id] === 'completed'
+                          const isDone = progress[lesson.id]?.status === 'completed'
 
                           return (
                             <li key={lesson.id}>

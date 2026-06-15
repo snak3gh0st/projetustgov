@@ -7,8 +7,8 @@ export async function GET(_req: NextRequest) {
   const session = await getSession()
   if (!session) return err(401, 'Não autenticado')
 
-  const rows = await query<{ lesson_id: string; status: string }>(
-    `SELECT ep.lesson_id, ep.status
+  const rows = await query<{ lesson_id: string; status: string; last_position_seconds: number | null }>(
+    `SELECT ep.lesson_id, ep.status, ep.last_position_seconds
      FROM education_progress ep
      JOIN education_enrollments e ON e.id = ep.enrollment_id
      JOIN learners l ON l.id = e.learner_id
@@ -16,8 +16,8 @@ export async function GET(_req: NextRequest) {
     [session.email],
   )
 
-  const map: Record<string, string> = {}
-  for (const r of rows) map[r.lesson_id] = r.status
+  const map: Record<string, { status: string; position: number | null }> = {}
+  for (const r of rows) map[r.lesson_id] = { status: r.status, position: r.last_position_seconds ?? null }
 
   return ok(map)
 }
