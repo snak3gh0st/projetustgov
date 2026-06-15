@@ -8,7 +8,7 @@ import { ok, err } from '@/lib/http'
 type Params = { params: Promise<{ slug: string }> }
 
 function getStripe() {
-  return new Stripe(getEnv().STRIPE_SECRET_KEY)
+  return new Stripe(getEnv().STRIPE_SECRET_KEY!)
 }
 
 export async function POST(req: NextRequest, { params }: Params) {

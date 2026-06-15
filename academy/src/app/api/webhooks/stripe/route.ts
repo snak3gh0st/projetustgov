@@ -6,7 +6,7 @@ import { query, withTransaction } from '@/lib/db'
 export const dynamic = 'force-dynamic'
 
 function stripe() {
-  return new Stripe(getEnv().STRIPE_SECRET_KEY)
+  return new Stripe(getEnv().STRIPE_SECRET_KEY!)
 }
 
 export async function POST(req: NextRequest) {
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   const body = await req.text()
   let event: Stripe.Event
   try {
-    event = stripe().webhooks.constructEvent(body, sig, getEnv().STRIPE_WEBHOOK_SECRET)
+    event = stripe().webhooks.constructEvent(body, sig, getEnv().STRIPE_WEBHOOK_SECRET!)
   } catch {
     return new Response('Invalid signature', { status: 400 })
   }
