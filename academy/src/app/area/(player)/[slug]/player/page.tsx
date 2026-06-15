@@ -15,6 +15,9 @@ type Lesson = {
   lesson_type: string
   duration_seconds: number | null
   playback_url: string | null
+  summary: string | null
+  content_html: string | null
+  attachments: { id: string; url: string }[] | null
 }
 
 type Module = {
@@ -113,6 +116,13 @@ function PlayerContent() {
     }).catch(() => {})
   }, [])
 
+  const handleProgress = useCallback((fraction: number) => {
+    if (!activeLesson) return
+    if (fraction >= 0.95 && progress[activeLesson.id]?.status !== 'completed') {
+      markComplete(activeLesson.id)
+    }
+  }, [activeLesson, progress, markComplete])
+
   const handleEnded = useCallback(() => {
     if (activeLesson) markComplete(activeLesson.id)
     if (nextLesson) {
@@ -200,10 +210,15 @@ function PlayerContent() {
                 onEnded={handleEnded}
                 initialPosition={initialPosition}
                 onPositionUpdate={handlePositionUpdate}
+                onProgress={handleProgress}
               />
+            ) : activeLesson?.content_html ? (
+              <div className="w-full h-full overflow-y-auto bg-slate-950 px-6 py-8">
+                <article className="prose prose-invert mx-auto max-w-2xl text-slate-200 [&_h1]:text-white [&_h2]:text-white [&_a]:text-academy-gold" dangerouslySetInnerHTML={{ __html: activeLesson.content_html }} />
+              </div>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-slate-600 text-sm">
-                {activeLesson ? 'Vídeo não disponível ainda.' : 'Selecione uma aula na lista →'}
+                {activeLesson ? 'Conteúdo não disponível ainda.' : 'Selecione uma aula na lista →'}
               </div>
             )}
             {countdown !== null && nextLesson && (
@@ -254,6 +269,26 @@ function PlayerContent() {
                 )}
               </div>
             </div>
+            {(activeLesson?.summary || (activeLesson?.attachments?.length ?? 0) > 0) && (
+              <div className="mt-3 border-t border-white/5 pt-3 space-y-3">
+                {activeLesson?.summary && (
+                  <p className="text-sm leading-relaxed text-slate-300">{activeLesson.summary}</p>
+                )}
+                {(activeLesson?.attachments?.length ?? 0) > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Materiais</p>
+                    <div className="flex flex-wrap gap-2">
+                      {activeLesson!.attachments!.map(att => (
+                        <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer"
+                           className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs text-slate-200 hover:bg-white/10 hover:border-white/30 transition-colors">
+                          <span>⬇</span> {decodeURIComponent(att.url.split('/').pop()?.split('?')[0] ?? 'Material')}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

@@ -8,6 +8,7 @@ type Props = {
   onEnded?: () => void
   initialPosition?: number
   onPositionUpdate?: (pos: number) => void
+  onProgress?: (fraction: number) => void
 }
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
@@ -17,7 +18,7 @@ function fmt(s: number) {
   return `${m}:${String(s % 60).padStart(2, '0')}`
 }
 
-export default function VideoPlayer({ src, title, onEnded, initialPosition, onPositionUpdate }: Props) {
+export default function VideoPlayer({ src, title, onEnded, initialPosition, onPositionUpdate, onProgress }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [speed, setSpeed] = useState(1)
@@ -88,6 +89,22 @@ export default function VideoPlayer({ src, title, onEnded, initialPosition, onPo
 
     return () => clearInterval(interval)
   }, [onPositionUpdate])
+
+  // onProgress: report watched fraction on timeupdate
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !onProgress) return
+
+    function handleTimeUpdate() {
+      const fraction = video!.currentTime / video!.duration
+      if (Number.isFinite(fraction)) {
+        onProgress!(fraction)
+      }
+    }
+
+    video.addEventListener('timeupdate', handleTimeUpdate)
+    return () => video.removeEventListener('timeupdate', handleTimeUpdate)
+  }, [onProgress])
 
   // Keyboard shortcuts
   useEffect(() => {

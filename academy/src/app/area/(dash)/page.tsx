@@ -7,11 +7,14 @@ type Course = {
   id: string; slug: string; title: string; subtitle: string | null
   cover_image_url: string | null; product_type: string
   enrollment_status: string; enrolled_at: string; lesson_count: number; completed_count: number
+  resume_lesson_slug: string | null
+  resume_lesson_title: string | null
 }
 
 export default function AreaPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     fetch('/api/area/courses').then(r => r.json()).then(d => { setCourses(d.data ?? []); setLoading(false) })
@@ -30,6 +33,10 @@ export default function AreaPage() {
   const inProgress = courses.filter(c => c.completed_count > 0 && c.completed_count < c.lesson_count)
   const readyToStart = courses.filter(c => c.completed_count === 0)
   const completed = courses.filter(c => c.lesson_count > 0 && c.completed_count >= c.lesson_count)
+  const continueWatching = courses.filter(c => c.resume_lesson_slug)
+
+  const q = search.trim().toLowerCase()
+  const filtered = q ? courses.filter(c => c.title.toLowerCase().includes(q) || (c.subtitle ?? '').toLowerCase().includes(q)) : []
 
   function progressFor(course: Course) {
     if (!course.lesson_count) return 0

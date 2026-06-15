@@ -18,7 +18,19 @@ export async function GET() {
              SELECT COUNT(*)::int FROM education_progress pr
              JOIN education_lessons l ON l.id = pr.lesson_id
              WHERE pr.enrollment_id = e.id AND pr.status = 'completed' AND l.status = 'published'
-           ) AS completed_count
+           ) AS completed_count,
+           (
+             SELECT l.slug FROM education_progress pr
+             JOIN education_lessons l ON l.id = pr.lesson_id
+             WHERE pr.enrollment_id = e.id AND pr.status = 'in_progress' AND l.status = 'published'
+             ORDER BY pr.updated_at DESC NULLS LAST LIMIT 1
+           ) AS resume_lesson_slug,
+           (
+             SELECT l.title FROM education_progress pr
+             JOIN education_lessons l ON l.id = pr.lesson_id
+             WHERE pr.enrollment_id = e.id AND pr.status = 'in_progress' AND l.status = 'published'
+             ORDER BY pr.updated_at DESC NULLS LAST LIMIT 1
+           ) AS resume_lesson_title
     FROM education_enrollments e
     JOIN education_products p ON p.id = e.product_id
     WHERE e.learner_email = $1 AND e.status = 'active'
