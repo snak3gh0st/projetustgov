@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
@@ -39,6 +39,18 @@ function fmt(s: number) {
 }
 
 export default function PlayerPage() {
+  return (
+    <Suspense fallback={
+      <div className="fixed inset-0 bg-slate-950 flex items-center justify-center">
+        <div className="h-8 w-8 rounded-full border-2 border-academy-gold border-t-transparent animate-spin" />
+      </div>
+    }>
+      <PlayerContent />
+    </Suspense>
+  )
+}
+
+function PlayerContent() {
   const { slug } = useParams<{ slug: string }>()
   const searchParams = useSearchParams()
 
