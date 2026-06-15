@@ -13,7 +13,12 @@ export async function GET() {
              SELECT COUNT(*)::int FROM education_lessons l
              JOIN education_modules m ON m.id = l.module_id
              WHERE m.product_id = p.id AND l.status = 'published'
-           ) AS lesson_count
+           ) AS lesson_count,
+           (
+             SELECT COUNT(*)::int FROM education_progress pr
+             JOIN education_lessons l ON l.id = pr.lesson_id
+             WHERE pr.enrollment_id = e.id AND pr.status = 'completed' AND l.status = 'published'
+           ) AS completed_count
     FROM education_enrollments e
     JOIN education_products p ON p.id = e.product_id
     WHERE e.learner_email = $1 AND e.status = 'active'

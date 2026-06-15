@@ -5,21 +5,22 @@ export default async function DashLayout({ children }: { children: React.ReactNo
   const session = await getSession()
 
   return (
-    <div className="min-h-screen bg-academy-sand">
-      <header className="border-b border-slate-200 bg-white px-6 py-3">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <Link href="/area" className="font-bold text-academy-blue">
-            PROJETUS Academy
+    <div className="min-h-screen bg-black text-white">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-black/80 px-5 py-3 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
+          <Link href="/area" className="flex items-center gap-2 font-bold text-white">
+            <span className="text-xs font-black uppercase tracking-[0.28em] text-academy-gold">PROJETUS</span>
+            <span className="text-sm text-white/70">Academy</span>
           </Link>
-          <div className="flex items-center gap-4 text-sm text-slate-600">
-            <span>{session?.email}</span>
+          <div className="flex min-w-0 items-center gap-4 text-sm text-white/55">
+            <span className="hidden truncate sm:block">{session?.email}</span>
             <form action="/api/auth/learner/logout" method="POST">
-              <button type="submit" className="text-slate-400 hover:text-slate-700">Sair</button>
+              <button type="submit" className="rounded-md border border-white/10 px-3 py-1.5 text-xs font-semibold text-white/70 transition hover:border-white/25 hover:text-white">Sair</button>
             </form>
           </div>
         </div>
       </header>
-      <div className="mx-auto max-w-5xl px-6 py-8">{children}</div>
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
     </div>
   )
 }

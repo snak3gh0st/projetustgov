@@ -8,10 +8,9 @@ type Params = { params: Promise<{ lessonId: string }> }
 
 const patchBody = z.object({
   title: z.string().min(2).max(255).optional(),
-  description: z.string().nullable().optional(),
+  summary: z.string().nullable().optional(),
   position: z.number().int().min(0).optional(),
   status: z.enum(['draft', 'published', 'archived']).optional(),
-  is_preview: z.boolean().optional(),
 }).strict()
 
 export async function PATCH(req: NextRequest, { params }: Params) {

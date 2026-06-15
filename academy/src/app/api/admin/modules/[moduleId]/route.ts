@@ -23,7 +23,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
            json_agg(
              json_build_object(
                'id', l.id, 'slug', l.slug, 'title', l.title,
-               'position', l.position, 'content_type', l.content_type,
+               'position', l.position, 'lesson_type', l.lesson_type,
                'duration_seconds', l.duration_seconds, 'status', l.status
              ) ORDER BY l.position
            ) FILTER (WHERE l.id IS NOT NULL) AS lessons

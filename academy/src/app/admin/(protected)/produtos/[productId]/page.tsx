@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-type Lesson = { id: string; slug: string; title: string; position: number; content_type: string; duration_seconds: number | null; status: string }
+type Lesson = { id: string; slug: string; title: string; position: number; lesson_type: string; duration_seconds: number | null; status: string }
 type Module = { id: string; slug: string; title: string; position: number; status: string; lesson_count: number; lessons?: Lesson[] }
 type Product = { id: string; slug: string; title: string; subtitle: string | null; status: string; visibility: string; default_price_cents: number | null; modules: Module[] | null }
 
@@ -20,7 +20,7 @@ export default function AdminProductDetailPage() {
   const [showModuleForm, setShowModuleForm] = useState(false)
   const [expandedModule, setExpandedModule] = useState<string | null>(null)
   const [moduleForm, setModuleForm] = useState({ slug: '', title: '', position: '0' })
-  const [lessonForms, setLessonForms] = useState<Record<string, { slug: string; title: string; position: string; content_type: string }>>({})
+  const [lessonForms, setLessonForms] = useState<Record<string, { slug: string; title: string; position: string; lesson_type: string }>>({})
   const [showLessonForm, setShowLessonForm] = useState<string | null>(null)
 
   useEffect(() => {
@@ -36,6 +36,35 @@ export default function AdminProductDetailPage() {
       body: JSON.stringify({ status }),
     })
     setProduct(p => p ? { ...p, status } : p)
+    setSaving(false)
+  }
+
+  async function updateModuleStatus(moduleId: string, status: string) {
+    setSaving(true)
+    await fetch(`/api/admin/modules/${moduleId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    setProduct(p => p ? {
+      ...p,
+      modules: (p.modules ?? []).map(m => m.id === moduleId ? { ...m, status } : m),
+    } : p)
+    setSaving(false)
+  }
+
+  async function updateLessonStatus(moduleId: string, lessonId: string, status: string) {
+    setSaving(true)
+    await fetch(`/api/admin/lessons/${lessonId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    setProduct(p => p ? {
+      ...p,
+      modules: (p.modules ?? []).map(m => m.id === moduleId ? {
+        ...m,
+        lessons: (m.lessons ?? []).map(l => l.id === lessonId ? { ...l, status } : l),
+      } : m),
+    } : p)
     setSaving(false)
   }
 
@@ -72,7 +101,7 @@ export default function AdminProductDetailPage() {
       }
     })
     setShowLessonForm(null)
-    setLessonForms(f => ({ ...f, [moduleId]: { slug: '', title: '', position: '0', content_type: 'video' } }))
+    setLessonForms(f => ({ ...f, [moduleId]: { slug: '', title: '', position: '0', lesson_type: 'video' } }))
   }
 
   if (loading) return <div className="text-slate-400">Carregando…</div>
@@ -165,13 +194,22 @@ export default function AdminProductDetailPage() {
               <div>
                 <span className="font-medium text-white">{mod.title}</span>
                 <span className="ml-3 text-xs text-slate-400">{mod.lesson_count} aula(s)</span>
+                <span className="ml-2 rounded bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-300">{mod.status}</span>
               </div>
               <span className="text-slate-400">{expandedModule === mod.id ? '▲' : '▼'}</span>
             </button>
 
             {expandedModule === mod.id && (
               <div className="border-t border-slate-700 px-4 py-3">
-                <div className="mb-3 flex justify-end">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <select
+                    value={mod.status}
+                    onChange={e => updateModuleStatus(mod.id, e.target.value)}
+                    disabled={saving}
+                    className="rounded bg-slate-700 px-2 py-1 text-xs text-white outline-none"
+                  >
+                    {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
                   <button onClick={() => setShowLessonForm(v => v === mod.id ? null : mod.id)}
                     className="rounded bg-slate-700 px-2 py-1 text-xs text-white hover:bg-slate-600"
                   >
@@ -186,7 +224,7 @@ export default function AdminProductDetailPage() {
                         <label className="mb-1 block text-xs text-slate-400">Título</label>
                         <input required
                           value={lessonForms[mod.id]?.title ?? ''}
-                          onChange={e => setLessonForms(f => ({ ...f, [mod.id]: { ...f[mod.id] ?? { slug: '', position: '0', content_type: 'video' }, title: e.target.value } }))}
+                          onChange={e => setLessonForms(f => ({ ...f, [mod.id]: { ...f[mod.id] ?? { slug: '', position: '0', lesson_type: 'video' }, title: e.target.value } }))}
                           className="w-full rounded bg-slate-600 px-2 py-1.5 text-xs text-white outline-none"
                         />
                       </div>
@@ -194,7 +232,7 @@ export default function AdminProductDetailPage() {
                         <label className="mb-1 block text-xs text-slate-400">Slug</label>
                         <input required
                           value={lessonForms[mod.id]?.slug ?? ''}
-                          onChange={e => setLessonForms(f => ({ ...f, [mod.id]: { ...f[mod.id] ?? { title: '', position: '0', content_type: 'video' }, slug: e.target.value } }))}
+                          onChange={e => setLessonForms(f => ({ ...f, [mod.id]: { ...f[mod.id] ?? { title: '', position: '0', lesson_type: 'video' }, slug: e.target.value } }))}
                           className="w-full rounded bg-slate-600 px-2 py-1.5 text-xs text-white outline-none"
                         />
                       </div>
@@ -214,16 +252,26 @@ export default function AdminProductDetailPage() {
                     <li key={l.id} className="flex items-center justify-between rounded-lg bg-slate-700 px-3 py-2">
                       <div>
                         <span className="text-sm text-slate-200">{l.title}</span>
-                        <span className="ml-2 text-xs text-slate-500">{l.content_type}</span>
+                        <span className="ml-2 text-xs text-slate-500">{l.lesson_type}</span>
                       </div>
-                      {l.content_type === 'video' && !l.duration_seconds && (
-                        <Link href={`/admin/aulas/${l.id}/video`} className="text-xs text-academy-gold hover:underline">
-                          Upload vídeo
-                        </Link>
-                      )}
-                      {l.duration_seconds && (
-                        <span className="text-xs text-green-400">✓ {Math.round(l.duration_seconds / 60)}min</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={l.status}
+                          onChange={e => updateLessonStatus(mod.id, l.id, e.target.value)}
+                          disabled={saving}
+                          className="rounded bg-slate-600 px-2 py-1 text-xs text-white outline-none"
+                        >
+                          {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        {l.lesson_type === 'video' && !l.duration_seconds && (
+                          <Link href={`/admin/aulas/${l.id}/video`} className="text-xs text-academy-gold hover:underline">
+                            Upload vídeo
+                          </Link>
+                        )}
+                        {l.duration_seconds && (
+                          <span className="text-xs text-green-400">✓ {Math.round(l.duration_seconds / 60)}min</span>
+                        )}
+                      </div>
                     </li>
                   ))}
                 </ul>

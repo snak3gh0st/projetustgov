@@ -36,7 +36,6 @@ export async function GET(_req: NextRequest, { params }: Params) {
                 'position', l.position,
                 'lesson_type', l.lesson_type,
                 'duration_seconds', l.duration_seconds,
-                'is_preview', l.is_preview,
                 'video_id', a.provider_asset_id,
                 'playback_url', a.playback_url
               ) ORDER BY l.position

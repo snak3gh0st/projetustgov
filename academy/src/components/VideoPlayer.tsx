@@ -17,6 +17,13 @@ export default function VideoPlayer({ src, title, onEnded }: Props) {
     if (!video || !src) return
 
     async function init() {
+      // Direct video file (MP4, WebM, etc.) — use native playback
+      if (!src.match(/\.m3u8($|\?)/i)) {
+        video!.src = src
+        return
+      }
+
+      // HLS manifest
       const { default: Hls } = await import('hls.js')
       if (Hls.isSupported()) {
         hls = new Hls({ enableWorker: true, lowLatencyMode: false })
