@@ -82,7 +82,6 @@ function PlayerContent() {
   const [notes, setNotes] = useState('')
   const [notesSaving, setNotesSaving] = useState(false)
   const [notesLoaded, setNotesLoaded] = useState(false)
-  const [notesOpen, setNotesOpen] = useState(false)
   const notesDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const notesLessonRef = useRef<string | null>(null)
 
@@ -90,8 +89,10 @@ function PlayerContent() {
   const [comments, setComments] = useState<Comment[]>([])
   const [commentBody, setCommentBody] = useState('')
   const [replyTo, setReplyTo] = useState<string | null>(null)
-  const [commentsOpen, setCommentsOpen] = useState(false)
   const [posting, setPosting] = useState(false)
+
+  // Bottom tab panel
+  const [activeTab, setActiveTab] = useState<'resumo' | 'notas' | 'comentarios' | 'materiais' | null>(null)
 
   useEffect(() => {
     fetch(`/api/area/courses/${slug}`)
@@ -293,6 +294,14 @@ function PlayerContent() {
     </div>
   )
 
+  const hasMaterials = (activeLesson?.attachments?.length ?? 0) > 0
+  const tabs = [
+    { key: 'resumo', label: 'Resumo' },
+    { key: 'notas', label: notesSaving ? 'Notas (salvando…)' : notesLoaded && notes ? 'Notas ✓' : 'Notas' },
+    { key: 'comentarios', label: `Dúvidas${comments.length > 0 ? ` (${comments.length})` : ''}` },
+    ...(hasMaterials ? [{ key: 'materiais', label: 'Materiais' }] : []),
+  ] as const
+
   return (
     <div className="fixed inset-0 bg-slate-950 flex flex-col text-white overflow-hidden">
 
@@ -324,14 +333,14 @@ function PlayerContent() {
         </button>
       </header>
 
-      {/* Body */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* Body: split into top (video+sidebar) and bottom (info panel) */}
+      <div className="flex flex-col flex-1 overflow-hidden">
 
-        {/* Video + info */}
-        <div className="flex flex-col flex-1 min-w-0 overflow-y-auto">
+        {/* Top row: video + sidebar — video fills all remaining height */}
+        <div className="flex flex-1 min-h-0 overflow-hidden">
 
-          {/* Video — fixed 16:9, never shrinks */}
-          <div className="relative w-full aspect-video bg-black flex-shrink-0">
+          {/* Video area — fills all space, never shrinks */}
+          <div className="relative flex-1 min-w-0 bg-black">
             {activeLesson?.playback_url ? (
               <VideoPlayer
                 key={activeLesson.id}
@@ -368,310 +377,271 @@ function PlayerContent() {
             )}
           </div>
 
-          {/* Lesson info + Notes + Comments */}
-          <div className="flex-shrink-0 bg-slate-900/80 border-t border-white/5 px-5 py-3.5">
-            <div className="flex items-center gap-4">
-              <div className="min-w-0 flex-1">
-                {activeModule && (
-                  <p className="text-xs text-slate-500 mb-0.5 truncate">{activeModule.title}</p>
-                )}
-                <h2 className="font-semibold text-white text-sm sm:text-base truncate">
-                  {activeLesson?.title ?? 'Selecione uma aula'}
-                </h2>
-                {activeLesson?.duration_seconds && (
-                  <p className="text-xs text-slate-500 mt-0.5">{fmt(activeLesson.duration_seconds)}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {activeLesson && progress[activeLesson.id]?.status !== 'completed' && (
-                  <button
-                    onClick={() => activeLesson && markComplete(activeLesson.id)}
-                    className="flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/10 hover:border-white/30 transition-colors"
-                  >
-                    <span>✓</span> Concluída
-                  </button>
-                )}
-                {nextLesson && (
-                  <button
-                    onClick={() => setActiveLesson(nextLesson)}
-                    className="flex items-center gap-1.5 rounded-lg bg-academy-gold px-4 py-1.5 text-xs font-bold text-white hover:opacity-90 transition-opacity"
-                  >
-                    Próxima <span>→</span>
-                  </button>
-                )}
-              </div>
-            </div>
-            {(activeLesson?.summary || (activeLesson?.attachments?.length ?? 0) > 0) && (
-              <div className="mt-3 border-t border-white/5 pt-3 space-y-3">
-                {activeLesson?.summary && (
-                  <p className="text-sm leading-relaxed text-slate-300">{activeLesson.summary}</p>
-                )}
-                {(activeLesson?.attachments?.length ?? 0) > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Materiais</p>
-                    <div className="flex flex-wrap gap-2">
-                      {activeLesson!.attachments!.map(att => (
-                        <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer"
-                           className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs text-slate-200 hover:bg-white/10 hover:border-white/30 transition-colors">
-                          <span>⬇</span> {decodeURIComponent(att.url.split('/').pop()?.split('?')[0] ?? 'Material')}
-                        </a>
-                      ))}
-                    </div>
+          {/* Sidebar — episodes list */}
+          {sidebarOpen && (
+            <>
+            <div
+              className="fixed inset-0 z-20 bg-black/50 sm:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+            <aside className="fixed inset-y-0 right-0 z-30 w-80 sm:w-72 xl:w-80 flex-shrink-0 border-l border-white/5 bg-slate-900 flex flex-col overflow-hidden sm:relative sm:inset-auto sm:z-auto">
+              <div className="px-4 py-3 border-b border-white/5 flex-shrink-0">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Conteúdo</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {doneCount} / {allLessons.length} aulas concluídas
+                </p>
+                {allLessons.length > 0 && (
+                  <div className="mt-2 h-1 rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full bg-academy-gold transition-all"
+                      style={{ width: `${Math.round((doneCount / allLessons.length) * 100)}%` }}
+                    />
                   </div>
                 )}
               </div>
-            )}
-
-            {/* Notes panel */}
-            {activeLesson && (
-              <div className="mt-3 border-t border-white/5 pt-3">
-                <button
-                  onClick={() => setNotesOpen(o => !o)}
-                  className="flex w-full items-center justify-between text-left"
-                >
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    📝 Minhas anotações
-                  </span>
-                  <span className="flex items-center gap-2">
-                    {notesOpen && notesLoaded && (
-                      <span className="text-[10px] text-slate-500">
-                        {notesSaving ? 'Salvando…' : 'Salvo ✓'}
-                      </span>
-                    )}
-                    <span className="text-slate-600 text-xs">{notesOpen ? '▲' : '▼'}</span>
-                  </span>
-                </button>
-                {notesOpen && (
-                  <div className="mt-2">
-                    {notesLoaded ? (
-                      <textarea
-                        value={notes}
-                        onChange={e => handleNotesChange(e.target.value)}
-                        placeholder="Escreva suas anotações desta aula…"
-                        className="bg-slate-800 border border-white/10 rounded-lg text-sm text-slate-200 p-3 w-full min-h-[80px] outline-none focus:border-academy-gold"
-                      />
-                    ) : (
-                      <div className="h-[80px] rounded-lg bg-slate-800/50 animate-pulse" />
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Comments panel */}
-            {activeLesson && (
-              <div className="mt-3 border-t border-white/5 pt-3">
-                <button
-                  onClick={() => setCommentsOpen(o => !o)}
-                  className="flex w-full items-center justify-between text-left"
-                >
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    💬 Comentários e dúvidas ({comments.length})
-                  </span>
-                  <span className="text-slate-600 text-xs">{commentsOpen ? '▲' : '▼'}</span>
-                </button>
-                {commentsOpen && (
-                  <div className="mt-3 space-y-4 bg-slate-800/60 rounded-lg p-3">
-                    {/* Composer */}
-                    <div className="space-y-2">
-                      {replyTo && (
-                        <div className="flex items-center justify-between text-[11px] text-slate-400">
-                          <span>Respondendo…</span>
-                          <button
-                            onClick={() => setReplyTo(null)}
-                            className="text-slate-500 hover:text-white"
-                            title="Cancelar resposta"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      )}
-                      <textarea
-                        value={commentBody}
-                        onChange={e => setCommentBody(e.target.value)}
-                        placeholder={replyTo ? 'Escreva sua resposta…' : 'Escreva um comentário ou tire uma dúvida…'}
-                        className="bg-slate-800 border border-white/10 rounded-lg p-3 text-sm text-slate-200 w-full min-h-[70px] outline-none focus:border-academy-gold"
-                      />
-                      <div className="flex justify-end">
+              <div className="flex-1 overflow-y-auto py-1">
+                {(() => {
+                  const lessonIndexMap = new Map<string, number>()
+                  let idx = 0
+                  for (const mod of course.modules ?? []) {
+                    for (const l of mod.lessons ?? []) {
+                      lessonIndexMap.set(l.id, idx + 1)
+                      idx++
+                    }
+                  }
+                  return (course.modules ?? []).map(mod => {
+                    const modLessons = mod.lessons ?? []
+                    const modDone = modLessons.filter(l => progress[l.id]?.status === 'completed').length
+                    const isOpen = expanded.has(mod.id)
+                    return (
+                      <div key={mod.id}>
                         <button
-                          onClick={submitComment}
-                          disabled={posting || !commentBody.trim()}
-                          className="bg-academy-gold text-white rounded-lg px-4 py-2 text-xs font-semibold disabled:opacity-50"
+                          onClick={() => toggleModule(mod.id)}
+                          className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-white/5 transition-colors"
                         >
-                          {posting ? 'Enviando…' : 'Comentar'}
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-slate-300 truncate">{mod.title}</p>
+                            <p className="text-xs text-slate-600 mt-0.5">{modDone}/{modLessons.length} aulas</p>
+                          </div>
+                          <span className="text-slate-600 text-xs ml-2 shrink-0">{isOpen ? '▲' : '▼'}</span>
                         </button>
+                        {isOpen && (
+                          <ul>
+                            {modLessons.map(lesson => {
+                              const isActive = lesson.id === activeLesson?.id
+                              const isDone = progress[lesson.id]?.status === 'completed'
+                              return (
+                                <li key={lesson.id} className="relative">
+                                  <button
+                                    ref={isActive ? activeLessonRef : undefined}
+                                    onClick={() => setActiveLesson(lesson)}
+                                    className={`flex w-full items-center gap-2.5 pl-4 pr-3 py-2.5 text-left transition-colors border-l-2 ${
+                                      isActive
+                                        ? 'bg-academy-gold/10 border-academy-gold'
+                                        : 'hover:bg-white/5 border-transparent'
+                                    }`}
+                                  >
+                                    <span className="flex-shrink-0 text-[10px] text-slate-600 w-5 text-right font-mono">
+                                      {lessonIndexMap.get(lesson.id)}
+                                    </span>
+                                    <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                      isDone
+                                        ? 'bg-green-500 text-white'
+                                        : isActive
+                                        ? 'bg-academy-gold text-white'
+                                        : 'border border-slate-600 text-slate-600'
+                                    }`}>
+                                      {isDone ? '✓' : isActive ? '▶' : ''}
+                                    </span>
+                                    <span className={`flex-1 text-xs leading-tight ${
+                                      isActive ? 'text-white font-semibold' : isDone ? 'text-slate-500' : 'text-slate-300'
+                                    }`}>
+                                      {lesson.title}
+                                    </span>
+                                    {lesson.duration_seconds && (
+                                      <span className="text-[10px] text-slate-600 shrink-0">
+                                        {fmt(lesson.duration_seconds)}
+                                      </span>
+                                    )}
+                                  </button>
+                                  {progress[lesson.id]?.status === 'in_progress' && lesson.duration_seconds && progress[lesson.id]?.position && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/5">
+                                      <div
+                                        className="h-full bg-academy-gold/60"
+                                        style={{ width: `${Math.min(100, Math.round(((progress[lesson.id]?.position ?? 0) / lesson.duration_seconds) * 100))}%` }}
+                                      />
+                                    </div>
+                                  )}
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        )}
                       </div>
-                    </div>
-
-                    {/* Thread */}
-                    {comments.length === 0 ? (
-                      <p className="text-xs text-slate-500">Seja o primeiro a comentar nesta aula.</p>
-                    ) : (
-                      <ul className="space-y-4">
-                        {comments.filter(c => c.parent_id === null).map(comment => {
-                          const replies = comments.filter(r => r.parent_id === comment.id)
-                          return (
-                            <li key={comment.id} className="space-y-2">
-                              <div className="text-sm text-slate-200">
-                                <div className="flex items-baseline gap-2">
-                                  <span className="font-semibold text-white">{comment.author_name ?? 'Aluno'}</span>
-                                  <span className="text-[10px] text-slate-500">
-                                    {new Date(comment.created_at).toLocaleDateString('pt-BR')}
-                                  </span>
-                                </div>
-                                <p className="whitespace-pre-line text-slate-300 mt-0.5">{comment.body}</p>
-                                <button
-                                  onClick={() => setReplyTo(comment.id)}
-                                  className="text-[11px] text-academy-gold hover:underline mt-1"
-                                >
-                                  Responder
-                                </button>
-                              </div>
-                              {replies.length > 0 && (
-                                <ul className="ml-8 border-l border-white/10 pl-3 space-y-3">
-                                  {replies.map(reply => (
-                                    <li key={reply.id} className="text-sm text-slate-200">
-                                      <div className="flex items-baseline gap-2">
-                                        <span className="font-semibold text-white">{reply.author_name ?? 'Aluno'}</span>
-                                        <span className="text-[10px] text-slate-500">
-                                          {new Date(reply.created_at).toLocaleDateString('pt-BR')}
-                                        </span>
-                                      </div>
-                                      <p className="whitespace-pre-line text-slate-300 mt-0.5">{reply.body}</p>
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    )}
-                  </div>
-                )}
+                    )
+                  })
+                })()}
               </div>
-            )}
-          </div>
+            </aside>
+            </>
+          )}
         </div>
 
-        {/* Episode sidebar */}
-        {sidebarOpen && (
-          <>
-          <div
-            className="fixed inset-0 z-20 bg-black/50 sm:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-          <aside className="fixed inset-y-0 right-0 z-30 w-80 sm:w-72 xl:w-80 flex-shrink-0 border-l border-white/5 bg-slate-900 flex flex-col overflow-hidden sm:relative sm:inset-auto sm:z-auto">
-            <div className="px-4 py-3 border-b border-white/5 flex-shrink-0">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Conteúdo</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {doneCount} / {allLessons.length} aulas concluídas
-              </p>
-              {allLessons.length > 0 && (
-                <div className="mt-2 h-1 rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-academy-gold transition-all"
-                    style={{ width: `${Math.round((doneCount / allLessons.length) * 100)}%` }}
-                  />
-                </div>
+        {/* Bottom panel — title row + tabs (fixed height, never invades video) */}
+        <div className="flex-shrink-0 bg-slate-900 border-t border-white/5">
+
+          {/* Lesson title + actions */}
+          <div className="flex items-center gap-3 px-5 py-2.5 border-b border-white/5">
+            <div className="min-w-0 flex-1">
+              {activeModule && (
+                <p className="text-[10px] text-slate-500 truncate uppercase tracking-wider">{activeModule.title}</p>
+              )}
+              <h2 className="font-semibold text-white text-sm truncate leading-tight">
+                {activeLesson?.title ?? 'Selecione uma aula'}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {activeLesson && progress[activeLesson.id]?.status !== 'completed' && (
+                <button
+                  onClick={() => activeLesson && markComplete(activeLesson.id)}
+                  className="flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/10 hover:border-white/30 transition-colors"
+                >
+                  <span>✓</span> Concluída
+                </button>
+              )}
+              {progress[activeLesson?.id ?? '']?.status === 'completed' && (
+                <span className="text-xs text-green-400 flex items-center gap-1">✓ Concluída</span>
+              )}
+              {nextLesson && (
+                <button
+                  onClick={() => setActiveLesson(nextLesson)}
+                  className="flex items-center gap-1.5 rounded-lg bg-academy-gold px-4 py-1.5 text-xs font-bold text-white hover:opacity-90 transition-opacity"
+                >
+                  Próxima →
+                </button>
               )}
             </div>
+          </div>
 
-            <div className="flex-1 overflow-y-auto py-1">
-              {(() => {
-                const lessonIndexMap = new Map<string, number>()
-                let idx = 0
-                for (const mod of course.modules ?? []) {
-                  for (const l of mod.lessons ?? []) {
-                    lessonIndexMap.set(l.id, idx + 1)
-                    idx++
-                  }
-                }
-                return (course.modules ?? []).map(mod => {
-                const modLessons = mod.lessons ?? []
-                const modDone = modLessons.filter(l => progress[l.id]?.status === 'completed').length
-                const isOpen = expanded.has(mod.id)
-
-                return (
-                  <div key={mod.id}>
-                    <button
-                      onClick={() => toggleModule(mod.id)}
-                      className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-white/5 transition-colors"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-slate-300 truncate">{mod.title}</p>
-                        <p className="text-xs text-slate-600 mt-0.5">{modDone}/{modLessons.length} aulas</p>
-                      </div>
-                      <span className="text-slate-600 text-xs ml-2 shrink-0">{isOpen ? '▲' : '▼'}</span>
-                    </button>
-
-                    {isOpen && (
-                      <ul>
-                        {modLessons.map(lesson => {
-                          const isActive = lesson.id === activeLesson?.id
-                          const isDone = progress[lesson.id]?.status === 'completed'
-
-                          return (
-                            <li key={lesson.id} className="relative">
-                              <button
-                                ref={isActive ? activeLessonRef : undefined}
-                                onClick={() => setActiveLesson(lesson)}
-                                className={`flex w-full items-center gap-2.5 pl-4 pr-3 py-2.5 text-left transition-colors border-l-2 ${
-                                  isActive
-                                    ? 'bg-academy-gold/10 border-academy-gold'
-                                    : 'hover:bg-white/5 border-transparent'
-                                }`}
-                              >
-                                {/* Lesson number */}
-                                <span className="flex-shrink-0 text-[10px] text-slate-600 w-5 text-right font-mono">
-                                  {lessonIndexMap.get(lesson.id)}
-                                </span>
-
-                                {/* Status circle */}
-                                <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                                  isDone
-                                    ? 'bg-green-500 text-white'
-                                    : isActive
-                                    ? 'bg-academy-gold text-white'
-                                    : 'border border-slate-600 text-slate-600'
-                                }`}>
-                                  {isDone ? '✓' : isActive ? '▶' : ''}
-                                </span>
-
-                                <span className={`flex-1 text-xs leading-tight ${
-                                  isActive ? 'text-white font-semibold' : isDone ? 'text-slate-500' : 'text-slate-300'
-                                }`}>
-                                  {lesson.title}
-                                </span>
-
-                                {lesson.duration_seconds && (
-                                  <span className="text-[10px] text-slate-600 shrink-0">
-                                    {fmt(lesson.duration_seconds)}
-                                  </span>
-                                )}
-                              </button>
-                              {/* Mini progress bar for in_progress */}
-                              {progress[lesson.id]?.status === 'in_progress' && lesson.duration_seconds && progress[lesson.id]?.position && (
-                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/5">
-                                  <div
-                                    className="h-full bg-academy-gold/60"
-                                    style={{ width: `${Math.min(100, Math.round(((progress[lesson.id]?.position ?? 0) / lesson.duration_seconds) * 100))}%` }}
-                                  />
-                                </div>
-                              )}
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    )}
-                  </div>
-                )
-              })
-              })()}
+          {/* Tab bar */}
+          {activeLesson && (
+            <div className="flex border-b border-white/5 px-5 gap-1">
+              {tabs.map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(t => t === tab.key ? null : tab.key as typeof activeTab)}
+                  className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+                    activeTab === tab.key
+                      ? 'border-academy-gold text-academy-gold'
+                      : 'border-transparent text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
-          </aside>
-          </>
-        )}
+          )}
+
+          {/* Tab content — scrollable, bounded height, never pushes video */}
+          {activeLesson && activeTab && (
+            <div className="overflow-y-auto max-h-44 px-5 py-3">
+
+              {activeTab === 'resumo' && (
+                activeLesson.summary
+                  ? <p className="text-sm leading-relaxed text-slate-300">{activeLesson.summary}</p>
+                  : <p className="text-xs text-slate-500">Sem resumo para esta aula.</p>
+              )}
+
+              {activeTab === 'notas' && (
+                notesLoaded
+                  ? <textarea
+                      value={notes}
+                      onChange={e => handleNotesChange(e.target.value)}
+                      placeholder="Escreva suas anotações desta aula…"
+                      className="bg-slate-800 border border-white/10 rounded-lg text-sm text-slate-200 p-3 w-full min-h-[100px] outline-none focus:border-academy-gold resize-none"
+                    />
+                  : <div className="h-24 rounded-lg bg-slate-800/50 animate-pulse" />
+              )}
+
+              {activeTab === 'comentarios' && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    {replyTo && (
+                      <div className="flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Respondendo…</span>
+                        <button onClick={() => setReplyTo(null)} className="text-slate-500 hover:text-white">✕</button>
+                      </div>
+                    )}
+                    <textarea
+                      value={commentBody}
+                      onChange={e => setCommentBody(e.target.value)}
+                      placeholder={replyTo ? 'Escreva sua resposta…' : 'Escreva um comentário ou tire uma dúvida…'}
+                      className="bg-slate-800 border border-white/10 rounded-lg p-3 text-sm text-slate-200 w-full min-h-[64px] outline-none focus:border-academy-gold resize-none"
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        onClick={submitComment}
+                        disabled={posting || !commentBody.trim()}
+                        className="bg-academy-gold text-white rounded-lg px-4 py-2 text-xs font-semibold disabled:opacity-50"
+                      >
+                        {posting ? 'Enviando…' : 'Comentar'}
+                      </button>
+                    </div>
+                  </div>
+                  {comments.length === 0 ? (
+                    <p className="text-xs text-slate-500">Seja o primeiro a comentar nesta aula.</p>
+                  ) : (
+                    <ul className="space-y-4">
+                      {comments.filter(c => c.parent_id === null).map(comment => {
+                        const replies = comments.filter(r => r.parent_id === comment.id)
+                        return (
+                          <li key={comment.id} className="space-y-2">
+                            <div className="text-sm">
+                              <div className="flex items-baseline gap-2">
+                                <span className="font-semibold text-white">{comment.author_name ?? 'Aluno'}</span>
+                                <span className="text-[10px] text-slate-500">{new Date(comment.created_at).toLocaleDateString('pt-BR')}</span>
+                              </div>
+                              <p className="whitespace-pre-line text-slate-300 mt-0.5">{comment.body}</p>
+                              <button onClick={() => setReplyTo(comment.id)} className="text-[11px] text-academy-gold hover:underline mt-1">
+                                Responder
+                              </button>
+                            </div>
+                            {replies.length > 0 && (
+                              <ul className="ml-6 border-l border-white/10 pl-3 space-y-3">
+                                {replies.map(reply => (
+                                  <li key={reply.id} className="text-sm">
+                                    <div className="flex items-baseline gap-2">
+                                      <span className="font-semibold text-white">{reply.author_name ?? 'Aluno'}</span>
+                                      <span className="text-[10px] text-slate-500">{new Date(reply.created_at).toLocaleDateString('pt-BR')}</span>
+                                    </div>
+                                    <p className="whitespace-pre-line text-slate-300 mt-0.5">{reply.body}</p>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'materiais' && (
+                <div className="flex flex-wrap gap-2">
+                  {activeLesson.attachments?.map(att => (
+                    <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer"
+                       className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs text-slate-200 hover:bg-white/10 hover:border-white/30 transition-colors">
+                      ⬇ {decodeURIComponent(att.url.split('/').pop()?.split('?')[0] ?? 'Material')}
+                    </a>
+                  ))}
+                </div>
+              )}
+
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   )
