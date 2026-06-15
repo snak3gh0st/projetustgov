@@ -29,7 +29,8 @@ type Course = {
   modules: Module[]
 }
 
-type Progress = Record<string, 'not_started' | 'in_progress' | 'completed'>
+type ProgressEntry = { status: string; position: number | null }
+type Progress = Record<string, ProgressEntry>
 
 function fmt(s: number) {
   const m = Math.floor(s / 60)
@@ -93,13 +94,13 @@ export default function CourseDetailPage() {
   )
 
   const allLessons = (course.modules ?? []).flatMap(m => m.lessons ?? [])
-  const doneCount = allLessons.filter(l => progress[l.id] === 'completed').length
+  const doneCount = allLessons.filter(l => progress[l.id]?.status === 'completed').length
   const totalCount = allLessons.length
   const progressPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
   const hasStarted = doneCount > 0
 
   // Find the first non-completed lesson for "Continuar", or first lesson for "Começar"
-  const continueLesson = allLessons.find(l => progress[l.id] !== 'completed') ?? allLessons[0]
+  const continueLesson = allLessons.find(l => progress[l.id]?.status !== 'completed') ?? allLessons[0]
   const ctaHref = continueLesson
     ? `/area/${slug}/player?aula=${continueLesson.slug}`
     : `/area/${slug}/player`
@@ -171,7 +172,7 @@ export default function CourseDetailPage() {
         <div className="space-y-2">
           {(course.modules ?? []).map(mod => {
             const modLessons = mod.lessons ?? []
-            const modDone = modLessons.filter(l => progress[l.id] === 'completed').length
+            const modDone = modLessons.filter(l => progress[l.id]?.status === 'completed').length
             const isOpen = expanded.has(mod.id)
 
             return (
@@ -194,7 +195,7 @@ export default function CourseDetailPage() {
                 {isOpen && modLessons.length > 0 && (
                   <ul className="border-t border-white/5 pb-1">
                     {modLessons.map(lesson => {
-                      const status = progress[lesson.id] ?? 'not_started'
+                      const status = progress[lesson.id]?.status ?? 'not_started'
                       const isCompleted = status === 'completed'
                       const isInProgress = status === 'in_progress'
 
