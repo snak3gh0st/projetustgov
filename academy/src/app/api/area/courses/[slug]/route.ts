@@ -53,5 +53,5 @@ export async function GET(_req: NextRequest, { params }: Params) {
   `, [slug])
 
   if (!productRows[0]) return err(404, 'Curso não encontrado')
-  return ok(productRows[0])
+  return ok({ data: productRows[0] })
 }

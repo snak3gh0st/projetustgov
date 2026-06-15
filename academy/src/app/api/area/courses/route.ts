@@ -25,5 +25,5 @@ export async function GET() {
     ORDER BY e.enrolled_at DESC
   `, [session.email])
 
-  return ok(rows)
+  return ok({ data: rows })
 }
