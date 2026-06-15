@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import WaitlistForm from '@/components/WaitlistForm'
+import CourseCatalog from '@/components/CourseCatalog'
 
 const features = [
   {
@@ -187,6 +188,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Public course catalog */}
+      <CourseCatalog />
 
       {/* Who it's for */}
       <section className="px-6 py-16">
