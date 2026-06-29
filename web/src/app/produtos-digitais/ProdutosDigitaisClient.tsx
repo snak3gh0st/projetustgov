@@ -227,7 +227,7 @@ export default function ProdutosDigitaisClient() {
       Object.entries(filters).forEach(([key, value]) => {
         if (value) params.set(key, value)
       })
-      fetch(`/api/produtos-digitais?${params.toString()}`, { signal: AbortSignal.timeout(30000) })
+      fetch(`/api/produtos-digitais?${params.toString()}`)
         .then((response) => {
           if (!response.ok) throw new Error('Falha ao carregar Produtos Digitais')
           return response.json()
