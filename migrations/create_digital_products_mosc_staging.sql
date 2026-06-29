@@ -60,3 +60,10 @@ CREATE TABLE IF NOT EXISTS digital_products_mosc_areas (
 
 CREATE INDEX IF NOT EXISTS ix_digital_products_mosc_areas_area
   ON digital_products_mosc_areas(tipo, nome);
+
+GRANT USAGE ON SCHEMA public TO sigma_app;
+GRANT SELECT ON TABLE
+  digital_products_etl_runs,
+  digital_products_mosc_orgs,
+  digital_products_mosc_areas
+TO sigma_app;
