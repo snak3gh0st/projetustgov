@@ -55,6 +55,7 @@ export function getNavItemsForRole(role: NavRole): NavItem[] {
       { href: '/csm', label: 'CSM Clientes', icon: 'leads' },
       { href: '/csm/comissoes', label: 'CSM Comissoes', icon: 'comissoes' },
       { href: '/csm/bi', label: 'CSM BI', icon: 'bi' },
+      { href: '/produtos-digitais', label: 'Produtos Digitais', icon: 'produtos' },
       { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
       { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
       ...adminOnlyItems,
@@ -76,6 +77,7 @@ export function getNavItemsForRole(role: NavRole): NavItem[] {
       { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
       { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
       { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
+      { href: '/produtos-digitais', label: 'Produtos Digitais', icon: 'produtos' },
       { href: '/cadastro-vendedor', label: 'Usuarios TGOV', icon: 'vendedores' },
     ]
   }

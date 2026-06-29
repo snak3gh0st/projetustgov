@@ -45,6 +45,8 @@ function NavIcon({ name, className }: { name: string; className?: string }) {
     case 'csm':
       // UserGroup icon - distinct representation for CSM sidebar
       return <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a3 3 0 100-6 3 3 0 000 6zM8 18.72a3 3 0 100-6 3 3 0 000 6zM20.486 15.914A4.989 4.989 0 0122 15c0-2.761-2.239-5-5-5s-5 2.239-5 5c0 1.037.324 2.002.883 2.823M15 10.75a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+    case 'produtos':
+      return <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 6.75A2.25 2.25 0 016.75 4.5h3.75v5.25H4.5v-3zm9-2.25h3.75a2.25 2.25 0 012.25 2.25v3h-6v-5.25zm-9 8.25h6v6.75H6.75a2.25 2.25 0 01-2.25-2.25v-4.5zm9 0h6v4.5a2.25 2.25 0 01-2.25 2.25H13.5v-6.75z" /></svg>
     default:
       return <span className="w-4 h-4 rounded-full bg-gray-300" />
   }
