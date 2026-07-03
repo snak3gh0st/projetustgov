@@ -6,11 +6,15 @@ const config: Config = {
     extend: {
       colors: {
         academy: {
-          ink: '#0f172a',
-          sand: '#f8fafc',
-          blue: '#0f4c81',
-          gold: '#b88917',
+          ink: '#0b144e',
+          sand: '#faf5ec',
+          blue: '#f8682b',
+          gold: '#f8682b',
         },
+      },
+      fontFamily: {
+        heading: ['var(--font-heading)', 'sans-serif'],
+        body: ['var(--font-body)', 'sans-serif'],
       },
     },
   },

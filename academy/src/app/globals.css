@@ -7,5 +7,9 @@
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-academy-sand text-academy-ink antialiased font-body;
+}
+
+h1, h2, h3, h4 {
+  @apply font-heading;
 }
