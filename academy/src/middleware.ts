@@ -29,10 +29,12 @@ export async function middleware(req: NextRequest) {
   }
 
   // Learner protected routes
-  if (pathname.startsWith('/area') || pathname.startsWith('/minha-conta')) {
+  if (pathname.startsWith('/area') || pathname.startsWith('/minha-conta') || pathname.startsWith('/checkout')) {
     const token = req.cookies.get('academy_session')?.value
     if (!token || !(await verifyToken(token))) {
-      return NextResponse.redirect(new URL('/login', req.url))
+      const loginUrl = new URL('/login', req.url)
+      loginUrl.searchParams.set('next', pathname)
+      return NextResponse.redirect(loginUrl)
     }
     return NextResponse.next()
   }
@@ -41,5 +43,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/area/:path*', '/minha-conta/:path*'],
+  matcher: ['/admin/:path*', '/area/:path*', '/minha-conta/:path*', '/checkout/:path*'],
 }

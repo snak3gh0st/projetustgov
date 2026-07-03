@@ -24,7 +24,8 @@ export default function LoginPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Erro ao entrar'); return }
-      router.push('/area')
+      const next = new URLSearchParams(window.location.search).get('next')
+      router.push(next && next.startsWith('/') ? next : '/area')
     } finally {
       setLoading(false)
     }
