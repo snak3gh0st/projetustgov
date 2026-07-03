@@ -39,6 +39,7 @@ export default function CheckoutPage() {
   const [pix, setPix] = useState<PixResult | null>(null)
   const [boleto, setBoleto] = useState<BoletoResult | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const redirectedRef = useRef(false)
 
   useEffect(() => {
     fetch('/api/public/courses')
@@ -52,10 +53,12 @@ export default function CheckoutPage() {
 
   const startPolling = useCallback((id: string) => {
     pollRef.current = setInterval(async () => {
+      if (redirectedRef.current) return
       const res = await fetch(`/api/checkout/pagarme/status?orderId=${id}`)
       if (!res.ok) return
       const { data } = await res.json()
-      if (data.status === 'paid') {
+      if (data.status === 'paid' && !redirectedRef.current) {
+        redirectedRef.current = true
         if (pollRef.current) clearInterval(pollRef.current)
         router.push('/area')
       }
@@ -89,6 +92,8 @@ export default function CheckoutPage() {
       if (data.data.pix) setPix(data.data.pix)
       if (data.data.boleto) setBoleto(data.data.boleto)
       startPolling(data.data.orderId)
+    } catch {
+      setError('Erro ao gerar pagamento. Tente novamente.')
     } finally {
       setSubmitting(false)
     }
