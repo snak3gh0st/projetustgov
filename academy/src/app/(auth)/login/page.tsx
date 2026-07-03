@@ -34,8 +34,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-black px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <p className="text-xs font-black uppercase tracking-[0.3em] text-academy-gold">PROJETUS</p>
-          <h1 className="mt-2 text-2xl font-semibold text-white">Academy</h1>
+          <h1 className="mt-2 text-2xl font-semibold text-white">Capte Recursos</h1>
           <p className="mt-1 text-sm text-white/40">Acesse sua conta para assistir às aulas</p>
         </div>
         <form onSubmit={handleSubmit} className="rounded-xl border border-white/10 bg-zinc-900 p-8">

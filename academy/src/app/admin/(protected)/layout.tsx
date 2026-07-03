@@ -22,8 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="flex min-h-screen bg-slate-900 text-slate-200">
       <aside className="w-56 flex-shrink-0 border-r border-slate-700 bg-slate-900 px-4 py-6">
         <div className="mb-8">
-          <p className="text-xs font-bold uppercase tracking-widest text-academy-gold">PROJETUS</p>
-          <p className="text-sm text-slate-300">Academy Admin</p>
+          <p className="text-sm font-semibold text-slate-200">Capte Recursos Admin</p>
         </div>
         <nav className="space-y-1">
           {nav.map(item => (

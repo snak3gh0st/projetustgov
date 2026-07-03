@@ -16,7 +16,7 @@ const features = [
   {
     icon: '💬',
     title: 'Mentoria ao vivo',
-    desc: 'Sessões ao vivo com acesso direto aos especialistas Projetus para tirar dúvidas.',
+    desc: 'Sessões ao vivo com acesso direto aos especialistas Capte Recursos para tirar dúvidas.',
   },
   {
     icon: '📊',
@@ -39,8 +39,7 @@ export default function HomePage() {
       <header className="border-b border-slate-100 bg-white/80 backdrop-blur sticky top-0 z-10">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div>
-            <span className="text-xs font-bold uppercase tracking-widest text-academy-blue">PROJETUS</span>
-            <span className="ml-2 text-sm font-semibold text-academy-ink">Academy</span>
+            <span className="text-sm font-bold text-academy-ink">Capte Recursos</span>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-sm text-slate-500 hover:text-academy-ink">
@@ -60,7 +59,7 @@ export default function HomePage() {
       <section className="bg-gradient-to-b from-slate-50 to-white px-6 py-20 text-center">
         <div className="mx-auto max-w-3xl">
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-academy-blue">
-            PROJETUS Academy
+            Capte Recursos
           </p>
           <h1 className="mt-4 text-4xl font-bold leading-tight tracking-tight text-academy-ink sm:text-5xl">
             Domine o mercado de<br />
@@ -127,13 +126,13 @@ export default function HomePage() {
         <div className="mx-auto max-w-5xl">
           <div className="mb-10 text-center">
             <h2 className="text-2xl font-bold text-academy-ink">Formações disponíveis</h2>
-            <p className="mt-2 text-slate-500">Conteúdo exclusivo desenvolvido pela equipe Projetus</p>
+            <p className="mt-2 text-slate-500">Conteúdo exclusivo desenvolvido pela equipe Capte Recursos</p>
           </div>
 
           {/* Course cards */}
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex h-44 items-center justify-center bg-gradient-to-br from-academy-blue to-blue-800 text-5xl">
+              <div className="flex h-44 items-center justify-center bg-gradient-to-br from-academy-blue to-academy-ink text-5xl">
                 🏗️
               </div>
               <div className="p-6">
@@ -196,7 +195,7 @@ export default function HomePage() {
       <section className="px-6 py-16">
         <div className="mx-auto max-w-3xl">
           <h2 className="mb-8 text-center text-2xl font-bold text-academy-ink">
-            Para quem é a Projetus Academy?
+            Para quem é a Capte Recursos?
           </h2>
           <ul className="space-y-3">
             {targetAudience.map(item => (
@@ -211,8 +210,8 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="border-t border-slate-100 px-6 py-8 text-center">
-        <p className="text-xs font-bold uppercase tracking-widest text-academy-blue">PROJETUS Academy</p>
-        <p className="mt-1 text-xs text-slate-400">© 2026 Projetus. Todos os direitos reservados.</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-academy-blue">Capte Recursos</p>
+        <p className="mt-1 text-xs text-slate-400">© 2026 Capte Recursos. Todos os direitos reservados.</p>
         <div className="mt-3 flex justify-center gap-4 text-xs text-slate-400">
           <Link href="/login" className="hover:text-academy-blue">Área do aluno</Link>
           <Link href="/admin/login" className="hover:text-academy-blue">Admin</Link>

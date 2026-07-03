@@ -32,8 +32,7 @@ export default function AdminLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <p className="text-xs font-bold uppercase tracking-widest text-academy-gold">PROJETUS</p>
-          <h1 className="mt-1 text-xl font-semibold text-white">Academy Admin</h1>
+          <h1 className="mt-1 text-xl font-semibold text-white">Capte Recursos Admin</h1>
         </div>
         <form onSubmit={handleSubmit} className="rounded-xl bg-slate-800 p-8">
           {error && <p className="mb-4 rounded-lg bg-red-900/40 px-4 py-3 text-sm text-red-300">{error}</p>}

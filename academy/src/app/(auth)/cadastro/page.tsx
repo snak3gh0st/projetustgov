@@ -34,8 +34,7 @@ export default function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center bg-academy-sand px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <p className="text-xs font-bold uppercase tracking-widest text-academy-blue">PROJETUS</p>
-          <h1 className="mt-1 text-2xl font-semibold text-academy-ink">Academy</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-academy-ink">Capte Recursos</h1>
         </div>
         <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
           <h2 className="mb-6 text-lg font-semibold text-academy-ink">Criar conta</h2>

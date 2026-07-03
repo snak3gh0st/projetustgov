@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       academyRecipientId,
       cardToken,
       installments,
-      softDescriptor: 'PROJETUS',
+      softDescriptor: 'CAPTE RECURSOS',
     })
   } catch (e) {
     return err(502, 'Erro ao criar ordem no Pagar.me: ' + (e as Error).message)

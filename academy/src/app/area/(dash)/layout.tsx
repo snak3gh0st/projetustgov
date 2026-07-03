@@ -65,8 +65,7 @@ export default async function DashLayout({ children }: { children: React.ReactNo
       <header className="sticky top-0 z-30 border-b border-white/10 bg-black/80 px-5 py-3 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <Link href="/area" className="flex items-center gap-2 font-bold text-white">
-            <span className="text-xs font-black uppercase tracking-[0.28em] text-academy-gold">PROJETUS</span>
-            <span className="text-sm text-white/70">Academy</span>
+            <span className="text-sm font-semibold text-white">Capte Recursos</span>
           </Link>
           <div className="flex min-w-0 items-center gap-4 text-sm text-white/55">
             {streak > 0 && (

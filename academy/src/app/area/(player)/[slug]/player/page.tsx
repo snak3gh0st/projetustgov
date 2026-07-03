@@ -313,8 +313,7 @@ function PlayerContent() {
         >
           <span className="text-lg leading-none">←</span>
           <span className="hidden sm:flex items-center gap-1.5">
-            <span className="text-xs font-bold tracking-widest text-academy-gold">PROJETUS</span>
-            <span className="text-xs text-slate-500">Academy</span>
+            <span className="text-xs font-bold tracking-widest text-academy-gold">Capte Recursos</span>
           </span>
         </Link>
         <span className="text-white/20 hidden sm:block">|</span>

@@ -107,8 +107,7 @@ export default function CertificatePage() {
         <div className="relative h-full flex flex-col items-center justify-center text-center px-8 sm:px-16 py-8">
           {/* Wordmark */}
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs sm:text-sm font-bold tracking-[0.3em] text-academy-gold">PROJETUS</span>
-            <span className="text-xs sm:text-sm tracking-[0.2em] text-zinc-500">ACADEMY</span>
+            <span className="text-xs sm:text-sm font-bold tracking-[0.3em] text-academy-gold">CAPTE RECURSOS</span>
           </div>
 
           <p className="mt-4 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.4em] text-zinc-400">
@@ -139,8 +138,8 @@ export default function CertificatePage() {
           <div className="mt-6 sm:mt-8 relative">
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-academy-gold flex items-center justify-center bg-academy-gold/5">
               <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border border-academy-gold/50 flex flex-col items-center justify-center">
-                <span className="text-[7px] sm:text-[8px] font-bold tracking-widest text-academy-gold leading-none">PROJETUS</span>
-                <span className="text-[6px] sm:text-[7px] tracking-widest text-zinc-500 leading-none mt-0.5">ACADEMY</span>
+                <span className="text-[7px] sm:text-[8px] font-bold tracking-widest text-academy-gold leading-none">CAPTE</span>
+                <span className="text-[6px] sm:text-[7px] tracking-widest text-zinc-500 leading-none mt-0.5">RECURSOS</span>
               </div>
             </div>
           </div>

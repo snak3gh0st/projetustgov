@@ -61,7 +61,7 @@ export default function AreaPage() {
             <img src={course.cover_image_url} alt={course.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_30%_10%,rgba(184,137,23,0.28),transparent_32%),linear-gradient(135deg,#111827,#020617)]">
-              <span className="text-xs font-black uppercase tracking-[0.4em] text-white/30">Projetus</span>
+              <span className="text-xs font-black uppercase tracking-[0.4em] text-white/30">Capte Recursos</span>
             </div>
           )}
           {resume && course.resume_lesson_title && (
@@ -131,7 +131,7 @@ export default function AreaPage() {
       {courses.length === 0 ? (
         <div className="flex min-h-[64vh] items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-8 text-center">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.3em] text-academy-gold">PROJETUS Academy</p>
+            <p className="text-xs font-bold uppercase tracking-[0.3em] text-academy-gold">Capte Recursos</p>
             <h1 className="mt-4 text-3xl font-semibold text-white">Sua biblioteca ainda está vazia</h1>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-white/50">
               Assim que uma matrícula for liberada, seus cursos aparecem aqui com aulas, progresso e player.

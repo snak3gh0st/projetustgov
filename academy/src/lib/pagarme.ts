@@ -108,7 +108,7 @@ export async function createOrder(opts: {
       ? { payment_method: 'pix', pix: { expires_in: 3600 }, split: splits }
       : opts.method === 'boleto'
       ? { payment_method: 'boleto', boleto: { instructions: opts.productName, due_at: new Date(Date.now() + 3 * 86400000).toISOString() }, split: splits }
-      : { payment_method: 'credit_card', credit_card: { installments: opts.installments ?? 1, statement_descriptor: opts.softDescriptor ?? 'PROJETUS', card_token: opts.cardToken }, split: splits }
+      : { payment_method: 'credit_card', credit_card: { installments: opts.installments ?? 1, statement_descriptor: opts.softDescriptor ?? 'CAPTE RECURSOS', card_token: opts.cardToken }, split: splits }
 
   const order: Record<string, unknown> = await req('POST', '/orders', {
     items: [{ amount: amt, description: opts.productName, quantity: 1, code: 'COURSE' }],

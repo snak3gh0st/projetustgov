@@ -66,7 +66,7 @@ export default function CourseCatalog() {
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_30%_10%,rgba(184,137,23,0.28),transparent_32%),linear-gradient(135deg,#111827,#020617)]">
-                      <span className="text-xs font-black uppercase tracking-[0.4em] text-white/30">Projetus</span>
+                      <span className="text-xs font-black uppercase tracking-[0.4em] text-white/30">Capte Recursos</span>
                     </div>
                   )}
                 </div>
