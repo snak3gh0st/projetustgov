@@ -1,6 +1,6 @@
-# Projetus Academy
+# Capte Recursos
 
-Novo app da plataforma de mentoria/cursos da PROJETUS.
+Plataforma de mentoria/cursos da PROJETUS (antigo "Projetus Academy").
 
 ## Objetivo
 
@@ -52,35 +52,30 @@ academy/
 - Tailwind CSS
 - Zod
 - PostgreSQL
-- Stripe
+- Pagar.me
 
-## Stripe Connect implementado
+## Checkout Pagar.me implementado
 
-O bootstrap atual está preparado para:
+O checkout atual está preparado para:
 
-- `Standard connected accounts`
-- `Stripe-hosted onboarding`
-- `direct charges`
-- `application_fee_amount`
-- `Checkout Session` para pagamento único
-- webhook `checkout.session.completed`
+- pagamento via **Pix**, **Boleto** e **Cartão de crédito**, com
+  tokenização de cartão feita no client;
+- split de pagamento em 3 vias (SIGMA / instrutor / academy);
+- webhook de confirmação de pagamento (`order.paid`, `order.canceled`,
+  `charge.refunded`) com idempotência por evento;
+- polling de status na página de checkout até a confirmação do pagamento.
 
 ## Endpoints implementados
 
 - `GET /api/health`
-- `GET /api/connect/accounts`
-- `POST /api/connect/accounts`
-- `POST /api/connect/accounts/:accountId/onboarding-link`
-- `POST /api/stripe/products`
-- `POST /api/stripe/checkout-sessions`
-- `POST /api/stripe/webhooks/payments`
+- `POST /api/checkout/pagarme`
+- `GET /api/checkout/pagarme/status`
+- `POST /api/webhooks/pagarme`
+- `GET /api/public/courses`
 
-## Páginas de retorno já prontas
+## Páginas
 
-- `GET /checkout/success`
-- `GET /checkout/cancel`
-- `GET /connect/refresh`
-- `GET /connect/return`
+- `GET /checkout/[slug]` — checkout Pix/Boleto/Cartão do curso.
 
 ## Setup
 
@@ -91,14 +86,17 @@ cd academy
 npm install
 ```
 
-2. Configure as variáveis de ambiente com base em `.env.example`.
-   Use `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` e `STRIPE_WEBHOOK_SECRET`
-   obtidas no Stripe Dashboard.
+2. Configure as variáveis de ambiente com base em `.env.example`,
+   incluindo as variáveis do Pagar.me (`PAGARME_SECRET_KEY`,
+   `PAGARME_WEBHOOK_SECRET`, `PAGARME_SIGMA_RECIPIENT_ID`,
+   `PAGARME_ACADEMY_RECIPIENT_ID`). Note que `NEXT_PUBLIC_PAGARME_PUBLIC_KEY`
+   precisa estar definida em **tempo de build** — o Next.js embute variáveis
+   `NEXT_PUBLIC_*` no bundle durante o build, não em runtime.
 
-3. Aplique a migration:
+3. Aplique a migration do marketplace Pagar.me:
 
 ```bash
-psql "$DATABASE_URL" -f ../migrations/create_academy_stripe_core.sql
+psql "$DATABASE_URL" -f ../migrations/create_pagarme_marketplace.sql
 ```
 
 4. Rode o app:
@@ -107,50 +105,13 @@ psql "$DATABASE_URL" -f ../migrations/create_academy_stripe_core.sql
 npm run dev
 ```
 
-## Exemplo: criar empresa conectada
+## Testando um pagamento
 
-```bash
-curl -X POST http://localhost:3001/api/connect/accounts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "internalCompanyId": "projetus-main",
-    "email": "financeiro@projetus.org",
-    "country": "BR",
-    "companyName": "Projetus",
-    "websiteUrl": "https://projetus.org",
-    "createOnboardingLink": true
-  }'
-```
-
-## Exemplo: criar produto e checkout
-
-1. Crie uma empresa conectada e finalize onboarding.
-2. Crie um produto:
-
-```bash
-curl -X POST http://localhost:3001/api/stripe/products \
-  -H "Content-Type: application/json" \
-  -d '{
-    "stripeAccountId": "acct_123",
-    "slug": "mentoria-projetus",
-    "name": "Mentoria Projetus",
-    "currency": "brl",
-    "unitAmount": 99700
-  }'
-```
-
-3. Crie uma checkout session:
-
-```bash
-curl -X POST http://localhost:3001/api/stripe/checkout-sessions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "productId": "PRODUCT_UUID",
-    "quantity": 1,
-    "customerEmail": "aluno@example.com",
-    "applicationFeeAmount": 0
-  }'
-```
+Não há uma rota pública equivalente para simular checkout via `curl` — o
+fluxo do Pagar.me depende da tokenização de cartão feita no client (via a
+chave pública) antes de chamar `POST /api/checkout/pagarme`. Para testar,
+acesse `GET /checkout/[slug]` no navegador com credenciais sandbox do
+Pagar.me configuradas no `.env`.
 
 ## Documentos relacionados
 

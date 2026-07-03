@@ -3,8 +3,6 @@ import { z } from 'zod'
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   ACADEMY_APP_URL: z.string().url(),
-  STRIPE_SECRET_KEY: z.string().optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().optional(),
   PAGARME_SECRET_KEY: z.string().optional(),
   PAGARME_WEBHOOK_SECRET: z.string().optional(),
   PAGARME_SIGMA_RECIPIENT_ID: z.string().optional(),
@@ -25,8 +23,6 @@ export function getEnv() {
     cachedEnv = envSchema.parse({
       DATABASE_URL: process.env.DATABASE_URL,
       ACADEMY_APP_URL: process.env.ACADEMY_APP_URL,
-      STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
-      STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
       PAGARME_SECRET_KEY: process.env.PAGARME_SECRET_KEY,
       PAGARME_WEBHOOK_SECRET: process.env.PAGARME_WEBHOOK_SECRET,
       PAGARME_SIGMA_RECIPIENT_ID: process.env.PAGARME_SIGMA_RECIPIENT_ID,

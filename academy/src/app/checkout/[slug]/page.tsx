@@ -75,8 +75,15 @@ export default function CheckoutPage() {
   const [cardExpYear, setCardExpYear] = useState('')
   const [cardCvv, setCardCvv] = useState('')
   const [installments, setInstallments] = useState(1)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const redirectedRef = useRef(false)
+  const pollCountRef = useRef(0)
+
+  // Stop polling after ~10min (150 polls @ 4s) if we never hear back —
+  // the webhook only ever sets 'paid' / 'canceled' / 'refunded'; anything
+  // still 'pending' after this long is treated as inconclusive.
+  const MAX_POLLS = 150
 
   useEffect(() => {
     fetch('/api/public/courses')
@@ -89,15 +96,31 @@ export default function CheckoutPage() {
   }, [slug])
 
   const startPolling = useCallback((id: string) => {
+    pollCountRef.current = 0
     pollRef.current = setInterval(async () => {
       if (redirectedRef.current) return
+      pollCountRef.current += 1
+
       const res = await fetch(`/api/checkout/pagarme/status?orderId=${id}`)
       if (!res.ok) return
       const { data } = await res.json()
+
       if (data.status === 'paid' && !redirectedRef.current) {
         redirectedRef.current = true
         if (pollRef.current) clearInterval(pollRef.current)
         router.push('/area')
+        return
+      }
+
+      if (data.status === 'canceled' || data.status === 'refunded') {
+        if (pollRef.current) clearInterval(pollRef.current)
+        setStatusMessage('Pagamento não foi concluído. Gere um novo pagamento para tentar de novo.')
+        return
+      }
+
+      if (pollCountRef.current >= MAX_POLLS) {
+        if (pollRef.current) clearInterval(pollRef.current)
+        setStatusMessage('Ainda não foi possível confirmar o pagamento. Tente novamente.')
       }
     }, 4000)
   }, [router])
@@ -106,6 +129,17 @@ export default function CheckoutPage() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
     }
+  }, [])
+
+  const resetPayment = useCallback(() => {
+    if (pollRef.current) clearInterval(pollRef.current)
+    pollRef.current = null
+    redirectedRef.current = false
+    pollCountRef.current = 0
+    setStatusMessage(null)
+    setOrderId(null)
+    setPix(null)
+    setBoleto(null)
   }, [])
 
   async function submitPayment(e: React.FormEvent) {
@@ -189,7 +223,17 @@ export default function CheckoutPage() {
               <img src={pix.qrCodeUrl} alt="QR Code Pix" className="mx-auto mt-4 h-56 w-56" />
             )}
             <textarea readOnly value={pix.qrCode} className="mt-4 w-full rounded-lg border border-slate-200 p-2 text-xs" rows={3} />
-            <p className="mt-3 text-xs text-slate-500">Aguardando confirmação do pagamento...</p>
+            <p className="mt-3 text-xs text-slate-500">{statusMessage ?? 'Aguardando confirmação do pagamento...'}</p>
+            {pix.expiresAt && (
+              <p className="mt-1 text-xs text-slate-400">Expira em: {new Date(pix.expiresAt).toLocaleString('pt-BR')}</p>
+            )}
+            <button
+              type="button"
+              onClick={resetPayment}
+              className="mt-4 text-xs font-semibold text-academy-blue underline"
+            >
+              Gerar novo pagamento
+            </button>
           </div>
         ) : orderId && boleto ? (
           <div className="mt-8 rounded-2xl border border-academy-ink/10 bg-white p-6">
@@ -203,7 +247,17 @@ export default function CheckoutPage() {
               Abrir boleto
             </a>
             <p className="mt-3 break-all text-xs text-slate-500">{boleto.barcode}</p>
-            <p className="mt-3 text-xs text-slate-500">Aguardando confirmação do pagamento...</p>
+            <p className="mt-3 text-xs text-slate-500">{statusMessage ?? 'Aguardando confirmação do pagamento...'}</p>
+            {boleto.expiresAt && (
+              <p className="mt-1 text-xs text-slate-400">Expira em: {new Date(boleto.expiresAt).toLocaleString('pt-BR')}</p>
+            )}
+            <button
+              type="button"
+              onClick={resetPayment}
+              className="mt-4 text-xs font-semibold text-academy-blue underline"
+            >
+              Gerar novo pagamento
+            </button>
           </div>
         ) : (
           <form onSubmit={submitPayment} className="mt-8 space-y-4 rounded-2xl border border-academy-ink/10 bg-white p-6">
