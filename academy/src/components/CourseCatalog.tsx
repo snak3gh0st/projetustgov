@@ -88,10 +88,14 @@ export default function CourseCatalog() {
                   </div>
 
                   <Link
-                    href="/login"
+                    href={
+                      course.default_price_cents && course.default_price_cents > 0
+                        ? `/checkout/${course.slug}`
+                        : '/login'
+                    }
                     className="mt-5 rounded-md bg-white px-4 py-2.5 text-center text-sm font-bold text-black transition hover:bg-academy-gold hover:text-white"
                   >
-                    Acessar
+                    {course.default_price_cents && course.default_price_cents > 0 ? 'Comprar' : 'Acessar'}
                   </Link>
                 </div>
               </div>
