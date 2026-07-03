@@ -24,6 +24,37 @@ function priceLabel(cents: number | null) {
   return `R$ ${(cents / 100).toFixed(2)}`
 }
 
+async function tokenizeCard(card: {
+  number: string
+  holderName: string
+  holderDocument: string
+  expMonth: string
+  expYear: string
+  cvv: string
+}): Promise<string> {
+  const publicKey = process.env.NEXT_PUBLIC_PAGARME_PUBLIC_KEY
+  if (!publicKey) throw new Error('Chave pública do Pagar.me não configurada')
+
+  const res = await fetch(`https://api.pagar.me/core/v5/tokens?appId=${publicKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: 'card',
+      card: {
+        number: card.number,
+        holder_name: card.holderName,
+        holder_document: card.holderDocument,
+        exp_month: card.expMonth,
+        exp_year: card.expYear,
+        cvv: card.cvv,
+      },
+    }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message ?? 'Cartão inválido')
+  return data.id as string
+}
+
 export default function CheckoutPage() {
   const { slug } = useParams<{ slug: string }>()
   const router = useRouter()
@@ -38,6 +69,12 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState<string | null>(null)
   const [pix, setPix] = useState<PixResult | null>(null)
   const [boleto, setBoleto] = useState<BoletoResult | null>(null)
+  const [cardNumber, setCardNumber] = useState('')
+  const [cardHolder, setCardHolder] = useState('')
+  const [cardExpMonth, setCardExpMonth] = useState('')
+  const [cardExpYear, setCardExpYear] = useState('')
+  const [cardCvv, setCardCvv] = useState('')
+  const [installments, setInstallments] = useState(1)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const redirectedRef = useRef(false)
 
@@ -76,6 +113,18 @@ export default function CheckoutPage() {
     setError('')
     setSubmitting(true)
     try {
+      let cardToken: string | undefined
+      if (method === 'credit_card') {
+        cardToken = await tokenizeCard({
+          number: onlyDigits(cardNumber),
+          holderName: cardHolder,
+          holderDocument: onlyDigits(document),
+          expMonth: cardExpMonth,
+          expYear: cardExpYear,
+          cvv: cardCvv,
+        })
+      }
+
       const res = await fetch('/api/checkout/pagarme', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -84,16 +133,28 @@ export default function CheckoutPage() {
           method,
           document: onlyDigits(document),
           phone: phone ? onlyDigits(phone) : undefined,
+          cardToken,
+          installments: method === 'credit_card' ? installments : undefined,
         }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Erro ao gerar pagamento'); return }
+
+      if (method === 'credit_card') {
+        if (data.data.status === 'paid') {
+          router.push('/area')
+        } else {
+          setError('Pagamento recusado. Confira os dados do cartão e tente novamente.')
+        }
+        return
+      }
+
       setOrderId(data.data.orderId)
       if (data.data.pix) setPix(data.data.pix)
       if (data.data.boleto) setBoleto(data.data.boleto)
       startPolling(data.data.orderId)
-    } catch {
-      setError('Erro ao gerar pagamento. Tente novamente.')
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Erro ao gerar pagamento. Tente novamente.')
     } finally {
       setSubmitting(false)
     }
@@ -147,7 +208,7 @@ export default function CheckoutPage() {
         ) : (
           <form onSubmit={submitPayment} className="mt-8 space-y-4 rounded-2xl border border-academy-ink/10 bg-white p-6">
             <div className="flex gap-2">
-              {(['pix', 'boleto'] as Method[]).map(m => (
+              {(['pix', 'boleto', 'credit_card'] as Method[]).map(m => (
                 <button
                   key={m}
                   type="button"
@@ -156,7 +217,7 @@ export default function CheckoutPage() {
                     method === m ? 'border-academy-blue bg-academy-blue/10 text-academy-blue' : 'border-slate-200 text-slate-500'
                   }`}
                 >
-                  {m === 'pix' ? 'Pix' : 'Boleto'}
+                  {m === 'pix' ? 'Pix' : m === 'boleto' ? 'Boleto' : 'Cartão'}
                 </button>
               ))}
             </div>
@@ -181,6 +242,76 @@ export default function CheckoutPage() {
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-academy-blue"
               />
             </div>
+
+            {method === 'credit_card' && (
+              <>
+                <div>
+                  <label className="mb-1 block text-xs font-medium uppercase text-slate-500">Número do cartão</label>
+                  <input
+                    required
+                    value={cardNumber}
+                    onChange={e => setCardNumber(e.target.value)}
+                    placeholder="0000 0000 0000 0000"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-academy-blue"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium uppercase text-slate-500">Nome impresso no cartão</label>
+                  <input
+                    required
+                    value={cardHolder}
+                    onChange={e => setCardHolder(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-academy-blue"
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium uppercase text-slate-500">Mês</label>
+                    <input
+                      required
+                      value={cardExpMonth}
+                      onChange={e => setCardExpMonth(e.target.value)}
+                      placeholder="MM"
+                      maxLength={2}
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-academy-blue"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium uppercase text-slate-500">Ano</label>
+                    <input
+                      required
+                      value={cardExpYear}
+                      onChange={e => setCardExpYear(e.target.value)}
+                      placeholder="AAAA"
+                      maxLength={4}
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-academy-blue"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium uppercase text-slate-500">CVV</label>
+                    <input
+                      required
+                      value={cardCvv}
+                      onChange={e => setCardCvv(e.target.value)}
+                      maxLength={4}
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-academy-blue"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium uppercase text-slate-500">Parcelas</label>
+                  <select
+                    value={installments}
+                    onChange={e => setInstallments(Number(e.target.value))}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-academy-blue"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
+                      <option key={n} value={n}>{n}x</option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
 
             {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
