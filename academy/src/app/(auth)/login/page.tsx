@@ -4,6 +4,12 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+function safeNextPath(value: string | null): string {
+  if (!value) return '/area'
+  if (!value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return '/area'
+  return value
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -24,8 +30,7 @@ export default function LoginPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Erro ao entrar'); return }
-      const next = new URLSearchParams(window.location.search).get('next')
-      router.push(next && next.startsWith('/') ? next : '/area')
+      router.push(safeNextPath(new URLSearchParams(window.location.search).get('next')))
     } finally {
       setLoading(false)
     }
