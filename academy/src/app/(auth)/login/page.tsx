@@ -6,8 +6,13 @@ import Link from 'next/link'
 
 function safeNextPath(value: string | null): string {
   if (!value) return '/area'
-  if (!value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return '/area'
-  return value
+  try {
+    const resolved = new URL(value, window.location.origin)
+    if (resolved.origin !== window.location.origin) return '/area'
+    return resolved.pathname + resolved.search + resolved.hash
+  } catch {
+    return '/area'
+  }
 }
 
 export default function LoginPage() {
