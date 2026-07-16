@@ -8,9 +8,9 @@ import type { VendedorProjeto } from '@/lib/types'
 import ContactNotesTimeline from '@/components/ContactNotesTimeline'
 import LeadContacts from '@/components/LeadContacts'
 import SaleModal from '@/components/SaleModal'
-import { CRM_STATUS_CANONICAL, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
+import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
-const STATUS_OPTIONS = CRM_STATUS_CANONICAL
+const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-red-500/20 text-red-500',
   'Sem Interesse': 'bg-yellow-500/20 text-yellow-600',
@@ -94,9 +94,9 @@ export default function LeadDetailPage() {
 
   async function updateProjeto(id: number, field: string, value: string) {
     try {
-      // If status is changing to "Fechado", open SaleModal to collect valor_venda
+      // If status is changing to the closed stage, open SaleModal to collect valor_venda
       // "Em Aprovação" does NOT open SaleModal — it goes directly to PATCH API
-      if (field === 'status_contato' && value === 'Fechado') {
+      if (field === 'status_contato' && isClosedCrmStatus(value)) {
         const projeto = projetos.find(p => p.id === id)
         setSaleModal({
           projetoId: id,
@@ -134,9 +134,9 @@ export default function LeadDetailPage() {
     }
   }
 
-  async function submitFechado(projetoId: number, saleData: { valor_venda: number; tipo_vendedor: string; status_contato?: string }) {
+    async function submitFechado(projetoId: number, saleData: { valor_venda: number; tipo_vendedor: string; status_contato?: string }) {
     try {
-      const finalStatus = saleData.status_contato || 'Fechado'
+      const finalStatus = saleData.status_contato || 'Vendas Concluídas'
       const body = {
         id: projetoId,
         status_contato: finalStatus,
@@ -157,7 +157,7 @@ export default function LeadDetailPage() {
       setProjetos(prev => prev.map(p =>
         p.id === projetoId ? {
           ...p,
-          status_contato: finalStatus,
+          status_contato: normalizeCrmStatus(finalStatus),
           valor_venda: saleData.valor_venda,
           tipo_vendedor: normalizeTipoVendedor(saleData.tipo_vendedor),
           ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
@@ -301,12 +301,12 @@ export default function LeadDetailPage() {
         <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 rounded-xl p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-purple-700">Em Aprovação ({first.closer_nome || 'Rooger'})</p>
+              <p className="text-sm font-semibold text-purple-700">{formatCrmStatusLabel(first.status_contato)} ({first.closer_nome || 'Gestor'})</p>
               <p className="text-xs text-purple-500 mt-1">
-                Este lead foi enviado pelo SDR e aguarda fechamento pelo coordenador
+                Este lead foi enviado para conferência do gestor antes da conclusão
               </p>
             </div>
-            {(userRole === 'coordenador' || userRole === 'gestor') && canModify && (
+            {userRole === 'gestor' && canModify && (
               <div className="flex gap-2">
                 <button
                   onClick={() => {
@@ -318,7 +318,7 @@ export default function LeadDetailPage() {
                   }}
                   className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-500 transition-colors"
                 >
-                  Fechar Venda
+                  Concluir Venda
                 </button>
                 <button
                   onClick={() => updateProjeto(first.id, 'status_contato', 'Proposta Enviada')}
@@ -349,9 +349,9 @@ export default function LeadDetailPage() {
                   onChange={(e) => updateProjeto(first.id, 'tipo_vendedor', e.target.value)}
                   className="mt-1 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-sigma-neon/50"
                 >
-                  <option value="SDR">SDR (1,5%)</option>
-                  <option value="Closer">Closer (3,5%)</option>
-                  <option value="In-Sites Sells">In-Sites Sells (5%)</option>
+                  <option value="SDR">Consultor (5%)</option>
+                  <option value="Closer">Gestor (3%)</option>
+                  <option value="In-Sites Sells">Consultor (5%)</option>
                 </select>
               ) : (
                 <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-1">
@@ -361,18 +361,18 @@ export default function LeadDetailPage() {
             </div>
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">
-                {first.closer_id ? `SDR (${Number(first.comissao_percentual || 0).toFixed(1)}%)` : `Comissao (${Number(first.comissao_percentual || 0).toFixed(1)}%)`}
+                Comissão Consultor ({Number(first.comissao_percentual || 0).toFixed(1)}%)
               </p>
               <p className="text-2xl font-heading font-bold text-sigma-neon mt-1">
                 {formatCurrency(first.comissao_valor)}
               </p>
-              {first.closer_id && first.vendedor_nome && (
+              {first.vendedor_nome && (
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{first.vendedor_nome}</p>
               )}
             </div>
             {first.closer_id && first.closer_comissao_valor && first.closer_comissao_valor > 0 ? (
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Closer ({Number(first.closer_comissao_percentual || 0).toFixed(1)}%)</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Gestor ({Number(first.closer_comissao_percentual || 0).toFixed(1)}%)</p>
                 <p className="text-2xl font-heading font-bold text-purple-600 mt-1">
                   {formatCurrency(first.closer_comissao_valor)}
                 </p>
@@ -382,7 +382,7 @@ export default function LeadDetailPage() {
               </div>
             ) : (
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Bonus por Fechamento</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Fundo Comercial (2%)</p>
                 <p className="text-lg font-semibold text-green-600 mt-1">
                   {formatCurrency(first.comissao_bonus || 0)}
                 </p>
@@ -552,9 +552,9 @@ export default function LeadDetailPage() {
                   <td className="px-4 py-3 text-sigma-neon text-xs">{formatCurrency(Number(p.valor_emenda) || 0)}</td>
                   <td className="px-4 py-3">
                     <select
-                      value={p.status_contato || 'Não Contatado'}
+                      value={formatCrmStatusLabel(p.status_contato || 'Não Contatado')}
                       onChange={e => updateProjeto(p.id, 'status_contato', e.target.value)}
-                      className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[p.status_contato] || STATUS_COLORS['Não Contatado']}`}
+                      className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[normalizeCrmStatus(p.status_contato)] || STATUS_COLORS['Não Contatado']}`}
                     >
                       {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>

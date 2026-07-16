@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
-import { CRM_COMMISSIONS, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
+import { isClosedCrmStatus, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,10 +18,33 @@ export async function PATCH(
 
     const body = await request.json()
     const projectId = body.id
+    const requestedStatus = body.status_contato !== undefined
+      ? normalizeCrmStatus(String(body.status_contato))
+      : undefined
 
     if (!projectId) {
       return NextResponse.json({ error: 'id is required' }, { status: 400 })
     }
+
+    const currentLead = await query<{
+      status_contato: string | null
+      vendedor_id: string | null
+      closer_id: string | null
+      valor_venda: string | number | null
+    }>(
+      `SELECT status_contato, vendedor_id, closer_id, valor_venda
+       FROM vendedor_projetos
+       WHERE id = $1
+       LIMIT 1`,
+      [projectId]
+    )
+    const currentRow = currentLead[0]
+
+    if (!currentRow) {
+      return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
+    }
+
+    const currentStatus = normalizeCrmStatus(currentRow.status_contato)
 
     const updates: string[] = []
     const values: unknown[] = []
@@ -29,7 +52,7 @@ export async function PATCH(
 
     if (body.status_contato !== undefined) {
       updates.push(`status_contato = $${paramIndex++}`)
-      values.push(body.status_contato)
+      values.push(requestedStatus)
     }
     if (body.observacoes !== undefined) {
       updates.push(`observacoes = $${paramIndex++}`)
@@ -56,25 +79,39 @@ export async function PATCH(
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
     }
 
-    // VALIDATION: valor_venda must be provided and positive to mark as Fechado
+    // VALIDATION: valor_venda must be provided and positive to close the sale
     // This check runs BEFORE the UPDATE to prevent invalid status changes
-    if (body.status_contato === 'Fechado') {
+    if (isClosedCrmStatus(requestedStatus)) {
       const bodyValorVenda = body.valor_venda != null ? Number(body.valor_venda) : null
       if (bodyValorVenda != null && bodyValorVenda > 0) {
         // valor_venda was sent in this request — proceed
       } else {
-        // Check if there's already a valor_venda in the DB
-        const existing = await query(
-          `SELECT valor_venda FROM vendedor_projetos WHERE id = $1`,
-          [projectId]
-        )
-        const existingValor = existing[0]?.valor_venda ? Number(existing[0].valor_venda) : 0
+        const existingValor = currentRow.valor_venda ? Number(currentRow.valor_venda) : 0
         if (!existingValor || existingValor <= 0) {
           return NextResponse.json(
-            { error: 'valor_venda is required and must be > 0 to mark as Fechado' },
+            { error: 'valor_venda is required and must be > 0 to close the sale' },
             { status: 400 }
           )
         }
+      }
+    }
+
+    if (requestedStatus === 'Em Aprovação' && session.role !== 'gestor' && currentStatus !== 'Proposta Enviada' && currentStatus !== 'Em Aprovação') {
+      return NextResponse.json(
+        { error: 'Only Proposta Enviada can move into Em Aprovação' },
+        { status: 400 }
+      )
+    }
+
+    if (isClosedCrmStatus(requestedStatus)) {
+      if (session.role !== 'gestor') {
+        return NextResponse.json({ error: 'Only gestores can move a lead to Vendas Concluídas' }, { status: 403 })
+      }
+      if (currentStatus !== 'Em Aprovação' && currentStatus !== 'Fechado') {
+        return NextResponse.json(
+          { error: 'Lead must pass through Em Aprovação before closing' },
+          { status: 400 }
+        )
       }
     }
 
@@ -102,11 +139,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Lead not found or permission denied' }, { status: 404 })
     }
 
-    // Commission lock/unlock logic (COM-01: vendedor vinculado ao lead quando marca Fechado)
-    if (normalizeCrmStatus(body.status_contato) === 'Em Aprovação') {
+    // Commission lock/unlock logic
+    if (requestedStatus === 'Em Aprovação') {
       console.log(`[PATCH] Em Aprovação triggered for project ${projectId} by user ${session.userId} (${session.role})`)
-      // SDR → Closer flow: SDR sends lead to the current lead manager as Closer
-      // Set closer_id = manager, keep vendedor_id = SDR original
+      // SDR/vendedor sends lead to the current lead manager for approval
+      // Set closer_id = manager/approver, keep vendedor_id as the original seller
       // Note: active filter removed so inactive accounts are still found (avoids silent failures)
       const managerEmail = process.env.PRIMARY_LEAD_MANAGER_EMAIL || 'rooger@projetus.org'
       const managerRes = await query(
@@ -127,7 +164,7 @@ export async function PATCH(
       } else {
         console.error(`[PATCH] lead manager (${managerEmail}) NOT FOUND in users table — closer_id not set`)
       }
-    } else if (body.status_contato === 'Fechado') {
+    } else if (isClosedCrmStatus(requestedStatus)) {
       // Step 1: Ensure vendedor_id is set. If NULL, assign current user as vendedor.
       await query(`
         UPDATE vendedor_projetos
@@ -137,89 +174,27 @@ export async function PATCH(
 
       // Check if this lead has a closer (split commission scenario)
       const leadCheck = await query(
-        `SELECT closer_id, tipo_vendedor, valor_venda FROM vendedor_projetos WHERE id = $1`,
+        `SELECT closer_id, tipo_vendedor, valor_venda, vendedor_id FROM vendedor_projetos WHERE id = $1`,
         [projectId]
       )
       const leadRow = leadCheck[0]
-      const hasCloser = leadRow?.closer_id != null
+      const approverId = leadRow?.closer_id || session.userId
 
-      if (hasCloser) {
-        // SPLIT COMMISSION: SDR gets 1.5%, Closer (Paulo) gets 3.5%
-        // SDR commission (comissao_valor on vendedor_id)
-        // Closer commission (closer_comissao_valor on closer_id)
-        await query(`
-          UPDATE vendedor_projetos
-          SET comissao_percentual = 1.50,
-              comissao_valor = COALESCE(valor_venda, 0) * 0.015,
-              comissao_bonus = 50.00,
-              closer_comissao_percentual = 3.50,
-              closer_comissao_valor = COALESCE(valor_venda, 0) * 0.035,
-              comissao_locked = true,
-              fechamento_at = COALESCE(fechamento_at, NOW()),
-              updated_at = NOW()
-          WHERE id = $1
-        `, [projectId])
-      } else {
-        // Standard commission: no closer involved
-        // Recalculate and lock commission when setting Fechado
-        // SDR 1.5%, Closer 3.5%, In-Sites Sells 5%
-        await query(`
-          WITH lead_info AS (
-            SELECT id, tipo_vendedor, valor_venda
-            FROM vendedor_projetos WHERE id = $1
-          ),
-          override_check AS (
-            SELECT percentual_override, taxa_fixa_override
-            FROM commission_overrides
-            WHERE lead_id = $1 AND active = true
-            ORDER BY created_at DESC LIMIT 1
-          ),
-          config_check AS (
-            SELECT percentual_default, taxa_fixa
-            FROM commission_config
-            WHERE tipo_vendedor = (SELECT tipo_vendedor FROM lead_info)
-              AND vendedor_id IS NULL AND active = true
-            ORDER BY created_at DESC LIMIT 1
-          )
-          UPDATE vendedor_projetos
-          SET comissao_percentual = COALESCE(
-                (SELECT percentual_override FROM override_check),
-                (SELECT percentual_default FROM config_check),
-                CASE
-                  WHEN tipo_vendedor = 'SDR' THEN 1.50
-                  WHEN tipo_vendedor IN ('In-Sites Sells', 'Exclusivo') THEN 5.00
-                  ELSE 3.50
-                END
-              ),
-              comissao_valor = (
-                COALESCE(valor_venda, 0) * (
-                  COALESCE(
-                    (SELECT percentual_override FROM override_check),
-                    (SELECT percentual_default FROM config_check),
-                    CASE
-                      WHEN tipo_vendedor = 'SDR' THEN 1.50
-                      WHEN tipo_vendedor IN ('In-Sites Sells', 'Exclusivo') THEN 5.00
-                      ELSE 3.50
-                    END
-                  ) / 100
-                )
-              ),
-              comissao_bonus = CASE
-                WHEN tipo_vendedor IN ('In-Sites Sells', 'Exclusivo') THEN 0
-                ELSE COALESCE(
-                  (SELECT taxa_fixa_override FROM override_check),
-                  (SELECT taxa_fixa FROM config_check),
-                  50.00
-                )
-              END,
-              comissao_locked = true,
-              fechamento_at = COALESCE(fechamento_at, NOW()),
-              updated_at = NOW()
-          WHERE id = $1
-        `, [projectId])
-      }
-    } else if (body.status_contato !== undefined && normalizeCrmStatus(body.status_contato) !== 'Fechado' && normalizeCrmStatus(body.status_contato) !== 'Em Aprovação') {
-      // Unlock commission if status changes away from Fechado
+      await query(`
+        UPDATE vendedor_projetos
+        SET comissao_percentual = 5.00,
+            comissao_valor = COALESCE(valor_venda, 0) * 0.05,
+            comissao_bonus = COALESCE(valor_venda, 0) * 0.02,
+            closer_id = COALESCE(closer_id, $2),
+            closer_comissao_percentual = 3.00,
+            closer_comissao_valor = COALESCE(valor_venda, 0) * 0.03,
+            comissao_locked = true,
+            fechamento_at = COALESCE(fechamento_at, NOW()),
+            updated_at = NOW()
+        WHERE id = $1
+      `, [projectId, approverId])
+    } else if (body.status_contato !== undefined && !isClosedCrmStatus(requestedStatus)) {
+      // Unlock commission if status changes away from Vendas Concluídas / Em Aprovação
       // Always clear closer_id when status is not 'Em Aprovação' or 'Fechado'
       // This ensures stale closer_id values don't cause Paulo to see leads he should not see
       await query(`
@@ -231,23 +206,26 @@ export async function PATCH(
         WHERE id = $1 AND (comissao_locked = true OR closer_id IS NOT NULL OR comissao_valor IS NOT NULL OR fechamento_at IS NOT NULL)
       `, [projectId])
     } else if (body.tipo_vendedor !== undefined && !body.status_contato) {
-      // If tipo_vendedor changed and lead is already Fechado, recalculate commission
+      // If tipo_vendedor changed and lead is already closed, recalculate commission
       // First check if lead has closer_id — must query DB since closer_id is server-side only
-      const closerCheck = await query(
+      const closerCheck = await query<{
+        closer_id: string | null
+        status_contato: string | null
+      }>(
         `SELECT closer_id, status_contato FROM vendedor_projetos WHERE id = $1`,
         [projectId]
       )
       const closerRow = closerCheck[0]
 
-      if (closerRow?.closer_id != null && closerRow?.status_contato === 'Fechado') {
-        // SPLIT COMMISSION re-apply: SDR 1.5% + R$50, Closer 3.5%
+      if (closerRow?.closer_id != null && isClosedCrmStatus(closerRow?.status_contato)) {
+        // Re-apply the fixed 5% + 3% + 2% split for closed deals
         await query(`
           UPDATE vendedor_projetos
-          SET comissao_percentual = 1.50,
-              comissao_valor = COALESCE(valor_venda, 0) * 0.015,
-              comissao_bonus = 50.00,
-              closer_comissao_percentual = 3.50,
-              closer_comissao_valor = COALESCE(valor_venda, 0) * 0.035,
+          SET comissao_percentual = 5.00,
+              comissao_valor = COALESCE(valor_venda, 0) * 0.05,
+              comissao_bonus = COALESCE(valor_venda, 0) * 0.02,
+              closer_comissao_percentual = 3.00,
+              closer_comissao_valor = COALESCE(valor_venda, 0) * 0.03,
               updated_at = NOW()
           WHERE id = $1
         `, [projectId])
@@ -268,28 +246,17 @@ export async function PATCH(
           UPDATE vendedor_projetos
           SET comissao_percentual = COALESCE(
                 (SELECT percentual_default FROM config_check),
-                CASE
-                  WHEN tipo_vendedor = 'SDR' THEN 1.50
-                  WHEN tipo_vendedor IN ('In-Sites Sells', 'Exclusivo') THEN 5.00
-                  ELSE 3.50
-                END
+                5.00
               ),
               comissao_valor = (
                 COALESCE(valor_venda, 0) * (
                   COALESCE(
                     (SELECT percentual_default FROM config_check),
-                    CASE
-                      WHEN tipo_vendedor = 'SDR' THEN 1.50
-                      WHEN tipo_vendedor IN ('In-Sites Sells', 'Exclusivo') THEN 5.00
-                      ELSE 3.50
-                    END
+                    5.00
                   ) / 100
                 )
               ),
-              comissao_bonus = CASE
-                WHEN tipo_vendedor IN ('In-Sites Sells', 'Exclusivo') THEN 0
-                ELSE COALESCE((SELECT taxa_fixa FROM config_check), 50.00)
-              END,
+              comissao_bonus = COALESCE(valor_venda, 0) * 0.02,
               updated_at = NOW()
           WHERE id = $1 AND status_contato = 'Fechado'
         `, [projectId])

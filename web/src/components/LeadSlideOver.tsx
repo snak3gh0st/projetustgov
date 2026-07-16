@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatCNPJ, formatCurrency, whatsappMeUrlFromTelefone } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
-import { normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
+import { formatCrmStatusLabel, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-500/20',
@@ -102,7 +102,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
 
           {lead.status_contato && (
             <span className={`inline-block mt-3 text-xs font-medium rounded-full px-3 py-1 border ${STATUS_COLORS[normalizeCrmStatus(lead.status_contato)] || STATUS_COLORS['Não Contatado']}`}>
-              {normalizeCrmStatus(lead.status_contato)}
+              {formatCrmStatusLabel(lead.status_contato)}
             </span>
           )}
 
@@ -114,7 +114,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 : 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-500/20'
             }`}>
-              {normalizeTipoVendedor(localLead.tipo_vendedor)} ({normalizeTipoVendedor(localLead.tipo_vendedor) === 'SDR' ? '1,5%' : normalizeTipoVendedor(localLead.tipo_vendedor) === 'In-Sites Sells' ? '5%' : '3,5%'})
+              {normalizeTipoVendedor(localLead.tipo_vendedor) === 'Closer' ? 'Gestor' : 'Consultor'} ({normalizeTipoVendedor(localLead.tipo_vendedor) === 'Closer' ? '3%' : '5%'})
             </span>
           )}
         </div>
@@ -144,7 +144,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                       {formatCurrency(Number(emenda.valor_emenda) || 0)}
                     </span>
                     <span className={`text-[10px] font-medium rounded-full px-2 py-0.5 border ${STATUS_COLORS[normalizeCrmStatus(emenda.status_contato)] || STATUS_COLORS['Não Contatado']}`}>
-                      {normalizeCrmStatus(emenda.status_contato)}
+                      {formatCrmStatusLabel(emenda.status_contato)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -190,7 +190,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
           )}
 
           {/* Sale Value & Commission Info */}
-          {localLead.status_contato === 'Fechado' && localLead.valor_venda && (
+          {normalizeCrmStatus(localLead.status_contato) === 'Fechado' && localLead.valor_venda && (
             <div className="bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-400 dark:text-gray-500">Valor da Venda</span>
@@ -201,7 +201,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
               {localLead.comissao_valor != null && localLead.comissao_valor > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-400 dark:text-gray-500">
-                    Comissao ({Number(localLead.comissao_percentual || 0).toFixed(1)}%)
+                    Comissão ({Number(localLead.comissao_percentual || 0).toFixed(1)}%)
                   </span>
                   <span className="text-sm font-semibold text-[#0072F7]">
                     {formatCurrency(localLead.comissao_valor)}
@@ -210,7 +210,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
               )}
               {localLead.comissao_bonus != null && localLead.comissao_bonus > 0 && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-400 dark:text-gray-500">Bonus por fechamento</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">Fundo Comercial</span>
                   <span className="text-sm font-semibold text-green-600 dark:text-green-400">
                     {formatCurrency(localLead.comissao_bonus)}
                   </span>
@@ -218,11 +218,11 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
               )}
             </div>
           )}
-          {!localLead.valor_venda && localLead.comissao_valor != null && localLead.comissao_valor > 0 && (
+              {!localLead.valor_venda && localLead.comissao_valor != null && localLead.comissao_valor > 0 && (
             <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-400 dark:text-gray-500">
-                Comissao ({normalizeTipoVendedor(localLead.tipo_vendedor) || 'SDR'} - {Number(localLead.comissao_percentual || 0).toFixed(1)}%)
+                Comissão ({normalizeTipoVendedor(localLead.tipo_vendedor) || 'SDR'} - {Number(localLead.comissao_percentual || 0).toFixed(1)}%)
                 </span>
                 <span className="text-sm font-semibold text-[#0072F7]">
                   {formatCurrency(localLead.comissao_valor)}

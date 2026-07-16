@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatCNPJ, formatCompactCurrency, formatDate, whatsappMeUrlFromTelefone } from '@/lib/format'
 import ContactNotesTimeline from '@/components/ContactNotesTimeline'
+import { formatCrmStatusLabel } from '@/lib/crm-catalog'
 
 interface ContactRow {
   id: number
@@ -443,7 +444,7 @@ export default function ExecucaoSlideOver({
                     crmStatus === 'Aguardando Closer' ? 'bg-purple-100 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400' :
                     crmStatus === 'Retorno' ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400' :
                     'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
-                  }`}>{crmStatus}</span>
+                  }`}>{formatCrmStatusLabel(crmStatus)}</span>
                 </div>
               )}
               {crmObservacoes && (

@@ -28,9 +28,9 @@ interface ComissaoLead {
 }
 
 interface PauloBreakdown {
-  in_sites_sells: { total: number; count: number; valor_venda: number }
-  closer: { total: number; count: number; valor_venda: number }
-  coordenador: { total: number; count: number; valor_venda: number }
+  consultor: { total: number; count: number; valor_venda: number }
+  gestor: { total: number; count: number; valor_venda: number }
+  fundo_comercial: { total: number; count: number; valor_venda: number }
   total_geral: number
 }
 
@@ -340,20 +340,20 @@ export default function ComissoesPage() {
         /* Lead manager's view: show personal commission total */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-gray-900 border-2 border-[#0072F7] shadow-sm rounded-xl p-5">
-            <p className="text-xs text-[#0072F7] uppercase tracking-wider font-medium">Minha Comissao Total</p>
+            <p className="text-xs text-[#0072F7] uppercase tracking-wider font-medium">Minha Comissão Total</p>
             <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
               {formatCurrency(data.paulo_breakdown.total_geral)}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">In-Sites Sells + Closer + Coordenador</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Consultor + Gestor + Fundo Comercial</p>
           </div>
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Bonus</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Fundo Comercial</p>
             <p className="text-3xl font-heading font-bold text-green-600 mt-2">
               {formatCurrency(data.summary.total_bonus)}
             </p>
           </div>
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Leads Fechados</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Vendas Concluídas</p>
             <p className="text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-2">{data.summary.total_leads}</p>
           </div>
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
@@ -361,33 +361,27 @@ export default function ComissoesPage() {
             <p className="text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-2">
               {formatCurrency(data.summary.total_valor_venda)}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Valor vendas fechadas</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Valor vendas concluídas</p>
           </div>
         </div>
       ) : data.role === 'gestor' ? (
         /* Gestor view: show total paid out to everyone */
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Comissoes Vendedores</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Comissões Consultores</p>
             <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
               {formatCurrency(data.summary.total_comissao)}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">SDR + In-Sites Sells + Closer</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">5% do consultor sobre a receita</p>
           </div>
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Comissao {data.lead_manager_name || 'Rooger'} (Closer)</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Comissão Gestor</p>
             <p className="text-2xl font-heading font-bold text-purple-600 mt-2">
               {formatCurrency(data.summary.total_closer_comissao)}
             </p>
           </div>
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Coordenador 1%</p>
-            <p className="text-2xl font-heading font-bold text-amber-600 mt-2">
-              {formatCurrency(data.paulo_breakdown?.coordenador.total || 0)}
-            </p>
-          </div>
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Bonus</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Fundo Comercial</p>
             <p className="text-3xl font-heading font-bold text-green-600 mt-2">
               {formatCurrency(data.summary.total_bonus)}
             </p>
@@ -405,7 +399,7 @@ export default function ComissoesPage() {
               {formatCurrency(
                 data.summary.total_comissao
                 + data.summary.total_closer_comissao
-                + (data.paulo_breakdown?.coordenador.total || 0)
+                + (data.paulo_breakdown?.fundo_comercial.total || 0)
                 + data.summary.total_bonus
               )}
             </p>
@@ -415,21 +409,21 @@ export default function ComissoesPage() {
         /* Vendedor view: show their own commission */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Minha Comissao</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Minha Comissão</p>
             <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
               {formatCurrency(data.summary.total_comissao)}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Somente leads Fechados</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Somente vendas concluídas</p>
           </div>
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Bonus Fechamentos</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Fundo Comercial</p>
             <p className="text-3xl font-heading font-bold text-green-600 mt-2">
               {formatCurrency(data.summary.total_bonus)}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">R$ 50 por lead fechado</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">2% da receita por venda concluída</p>
           </div>
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Leads Fechados</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Vendas Concluídas</p>
             <p className="text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-2">{data.summary.total_leads}</p>
           </div>
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
@@ -446,34 +440,34 @@ export default function ComissoesPage() {
       {data.paulo_breakdown && (
         <div>
           <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100 mb-3">
-            Comissao do Coordenador
+            Comissão Gerencial
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
-              <p className="text-xs text-emerald-600 uppercase tracking-wider font-medium">In-Sites Sells (5%)</p>
+              <p className="text-xs text-emerald-600 uppercase tracking-wider font-medium">Consultor (5%)</p>
               <p className="text-2xl font-heading font-bold text-emerald-700 mt-2">
-                {formatCurrency(data.paulo_breakdown.in_sites_sells.total)}
+                {formatCurrency(data.paulo_breakdown.consultor.total)}
               </p>
               <p className="text-xs text-emerald-500 mt-1">
-                {data.paulo_breakdown.in_sites_sells.count} clientes • {formatCurrency(data.paulo_breakdown.in_sites_sells.valor_venda)} em vendas
+                {data.paulo_breakdown.consultor.count} clientes • {formatCurrency(data.paulo_breakdown.consultor.valor_venda)} em vendas
               </p>
             </div>
             <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 rounded-xl p-5">
-              <p className="text-xs text-purple-600 dark:text-purple-400 uppercase tracking-wider font-medium">Closer (3,5%)</p>
+              <p className="text-xs text-purple-600 dark:text-purple-400 uppercase tracking-wider font-medium">Gestor (3%)</p>
               <p className="text-2xl font-heading font-bold text-purple-700 mt-2">
-                {formatCurrency(data.paulo_breakdown.closer.total)}
+                {formatCurrency(data.paulo_breakdown.gestor.total)}
               </p>
               <p className="text-xs text-purple-500 mt-1">
-                {data.paulo_breakdown.closer.count} leads fechados • {formatCurrency(data.paulo_breakdown.closer.valor_venda)} em vendas
+                {data.paulo_breakdown.gestor.count} leads aprovados • {formatCurrency(data.paulo_breakdown.gestor.valor_venda)} em vendas
               </p>
             </div>
             <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-5">
-              <p className="text-xs text-amber-600 dark:text-amber-400 uppercase tracking-wider font-medium">Coordenador (1%)</p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 uppercase tracking-wider font-medium">Fundo Comercial (2%)</p>
               <p className="text-2xl font-heading font-bold text-amber-700 mt-2">
-                {formatCurrency(data.paulo_breakdown.coordenador.total)}
+                {formatCurrency(data.paulo_breakdown.fundo_comercial.total)}
               </p>
               <p className="text-xs text-amber-500 mt-1">
-                {data.paulo_breakdown.coordenador.count} leads da equipe • {formatCurrency(data.paulo_breakdown.coordenador.valor_venda)} em vendas
+                {data.paulo_breakdown.fundo_comercial.count} vendas concluídas • {formatCurrency(data.paulo_breakdown.fundo_comercial.valor_venda)} em receita
               </p>
             </div>
             <div className="bg-white dark:bg-gray-900 border-2 border-[#0072F7] rounded-xl p-5">
@@ -481,7 +475,7 @@ export default function ComissoesPage() {
               <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
                 {formatCurrency(data.paulo_breakdown.total_geral)}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">In-Sites Sells + Closer + Coordenador</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Consultor + Gestor + Fundo Comercial</p>
             </div>
           </div>
         </div>
@@ -507,13 +501,13 @@ export default function ComissoesPage() {
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400 dark:text-gray-500">Comissao</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">Comissão</span>
                     <span className="text-lg font-semibold text-[#0072F7]">
                       {formatCurrency(v.total_comissao)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400 dark:text-gray-500">Bonus</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">Fundo Comercial</span>
                     <span className="text-sm font-semibold text-green-600">
                       {formatCurrency(v.total_bonus)}
                     </span>
@@ -527,32 +521,32 @@ export default function ComissoesPage() {
                 </div>
               </div>
             ))}
-            {/* Lead manager card — closer + coordenador commissions */}
+            {/* Lead manager card — consultor + gestor + fundo */}
             {data.paulo_breakdown && isGestor && (
               <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-bold text-purple-900">{data.lead_manager_name || 'Rooger'} (Gestor)</h3>
                   <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded font-medium">
-                    {data.paulo_breakdown.closer.count + data.paulo_breakdown.in_sites_sells.count} fechados
+                    {data.paulo_breakdown.gestor.count + data.paulo_breakdown.consultor.count} vendas
                   </span>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-purple-500">In-Sites Sells (5%)</span>
+                    <span className="text-xs text-purple-500">Consultor (5%)</span>
                     <span className="text-sm font-semibold text-emerald-700">
-                      {formatCurrency(data.paulo_breakdown.in_sites_sells.total)}
+                      {formatCurrency(data.paulo_breakdown.consultor.total)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-purple-500">Closer (3,5%)</span>
+                    <span className="text-xs text-purple-500">Gestor (3%)</span>
                     <span className="text-sm font-semibold text-purple-700">
-                      {formatCurrency(data.paulo_breakdown.closer.total)}
+                      {formatCurrency(data.paulo_breakdown.gestor.total)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-purple-500">Coordenador (1%)</span>
+                    <span className="text-xs text-purple-500">Fundo Comercial (2%)</span>
                     <span className="text-sm font-semibold text-amber-700">
-                      {formatCurrency(data.paulo_breakdown.coordenador.total)}
+                      {formatCurrency(data.paulo_breakdown.fundo_comercial.total)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between border-t border-purple-200 pt-1 mt-1">
@@ -582,14 +576,14 @@ export default function ComissoesPage() {
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700 text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                   <th onClick={() => handleSort('nome')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Lead<SortIcon col="nome" /></th>
-                  <th onClick={() => handleSort('vendedor')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">SDR / Vendedor<SortIcon col="vendedor" /></th>
-                  <th onClick={() => handleSort('tipo')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Tipo<SortIcon col="tipo" /></th>
-                  <th onClick={() => handleSort('valor_venda')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Valor Venda<SortIcon col="valor_venda" /></th>
+                  <th onClick={() => handleSort('vendedor')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Responsável<SortIcon col="vendedor" /></th>
+                  <th onClick={() => handleSort('tipo')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Categoria<SortIcon col="tipo" /></th>
+                  <th onClick={() => handleSort('valor_venda')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Valor da Venda<SortIcon col="valor_venda" /></th>
                   <th onClick={() => handleSort('percentual')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">%<SortIcon col="percentual" /></th>
-                  <th onClick={() => handleSort('comissao')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Comissao SDR<SortIcon col="comissao" /></th>
-                  <th className="text-right px-6 py-3">Closer</th>
-                  <th onClick={() => handleSort('bonus')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Bonus<SortIcon col="bonus" /></th>
-                  <th onClick={() => handleSort('data')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Data Fechamento<SortIcon col="data" /></th>
+                  <th onClick={() => handleSort('comissao')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Comissão Consultor<SortIcon col="comissao" /></th>
+                  <th className="text-right px-6 py-3">Gestor</th>
+                  <th onClick={() => handleSort('bonus')} className="text-right px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Fundo Comercial<SortIcon col="bonus" /></th>
+                  <th onClick={() => handleSort('data')} className="text-left px-6 py-3 cursor-pointer hover:text-[#0072F7] select-none">Data da Venda<SortIcon col="data" /></th>
                   {isGestor && <th className="text-center px-4 py-3">Acao</th>}
                 </tr>
               </thead>
@@ -608,7 +602,7 @@ export default function ComissoesPage() {
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-900 dark:text-gray-100">{lead.vendedor_nome}</span>
                       {lead.closer_nome && (
-                        <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">Closer: {lead.closer_nome}</p>
+                        <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">Gestor: {lead.closer_nome}</p>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -689,11 +683,11 @@ export default function ComissoesPage() {
           </div>
         ) : (
           <div className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-            <p className="text-base">Nenhum lead com comissao encontrado no periodo selecionado</p>
+            <p className="text-base">Nenhum lead com comissão encontrado no período selecionado</p>
             {vendedorFilter && data.selected_vendedor_stats ? (
               <p className="text-sm mt-2">
-                {selectedVendedorNome}: {data.selected_vendedor_stats.total_leads} leads no periodo, {data.selected_vendedor_stats.fechados} fechados,
-                {' '}{data.selected_vendedor_stats.fechados_com_comissao} com comissao (&gt; 0).
+                {selectedVendedorNome}: {data.selected_vendedor_stats.total_leads} leads no período, {data.selected_vendedor_stats.fechados} vendas concluídas,
+                {' '}{data.selected_vendedor_stats.fechados_com_comissao} com comissão (&gt; 0).
               </p>
             ) : (
               <p className="text-sm mt-2">Ajuste os filtros acima para ver outros resultados</p>
@@ -705,7 +699,7 @@ export default function ComissoesPage() {
       {overrideForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setOverrideForm(null)}>
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-heading font-bold text-gray-900 dark:text-gray-100 mb-1">Alterar Comissao</h3>
+            <h3 className="text-lg font-heading font-bold text-gray-900 dark:text-gray-100 mb-1">Alterar Comissão</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 truncate">{overrideForm.lead_nome}</p>
 
             <div className="space-y-4">
@@ -728,7 +722,7 @@ export default function ComissoesPage() {
               </div>
 
               <div>
-                <label className="block text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Bonus (R$)</label>
+                <label className="block text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Fundo Comercial (R$)</label>
                 <input
                   type="number"
                   step="10"

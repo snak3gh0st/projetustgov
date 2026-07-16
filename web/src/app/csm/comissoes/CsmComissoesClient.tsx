@@ -81,7 +81,7 @@ export default function CsmComissoesClient({ userRole, userName }: Props) {
   return (
     <div className="p-8">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Comissoes</h1>
+        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Comissões</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           {userName ?? 'CSM'} ({userRole}) — {data.summary.total_leads} leads fechados
         </p>
@@ -89,11 +89,11 @@ export default function CsmComissoesClient({ userRole, userName }: Props) {
 
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Comissao</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Comissão</p>
           <p className="text-xl font-semibold text-gray-800 dark:text-gray-100 mt-1">{formatCurrency(data.summary.total_comissao)}</p>
         </div>
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Bonus</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Fundo Comercial</p>
           <p className="text-xl font-semibold text-gray-800 dark:text-gray-100 mt-1">{formatCurrency(data.summary.total_bonus)}</p>
         </div>
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-4">
@@ -104,7 +104,7 @@ export default function CsmComissoesClient({ userRole, userName }: Props) {
 
       <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
         {data.leads.length === 0 ? (
-          <div className="p-6 text-sm text-gray-500 dark:text-gray-400">Nenhum lead fechado com comissao registrada para esta sessao CSM.</div>
+          <div className="p-6 text-sm text-gray-500 dark:text-gray-400">Nenhum lead fechado com comissão registrada para esta sessão CSM.</div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-gray-800/50 text-xs uppercase text-gray-500 dark:text-gray-400">
@@ -112,9 +112,9 @@ export default function CsmComissoesClient({ userRole, userName }: Props) {
                 <th className="px-4 py-2 text-left">CNPJ</th>
                 <th className="px-4 py-2 text-left">Nome</th>
                 <th className="px-4 py-2 text-right">Valor Venda</th>
-                <th className="px-4 py-2 text-right">Comissao</th>
-                <th className="px-4 py-2 text-right">Bonus</th>
-                <th className="px-4 py-2 text-left">Closer</th>
+                <th className="px-4 py-2 text-right">Comissão</th>
+                <th className="px-4 py-2 text-right">Fundo Comercial</th>
+                <th className="px-4 py-2 text-left">Gestor</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">

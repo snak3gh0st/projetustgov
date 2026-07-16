@@ -10,6 +10,18 @@ export const CRM_STATUS_CANONICAL = [
   'Telefone Invalido',
 ] as const
 
+export const CRM_STATUS_SELECT_OPTIONS = [
+  'Não Contatado',
+  'Sem Interesse',
+  'Em Atendimento',
+  'Quente',
+  'Muito Quente',
+  'Proposta Enviada',
+  'Em Aprovação',
+  'Vendas Concluídas',
+  'Telefone Invalido',
+] as const
+
 export type CrmStatus = typeof CRM_STATUS_CANONICAL[number]
 
 export const CRM_STATUS_ALIASES: Record<string, CrmStatus> = {
@@ -24,6 +36,7 @@ export const CRM_STATUS_ALIASES: Record<string, CrmStatus> = {
   'Proposta Enviada': 'Proposta Enviada',
   'Em Aprovação': 'Em Aprovação',
   'Fechado': 'Fechado',
+  'Vendas Concluídas': 'Fechado',
   'Telefone Invalido': 'Telefone Invalido',
   'Quente': 'Quente',
   'Muito Quente': 'Muito Quente',
@@ -32,6 +45,15 @@ export const CRM_STATUS_ALIASES: Record<string, CrmStatus> = {
 export function normalizeCrmStatus(status: string | null | undefined): CrmStatus {
   if (!status) return 'Não Contatado'
   return CRM_STATUS_ALIASES[status] || status as CrmStatus
+}
+
+export function formatCrmStatusLabel(status: string | null | undefined): string {
+  const normalized = normalizeCrmStatus(status)
+  return normalized === 'Fechado' ? 'Vendas Concluídas' : normalized
+}
+
+export function isClosedCrmStatus(status: string | null | undefined): boolean {
+  return normalizeCrmStatus(status) === 'Fechado'
 }
 
 export const CRM_TIPO_VENDEDOR = {
@@ -55,8 +77,10 @@ export function normalizeTipoVendedor(tipo: string | null | undefined): CrmTipoV
 }
 
 export const CRM_COMMISSIONS = {
-  SDR: 1.5,
-  CLOSER: 3.5,
+  CONSULTOR: 5.0,
+  GESTOR: 3.0,
+  FUNDO_COMERCIAL: 2.0,
+  SDR: 5.0,
+  CLOSER: 3.0,
   IN_SITES_SELLS: 5.0,
-  CLOSER_SPLIT_BONUS: 50.0,
 } as const

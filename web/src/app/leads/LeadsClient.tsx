@@ -7,9 +7,9 @@ import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
 import SaleModal from '@/components/SaleModal'
-import { normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
+import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
-const STATUS_OPTIONS = ['Não Contatado', 'Sem Interesse', 'Em Atendimento', 'Quente', 'Muito Quente', 'Proposta Enviada', 'Em Aprovação', 'Fechado', 'Telefone Invalido']
+const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-orange-50 dark:bg-orange-500/15 text-orange-600 dark:text-orange-300',
   'Sem Interesse': 'bg-yellow-50 dark:bg-yellow-500/15 text-yellow-600 dark:text-yellow-300',
@@ -152,14 +152,14 @@ export default function LeadsClient() {
       const first = cnpjLeads[0] // highest value (ORDER BY valor_emenda DESC)
       const totalValor = cnpjLeads.reduce((sum, l) => sum + (Number(l.valor_emenda) || 0), 0)
       const totalComissao = cnpjLeads.reduce((sum, l) => {
-        if (l.status_contato === 'Fechado') {
+        if (normalizeCrmStatus(l.status_contato) === 'Fechado') {
           return sum + (Number(l.comissao_valor) || 0) + (Number(l.comissao_bonus) || 0)
         }
         return sum
       }, 0)
-      const allFechado = cnpjLeads.every(l => l.status_contato === 'Fechado')
-      // True if every Fechado emenda has comissao locked (not just the first emenda)
-      const fechadoLeads = cnpjLeads.filter(l => l.status_contato === 'Fechado')
+      const allFechado = cnpjLeads.every(l => normalizeCrmStatus(l.status_contato) === 'Fechado')
+      // True if every closed emenda has comissao locked (not just the first emenda)
+      const fechadoLeads = cnpjLeads.filter(l => normalizeCrmStatus(l.status_contato) === 'Fechado')
       const allFechadoLocked = fechadoLeads.length > 0 && fechadoLeads.every(l => l.comissao_locked)
       return {
         ...first,
@@ -261,8 +261,8 @@ export default function LeadsClient() {
       const lead = leads.find(l => l.id === id)
       if (!lead) return
 
-      // If status is changing to "Fechado", open SaleModal instead of proceeding directly
-      if (field === 'status_contato' && value === 'Fechado') {
+      // If status is changing to the closed stage, open SaleModal instead of proceeding directly
+      if (field === 'status_contato' && isClosedCrmStatus(value)) {
         setSaleModal({
           leadId: id,
           leadCnpj: lead.cnpj,
@@ -306,7 +306,7 @@ export default function LeadsClient() {
     saleData: { valor_venda: number; tipo_vendedor: string; status_contato?: string }
   ) {
     try {
-      const targetStatus = saleData.status_contato || 'Fechado'
+      const targetStatus = saleData.status_contato || 'Vendas Concluídas'
       const body = {
         id: leadId,
         status_contato: targetStatus,
@@ -487,7 +487,7 @@ export default function LeadsClient() {
                   <th onClick={() => handleSort('status')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Status<SortIcon col="status" /></th>
                   {(sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador') && (
                     <th onClick={() => handleSort('vendedor')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                      {sessionUser?.role === 'coordenador' ? 'SDR' : 'Vendedor'}
+                      Responsável
                       <SortIcon col="vendedor" />
                     </th>
                   )}
@@ -558,7 +558,7 @@ export default function LeadsClient() {
                             {formatCompactCurrency(totalComissao)}
                           </span>
                           {allFechadoLocked && (
-                            <span className="inline-block ml-1 text-green-500 align-middle" title="Comissao confirmada">
+                            <span className="inline-block ml-1 text-green-500 align-middle" title="Comissão confirmada">
                               <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a4 4 0 0 0-4 4v2H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-1V5a4 4 0 0 0-4-4zm-2 4a2 2 0 1 1 4 0v2H6V5z"/></svg>
                             </span>
                           )}
@@ -636,7 +636,7 @@ export default function LeadsClient() {
                     </td>
                     <td className="px-3 py-2.5">
                       <select
-                        value={normalizeCrmStatus(lead.status_contato)}
+                        value={formatCrmStatusLabel(lead.status_contato)}
                         onClick={e => e.stopPropagation()}
                         onChange={e => updateLead(lead.id, 'status_contato', e.target.value)}
                         className={`text-xs font-medium rounded-full px-3 py-1 border-0 cursor-pointer ${STATUS_COLORS[normalizeCrmStatus(lead.status_contato)] || STATUS_COLORS['Não Contatado']}`}
@@ -702,7 +702,7 @@ export default function LeadsClient() {
                         </div>
                       </td>
                       <td className="px-4 py-2 whitespace-nowrap">
-                        {sub.status_contato === 'Fechado' && (Number(sub.comissao_valor) || 0) > 0 ? (
+                        {normalizeCrmStatus(sub.status_contato) === 'Fechado' && (Number(sub.comissao_valor) || 0) > 0 ? (
                           <span className="text-green-600 font-medium text-xs">
                             {formatCompactCurrency((Number(sub.comissao_valor) || 0) + (Number(sub.comissao_bonus) || 0))}
                           </span>
@@ -717,7 +717,7 @@ export default function LeadsClient() {
                       </td>
                       <td className="px-4 py-2" colSpan={sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador' ? 5 : 4}>
                         <select
-                          value={normalizeCrmStatus(sub.status_contato)}
+                          value={formatCrmStatusLabel(sub.status_contato)}
                           onClick={e => e.stopPropagation()}
                           onChange={e => updateLead(sub.id, 'status_contato', e.target.value)}
                           className={`text-xs font-medium rounded-full px-2 py-0.5 border-0 cursor-pointer ${STATUS_COLORS[normalizeCrmStatus(sub.status_contato)] || STATUS_COLORS['Não Contatado']}`}

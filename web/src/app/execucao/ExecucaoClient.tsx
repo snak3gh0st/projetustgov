@@ -5,7 +5,7 @@ import { formatCNPJ, formatCompactCurrency, formatCurrency, formatDate, whatsapp
 import KPIRow from '@/components/KPIRow'
 import ExecucaoSlideOver from '@/components/ExecucaoSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
-import { normalizeCrmStatus } from '@/lib/crm-catalog'
+import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, normalizeCrmStatus } from '@/lib/crm-catalog'
 
 interface ExecucaoAggRow {
   cnpj: string
@@ -47,7 +47,7 @@ const UF_OPTIONS = [
   'PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'
 ]
 
-const STATUS_OPTIONS = ['Não Contatado', 'Sem Interesse', 'Em Atendimento', 'Quente', 'Muito Quente', 'Proposta Enviada', 'Em Aprovação', 'Fechado', 'Telefone Invalido']
+const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
 
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400',
@@ -637,7 +637,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                     {/* STATUS */}
                     <td className="px-2 py-2">
                       <select
-                        value={row.crm_status || 'Não Contatado'}
+                        value={formatCrmStatusLabel(row.crm_status || 'Não Contatado')}
                         onClick={e => e.stopPropagation()}
                         onChange={e => { void updateStatus(row.cnpj, e.target.value) }}
                         disabled={isGestor}

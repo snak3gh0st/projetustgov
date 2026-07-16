@@ -366,7 +366,7 @@ function AprovacaoTab({ data }: { data: BIData }) {
       {/* KPI Cards — 7 cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
 
-        {/* Card 1: Faturamento Fechado */}
+        {/* Card 1: Faturamento de Vendas Concluídas */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
           <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Faturamento</p>
           <p className="text-3xl font-heading font-bold text-green-600 mt-2">
@@ -438,12 +438,12 @@ function AprovacaoTab({ data }: { data: BIData }) {
           <span className="text-lg font-heading font-bold text-[#0072F7]">{formatCompactCurrency(kpis.pipeline_value)}</span>
         </div>
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4 flex items-center justify-between">
-          <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Comissao Acumulada</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Comissão Acumulada</span>
           <span className="text-lg font-heading font-bold text-green-600">{formatCompactCurrency(kpis.commission_earned)}</span>
         </div>
         {kpis.commission_bonus > 0 && (
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4 flex items-center justify-between">
-            <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Bonus Fechamento</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Fundo Comercial</span>
             <span className="text-lg font-heading font-bold text-green-600">{formatCurrency(kpis.commission_bonus)}</span>
           </div>
         )}
@@ -496,9 +496,9 @@ function AprovacaoTab({ data }: { data: BIData }) {
           )}
         </div>
 
-        {/* Chart 2: Comissao por Vendedor */}
+        {/* Chart 2: Comissão por Vendedor */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Comissao por Vendedor</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Comissão por Vendedor</h3>
           {data.commission_by_vendedor.length === 0 ? (
             <div className="flex items-center justify-center h-64 text-gray-400 dark:text-gray-500 text-sm">Sem dados</div>
           ) : (
@@ -525,7 +525,7 @@ function AprovacaoTab({ data }: { data: BIData }) {
                     labelStyle={{ color: '#111827' }}
                     formatter={(value: number, name: string) => [
                       formatCurrency(value),
-                      name === 'total_comissao' ? 'Comissao' : 'Bonus'
+                      name === 'total_comissao' ? 'Comissão' : 'Fundo Comercial'
                     ]}
                   />
                   <Bar dataKey="total_comissao" fill="#0072F7" radius={[4, 4, 0, 0]} maxBarSize={40} name="total_comissao" stackId="a" />

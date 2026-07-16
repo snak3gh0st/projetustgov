@@ -38,6 +38,7 @@ import {
   EXECUCAO_ONLY_ROLES,
   PRESTACAO_ONLY_ROLES,
 } from '@/lib/tgov'
+import { formatCrmStatusLabel } from '@/lib/crm-catalog'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -105,7 +106,7 @@ function InternalStatusBadge({ status }: { status: string | null | undefined }) 
     'Sem Interesse': 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400',
   }
   const cls = colors[status] ?? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{status}</span>
+  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{formatCrmStatusLabel(status)}</span>
 }
 
 // ---------------------------------------------------------------------------
@@ -824,7 +825,7 @@ export default function TGovDashboardClient({ userRole, view = 'pipeline', highl
                           : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                       }`}
                     >
-                      {bucket.status}
+                      {formatCrmStatusLabel(bucket.status)}
                       <span className={`rounded-full px-1 py-0.5 text-[10px] font-semibold ${active ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
                         {bucket.count.toLocaleString('pt-BR')}
                       </span>
@@ -2021,7 +2022,7 @@ function AprovacaoBISummary({
                 {donutData.map((entry, i) => (
                   <div key={entry.status} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-1 -mx-1 transition-colors" onClick={() => onStatusClick?.(entry.status)}>
                     <span className="shrink-0 w-2 h-2 rounded-sm" style={{ background: colorFor(entry.status, i) }} />
-                    <span className="text-xs text-gray-600 dark:text-gray-300 truncate flex-1" title={entry.status}>{entry.status}</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-300 truncate flex-1" title={formatCrmStatusLabel(entry.status)}>{formatCrmStatusLabel(entry.status)}</span>
                     <span className="text-xs font-bold text-gray-800 dark:text-gray-200 tabular-nums">{entry.count}</span>
                   </div>
                 ))}
@@ -2208,7 +2209,7 @@ function ExecucaoBISummary({
                 {donutData.map((entry, i) => (
                   <div key={entry.status} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-1 -mx-1 transition-colors" onClick={() => onStatusClick?.(entry.status)}>
                     <span className="shrink-0 w-2 h-2 rounded-sm" style={{ background: STATUS_COLORS[entry.status] ?? FALLBACK[i % FALLBACK.length] }} />
-                    <span className="text-xs text-gray-600 dark:text-gray-300 truncate flex-1" title={entry.status}>{entry.status}</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-300 truncate flex-1" title={formatCrmStatusLabel(entry.status)}>{formatCrmStatusLabel(entry.status)}</span>
                     <span className="text-xs font-bold text-gray-800 dark:text-gray-200 tabular-nums">{entry.count}</span>
                   </div>
                 ))}

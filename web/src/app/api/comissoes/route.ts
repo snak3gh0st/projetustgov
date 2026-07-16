@@ -156,18 +156,17 @@ export async function GET(request: NextRequest) {
 
     const summary = summaryRows[0] || {}
     const perVendedor = perVendedorRows.map(v => {
-      const isGestor = v.vendedor_role === 'gestor'
       return {
         vendedor_id: v.vendedor_id,
         vendedor_nome: v.vendedor_nome,
         lead_count: Number(v.lead_count),
-        total_comissao: isGestor ? 0 : (Number(v.total_comissao) || 0),
-        total_bonus: isGestor ? 0 : (Number(v.total_bonus) || 0),
+        total_comissao: Number(v.total_comissao) || 0,
+        total_bonus: Number(v.total_bonus) || 0,
         fechados_count: Number(v.fechados_count) || 0,
       }
     })
 
-    // Current lead manager's 3-type commission breakdown (visible to manager and gestors)
+    // Current lead manager's commission breakdown (visible to manager and gestors)
     let pauloBreakdown = null
     let leadManagerName = 'Rooger'
     if (isManagerBreakdownView) {
@@ -189,8 +188,8 @@ export async function GET(request: NextRequest) {
       if (endDate) { pauloFilters.push(`${dateField} <= $${pIdx++}::timestamp`); pauloParams.push(`${endDate} 23:59:59`) }
       const pauloWhere = pauloFilters.join(' AND ')
 
-      const [inSitesRows, closerRows, coordenadorRows] = await Promise.all([
-        // In-Sites Sells: manager's own clients (tipo_vendedor = 'In-Sites Sells', vendedor_id = manager)
+      const [consultorRows, gestorRows, fundoRows] = await Promise.all([
+        // Consultor: manager's own closed sales
         query(`
           SELECT
             COALESCE(SUM(vp.comissao_valor), 0)::numeric as total,
@@ -198,11 +197,10 @@ export async function GET(request: NextRequest) {
             COALESCE(SUM(vp.valor_venda), 0)::numeric as valor_venda
           FROM vendedor_projetos vp
           WHERE ${pauloWhere}
-            AND vp.tipo_vendedor IN ('Exclusivo', 'In-Sites Sells')
             AND vp.vendedor_id = $${pIdx}
         `, [...pauloParams, managerUserId]),
 
-        // Closer: leads where manager is closer_id + Fechado
+        // Gestor: approvals closed by the manager
         query(`
           SELECT
             COALESCE(SUM(vp.closer_comissao_valor), 0)::numeric as total,
@@ -215,58 +213,45 @@ export async function GET(request: NextRequest) {
             AND vp.closer_comissao_valor > 0
         `, [...pauloParams, managerUserId]),
 
-        // Coordenador: 1% of regular vendedores' Fechado sales
-        // Excludes gestor-role leads and manager's own leads.
+        // Fundo comercial: 2% pool across all closed sales
         query(`
           SELECT
-            COALESCE(SUM(vp.valor_venda) * 0.01, 0)::numeric as total,
+            COALESCE(SUM(COALESCE(vp.comissao_bonus, 0)), 0)::numeric as total,
             COUNT(DISTINCT vp.cnpj)::int as count,
             COALESCE(SUM(vp.valor_venda), 0)::numeric as valor_venda
           FROM vendedor_projetos vp
-          JOIN users u ON u.id = vp.vendedor_id
           WHERE ${pauloWhere}
-            AND vp.vendedor_id IS NOT NULL
-            AND vp.valor_venda > 0
-            AND u.role = 'vendedor'
-            AND vp.vendedor_id != $${pIdx}
-        `, [...pauloParams, managerUserId]),
+        `, [...pauloParams]),
       ])
 
-      const inSitesTotal = Number(inSitesRows[0]?.total) || 0
-      const closerTotal = Number(closerRows[0]?.total) || 0
-      const coordenadorTotal = Number(coordenadorRows[0]?.total) || 0
+      const consultorTotal = Number(consultorRows[0]?.total) || 0
+      const gestorTotal = Number(gestorRows[0]?.total) || 0
+      const fundoTotal = Number(fundoRows[0]?.total) || 0
 
       pauloBreakdown = {
-        in_sites_sells: {
-          total: inSitesTotal,
-          count: Number(inSitesRows[0]?.count) || 0,
-          valor_venda: Number(inSitesRows[0]?.valor_venda) || 0,
+        consultor: {
+          total: consultorTotal,
+          count: Number(consultorRows[0]?.count) || 0,
+          valor_venda: Number(consultorRows[0]?.valor_venda) || 0,
         },
-        closer: {
-          total: closerTotal,
-          count: Number(closerRows[0]?.count) || 0,
-          valor_venda: Number(closerRows[0]?.valor_venda) || 0,
+        gestor: {
+          total: gestorTotal,
+          count: Number(gestorRows[0]?.count) || 0,
+          valor_venda: Number(gestorRows[0]?.valor_venda) || 0,
         },
-        coordenador: {
-          total: coordenadorTotal,
-          count: Number(coordenadorRows[0]?.count) || 0,
-          valor_venda: Number(coordenadorRows[0]?.valor_venda) || 0,
+        fundo_comercial: {
+          total: fundoTotal,
+          count: Number(fundoRows[0]?.count) || 0,
+          valor_venda: Number(fundoRows[0]?.valor_venda) || 0,
         },
-        total_geral: inSitesTotal + closerTotal + coordenadorTotal,
+        total_geral: consultorTotal + gestorTotal + fundoTotal,
       }
     } // else managerUserId found
     } // isManagerBreakdownView
 
-    // Map leads, zeroing out comissao_bonus for coordenador on split leads
-    // where they are the closer but not the vendedor (bonus belongs to the SDR).
-    // Also zero out all commission fields for gestor-role vendedores — gestors
-    // are socio/owners and never earn commission.
+    // Map leads. Gestor can also earn seller commission now; the management share
+    // and fundo comercial remain visible only to the gestor view.
     const mappedLeads = leadsRows.map(lead => {
-      const isCloserNotVendedor =
-        session.role === 'coordenador' &&
-        lead.closer_id === session.userId &&
-        lead.vendedor_id !== session.userId
-      const isGestorLead = lead.vendedor_role === 'gestor'
       const tipoVendedor = normalizeTipoVendedor(String(lead.tipo_vendedor ?? null))
       const statusContato = normalizeCrmStatus(String(lead.status_contato ?? null))
         return {
@@ -277,8 +262,8 @@ export async function GET(request: NextRequest) {
           valor_venda: Number(lead.valor_venda) || 0,
           tipo_vendedor: tipoVendedor,
           comissao_percentual: Number(lead.comissao_percentual) || 0,
-          comissao_valor: isGestorLead ? 0 : (Number(lead.comissao_valor) || 0),
-          comissao_bonus: (isCloserNotVendedor || isGestorLead) ? 0 : (Number(lead.comissao_bonus) || 0),
+          comissao_valor: Number(lead.comissao_valor) || 0,
+          comissao_bonus: session.role === 'gestor' ? (Number(lead.comissao_bonus) || 0) : 0,
           comissao_locked: Boolean(lead.comissao_locked),
           status_contato: statusContato,
           vendedor_nome: lead.vendedor_nome,
@@ -286,7 +271,7 @@ export async function GET(request: NextRequest) {
           closer_id: lead.closer_id || null,
         closer_nome: lead.closer_nome || null,
         closer_comissao_percentual: Number(lead.closer_comissao_percentual) || 0,
-        closer_comissao_valor: isGestorLead ? 0 : (Number(lead.closer_comissao_valor) || 0),
+        closer_comissao_valor: session.role === 'gestor' ? (Number(lead.closer_comissao_valor) || 0) : 0,
         updated_at: lead.updated_at,
         has_override: Boolean(lead.has_override),
         override_motivo: lead.override_motivo,

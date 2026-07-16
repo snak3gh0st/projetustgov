@@ -206,6 +206,7 @@ async function runSetup() {
         WHEN status_contato IN ('Retorno') THEN 'Em Atendimento'
         WHEN status_contato IN ('Proposta') THEN 'Proposta Enviada'
         WHEN status_contato IN ('Aguardando Closer') THEN 'Em Aprovação'
+        WHEN status_contato IN ('Quente', 'Muito Quente', 'Telefone Invalido') THEN 'Não Contatado'
         WHEN status_contato IS NULL OR status_contato IN ('Novo', 'Contactado') THEN 'Não Contatado'
         ELSE status_contato
       END;
@@ -286,18 +287,18 @@ async function runSetup() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_co_lead_id ON commission_overrides(lead_id);`).catch(() => {})
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_co_active ON commission_overrides(active);`).catch(() => {})
 
-    // 6d. Seed default commission config (SDR: 1.5%+R$50, Closer: 3.5%+R$50, In-Sites Sells: 5%, Coordenador: 1%)
+    // 6d. Seed default commission config (consultor, gestor, fundo comercial)
     await pool.query(`
       INSERT INTO commission_config (tipo_vendedor, percentual_default, taxa_fixa, active)
-      SELECT 'SDR', 1.50, 50.00, true
+      SELECT 'SDR', 5.00, 0.00, true
       WHERE NOT EXISTS (SELECT 1 FROM commission_config WHERE tipo_vendedor = 'SDR' AND active = true);
     `).catch(() => {})
     await pool.query(`
       INSERT INTO commission_config (tipo_vendedor, percentual_default, taxa_fixa, active)
-      SELECT 'Closer', 3.50, 50.00, true
+      SELECT 'Closer', 3.00, 0.00, true
       WHERE NOT EXISTS (SELECT 1 FROM commission_config WHERE tipo_vendedor = 'Closer' AND active = true);
     `).catch(() => {})
-    // Paulo's In-Sites Sells: 5% commission for his own clients, no fixed bonus
+    // Paulo's In-Sites Sells: 5% commission for his own clients
     const pauloRow = await pool.query("SELECT id FROM users WHERE email = 'paulo@projetus.org' LIMIT 1").catch(() => ({ rows: [] }))
     const pauloId = pauloRow.rows[0]?.id ?? null
     if (pauloId) {
@@ -308,7 +309,7 @@ async function runSetup() {
       `, [pauloId]).catch(() => {})
       await pool.query(`
         INSERT INTO commission_config (tipo_vendedor, percentual_default, taxa_fixa, vendedor_id, active)
-        SELECT 'Coordenador', 1.00, 0, $1, true
+        SELECT 'Coordenador', 3.00, 0, $1, true
         WHERE NOT EXISTS (SELECT 1 FROM commission_config WHERE tipo_vendedor = 'Coordenador' AND active = true);
       `, [pauloId]).catch(() => {})
     }
@@ -373,18 +374,17 @@ async function runSetup() {
       UPDATE vendedor_projetos SET comissao_locked = true WHERE status_contato = 'Fechado' AND comissao_locked IS NOT true;
     `).catch(() => {})
 
-    // 6g. Migrate existing records: separate bonus from comissao_valor
-    // If comissao_bonus is NULL/0 but comissao_valor has the old combined value,
-    // recalculate: comissao_valor = valor_venda * (comissao_percentual/100), bonus = 50
+    // 6g. Migrate existing records to the new 5% / 3% / 2% commission split
     await pool.query(`
       UPDATE vendedor_projetos
-      SET comissao_valor = COALESCE(valor_venda, 0) * (COALESCE(comissao_percentual, 1.00) / 100),
-          comissao_bonus = 50.00
-      WHERE comissao_valor IS NOT NULL
-        AND comissao_valor > 0
+      SET comissao_percentual = 5.00,
+          comissao_valor = COALESCE(valor_venda, 0) * 0.05,
+          comissao_bonus = COALESCE(valor_venda, 0) * 0.02,
+          closer_comissao_percentual = 3.00,
+          closer_comissao_valor = COALESCE(valor_venda, 0) * 0.03
+      WHERE status_contato = 'Fechado'
         AND valor_venda IS NOT NULL
         AND valor_venda > 0
-        AND (comissao_bonus IS NULL OR comissao_bonus = 0)
     `).catch(() => {})
 
     // 7. Status migration already handled in step 3 above (Quick Task 4)
