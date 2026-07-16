@@ -31,9 +31,15 @@ export default function LoginPage() {
             <img src="/logo.png" alt="Projete" style={{ width: 180, height: 'auto' }} />
           </div>
           <p className="text-gray-400 dark:text-gray-500 text-sm">Hub da PROJETUS</p>
-          <p className="text-[11px] text-[#0072F7] mt-2">
-            powered by <span className="font-semibold">SigmaIntel</span>
-          </p>
+          <a
+            href="https://bterminal.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 flex items-center justify-center gap-2 text-[11px] text-[#0072F7] hover:underline"
+          >
+            <img src="/bt-mark.svg" alt="BTerminal Systems" className="h-4 w-4" />
+            <span className="font-semibold">Powered by BTerminal Systems</span>
+          </a>
         </div>
 
         {/* Form */}

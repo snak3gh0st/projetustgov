@@ -180,9 +180,15 @@ export default function Sidebar({ user, defaultOpen = true }: SidebarProps) {
       {/* Footer: powered by */}
       <div className={`px-5 py-3 border-t border-gray-200 dark:border-gray-800 ${open ? '' : 'hidden'}`}>
         <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center mb-1">v4.7</p>
-        <p className="text-[10px] text-[#0072F7] tracking-wider text-center">
-          powered by <a href="https://sigmaintel.io" target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline">SigmaIntel</a>
-        </p>
+        <a
+          href="https://bterminal.io"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 text-[10px] text-[#0072F7] tracking-wider hover:underline"
+        >
+          <img src="/bt-mark.svg" alt="BTerminal Systems" className="h-4 w-4" />
+          <span className="font-semibold">Powered by BTerminal Systems</span>
+        </a>
       </div>
     </aside>
   )

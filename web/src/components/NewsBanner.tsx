@@ -61,7 +61,7 @@ export default function NewsBanner() {
         ))}
       </ul>
       <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
-        Projetus CRM {NEWS_VERSION} &mdash; SigmaIntel
+        Projetus CRM {NEWS_VERSION} &mdash; BTerminal Systems
       </p>
     </div>
   )

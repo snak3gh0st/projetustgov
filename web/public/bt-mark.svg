@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="BTerminal mark">
+  <defs>
+    <linearGradient id="btb" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4a94ff"/>
+      <stop offset="1" stop-color="#1e63e8"/>
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="236" height="236" rx="52" fill="#0c0e22" stroke="#2a3060" stroke-width="6"/>
+  <polyline points="70,86 114,126 70,166" fill="none" stroke="url(#btb)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="132" y1="166" x2="182" y2="166" stroke="#f3f5fb" stroke-width="20" stroke-linecap="round"/>
+  <path d="M172 190 v42 M172 190 h13 a10.5 10.5 0 0 1 0 21 h-13 m13 0 a10.5 10.5 0 0 1 0 21 h-13" fill="none" stroke="#4a94ff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

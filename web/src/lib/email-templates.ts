@@ -47,7 +47,7 @@ function baseLayout(title: string, bodyHtml: string): string {
             <td style="padding:36px 40px 20px;text-align:center;">
               <img src="${LOGO_URL}" alt="Projete" width="180" style="display:inline-block;width:180px;height:auto;max-width:180px;">
               <div style="font-family:${FONT_BODY};font-size:12px;color:${TEXT_FAINT};margin-top:10px;font-weight:400;letter-spacing:0.2px;">CRM &amp; TGov</div>
-              <div style="font-family:${FONT_BODY};font-size:10px;color:${BRAND};margin-top:8px;letter-spacing:0.3px;">powered by <strong style="font-weight:600;">SigmaIntel</strong></div>
+              <div style="font-family:${FONT_BODY};font-size:10px;color:${BRAND};margin-top:8px;letter-spacing:0.3px;"><img src="https://bterminal.io/bt-mark.png" alt="BTerminal Systems" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px;"><a href="https://bterminal.io" style="color:${BRAND};text-decoration:none;">Powered by <strong style="font-weight:600;">BTerminal Systems</strong></a></div>
             </td>
           </tr>
           <tr><td style="padding:0 40px;"><div style="height:1px;background:${BORDER};"></div></td></tr>
