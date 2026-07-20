@@ -88,6 +88,16 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string }> = {
   'Fechado': { color: 'text-green-600', bg: 'bg-green-50 border-green-200' },
 }
 
+interface FundoLancamento {
+  id: number
+  tipo: 'credito' | 'debito'
+  valor: number
+  descricao: string
+  lead_id: number | null
+  criado_em: string
+  criado_por_nome: string
+}
+
 export default function ComissoesPage() {
   const [data, setData] = useState<ComissaoData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -97,6 +107,9 @@ export default function ComissoesPage() {
   const [overrideForm, setOverrideForm] = useState<OverrideForm | null>(null)
   const [overrideLoading, setOverrideLoading] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [fundo, setFundo] = useState<{ saldo: number; lancamentos: FundoLancamento[] } | null>(null)
+  const [novoDebito, setNovoDebito] = useState({ valor: '', descricao: '' })
+  const [debitoLoading, setDebitoLoading] = useState(false)
 
   // Filter state
   const [vendedorFilter, setVendedorFilter] = useState<string>('')
@@ -159,6 +172,33 @@ export default function ComissoesPage() {
   }
 
   const isGestor = data?.role === 'gestor'
+
+  useEffect(() => {
+    if (!isGestor) return
+    fetch('/api/fundo-comercial')
+      .then(r => r.ok ? r.json() : null)
+      .then(setFundo)
+      .catch(() => {})
+  }, [isGestor, refreshKey])
+
+  async function submitDebito() {
+    const valor = Number(novoDebito.valor)
+    if (!valor || valor <= 0 || !novoDebito.descricao.trim()) return
+    setDebitoLoading(true)
+    try {
+      const res = await fetch('/api/fundo-comercial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ valor, descricao: novoDebito.descricao.trim() }),
+      })
+      if (res.ok) {
+        setNovoDebito({ valor: '', descricao: '' })
+        setRefreshKey(k => k + 1)
+      }
+    } finally {
+      setDebitoLoading(false)
+    }
+  }
 
   function openOverride(lead: ComissaoLead) {
     setOverrideForm({
@@ -695,6 +735,80 @@ export default function ComissoesPage() {
           </div>
         )}
       </div>
+      {/* Fundo Comercial — extrato e débitos (gestor only) */}
+      {isGestor && fundo && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100">Fundo Comercial — Extrato</h2>
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Saldo atual: <span className="font-semibold text-green-600">{formatCurrency(fundo.saldo)}</span></p>
+            </div>
+            <div className="flex items-end gap-2 flex-wrap">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Valor do débito (R$)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="10"
+                  value={novoDebito.valor}
+                  onChange={e => setNovoDebito(f => ({ ...f, valor: e.target.value }))}
+                  className="bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 w-32 focus:border-[#0072F7] focus:outline-none"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Descrição</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Incentivo equipe — julho"
+                  value={novoDebito.descricao}
+                  onChange={e => setNovoDebito(f => ({ ...f, descricao: e.target.value }))}
+                  className="bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 w-64 focus:border-[#0072F7] focus:outline-none"
+                />
+              </div>
+              <button
+                onClick={submitDebito}
+                disabled={debitoLoading || !novoDebito.valor || !novoDebito.descricao.trim()}
+                className="px-4 py-2 bg-[#0072F7] text-white rounded-lg text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                {debitoLoading ? 'Salvando...' : 'Lançar débito'}
+              </button>
+            </div>
+          </div>
+          <div className="overflow-x-auto max-h-80 overflow-y-auto">
+            <table className="min-w-[700px] w-full">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700 text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  <th className="text-left px-6 py-3">Data</th>
+                  <th className="text-left px-6 py-3">Tipo</th>
+                  <th className="text-left px-6 py-3">Descrição</th>
+                  <th className="text-left px-6 py-3">Por</th>
+                  <th className="text-right px-6 py-3">Valor</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {fundo.lancamentos.map(l => (
+                  <tr key={l.id}>
+                    <td className="px-6 py-3 text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(l.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="px-6 py-3">
+                      <span className={`text-xs font-semibold px-2 py-1 rounded ${l.tipo === 'credito' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                        {l.tipo === 'credito' ? 'Crédito' : 'Débito'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-700 dark:text-gray-300">{l.descricao}</td>
+                    <td className="px-6 py-3 text-sm text-gray-500 dark:text-gray-400">{l.criado_por_nome}</td>
+                    <td className={`px-6 py-3 text-right text-sm font-semibold ${l.tipo === 'credito' ? 'text-green-600' : 'text-red-600'}`}>
+                      {l.tipo === 'credito' ? '+' : '-'}{formatCurrency(l.valor)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Override Modal */}
       {overrideForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setOverrideForm(null)}>

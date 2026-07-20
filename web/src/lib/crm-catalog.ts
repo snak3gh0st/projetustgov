@@ -34,9 +34,10 @@ export const CRM_STATUS_ALIASES: Record<string, CrmStatus> = {
   'Em Aprovação': 'Em Aprovação',
   'Fechado': 'Fechado',
   'Vendas Concluídas': 'Fechado',
-  'Telefone Invalido': 'Telefone Invalido',
-  'Quente': 'Quente',
-  'Muito Quente': 'Muito Quente',
+  // Filtros descontinuados — qualquer lead nesses status é tratado como Não Contatado
+  'Telefone Invalido': 'Não Contatado',
+  'Quente': 'Não Contatado',
+  'Muito Quente': 'Não Contatado',
 }
 
 export function normalizeCrmStatus(status: string | null | undefined): CrmStatus {
@@ -73,11 +74,9 @@ export function normalizeTipoVendedor(tipo: string | null | undefined): CrmTipoV
   return CRM_TIPO_VENDEDOR.SDR
 }
 
+// Modelo fixo, sem divisão SDR/Closer: todo fechamento paga 5% consultor + 3% gestor + 2% fundo comercial.
 export const CRM_COMMISSIONS = {
   CONSULTOR: 5.0,
   GESTOR: 3.0,
   FUNDO_COMERCIAL: 2.0,
-  SDR: 5.0,
-  CLOSER: 3.0,
-  IN_SITES_SELLS: 5.0,
 } as const

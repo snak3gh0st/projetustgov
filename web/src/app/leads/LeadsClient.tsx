@@ -7,7 +7,7 @@ import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
 import SaleModal from '@/components/SaleModal'
-import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
+import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, normalizeCrmStatus } from '@/lib/crm-catalog'
 
 const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
 const STATUS_COLORS: Record<string, string> = {
@@ -303,7 +303,7 @@ export default function LeadsClient() {
   async function submitFechado(
     leadId: number,
     leadCnpj: string,
-    saleData: { valor_venda: number; tipo_vendedor: string; status_contato?: string }
+    saleData: { valor_venda: number; status_contato?: string }
   ) {
     try {
       const targetStatus = saleData.status_contato || 'Vendas Concluídas'
@@ -311,7 +311,6 @@ export default function LeadsClient() {
         id: leadId,
         status_contato: targetStatus,
         valor_venda: saleData.valor_venda,
-        tipo_vendedor: saleData.tipo_vendedor,
       }
       const res = await fetch(`/api/leads/${encodeURIComponent(leadCnpj)}`, {
         method: 'PATCH',
@@ -329,7 +328,6 @@ export default function LeadsClient() {
           ...l,
           status_contato: targetStatus,
           valor_venda: saleData.valor_venda,
-          tipo_vendedor: saleData.tipo_vendedor as 'SDR' | 'Closer',
           ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
           ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
           ...(data.comissao_bonus != null ? { comissao_bonus: Number(data.comissao_bonus) } : {}),

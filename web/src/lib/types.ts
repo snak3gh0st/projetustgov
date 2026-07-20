@@ -38,6 +38,7 @@ export interface VendedorProjeto {
   closer_id: string | null
   closer_comissao_percentual: number | null
   closer_comissao_valor: number | null
+  contrato_assinado?: boolean
   valor_venda: number | null
   observacoes: string | null
   // Metadata

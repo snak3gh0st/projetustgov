@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { CRM_COMMISSIONS, normalizeTipoVendedor } from '@/lib/crm-catalog'
+import { CRM_COMMISSIONS } from '@/lib/crm-catalog'
 
 interface SaleModalProps {
   open: boolean
@@ -9,13 +9,12 @@ interface SaleModalProps {
   currentTipoVendedor?: string | null
   userRole?: string | null
   isExclusivo?: boolean
-  onConfirm: (data: { valor_venda: number; tipo_vendedor: string; status_contato?: string }) => void
+  onConfirm: (data: { valor_venda: number; status_contato?: string }) => void
   onCancel: () => void
 }
 
-export default function SaleModal({ open, leadNome, currentTipoVendedor, userRole, isExclusivo, onConfirm, onCancel }: SaleModalProps) {
+export default function SaleModal({ open, leadNome, userRole, onConfirm, onCancel }: SaleModalProps) {
   const [valorStr, setValorStr] = useState('')
-  const [tipoVendedor, setTipoVendedor] = useState(currentTipoVendedor || 'SDR')
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -25,16 +24,11 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
   useEffect(() => {
     if (open) {
       setValorStr('')
-      if (isExclusivo) {
-        setTipoVendedor('In-Sites Sells')
-      } else {
-        setTipoVendedor(normalizeTipoVendedor(currentTipoVendedor))
-      }
       setError('')
       // Focus input after a brief delay for animation
       setTimeout(() => inputRef.current?.focus(), 100)
     }
-  }, [open, currentTipoVendedor, isExclusivo])
+  }, [open])
 
   // Handle escape key
   useEffect(() => {
@@ -82,9 +76,9 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
       return
     }
     if (isVendedor) {
-      onConfirm({ valor_venda: valor, tipo_vendedor: tipoVendedor, status_contato: 'Em Aprovação' })
+      onConfirm({ valor_venda: valor, status_contato: 'Em Aprovação' })
     } else {
-      onConfirm({ valor_venda: valor, tipo_vendedor: tipoVendedor })
+      onConfirm({ valor_venda: valor })
     }
   }
 
@@ -92,12 +86,7 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
 
   // Compute preview commission
   const previewValor = parseCurrencyInput(valorStr) || 0
-  const pct = tipoVendedor === 'Closer'
-    ? CRM_COMMISSIONS.GESTOR
-    : tipoVendedor === 'In-Sites Sells'
-      ? CRM_COMMISSIONS.IN_SITES_SELLS
-      : CRM_COMMISSIONS.CONSULTOR
-  const previewComissao = previewValor * (pct / 100)
+  const previewComissao = previewValor * (CRM_COMMISSIONS.CONSULTOR / 100)
   const previewFundoComercial = previewValor * (CRM_COMMISSIONS.FUNDO_COMERCIAL / 100)
 
   return (
@@ -141,49 +130,12 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
             )}
           </div>
 
-          {/* Tipo Vendedor */}
-          <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
-              Tipo de Vendedor *
-            </label>
-            {isExclusivo ? (
-              <div className="px-4 py-3 rounded-xl text-sm font-semibold border bg-emerald-50 border-emerald-200 text-emerald-700">
-                In-Sites Sells (5%)
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setTipoVendedor('SDR')}
-                  className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all ${
-                    tipoVendedor === 'SDR'
-                      ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20 text-[#0072F7]'
-                      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
-                  }`}
-                >
-                  {isVendedor ? 'Consultor' : 'Consultor (5%)'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTipoVendedor('Closer')}
-                  className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all ${
-                    tipoVendedor === 'Closer'
-                      ? 'bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-500/20 text-purple-600 dark:text-purple-400'
-                      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
-                  }`}
-                  >
-                  Gestor (3%)
-                </button>
-              </div>
-            )}
-          </div>
-
           {/* Preview */}
           {previewValor > 0 && (
             <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-3 space-y-1.5">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500 dark:text-gray-400">
-                  Comissão {tipoVendedor === 'Closer' ? 'Gestor' : 'Consultor'} ({pct}%)
+                  Comissão Consultor ({CRM_COMMISSIONS.CONSULTOR}%)
                 </span>
                 <span className="text-[#0072F7] font-semibold">
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(previewComissao)}

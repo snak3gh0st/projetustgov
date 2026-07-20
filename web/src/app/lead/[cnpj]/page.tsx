@@ -134,14 +134,13 @@ export default function LeadDetailPage() {
     }
   }
 
-    async function submitFechado(projetoId: number, saleData: { valor_venda: number; tipo_vendedor: string; status_contato?: string }) {
+    async function submitFechado(projetoId: number, saleData: { valor_venda: number; status_contato?: string }) {
     try {
       const finalStatus = saleData.status_contato || 'Vendas Concluídas'
       const body = {
         id: projetoId,
         status_contato: finalStatus,
         valor_venda: saleData.valor_venda,
-        tipo_vendedor: saleData.tipo_vendedor,
       }
       const res = await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
         method: 'PATCH',
@@ -159,7 +158,6 @@ export default function LeadDetailPage() {
           ...p,
           status_contato: normalizeCrmStatus(finalStatus),
           valor_venda: saleData.valor_venda,
-          tipo_vendedor: normalizeTipoVendedor(saleData.tipo_vendedor),
           ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
           ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
           ...(data.comissao_bonus != null ? { comissao_bonus: Number(data.comissao_bonus) } : {}),
@@ -171,6 +169,19 @@ export default function LeadDetailPage() {
       setSaleModal(null)
     } catch (err) {
       console.error('Failed to submit fechado:', err)
+    }
+  }
+
+  async function setContratoAssinado(projetoId: number, value: boolean) {
+    setProjetos(prev => prev.map(p => p.id === projetoId ? { ...p, contrato_assinado: value } : p))
+    try {
+      await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: projetoId, contrato_assinado: value }),
+      })
+    } catch (err) {
+      console.error('Failed to update contrato_assinado:', err)
     }
   }
 
@@ -296,19 +307,29 @@ export default function LeadDetailPage() {
         </div>
       </div>
 
-      {/* Aguardando Closer banner */}
+      {/* Em Aprovação banner */}
       {normalizeCrmStatus(first.status_contato) === 'Em Aprovação' && (
         <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 rounded-xl p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-purple-700">{formatCrmStatusLabel(first.status_contato)} ({first.closer_nome || 'Gestor'})</p>
+              <p className="text-sm font-semibold text-purple-700">{formatCrmStatusLabel(first.status_contato)}</p>
               <p className="text-xs text-purple-500 mt-1">
                 Este lead foi enviado para conferência do gestor antes da conclusão
               </p>
             </div>
             {userRole === 'gestor' && canModify && (
-              <div className="flex gap-2">
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-sm text-purple-700 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={!!first.contrato_assinado}
+                    onChange={(e) => setContratoAssinado(first.id, e.target.checked)}
+                    className="w-4 h-4 rounded border-purple-300"
+                  />
+                  Contrato assinado
+                </label>
                 <button
+                  disabled={!first.contrato_assinado}
                   onClick={() => {
                   setSaleModal({
                     projetoId: first.id,
@@ -316,9 +337,10 @@ export default function LeadDetailPage() {
                     isExclusivo: false,
                   })
                   }}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-500 transition-colors"
+                  title={!first.contrato_assinado ? 'Confirme o contrato assinado antes de autorizar' : undefined}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-500 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                 >
-                  Concluir Venda
+                  Autorizar Fechamento
                 </button>
                 <button
                   onClick={() => updateProjeto(first.id, 'status_contato', 'Proposta Enviada')}
@@ -342,22 +364,8 @@ export default function LeadDetailPage() {
         <div className="bg-sigma-neon/10 border border-sigma-neon/30 rounded-xl p-5">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Tipo Vendedor</p>
-              {canModify && !first.closer_id ? (
-                <select
-                  value={normalizeTipoVendedor(first.tipo_vendedor)}
-                  onChange={(e) => updateProjeto(first.id, 'tipo_vendedor', e.target.value)}
-                  className="mt-1 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-sigma-neon/50"
-                >
-                  <option value="SDR">Consultor (5%)</option>
-                  <option value="Closer">Gestor (3%)</option>
-                  <option value="In-Sites Sells">Consultor (5%)</option>
-                </select>
-              ) : (
-                <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-1">
-                  {normalizeTipoVendedor(first.tipo_vendedor)}
-                </p>
-              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Categoria</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-1">Consultor</p>
             </div>
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">

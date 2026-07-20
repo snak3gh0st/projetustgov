@@ -336,10 +336,33 @@ async function runSetup() {
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='municipio') THEN
           ALTER TABLE vendedor_projetos ADD COLUMN municipio VARCHAR(255);
         END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='contrato_assinado') THEN
+          ALTER TABLE vendedor_projetos ADD COLUMN contrato_assinado BOOLEAN DEFAULT false;
+        END IF;
       END $$;
     `).catch(() => {})
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_closer ON vendedor_projetos(closer_id)`).catch(() => {})
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_uf ON vendedor_projetos(uf)`).catch(() => {})
+
+    // 6e4. Fundo Comercial ledger — credits (auto, on closing) and debits (manual, by gestor)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS fundo_comercial_lancamentos (
+        id SERIAL PRIMARY KEY,
+        tipo VARCHAR(10) NOT NULL CHECK (tipo IN ('credito','debito')),
+        valor NUMERIC(12,2) NOT NULL,
+        descricao TEXT NOT NULL,
+        lead_id INTEGER REFERENCES vendedor_projetos(id),
+        criado_por UUID NOT NULL REFERENCES users(id),
+        criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+    `).catch(() => {})
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_fcl_lead_id ON fundo_comercial_lancamentos(lead_id)`).catch(() => {})
+
+    // 6e5. Reset defensivo dos filtros descontinuados (Quente/Muito Quente/Telefone Invalido) → Não Contatado
+    await pool.query(`
+      UPDATE vendedor_projetos SET status_contato = 'Não Contatado'
+      WHERE status_contato IN ('Quente', 'Muito Quente', 'Telefone Invalido');
+    `).catch(() => {})
 
     // 6e2. Update tipo_vendedor CHECK to include 'In-Sites Sells'
     await pool.query(`

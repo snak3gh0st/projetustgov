@@ -259,11 +259,6 @@ function PipelineSection({
                   </p>
                 )}
 
-                {isVendedor && status === 'Fechado' && count > 0 && role !== 'gestor' && (
-                  <p className="text-xs text-green-600 font-medium mt-1">
-                    {count} × R$50 = {formatCurrency(count * 50)}
-                  </p>
-                )}
               </div>
             </div>
           )
@@ -577,37 +572,18 @@ export default function CRMDashboard() {
             const comissaoTotal = role === 'gestor'
               ? vendedores.reduce((sum: number, v: { comissao_total?: number }) => sum + (v.comissao_total || 0), 0)
               : (vendedores[0]?.comissao_total || 0)
-            const fechadoTotal = role === 'gestor'
-              ? vendedores.reduce((sum: number, v: { fechado?: number; comissao_total?: number }) => sum + ((v.comissao_total || 0) > 0 ? (v.fechado || 0) : 0), 0)
-              : (vendedores[0]?.fechado || 0)
-            const bonusTotal = fechadoTotal * 50
             return (
-              <>
-                <div
-                  role="button"
-                  onClick={() => { window.location.href = '/comissoes' }}
-                  className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-                >
-                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Comissão Vendas</p>
-                  <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
-                    {formatCompactCurrency(comissaoTotal)}
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatCurrency(comissaoTotal)}</p>
-                </div>
-                <div
-                  role="button"
-                  onClick={() => { window.location.href = '/leads?status_contato=Vendas%20Conclu%C3%ADdas' }}
-                  className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-                >
-                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Taxa Vendas Concluídas</p>
-                  <p className="text-3xl font-heading font-bold text-green-600 mt-2">
-                    {formatCompactCurrency(bonusTotal)}
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    {`${fechadoTotal} x R$50`}
-                  </p>
-                </div>
-              </>
+              <div
+                role="button"
+                onClick={() => { window.location.href = '/comissoes' }}
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
+              >
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Comissão Vendas</p>
+                <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
+                  {formatCompactCurrency(comissaoTotal)}
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatCurrency(comissaoTotal)}</p>
+              </div>
             )
           })()}
         </div>

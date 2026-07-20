@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
+import { isClosedCrmStatus, normalizeCrmStatus } from '@/lib/crm-catalog'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,6 +58,24 @@ export async function PATCH(
 
     if (setClauses.length === 1) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
+    }
+
+    // Mesmo gate do pipeline de vendas: só gestor fecha, e só a partir de "Em Aprovação".
+    if (body.status_contato !== undefined && isClosedCrmStatus(normalizeCrmStatus(body.status_contato))) {
+      if (session.role !== 'gestor') {
+        return NextResponse.json({ error: 'Only gestores can move a lead to Vendas Concluídas' }, { status: 403 })
+      }
+      const currentRow = await query<{ status_contato_execucao: string | null }>(
+        `SELECT status_contato_execucao FROM vendedor_projetos WHERE REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') = $1 LIMIT 1`,
+        [cnpjClean]
+      )
+      const current = normalizeCrmStatus(currentRow[0]?.status_contato_execucao)
+      if (current !== 'Em Aprovação' && !isClosedCrmStatus(current)) {
+        return NextResponse.json(
+          { error: 'Lead must pass through Em Aprovação before closing' },
+          { status: 400 }
+        )
+      }
     }
 
     if (session.role === 'vendedor') {

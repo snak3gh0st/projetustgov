@@ -91,6 +91,9 @@ export async function GET(request: NextRequest) {
 
     const summary = summaryRows[0] || {}
 
+    // Comissão de gestor e Fundo Comercial são visíveis apenas para gestor — mesma regra de /api/comissoes.
+    const isGestorView = session.role === 'gestor'
+
     const leads = leadsRows.map(lead => ({
       id: lead.id,
       cnpj: lead.cnpj,
@@ -100,22 +103,26 @@ export async function GET(request: NextRequest) {
       tipo_vendedor: lead.tipo_vendedor,
       comissao_percentual: Number(lead.comissao_percentual) || 0,
       comissao_valor: Number(lead.comissao_valor) || 0,
-      comissao_bonus: Number(lead.comissao_bonus) || 0,
+      comissao_bonus: isGestorView ? (Number(lead.comissao_bonus) || 0) : 0,
       comissao_locked: Boolean(lead.comissao_locked),
       status_contato: lead.status_contato,
       vendedor_nome: lead.vendedor_nome,
       vendedor_id: lead.vendedor_id,
       closer_id: lead.closer_id || null,
       closer_nome: lead.closer_nome || null,
+      closer_comissao_percentual: isGestorView ? (Number(lead.closer_comissao_percentual) || 0) : 0,
+      closer_comissao_valor: isGestorView ? (Number(lead.closer_comissao_valor) || 0) : 0,
       updated_at: lead.updated_at,
     }))
+
+    const total_bonus_corrected = leads.reduce((sum, l) => sum + (l.comissao_bonus || 0), 0)
 
     return NextResponse.json({
       role: session.role,
       summary: {
         total_leads: Number(summary.total_leads) || 0,
         total_comissao: Number(summary.total_comissao) || 0,
-        total_bonus: Number(summary.total_bonus) || 0,
+        total_bonus: total_bonus_corrected,
         total_valor_venda: Number(summary.total_valor_venda) || 0,
         total_valor_emenda: Number(summary.total_valor_emenda) || 0,
       },
