@@ -176,24 +176,15 @@ async function runSetup() {
     `).catch(() => {}) // ignore if already exists
 
     // 2c. Calculate commission for existing records
-    // Formula: comissao_valor = valor_venda * vendedor_percentage (commission only, no bonus)
-    //          comissao_bonus = R$50 per fechamento (separate)
+    // Formula: 5% consultor, 3% gestor (closer_comissao_valor), 2% fundo comercial (comissao_bonus)
     await pool.query(`
       UPDATE vendedor_projetos
       SET
-        comissao_percentual = CASE
-          WHEN tipo_vendedor = 'SDR' THEN 1.50
-          WHEN tipo_vendedor = 'Closer' THEN 3.50
-          WHEN tipo_vendedor IN ('Exclusivo', 'In-Sites Sells') THEN 5.00
-          ELSE 1.50
-        END,
-        comissao_valor = CASE
-          WHEN tipo_vendedor = 'SDR' THEN COALESCE(valor_venda, 0) * 0.015
-          WHEN tipo_vendedor = 'Closer' THEN COALESCE(valor_venda, 0) * 0.035
-          WHEN tipo_vendedor IN ('Exclusivo', 'In-Sites Sells') THEN COALESCE(valor_venda, 0) * 0.05
-          ELSE COALESCE(valor_venda, 0) * 0.015
-        END,
-        comissao_bonus = CASE WHEN tipo_vendedor IN ('Exclusivo', 'In-Sites Sells') THEN 0 ELSE 50.00 END
+        comissao_percentual = 5.00,
+        comissao_valor = COALESCE(valor_venda, 0) * 0.05,
+        comissao_bonus = COALESCE(valor_venda, 0) * 0.02,
+        closer_comissao_percentual = 3.00,
+        closer_comissao_valor = COALESCE(valor_venda, 0) * 0.03
       WHERE valor_venda IS NOT NULL AND valor_venda > 0
         AND (comissao_valor IS NULL OR comissao_percentual IS NULL);
     `).catch(() => {})

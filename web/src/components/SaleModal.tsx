@@ -19,9 +19,7 @@ export default function SaleModal({ open, leadNome, currentTipoVendedor, userRol
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const isVendedor = userRole === 'vendedor'
-  const isCoordenador = userRole === 'coordenador'
-  void isCoordenador // coordenador uses same logic as gestor (can close directly)
+  const isVendedor = userRole === 'vendedor' || userRole === 'coordenador'
 
   // Reset state when modal opens
   useEffect(() => {

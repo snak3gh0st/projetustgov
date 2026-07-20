@@ -14,12 +14,9 @@ export const CRM_STATUS_SELECT_OPTIONS = [
   'Não Contatado',
   'Sem Interesse',
   'Em Atendimento',
-  'Quente',
-  'Muito Quente',
   'Proposta Enviada',
   'Em Aprovação',
   'Vendas Concluídas',
-  'Telefone Invalido',
 ] as const
 
 export type CrmStatus = typeof CRM_STATUS_CANONICAL[number]
