@@ -447,20 +447,13 @@ export default function ComissoesPage() {
         </div>
       ) : (
         /* Vendedor view: show their own commission */
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
             <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Minha Comissão</p>
             <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
               {formatCurrency(data.summary.total_comissao)}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Somente vendas concluídas</p>
-          </div>
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
-            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Fundo Comercial</p>
-            <p className="text-3xl font-heading font-bold text-green-600 mt-2">
-              {formatCurrency(data.summary.total_bonus)}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">2% da receita por venda concluída</p>
           </div>
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
             <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">Vendas Concluídas</p>

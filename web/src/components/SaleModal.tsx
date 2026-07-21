@@ -141,12 +141,14 @@ export default function SaleModal({ open, leadNome, userRole, onConfirm, onCance
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(previewComissao)}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500 dark:text-gray-400">Fundo Comercial (2%)</span>
-                <span className="text-green-600 dark:text-green-400 font-semibold">
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(previewFundoComercial)}
-                </span>
-              </div>
+              {!isVendedor && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500 dark:text-gray-400">Fundo Comercial (2%)</span>
+                  <span className="text-green-600 dark:text-green-400 font-semibold">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(previewFundoComercial)}
+                  </span>
+                </div>
+              )}
               {isVendedor ? (
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Lead seguirá para aprovação do gestor.</p>
               ) : (

@@ -104,13 +104,6 @@ export async function PATCH(
       }
     }
 
-    if (requestedStatus === 'Em Aprovação' && session.role !== 'gestor' && currentStatus !== 'Proposta Enviada' && currentStatus !== 'Em Aprovação') {
-      return NextResponse.json(
-        { error: 'Only Proposta Enviada can move into Em Aprovação' },
-        { status: 400 }
-      )
-    }
-
     if (isClosedCrmStatus(requestedStatus) && currentStatus !== 'Fechado') {
       if (session.role !== 'gestor') {
         return NextResponse.json({ error: 'Only gestores can move a lead to Vendas Concluídas' }, { status: 403 })
@@ -210,13 +203,20 @@ export async function PATCH(
       `, [projectId])
     }
 
-    // Return updated commission data so frontend can refresh
-    const updated = await query(
+    // Return updated commission data so frontend can refresh.
+    // comissao_bonus (fundo comercial) and closer_comissao_valor (gestor override) are
+    // management-only figures — mirror the role gating already applied in /api/comissoes.
+    const updated = await query<Record<string, unknown>>(
       `SELECT comissao_percentual, comissao_valor, comissao_bonus, tipo_vendedor, valor_venda, status_contato, closer_id, closer_comissao_percentual, closer_comissao_valor, contrato_assinado FROM vendedor_projetos WHERE id = $1`,
       [projectId]
     )
+    const updatedRow = updated[0] || {}
+    if (session.role !== 'gestor') {
+      updatedRow.comissao_bonus = 0
+      updatedRow.closer_comissao_valor = 0
+    }
 
-    return NextResponse.json({ success: true, ...(updated[0] || {}) })
+    return NextResponse.json({ success: true, ...updatedRow })
   } catch (error) {
     console.error('Update project error:', error)
     return NextResponse.json({ error: 'Failed to update' }, { status: 500 })
