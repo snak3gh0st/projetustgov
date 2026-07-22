@@ -175,13 +175,20 @@ export default function LeadDetailPage() {
   async function setContratoAssinado(projetoId: number, value: boolean) {
     setProjetos(prev => prev.map(p => p.id === projetoId ? { ...p, contrato_assinado: value } : p))
     try {
-      await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
+      const res = await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: projetoId, contrato_assinado: value }),
       })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        setProjetos(prev => prev.map(p => p.id === projetoId ? { ...p, contrato_assinado: !value } : p))
+        alert(`Erro ao salvar confirmação de contrato: ${errData.error || 'Falha no servidor'}`)
+      }
     } catch (err) {
       console.error('Failed to update contrato_assinado:', err)
+      setProjetos(prev => prev.map(p => p.id === projetoId ? { ...p, contrato_assinado: !value } : p))
+      alert('Erro de conexão ao salvar confirmação de contrato. Tente novamente.')
     }
   }
 
