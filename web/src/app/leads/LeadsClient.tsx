@@ -54,6 +54,7 @@ export default function LeadsClient() {
     leadCnpj: string
     leadNome: string
     tipoVendedor: string | null
+    contratoAssinado: boolean
   } | null>(null)
   const [expandedCnpjs, setExpandedCnpjs] = useState<Set<string>>(new Set())
   const [clientFilter, setClientFilter] = useState('')
@@ -268,6 +269,7 @@ export default function LeadsClient() {
           leadCnpj: lead.cnpj,
           leadNome: lead.nome || 'Sem nome',
           tipoVendedor: lead.tipo_vendedor,
+          contratoAssinado: !!lead.contrato_assinado,
         })
         return // SaleModal will call submitFechado when confirmed
       }
@@ -303,14 +305,17 @@ export default function LeadsClient() {
   async function submitFechado(
     leadId: number,
     leadCnpj: string,
-    saleData: { valor_venda: number; status_contato?: string }
+    saleData: { valor_venda: number; status_contato?: string; contrato_assinado?: boolean }
   ) {
     try {
       const targetStatus = saleData.status_contato || 'Vendas Concluídas'
-      const body = {
+      const body: Record<string, unknown> = {
         id: leadId,
         status_contato: targetStatus,
         valor_venda: saleData.valor_venda,
+      }
+      if (saleData.contrato_assinado !== undefined) {
+        body.contrato_assinado = saleData.contrato_assinado
       }
       const res = await fetch(`/api/leads/${encodeURIComponent(leadCnpj)}`, {
         method: 'PATCH',
@@ -772,6 +777,7 @@ export default function LeadsClient() {
         currentTipoVendedor={saleModal?.tipoVendedor}
         userRole={sessionUser?.role || null}
         isExclusivo={saleModal?.tipoVendedor === 'In-Sites Sells' || saleModal?.tipoVendedor === 'Exclusivo'}
+        leadContratoAssinado={saleModal?.contratoAssinado}
         onCancel={() => setSaleModal(null)}
         onConfirm={(data) => {
           if (saleModal) {

@@ -9,22 +9,26 @@ interface SaleModalProps {
   currentTipoVendedor?: string | null
   userRole?: string | null
   isExclusivo?: boolean
-  onConfirm: (data: { valor_venda: number; status_contato?: string }) => void
+  leadContratoAssinado?: boolean
+  onConfirm: (data: { valor_venda: number; status_contato?: string; contrato_assinado?: boolean }) => void
   onCancel: () => void
 }
 
-export default function SaleModal({ open, leadNome, userRole, onConfirm, onCancel }: SaleModalProps) {
+export default function SaleModal({ open, leadNome, userRole, leadContratoAssinado, onConfirm, onCancel }: SaleModalProps) {
   const [valorStr, setValorStr] = useState('')
   const [error, setError] = useState('')
+  const [contratoAssinado, setContratoAssinado] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const isVendedor = userRole === 'vendedor' || userRole === 'coordenador'
+  const needsContratoConfirmation = !isVendedor && !leadContratoAssinado
 
   // Reset state when modal opens
   useEffect(() => {
     if (open) {
       setValorStr('')
       setError('')
+      setContratoAssinado(false)
       // Focus input after a brief delay for animation
       setTimeout(() => inputRef.current?.focus(), 100)
     }
@@ -75,10 +79,14 @@ export default function SaleModal({ open, leadNome, userRole, onConfirm, onCance
       setError('Informe um valor de venda valido (maior que zero)')
       return
     }
+    if (needsContratoConfirmation && !contratoAssinado) {
+      setError('Confirme que o contrato foi assinado antes de autorizar o fechamento')
+      return
+    }
     if (isVendedor) {
       onConfirm({ valor_venda: valor, status_contato: 'Em Aprovação' })
     } else {
-      onConfirm({ valor_venda: valor })
+      onConfirm({ valor_venda: valor, contrato_assinado: true })
     }
   }
 
@@ -155,6 +163,22 @@ export default function SaleModal({ open, leadNome, userRole, onConfirm, onCance
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Venda pronta para confirmação final.</p>
               )}
             </div>
+          )}
+
+          {/* Contrato assinado gate */}
+          {needsContratoConfirmation && (
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={contratoAssinado}
+                onChange={e => {
+                  setContratoAssinado(e.target.checked)
+                  setError('')
+                }}
+                className="w-4 h-4 rounded border-gray-300"
+              />
+              Contrato assinado
+            </label>
           )}
 
           {/* Actions */}

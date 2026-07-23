@@ -40,6 +40,7 @@ export default function LeadDetailPage() {
     projetoId: number
     tipoVendedor: string | null
     isExclusivo: boolean
+    contratoAssinado: boolean
   } | null>(null)
   const [execucaoFallback, setExecucaoFallback] = useState<{
     nome_proponente: string | null
@@ -102,6 +103,7 @@ export default function LeadDetailPage() {
           projetoId: id,
           tipoVendedor: projeto?.tipo_vendedor || null,
           isExclusivo: projeto?.tipo_vendedor === 'In-Sites Sells' || projeto?.tipo_vendedor === 'Exclusivo',
+          contratoAssinado: !!projeto?.contrato_assinado,
         })
         return
       }
@@ -134,13 +136,16 @@ export default function LeadDetailPage() {
     }
   }
 
-    async function submitFechado(projetoId: number, saleData: { valor_venda: number; status_contato?: string }) {
+    async function submitFechado(projetoId: number, saleData: { valor_venda: number; status_contato?: string; contrato_assinado?: boolean }) {
     try {
       const finalStatus = saleData.status_contato || 'Vendas Concluídas'
-      const body = {
+      const body: Record<string, unknown> = {
         id: projetoId,
         status_contato: finalStatus,
         valor_venda: saleData.valor_venda,
+      }
+      if (saleData.contrato_assinado !== undefined) {
+        body.contrato_assinado = saleData.contrato_assinado
       }
       const res = await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
         method: 'PATCH',
@@ -342,6 +347,7 @@ export default function LeadDetailPage() {
                     projetoId: first.id,
                     tipoVendedor: first.tipo_vendedor || null,
                     isExclusivo: false,
+                    contratoAssinado: !!first.contrato_assinado,
                   })
                   }}
                   title={!first.contrato_assinado ? 'Confirme o contrato assinado antes de autorizar' : undefined}
@@ -610,6 +616,7 @@ export default function LeadDetailPage() {
         currentTipoVendedor={saleModal?.tipoVendedor}
         userRole={userRole}
         isExclusivo={saleModal?.isExclusivo}
+        leadContratoAssinado={saleModal?.contratoAssinado}
         onCancel={() => setSaleModal(null)}
         onConfirm={(data) => {
           if (saleModal) {
