@@ -134,6 +134,7 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
   const [loadingProjects, setLoadingProjects] = useState<Set<string>>(new Set())
   const [fetchTrigger, setFetchTrigger] = useState(0)
   const [selectedClient, setSelectedClient] = useState<string | null>(null)
+  const [exportCidade, setExportCidade] = useState<'ambas' | 'Brasília' | 'Goiânia'>('ambas')
 
   // Mount fetch (also triggered by retry)
   useEffect(() => {
@@ -221,6 +222,13 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
     }
   }
 
+  const exportClientsCSV = () => {
+    const cidades = exportCidade === 'ambas' ? 'Brasília,Goiânia' : exportCidade
+    const a = document.createElement('a')
+    a.href = `/api/csm/clients/export?cidades=${encodeURIComponent(cidades)}`
+    a.click()
+  }
+
   // Loading state
   if (loading && clients.length === 0) {
     return (
@@ -269,11 +277,35 @@ export default function CsmDashboardClient({ userRole, userName }: CsmDashboardC
   return (
     <div className="p-8">
       {/* Header */}
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Clientes CSM</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Area de Customer Success — sessao ativa: {userName ?? 'sem nome'} ({userRole})
-        </p>
+      <header className="mb-6 flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Clientes CSM</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Area de Customer Success — sessao ativa: {userName ?? 'sem nome'} ({userRole})
+          </p>
+        </div>
+
+        {/* Extraction area — export the full client base by city, not limited to this portfolio */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-3 flex items-end gap-2">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Extrair base de clientes</label>
+            <select
+              value={exportCidade}
+              onChange={e => setExportCidade(e.target.value as typeof exportCidade)}
+              className="border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            >
+              <option value="ambas">Brasília + Goiânia</option>
+              <option value="Brasília">Brasília</option>
+              <option value="Goiânia">Goiânia</option>
+            </select>
+          </div>
+          <button
+            onClick={exportClientsCSV}
+            className="rounded bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-1.5"
+          >
+            Baixar CSV
+          </button>
+        </div>
       </header>
 
       {/* Filters bar */}

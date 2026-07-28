@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from 'react'
 
-const NEWS_VERSION = 'v4.8'
+const NEWS_VERSION = 'v4.9'
 const NEWS_ITEMS = [
+  'CSM: nova área de extração — baixe a base de clientes por cidade (Brasília, Goiânia) em CSV',
   'UI: tema escuro completo em todas as paginas',
   'UI: tema escuro disponivel em toda a plataforma (botao no menu lateral)',
   'UI: menu lateral pode ser recolhido para liberar espaco — preferencia salva entre sessoes',
   'UI: navegacao mobile com gaveta inferior (toque no botao azul no canto inferior esquerdo)',
   'UI: assinatura "Hub da PROJETUS" no lugar de "CRM de Vendas"',
 ]
-const STORAGE_KEY = `projetus-news-dismissed-v4.8`
+const STORAGE_KEY = `projetus-news-dismissed-v4.9`
 
 export default function NewsBanner() {
   const [dismissed, setDismissed] = useState(true)
