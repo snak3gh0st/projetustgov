@@ -3,6 +3,8 @@
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
+from urllib import request as urllib_request
+from urllib.error import URLError
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -60,6 +62,17 @@ class PipelineResponse(BaseModel):
     timestamp: str
 
 
+_HC_PING_URL = "https://hc-ping.com/6abc0171-6ead-41bc-83d1-34c2b8bf6b3f"
+
+
+def _ping_healthchecks(suffix: str = "") -> None:
+    """Best-effort dead-man's-switch ping. Never raises — monitoring must not break the job."""
+    try:
+        urllib_request.urlopen(f"{_HC_PING_URL}{suffix}", timeout=10)
+    except (URLError, OSError) as e:
+        logger.warning(f"Healthchecks.io ping failed ({suffix or 'success'}): {e}")
+
+
 def _run_pipeline_job():
     """Wrapper for scheduled pipeline execution with error handling."""
     logger.info("Scheduled pipeline execution starting")
@@ -76,8 +89,10 @@ def _run_pipeline_job():
             f"Contact enrichment completed: {stats['enriched']} proponentes enriched "
             f"({stats['email_added']} emails, {stats['telefone_added']} telefones)"
         )
+        _ping_healthchecks()
     except Exception as e:
         logger.error(f"Scheduled pipeline execution failed: {e}")
+        _ping_healthchecks("/fail")
 
 
 @asynccontextmanager
