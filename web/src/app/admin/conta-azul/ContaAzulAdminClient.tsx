@@ -101,7 +101,7 @@ export default function ContaAzulAdminClient() {
           Conta Azul
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Conexão OAuth com a API v2 para sync financeiro. Acesso gestor/admin.
+          Conexão OAuth com a API v2 para sync financeiro. Acesso gestor / admin / gestor financeiro.
         </p>
       </div>
 

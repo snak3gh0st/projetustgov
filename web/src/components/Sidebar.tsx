@@ -10,7 +10,7 @@ import { getNavItemsForRole } from '@/lib/sidebar-nav-items'
 interface SidebarProps {
   user: {
     name?: string | null
-    role: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao'
+    role: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao' | 'gestor_financeiro'
     email?: string | null
   }
   defaultOpen?: boolean
@@ -163,7 +163,7 @@ export default function Sidebar({ user, defaultOpen = true }: SidebarProps) {
               ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
               : 'bg-green-50 dark:bg-green-500/15 text-green-600 dark:text-green-400'
           }`}>
-            {user.role === 'gestor' ? 'Gestor' : user.role === 'admin' ? 'Admin' : user.role === 'coordenador' ? 'Coordenador' : user.role === 'visualizador' ? 'Visualizador' : user.role === 'adm_produto' ? 'Adm Produto' : user.role === 'csm' ? 'CSM' : user.role === 'coord_aprovacao' ? 'Coord. Aprovação' : user.role === 'assistente_aprovacao' ? 'Assist. Aprovação' : user.role === 'projetista' ? 'Projetista' : user.role === 'coord_execucao' ? 'Coord. Execução' : user.role === 'assistente_execucao' ? 'Assist. Execução' : user.role === 'coord_prestacao' ? 'Coord. Prestação' : user.role === 'assistente_prestacao' ? 'Assist. Prestação' : 'Vendedor'}
+            {user.role === 'gestor' ? 'Gestor' : user.role === 'admin' ? 'Admin' : user.role === 'coordenador' ? 'Coordenador' : user.role === 'visualizador' ? 'Visualizador' : user.role === 'adm_produto' ? 'Adm Produto' : user.role === 'csm' ? 'CSM' : user.role === 'coord_aprovacao' ? 'Coord. Aprovação' : user.role === 'assistente_aprovacao' ? 'Assist. Aprovação' : user.role === 'projetista' ? 'Projetista' : user.role === 'coord_execucao' ? 'Coord. Execução' : user.role === 'assistente_execucao' ? 'Assist. Execução' : user.role === 'coord_prestacao' ? 'Coord. Prestação' : user.role === 'assistente_prestacao' ? 'Assist. Prestação' : user.role === 'gestor_financeiro' ? 'Gestor Financeiro' : 'Vendedor'}
           </span>
         </div>
         <form action={logout}>

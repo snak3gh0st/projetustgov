@@ -1,17 +1,13 @@
 import { NextResponse } from 'next/server'
-import { getApiSession } from '@/lib/dal'
+import { canManageContaAzul, getApiSession } from '@/lib/dal'
 import { disconnectConnection, getConnectionStatus } from '@/lib/conta-azul/connection'
 
 export const dynamic = 'force-dynamic'
 
-function canManage(role: string | undefined) {
-  return role === 'gestor' || role === 'admin'
-}
-
 export async function GET() {
   try {
     const session = await getApiSession()
-    if (!session || !canManage(session.role)) {
+    if (!session || !canManageContaAzul(session.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     const status = await getConnectionStatus()
@@ -28,7 +24,7 @@ export async function GET() {
 export async function DELETE() {
   try {
     const session = await getApiSession()
-    if (!session || !canManage(session.role)) {
+    if (!session || !canManageContaAzul(session.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     await disconnectConnection(session.userId)

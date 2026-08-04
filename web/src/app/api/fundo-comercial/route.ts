@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const session = await getApiSession()
-    if (!session || session.role !== 'gestor') {
-      return NextResponse.json({ error: 'Forbidden: gestor only' }, { status: 403 })
+    if (!session || (session.role !== 'gestor' && session.role !== 'gestor_financeiro')) {
+      return NextResponse.json({ error: 'Forbidden: financeiro only' }, { status: 403 })
     }
 
     const [lancamentos, saldoRows] = await Promise.all([
@@ -41,8 +41,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const session = await getApiSession()
-    if (!session || session.role !== 'gestor') {
-      return NextResponse.json({ error: 'Forbidden: gestor only' }, { status: 403 })
+    if (!session || (session.role !== 'gestor' && session.role !== 'gestor_financeiro')) {
+      return NextResponse.json({ error: 'Forbidden: financeiro only' }, { status: 403 })
     }
 
     const body = await request.json()

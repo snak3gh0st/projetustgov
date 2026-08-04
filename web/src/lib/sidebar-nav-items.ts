@@ -13,6 +13,7 @@ export type NavRole =
   | 'assistente_execucao'
   | 'coord_prestacao'
   | 'assistente_prestacao'
+  | 'gestor_financeiro'
 
 export interface NavItem {
   href: string
@@ -41,6 +42,13 @@ const BASE_WITH_EXECUCAO: NavItem[] = [
 ]
 
 export function getNavItemsForRole(role: NavRole): NavItem[] {
+  if (role === 'gestor_financeiro') {
+    return [
+      { href: '/admin/conta-azul', label: 'Conta Azul', icon: 'comissoes' },
+      { href: '/comissoes', label: 'Comissoes', icon: 'comissoes' },
+      { href: '/bi', label: 'BI Analytics', icon: 'bi' },
+    ]
+  }
   if (role === 'gestor' || role === 'admin') {
     const adminOnlyItems =
       role === 'admin'

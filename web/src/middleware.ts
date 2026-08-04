@@ -148,6 +148,32 @@ export default auth((req) => {
     }
   }
 
+  if (role === 'gestor_financeiro') {
+    const FINANCE_PATHS = [
+      '/admin/conta-azul',
+      '/api/integrations/conta-azul',
+      '/comissoes',
+      '/api/comissoes',
+      '/bi',
+      '/api/bi',
+      '/api/fundo-comercial',
+      '/api/commission-config',
+      '/sem-permissao',
+    ]
+    const isFinancePath = FINANCE_PATHS.some(
+      (p) => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?')
+    )
+    if (pathname === '/' || isCrmHome) {
+      return Response.redirect(new URL('/admin/conta-azul', req.url))
+    }
+    if (!isFinancePath) {
+      if (pathname.startsWith('/api/')) {
+        return Response.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      return Response.redirect(new URL('/admin/conta-azul', req.url))
+    }
+  }
+
   // vendedor / coordenador / visualizador cannot access TGov
   if (role && ['vendedor', 'coordenador', 'visualizador'].includes(role) && isTGovPath) {
     if (pathname.startsWith('/api/')) {

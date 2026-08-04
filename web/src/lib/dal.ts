@@ -5,12 +5,12 @@ import { query } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import { touchUserPresence } from '@/lib/user-activity'
 
-export type Role = 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao'
+export type Role = 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao' | 'gestor_financeiro'
 
 /** Who can create/manage users of which roles. Single source of truth. */
 export const ROLE_CAN_CREATE: Partial<Record<Role, Role[]>> = {
-  gestor:               ['admin', 'vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'],
-  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'],
+  gestor:               ['admin', 'vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao', 'gestor_financeiro'],
+  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao', 'gestor_financeiro'],
   adm_produto:          ['coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'],
   coord_aprovacao:      ['assistente_aprovacao', 'projetista'],
   assistente_aprovacao: ['projetista'],
@@ -20,8 +20,8 @@ export const ROLE_CAN_CREATE: Partial<Record<Role, Role[]>> = {
 
 /** Same as create - who can delete users of which roles. */
 export const ROLE_CAN_DELETE: Partial<Record<Role, Role[]>> = {
-  gestor:               ['admin', 'vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'],
-  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'],
+  gestor:               ['admin', 'vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao', 'gestor_financeiro'],
+  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao', 'gestor_financeiro'],
   adm_produto:          ['coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'],
   coord_aprovacao:      ['assistente_aprovacao', 'projetista'],
   assistente_aprovacao: [],
@@ -131,6 +131,16 @@ export function canCsm(role: string | undefined): boolean {
 // Helper: check if user has admin-level access (full control)
 export function isAdmin(role: string): boolean {
   return role === 'admin'
+}
+
+/** Conta Azul / área financeira formal. */
+export function canManageContaAzul(role: string | undefined): boolean {
+  return role === 'gestor' || role === 'admin' || role === 'gestor_financeiro'
+}
+
+/** Leitura financeira operacional (comissões, BI, fundo). */
+export function canReadFinanceiro(role: string | undefined): boolean {
+  return role === 'gestor' || role === 'admin' || role === 'gestor_financeiro' || role === 'coordenador' || role === 'visualizador'
 }
 
 /**

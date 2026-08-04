@@ -48,7 +48,9 @@ async function runSetup() {
           'gestor', 'admin', 'vendedor', 'visualizador', 'coordenador',
           'adm_produto', 'csm',
           'coord_aprovacao', 'assistente_aprovacao', 'projetista',
-          'coord_prestacao', 'assistente_prestacao'
+          'coord_execucao', 'assistente_execucao',
+          'coord_prestacao', 'assistente_prestacao',
+          'gestor_financeiro'
         )),
         active BOOLEAN DEFAULT true,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -65,7 +67,9 @@ async function runSetup() {
           'gestor', 'admin', 'vendedor', 'visualizador', 'coordenador',
           'adm_produto', 'csm',
           'coord_aprovacao', 'assistente_aprovacao', 'projetista',
-          'coord_prestacao', 'assistente_prestacao'
+          'coord_execucao', 'assistente_execucao',
+          'coord_prestacao', 'assistente_prestacao',
+          'gestor_financeiro'
         ));
       END $$;
     `).catch(() => {}) // Ignore if constraint doesn't exist or already updated

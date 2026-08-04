@@ -1,14 +1,14 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
+import { canManageContaAzul } from '@/lib/dal'
 import ContaAzulAdminClient from './ContaAzulAdminClient'
 
 export const dynamic = 'force-dynamic'
 
 export default async function ContaAzulAdminPage() {
   const session = await auth()
-  const role = session?.user?.role
-  if (!session?.user || (role !== 'gestor' && role !== 'admin')) {
+  if (!session?.user || !canManageContaAzul(session.user.role)) {
     redirect('/sem-permissao')
   }
 

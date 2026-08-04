@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getApiSession } from '@/lib/dal'
+import { canManageContaAzul, getApiSession } from '@/lib/dal'
 import { buildAuthorizeUrl } from '@/lib/conta-azul/oauth'
 
 export const dynamic = 'force-dynamic'
@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'admin')) {
+    if (!session || !canManageContaAzul(session.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
