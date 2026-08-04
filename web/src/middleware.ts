@@ -4,7 +4,15 @@ export default auth((req) => {
   const { pathname } = req.nextUrl
 
   // Public routes that don't need auth
-  const publicPaths = ['/login', '/api/auth', '/api/health', '/api/migrate', '/api/cron']
+  // Conta Azul OAuth callback is public: state is HMAC-signed and carries userId.
+  const publicPaths = [
+    '/login',
+    '/api/auth',
+    '/api/health',
+    '/api/migrate',
+    '/api/cron',
+    '/api/integrations/conta-azul/callback',
+  ]
   const isPublic = publicPaths.some(path => pathname.startsWith(path))
 
   if (isPublic) {

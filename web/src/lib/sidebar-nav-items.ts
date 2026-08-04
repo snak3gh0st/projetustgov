@@ -56,6 +56,7 @@ export function getNavItemsForRole(role: NavRole): NavItem[] {
       { href: '/csm/comissoes', label: 'CSM Comissoes', icon: 'comissoes' },
       { href: '/csm/bi', label: 'CSM BI', icon: 'bi' },
       { href: '/produtos-digitais', label: 'Produtos Digitais', icon: 'produtos' },
+      { href: '/admin/conta-azul', label: 'Conta Azul', icon: 'comissoes' },
       { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
       { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
       ...adminOnlyItems,
