@@ -7,15 +7,19 @@ export const dynamic = 'force-dynamic'
 
 const CRM_STATUS_SQL = `
   CASE
-    WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 'Não Contatado'
+    WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado', 'Contactado') THEN 'Não Contatado'
     WHEN COALESCE(vp.status_contato, '') = 'Ainda Não' THEN 'Sem Interesse'
     WHEN COALESCE(vp.status_contato, '') = 'Sem Interesse' THEN 'Sem Interesse'
     WHEN COALESCE(vp.status_contato, '') = 'Retorno' THEN 'Em Atendimento'
     WHEN COALESCE(vp.status_contato, '') = 'Em Atendimento' THEN 'Em Atendimento'
+    WHEN COALESCE(vp.status_contato, '') = 'Contatado' THEN 'Contatado'
+    WHEN COALESCE(vp.status_contato, '') IN ('Reunião Agendada', 'Reuniao Agendada') THEN 'Reunião Agendada'
     WHEN COALESCE(vp.status_contato, '') = 'Proposta' THEN 'Proposta Enviada'
     WHEN COALESCE(vp.status_contato, '') = 'Proposta Enviada' THEN 'Proposta Enviada'
     WHEN COALESCE(vp.status_contato, '') = 'Aguardando Closer' THEN 'Em Aprovação'
     WHEN COALESCE(vp.status_contato, '') = 'Em Aprovação' THEN 'Em Aprovação'
+    WHEN COALESCE(vp.status_contato, '') IN ('Impedimento Técnico', 'Impedimento Tecnico') THEN 'Impedimento Técnico'
+    WHEN COALESCE(vp.status_contato, '') = 'Cancelado' THEN 'Cancelado'
     ELSE COALESCE(vp.status_contato, 'Não Contatado')
   END
 `
@@ -107,9 +111,13 @@ export async function GET() {
           COUNT(DISTINCT CASE WHEN COALESCE(status_contato, 'Não Contatado') = 'Não Contatado' THEN cnpj END)::int as status_nao_contatado,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Sem Interesse' THEN cnpj END)::int as status_sem_interesse,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Em Atendimento' THEN cnpj END)::int as status_em_atendimento,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Contatado' THEN cnpj END)::int as status_contatado,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Reunião Agendada' THEN cnpj END)::int as status_reuniao_agendada,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Proposta Enviada' THEN cnpj END)::int as status_proposta_enviada,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Em Aprovação' THEN cnpj END)::int as status_em_aprovacao,
-          COUNT(DISTINCT CASE WHEN status_contato = 'Fechado' THEN cnpj END)::int as status_fechado
+          COUNT(DISTINCT CASE WHEN status_contato = 'Fechado' THEN cnpj END)::int as status_fechado,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Impedimento Técnico' THEN cnpj END)::int as status_impedimento,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Cancelado' THEN cnpj END)::int as status_cancelado
         FROM vendedor_projetos vp
         ${approvalFilter}
       `, vendedorParams),
@@ -122,6 +130,8 @@ export async function GET() {
           COUNT(DISTINCT vp.cnpj)::int as total_leads,
           COUNT(DISTINCT CASE WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Não Contatado' THEN vp.cnpj END)::int as nao_contatado,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Em Atendimento' THEN vp.cnpj END)::int as em_atendimento,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Contatado' THEN vp.cnpj END)::int as contatado,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Reunião Agendada' THEN vp.cnpj END)::int as reuniao_agendada,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Proposta Enviada' THEN vp.cnpj END)::int as proposta_enviada,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Em Aprovação' THEN vp.cnpj END)::int as em_aprovacao,
           COUNT(DISTINCT CASE WHEN vp.status_contato = 'Fechado' THEN vp.cnpj END)::int as fechado,
@@ -445,9 +455,13 @@ export async function GET() {
           'Não Contatado': Number(g.status_nao_contatado) || 0,
           'Sem Interesse': Number(g.status_sem_interesse) || 0,
           'Em Atendimento': Number(g.status_em_atendimento) || 0,
+          'Contatado': Number(g.status_contatado) || 0,
+          'Reunião Agendada': Number(g.status_reuniao_agendada) || 0,
           'Proposta Enviada': Number(g.status_proposta_enviada) || 0,
           'Em Aprovação': Number(g.status_em_aprovacao) || 0,
           'Fechado': Number(g.status_fechado) || 0,
+          'Impedimento Técnico': Number(g.status_impedimento) || 0,
+          'Cancelado': Number(g.status_cancelado) || 0,
         },
       },
       execucao_pipeline: {
@@ -475,6 +489,8 @@ export async function GET() {
           total_leads: Number(v.total_leads),
           nao_contatado: Number(v.nao_contatado),
           retorno: Number(v.em_atendimento),
+          contatado: Number(v.contatado) || 0,
+          reuniao_agendada: Number(v.reuniao_agendada) || 0,
           proposta: Number(v.proposta_enviada),
           aguardando_closer: Number(v.em_aprovacao) || 0,
           fechado: Number(v.fechado),

@@ -5,7 +5,7 @@ import { formatCNPJ, formatCompactCurrency, formatCurrency, formatDate, whatsapp
 import KPIRow from '@/components/KPIRow'
 import ExecucaoSlideOver from '@/components/ExecucaoSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
-import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, normalizeCrmStatus } from '@/lib/crm-catalog'
+import { CRM_STATUS_BADGE_COLORS, CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, normalizeCrmStatus } from '@/lib/crm-catalog'
 
 interface ExecucaoAggRow {
   cnpj: string
@@ -19,6 +19,8 @@ interface ExecucaoAggRow {
   total_desembolsado: string
   total_saldo: string
   total_valor_global: string
+  valor_venda_fechado: string | null
+  tipo_servico: string | null
   pct_execucao_ponderado: string | null
   tem_alerta: boolean
   qtd_alertas: number
@@ -48,18 +50,7 @@ const UF_OPTIONS = [
 ]
 
 const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
-
-const STATUS_COLORS: Record<string, string> = {
-  'Não Contatado': 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400',
-  'Sem Interesse': 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
-  'Em Atendimento': 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  'Quente': 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400',
-  'Muito Quente': 'bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400',
-  'Proposta Enviada': 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] dark:text-blue-400',
-  'Em Aprovação': 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400',
-  'Fechado': 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400',
-  'Telefone Invalido': 'bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400',
-}
+const STATUS_COLORS = CRM_STATUS_BADGE_COLORS
 
 export default function ExecucaoClient({ userRole }: { userRole: string }) {
   const isGestor = userRole === 'gestor' || userRole === 'coordenador'
@@ -257,6 +248,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
       switch (sortCol) {
         case 'nome': va = a.nome_proponente ?? ''; vb = b.nome_proponente ?? ''; break
         case 'valor': va = Number(a.total_valor_global); vb = Number(b.total_valor_global); break
+        case 'venda': va = Number(a.valor_venda_fechado) || 0; vb = Number(b.valor_venda_fechado) || 0; break
         case 'local': va = `${a.municipio ?? ''} ${a.uf ?? ''}`; vb = `${b.municipio ?? ''} ${b.uf ?? ''}`; break
         case 'desembolsado': va = Number(a.total_desembolsado); vb = Number(b.total_desembolsado); break
         case 'saldo': va = Number(a.total_saldo); vb = Number(b.total_saldo); break
@@ -439,7 +431,13 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                   </th>
                 )}
                 <th onClick={() => toggleSort('valor')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                  Valor<SortIcon col="valor" />
+                  Convênio<SortIcon col="valor" />
+                </th>
+                <th onClick={() => toggleSort('venda')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
+                  Venda<SortIcon col="venda" />
+                </th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">
+                  Serviço
                 </th>
                 <th onClick={() => toggleSort('local')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                   Local<SortIcon col="local" />
@@ -526,11 +524,33 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                       </td>
                     )}
 
-                    {/* VALOR */}
+                    {/* CONVÊNIO */}
                     <td className="px-2 py-2 whitespace-nowrap">
                       <span className="text-sigma-neon font-semibold text-sm">
                         {formatCompactCurrency(Number(row.total_valor_global))}
                       </span>
+                    </td>
+
+                    {/* VENDA FECHADA */}
+                    <td className="px-2 py-2 whitespace-nowrap">
+                      {row.valor_venda_fechado != null && Number(row.valor_venda_fechado) > 0 ? (
+                        <span className="text-green-600 dark:text-green-400 font-semibold text-sm">
+                          {formatCompactCurrency(Number(row.valor_venda_fechado))}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
+                      )}
+                    </td>
+
+                    {/* TIPO SERVIÇO */}
+                    <td className="px-2 py-2 whitespace-nowrap">
+                      {row.tipo_servico ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-50 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">
+                          {row.tipo_servico}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
+                      )}
                     </td>
 
                     {/* LOCAL */}

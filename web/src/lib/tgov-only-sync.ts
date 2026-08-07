@@ -30,7 +30,7 @@
 // ============================================================================
 
 import { getPool, query } from '@/lib/db'
-import { sendSituacaoChangeNotification } from './email-service'
+import { sendSituacaoChangeNotification, sendCommercialSituacaoChangeNotification } from './email-service'
 import { cleanCNPJ, parseBRNumber, fixText, downloadAndStreamCSV } from '@/lib/repo-sync'
 import { EXECUCAO_NR_PROPOSTAS, APROVACAO_NR_PROPOSTAS } from '@/lib/tgov'
 import { ensureTgovTables } from '@/lib/tgov-tables'
@@ -370,7 +370,13 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
       }
     }
 
-    const situacaoChanges: Array<{ nrProposta: string; titulo: string | null; oldSituacao: string; newSituacao: string }> = []
+    const situacaoChanges: Array<{
+      nrProposta: string
+      titulo: string | null
+      oldSituacao: string
+      newSituacao: string
+      cnpj: string | null
+    }> = []
 
     const PROP_UPSERT_SQL = `
       INSERT INTO tgov_propostas (
@@ -430,6 +436,7 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
             titulo: r.titulo,
             oldSituacao: oldSituacao ?? '—',
             newSituacao: r.situacao ?? '—',
+            cnpj: r.proponente_cnpj ?? null,
           })
         }
       } catch (err) {
@@ -461,6 +468,28 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
               oldStatus: change.oldSituacao,
               newStatus: change.newSituacao,
             }).catch(err => console.error('[tgov-only-sync] situacao notification failed', err))
+          }
+
+          // Commercial owners of the CNPJ — alert only; never overwrite CRM funnel
+          const cnpjClean = String(change.cnpj ?? '').replace(/\D/g, '')
+          if (cnpjClean) {
+            const sellers = await query<{ vendedor_id: string }>(
+              `SELECT DISTINCT vendedor_id
+               FROM vendedor_projetos
+               WHERE vendedor_id IS NOT NULL
+                 AND REGEXP_REPLACE(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1`,
+              [cnpjClean],
+            )
+            if (sellers.length > 0) {
+              sendCommercialSituacaoChangeNotification({
+                recipientIds: sellers.map(s => s.vendedor_id),
+                propostaNr: change.nrProposta,
+                propostaTitulo: change.titulo,
+                cnpj: cnpjClean,
+                oldStatus: change.oldSituacao,
+                newStatus: change.newSituacao,
+              }).catch(err => console.error('[tgov-only-sync] commercial situacao notification failed', err))
+            }
           }
         } catch (err) {
           console.error('[tgov-only-sync] situacao notification gather failed', err)

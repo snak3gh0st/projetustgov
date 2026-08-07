@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
-import { isClosedCrmStatus, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
+import { isClosedCrmStatus, normalizeCrmStatus, normalizeTipoServico, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,6 +70,17 @@ export async function PATCH(
     if (body.valor_venda !== undefined) {
       updates.push(`valor_venda = $${paramIndex++}`)
       values.push(body.valor_venda)
+    }
+    if (body.tipo_servico !== undefined) {
+      const tipo = normalizeTipoServico(String(body.tipo_servico))
+      if (!tipo) {
+        return NextResponse.json(
+          { error: 'tipo_servico must be Aprovação, Execução or Prestação de Contas' },
+          { status: 400 }
+        )
+      }
+      updates.push(`tipo_servico = $${paramIndex++}`)
+      values.push(tipo)
     }
     if (body.tipo_vendedor !== undefined) {
       updates.push(`tipo_vendedor = $${paramIndex++}`)
@@ -207,7 +218,7 @@ export async function PATCH(
     // comissao_bonus (fundo comercial) and closer_comissao_valor (gestor override) are
     // management-only figures — mirror the role gating already applied in /api/comissoes.
     const updated = await query<Record<string, unknown>>(
-      `SELECT comissao_percentual, comissao_valor, comissao_bonus, tipo_vendedor, valor_venda, status_contato, closer_id, closer_comissao_percentual, closer_comissao_valor, contrato_assinado FROM vendedor_projetos WHERE id = $1`,
+      `SELECT comissao_percentual, comissao_valor, comissao_bonus, tipo_vendedor, valor_venda, tipo_servico, status_contato, closer_id, closer_comissao_percentual, closer_comissao_valor, contrato_assinado FROM vendedor_projetos WHERE id = $1`,
       [projectId]
     )
     const updatedRow = updated[0] || {}

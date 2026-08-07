@@ -8,20 +8,10 @@ import type { VendedorProjeto } from '@/lib/types'
 import ContactNotesTimeline from '@/components/ContactNotesTimeline'
 import LeadContacts from '@/components/LeadContacts'
 import SaleModal from '@/components/SaleModal'
-import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
+import { CRM_STATUS_BADGE_COLORS, CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
 const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
-const STATUS_COLORS: Record<string, string> = {
-  'Não Contatado': 'bg-red-500/20 text-red-500',
-  'Sem Interesse': 'bg-yellow-500/20 text-yellow-600',
-  'Em Atendimento': 'bg-amber-500/20 text-amber-600',
-  'Quente': 'bg-red-500/30 text-red-600',
-  'Muito Quente': 'bg-red-600/40 text-red-700',
-  'Proposta Enviada': 'bg-blue-500/20 text-[#0072F7]',
-  'Em Aprovação': 'bg-purple-500/20 text-purple-600',
-  'Fechado': 'bg-green-500/20 text-green-600',
-  'Telefone Invalido': 'bg-gray-500/20 text-gray-600',
-}
+const STATUS_COLORS = CRM_STATUS_BADGE_COLORS
 
 export default function LeadDetailPage() {
   const params = useParams()
@@ -136,13 +126,14 @@ export default function LeadDetailPage() {
     }
   }
 
-    async function submitFechado(projetoId: number, saleData: { valor_venda: number; status_contato?: string; contrato_assinado?: boolean }) {
+    async function submitFechado(projetoId: number, saleData: { valor_venda: number; status_contato?: string; contrato_assinado?: boolean; tipo_servico: string }) {
     try {
       const finalStatus = saleData.status_contato || 'Vendas Concluídas'
       const body: Record<string, unknown> = {
         id: projetoId,
         status_contato: finalStatus,
         valor_venda: saleData.valor_venda,
+        tipo_servico: saleData.tipo_servico,
       }
       if (saleData.contrato_assinado !== undefined) {
         body.contrato_assinado = saleData.contrato_assinado
@@ -163,6 +154,7 @@ export default function LeadDetailPage() {
           ...p,
           status_contato: normalizeCrmStatus(finalStatus),
           valor_venda: saleData.valor_venda,
+          tipo_servico: saleData.tipo_servico as VendedorProjeto['tipo_servico'],
           ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
           ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
           ...(data.comissao_bonus != null ? { comissao_bonus: Number(data.comissao_bonus) } : {}),
@@ -367,6 +359,7 @@ export default function LeadDetailPage() {
           {first.valor_venda && first.valor_venda > 0 && (
             <p className="text-sm text-purple-600 mt-2">
               Valor estimado: {formatCurrency(first.valor_venda)}
+              {first.tipo_servico ? ` · ${first.tipo_servico}` : ''}
             </p>
           )}
         </div>

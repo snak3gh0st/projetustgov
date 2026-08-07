@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import type { LeadContact, TelefoneStatus } from '@/lib/types'
-import { whatsappMeUrlFromTelefone } from '@/lib/format'
+import { googleCalendarEventUrl, whatsappMeUrlFromTelefone } from '@/lib/format'
 
 interface LeadContactsProps {
   cnpj: string
@@ -298,6 +298,32 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
                           {contact.email}
                         </a>
                       )}
+                      <a
+                        href={googleCalendarEventUrl({
+                          title: contact.nome_pessoa
+                            ? `Reunião Projetus — ${contact.nome_pessoa}`
+                            : `Reunião Projetus — ${cnpj}`,
+                          details: [
+                            contact.nome_pessoa ? `Contato: ${contact.nome_pessoa}` : null,
+                            contact.cargo ? `Cargo: ${contact.cargo}` : null,
+                            contact.telefone ? `Telefone: ${contact.telefone}` : null,
+                            contact.email ? `Email: ${contact.email}` : null,
+                            `CNPJ: ${cnpj}`,
+                            'Local: Google Meet',
+                          ].filter(Boolean).join('\n'),
+                          guestEmail: contact.email,
+                        })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-700 text-xs font-medium"
+                        title="Abrir Google Calendar / Meet"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+                          <rect x="2" y="3" width="12" height="11" rx="1.5" />
+                          <path d="M2 6.5h12M5 1.5v3M11 1.5v3" strokeLinecap="round" />
+                        </svg>
+                        Agendar
+                      </a>
                     </div>
                     {contact.created_by_nome && (
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">

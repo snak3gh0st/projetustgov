@@ -17,6 +17,8 @@ interface ExecucaoAggRow {
   total_desembolsado: string   // pg returns NUMERIC as string
   total_saldo: string          // pg returns NUMERIC as string
   total_valor_global: string   // pg returns NUMERIC as string
+  valor_venda_fechado: string | null
+  tipo_servico: string | null
   pct_execucao_ponderado: string | null
   tem_alerta: boolean
   qtd_alertas: number
@@ -60,8 +62,12 @@ const normalizedStatusSql = (columnRef: string) => `
     WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado', 'Novo', 'Contactado') THEN 'Não Contatado'
     WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Ainda Não', 'Sem Interesse') THEN 'Sem Interesse'
     WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Retorno', 'Em Atendimento') THEN 'Em Atendimento'
+    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Contatado') THEN 'Contatado'
+    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Reunião Agendada', 'Reuniao Agendada') THEN 'Reunião Agendada'
     WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Proposta', 'Proposta Enviada') THEN 'Proposta Enviada'
     WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Aguardando Closer', 'Em Aprovação') THEN 'Em Aprovação'
+    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Impedimento Técnico', 'Impedimento Tecnico') THEN 'Impedimento Técnico'
+    WHEN COALESCE(${columnRef}, 'Não Contatado') = 'Cancelado' THEN 'Cancelado'
     ELSE COALESCE(${columnRef}, 'Não Contatado')
   END
 `
@@ -71,13 +77,17 @@ const normalizedStatusOrderSql = (normalizedExpr: string) => `
     WHEN 'Fechado' THEN 1
     WHEN 'Em Aprovação' THEN 2
     WHEN 'Proposta Enviada' THEN 3
-    WHEN 'Em Atendimento' THEN 4
-    WHEN 'Sem Interesse' THEN 5
-    WHEN 'Quente' THEN 6
-    WHEN 'Muito Quente' THEN 7
-    WHEN 'Telefone Invalido' THEN 8
-    WHEN 'Não Contatado' THEN 10
-    ELSE 9
+    WHEN 'Reunião Agendada' THEN 4
+    WHEN 'Contatado' THEN 5
+    WHEN 'Em Atendimento' THEN 6
+    WHEN 'Sem Interesse' THEN 7
+    WHEN 'Impedimento Técnico' THEN 8
+    WHEN 'Cancelado' THEN 9
+    WHEN 'Quente' THEN 10
+    WHEN 'Muito Quente' THEN 11
+    WHEN 'Telefone Invalido' THEN 12
+    WHEN 'Não Contatado' THEN 14
+    ELSE 13
   END
 `
 
@@ -255,6 +265,21 @@ export async function GET(request: NextRequest) {
           REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'),
           ${normalizedStatusOrderSql(normalizedStatusSql('vp.status_contato'))} ASC,
           vp.updated_at DESC NULLS LAST
+      ),
+      closed_sales AS (
+        SELECT
+          REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
+          SUM(vp.valor_venda) FILTER (
+            WHERE vp.status_contato IN ('Fechado', 'Em Aprovação', 'Vendas Concluídas')
+              AND vp.valor_venda IS NOT NULL
+              AND vp.valor_venda > 0
+          ) AS valor_venda_fechado,
+          (
+            ARRAY_AGG(vp.tipo_servico ORDER BY vp.updated_at DESC NULLS LAST)
+            FILTER (WHERE vp.tipo_servico IS NOT NULL AND BTRIM(vp.tipo_servico) <> '')
+          )[1] AS tipo_servico
+        FROM vendedor_projetos vp
+        GROUP BY REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g')
       )
       SELECT
         a.cnpj, a.nome_proponente, a.uf, a.municipio,
@@ -262,6 +287,8 @@ export async function GET(request: NextRequest) {
         COALESCE(aps.aprovacao_status, 'Não Contatado') AS aprovacao_status,
         a.total_projetos, a.total_repasse, a.total_desembolsado,
         a.total_saldo, a.total_valor_global, a.pct_execucao_ponderado,
+        cls.valor_venda_fechado,
+        cls.tipo_servico,
         a.tem_alerta, a.qtd_alertas, a.tem_verificar_saldo,
         a.data_fim_vigencia_mais_proxima, a.dias_ate_vencimento_min,
         a.dias_em_execucao_max,
@@ -282,6 +309,7 @@ export async function GET(request: NextRequest) {
       FROM agg a
       LEFT JOIN crm_statuses cs ON cs.cnpj_clean = a.cnpj
       LEFT JOIN aprovacao_statuses aps ON aps.cnpj_clean = a.cnpj
+      LEFT JOIN closed_sales cls ON cls.cnpj_clean = a.cnpj
       LEFT JOIN contacts ct ON ct.cnpj_clean = a.cnpj
       LEFT JOIN vp_contacts vpc ON vpc.cnpj_clean = a.cnpj
       LEFT JOIN proposta_counts pc ON pc.cnpj = a.cnpj

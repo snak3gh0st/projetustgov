@@ -10,10 +10,14 @@ import {
 const CAT_COLORS: Record<string, string> = {
   'Não Contatado': '#f97316',
   'Sem Interesse': '#ca8a04',
-  'Em Atendimento': '#22c55e',
+  'Em Atendimento': '#f59e0b',
+  'Contatado': '#0891b2',
+  'Reunião Agendada': '#6366f1',
   'Proposta Enviada': '#3b82f6',
   'Em Aprovação': '#8b5cf6',
   'Fechado': '#16a34a',
+  'Impedimento Técnico': '#e11d48',
+  'Cancelado': '#64748b',
 }
 
 interface CatData {

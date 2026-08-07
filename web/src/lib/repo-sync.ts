@@ -822,11 +822,20 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
           ORDER BY cnpj, vendedor_id,
             CASE status_contato
               WHEN 'Fechado'            THEN 1
+              WHEN 'Vendas Concluídas'  THEN 1
+              WHEN 'Em Aprovação'       THEN 2
               WHEN 'Aguardando Closer'  THEN 2
+              WHEN 'Proposta Enviada'   THEN 3
               WHEN 'Proposta'           THEN 3
-              WHEN 'Retorno'            THEN 4
-              WHEN 'Ainda Não'          THEN 5
-              ELSE                           6
+              WHEN 'Reunião Agendada'  THEN 4
+              WHEN 'Contatado'          THEN 5
+              WHEN 'Em Atendimento'     THEN 6
+              WHEN 'Retorno'            THEN 6
+              WHEN 'Impedimento Técnico' THEN 7
+              WHEN 'Cancelado'          THEN 8
+              WHEN 'Sem Interesse'      THEN 9
+              WHEN 'Ainda Não'          THEN 9
+              ELSE                           10
             END ASC
         ) AS source
         WHERE target.cnpj = source.cnpj

@@ -343,10 +343,26 @@ async function runSetup() {
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='contrato_assinado') THEN
           ALTER TABLE vendedor_projetos ADD COLUMN contrato_assinado BOOLEAN DEFAULT false;
         END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='vendedor_projetos' AND column_name='tipo_servico') THEN
+          ALTER TABLE vendedor_projetos ADD COLUMN tipo_servico VARCHAR(40);
+        END IF;
+      END $$;
+    `).catch(() => {})
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'vendedor_projetos_tipo_servico_check'
+        ) THEN
+          ALTER TABLE vendedor_projetos
+            ADD CONSTRAINT vendedor_projetos_tipo_servico_check
+            CHECK (tipo_servico IS NULL OR tipo_servico IN ('Aprovação', 'Execução', 'Prestação de Contas'));
+        END IF;
       END $$;
     `).catch(() => {})
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_closer ON vendedor_projetos(closer_id)`).catch(() => {})
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_uf ON vendedor_projetos(uf)`).catch(() => {})
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_tipo_servico ON vendedor_projetos(tipo_servico)`).catch(() => {})
 
     // 6e4. Fundo Comercial ledger — credits (auto, on closing) and debits (manual, by gestor)
     await pool.query(`

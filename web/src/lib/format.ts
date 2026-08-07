@@ -72,3 +72,25 @@ export function whatsappMeUrlFromTelefone(telefone: string | null | undefined): 
   }
   return `https://wa.me/${d}`
 }
+
+/**
+ * Google Calendar “create event” deep-link (no OAuth).
+ * Opens the event editor with Meet as location; user confirms time in Calendar.
+ */
+export function googleCalendarEventUrl(opts: {
+  title: string
+  details?: string
+  guestEmail?: string | null
+}): string {
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: opts.title,
+    details: opts.details || '',
+    location: 'Google Meet',
+  })
+  if (opts.guestEmail?.trim()) {
+    params.set('add', opts.guestEmail.trim())
+  }
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
+}
+

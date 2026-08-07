@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Plano de Entregas — CRM e Operacional | Projetus</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #1a1a1a;
+    font-size: 10.5pt;
+    line-height: 1.45;
+    margin: 0;
+  }
+  h1 { font-size: 20pt; margin: 0 0 4px; letter-spacing: -0.02em; }
+  h2 {
+    font-size: 12pt;
+    margin: 22px 0 10px;
+    padding-bottom: 4px;
+    border-bottom: 1.5px solid #1a1a1a;
+  }
+  h3 { font-size: 10.5pt; margin: 0 0 6px; }
+  p { margin: 0 0 8px; }
+  .meta { color: #555; font-size: 9.5pt; margin-bottom: 16px; }
+  .banner {
+    background: #0f172a;
+    color: #fff;
+    padding: 14px 16px;
+    margin: 12px 0 18px;
+    border-radius: 4px;
+  }
+  .banner strong { display: block; font-size: 10.5pt; margin-bottom: 4px; }
+  .banner p { margin: 0; font-size: 9.5pt; color: #cbd5e1; }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .stat {
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 10px 12px;
+  }
+  .stat .date { font-size: 14pt; font-weight: 700; color: #0f172a; }
+  .stat .label { font-size: 8.5pt; color: #64748b; margin-top: 2px; }
+  .stat.hot { border-color: #0f172a; background: #f8fafc; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+    margin-bottom: 4px;
+  }
+  th, td {
+    text-align: left;
+    padding: 7px 8px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+  th {
+    background: #f8fafc;
+    font-size: 8.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+    font-weight: 600;
+  }
+  tr.entrega td:first-child { font-weight: 600; }
+  .sprint {
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    page-break-inside: avoid;
+  }
+  .sprint-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .sprint-head h3 { margin: 0; }
+  .tags { white-space: nowrap; font-size: 8.5pt; color: #64748b; }
+  .tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: #f1f5f9;
+    margin-left: 4px;
+    color: #334155;
+  }
+  .tag.alta { background: #fee2e2; color: #991b1b; }
+  .tag.media { background: #fef3c7; color: #92400e; }
+  .tag.futura { background: #e2e8f0; color: #475569; }
+  ul { margin: 4px 0 8px; padding-left: 18px; }
+  li { margin-bottom: 3px; }
+  .aceite {
+    font-size: 9.5pt;
+    background: #f8fafc;
+    padding: 8px 10px;
+    border-left: 3px solid #0f172a;
+    margin-top: 6px;
+  }
+  .nota { font-size: 8.5pt; color: #64748b; margin-top: 6px; }
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .box {
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 12px;
+    page-break-inside: avoid;
+  }
+  .principio {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 4px;
+    padding: 10px 12px;
+    font-size: 9.5pt;
+    margin-bottom: 14px;
+  }
+  .risco {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 4px;
+    padding: 10px 12px;
+    font-size: 9.5pt;
+    margin-top: 14px;
+  }
+  footer {
+    margin-top: 24px;
+    padding-top: 10px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 8pt;
+    color: #94a3b8;
+  }
+</style>
+</head>
+<body>
+
+  <h1>Plano de Entregas — CRM e Operacional</h1>
+  <p class="meta">Projetus · Comercial, TransfereGov e canais · Preparado para Rooger · 04/08/2026 · v2 (com margem)</p>
+
+  <div class="principio">
+    <strong>Princípio deste plano:</strong> datas com buffer real. Uma entrega principal por janela.
+    Escopo novo não entra no meio do sprint sem empurrar a data. OAuth Google, IA e checklist operacional completo ficam fora do corte imediato.
+  </div>
+
+  <div class="banner">
+    <strong>Prioridade alinhada (com margem)</strong>
+    <p>
+      Semana 1 (até 08/08): só Sprint 1 — funil + valor fechado + tags.
+      Semana 2 (até 15/08): Sprint 2 — avisos entre áreas + agenda, já com o novo time a bordo.
+      Canais e estrutura operacional nas semanas seguintes.
+    </p>
+  </div>
+
+  <div class="stats">
+    <div class="stat hot">
+      <div class="date">08/08</div>
+      <div class="label">S1 — CRM + valor fechado</div>
+    </div>
+    <div class="stat hot">
+      <div class="date">15/08</div>
+      <div class="label">S2 — Avisos + agenda</div>
+    </div>
+    <div class="stat">
+      <div class="date">22/08</div>
+      <div class="label">S3 — WhatsApp / nº único</div>
+    </div>
+    <div class="stat">
+      <div class="date">05/09</div>
+      <div class="label">S4 — Estrutura operacional</div>
+    </div>
+  </div>
+
+  <h2>Linha do tempo</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:18%">Data</th>
+        <th>Marco / entrega</th>
+        <th style="width:22%">Dono</th>
+        <th style="width:14%">Tipo</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>04–05/08</td><td>Kickoff S1 + alinhamento de status/tags com comercial</td><td>Paulo</td><td>Início</td></tr>
+      <tr><td>05/08 (qua)</td><td>Vitória e Gabriel saem — sem mudança crítica de processo neste dia</td><td>Rooger / RH</td><td>Marco</td></tr>
+      <tr class="entrega"><td>08/08 (sex)</td><td><strong>Entrega Sprint 1</strong> — CRM + visibilidade mínima (com buffer)</td><td>Paulo</td><td>Entrega</td></tr>
+      <tr><td>11/08 (seg)</td><td>Onboarding novo time — materiais por área (versão inicial)</td><td>Paulo</td><td>Marco</td></tr>
+      <tr class="entrega"><td>15/08 (sex)</td><td><strong>Entrega Sprint 2</strong> — avisos TGov → comercial + botão agenda</td><td>Paulo</td><td>Entrega</td></tr>
+      <tr class="entrega"><td>22/08 (sex)</td><td><strong>Entrega Sprint 3</strong> — WhatsApp revisado + número único validado</td><td>Paulo / Rooger</td><td>Entrega</td></tr>
+      <tr><td>até 22/08</td><td>Base operacional consolidada (pré-requisito S4)</td><td>Danilo</td><td>Dependência</td></tr>
+      <tr class="entrega"><td>05/09 (sex)</td><td><strong>Entrega Sprint 4</strong> — painéis + checklist v1</td><td>Paulo + Danilo</td><td>Entrega</td></tr>
+      <tr><td>a partir de Set</td><td>Sprint 5 — PoC IA / multicanal (só após fluxo base estável)</td><td>Paulo + Rooger</td><td>Futuro</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Sprints — escopo e critério de aceite</h2>
+
+  <div class="sprint">
+    <div class="sprint-head">
+      <h3>S1 — CRM + visibilidade mínima</h3>
+      <div class="tags"><span class="tag alta">Alta</span><span class="tag">04/08 → 08/08</span><span class="tag">~4 dias úteis</span></div>
+    </div>
+    <ul>
+      <li>Status <strong>Contatado</strong> e <strong>Reunião Agendada</strong> no funil</li>
+      <li>Status <strong>Impedimento Técnico</strong> e <strong>Cancelado</strong> (pós-venda)</li>
+      <li>Ordem do funil atualizada em UI, BI e SQL</li>
+      <li><code>valor_venda</code> visível para operacional (/execução, CSM)</li>
+      <li>Tag/tipo de serviço: Aprovação · Execução · Prestação de Contas</li>
+    </ul>
+    <div class="aceite"><strong>Aceite:</strong> vendedor muda os novos status; operacional vê valor fechado + tipo no lead.</div>
+    <p class="nota">Buffer: sexta 08/08 é data de entrega, não dia de começar item novo.</p>
+  </div>
+
+  <div class="sprint">
+    <div class="sprint-head">
+      <h3>S2 — Integração e aviso entre áreas</h3>
+      <div class="tags"><span class="tag alta">Alta</span><span class="tag">11/08 → 15/08</span><span class="tag">~5 dias úteis</span></div>
+    </div>
+    <ul>
+      <li>Digest/aviso ao comercial quando a etapa no TransfereGov muda</li>
+      <li>Botão Agendar (Calendar/Meet deep-link) no contato</li>
+      <li>Regra: situação gov não sobrescreve o funil de venda</li>
+    </ul>
+    <div class="aceite"><strong>Aceite:</strong> comercial recebe alerta de mudança Aprovado → Execução → Prestação de Contas.</div>
+    <p class="nota">Fora deste sprint: OAuth Google completo com Meet persistido. Deep-link cobre o uso imediato.</p>
+  </div>
+
+  <div class="sprint">
+    <div class="sprint-head">
+      <h3>S3 — Atendimento e canais</h3>
+      <div class="tags"><span class="tag media">Média</span><span class="tag">18/08 → 22/08</span><span class="tag">~5 dias úteis</span></div>
+    </div>
+    <ul>
+      <li>Revisão UX do botão WhatsApp (já existe no CRM)</li>
+      <li>Validação do fluxo com número único comercial (com Rooger)</li>
+      <li>Checklist Meta/API (templates, janela 24h) documentado</li>
+    </ul>
+    <div class="aceite"><strong>Aceite:</strong> time opera com WhatsApp + número único sem dúvida de processo.</div>
+    <p class="nota">Parte grande é processo/validação, não só código — tempo reservado de propósito.</p>
+  </div>
+
+  <div class="sprint">
+    <div class="sprint-head">
+      <h3>S4 — Estrutura operacional</h3>
+      <div class="tags"><span class="tag media">Média</span><span class="tag">25/08 → 05/09</span><span class="tag">~10 dias úteis</span></div>
+    </div>
+    <ul>
+      <li>Painéis de Execução e Prestação alinhados à visão comercial (quando houver gap)</li>
+      <li>Etapas próprias de operação alinhadas ao TGov</li>
+      <li>Área v1: histórico + checklist + status de documentos</li>
+      <li>Fonte única alimentada pelo sync TransfereGov</li>
+    </ul>
+    <div class="aceite"><strong>Aceite:</strong> operacional deixa de depender de planilha Drive para o fluxo principal.</div>
+    <p class="nota">Só começa com a base consolidada do Danilo em mãos. Sem base, a data escorrega — não se improvisa em cima de dado errado.</p>
+  </div>
+
+  <div class="sprint">
+    <div class="sprint-head">
+      <h3>S5 — IA e automação avançada</h3>
+      <div class="tags"><span class="tag futura">Futura</span><span class="tag">após S4 estável</span></div>
+    </div>
+    <ul>
+      <li>Pricing do agente IA enviado ao Rooger (pode ir em paralelo, sem data de go-live)</li>
+      <li>PoC de triagem inicial via API/webhook da plataforma multicanal</li>
+      <li>Roteamento por produto depois do fluxo base estável</li>
+    </ul>
+    <div class="aceite"><strong>Aceite:</strong> decisão go/no-go com custo Meta + plataforma — sem compromisso de data de produção nesta versão do plano.</div>
+  </div>
+
+  <h2>Trabalhos em paralelo (não competem com o código da semana)</h2>
+  <table>
+    <thead>
+      <tr><th>Item</th><th>Dono</th><th>Prazo</th><th>Nota</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Pricing agente IA → Rooger</td><td>Paulo</td><td>até 15/08</td><td>Documento, não sprint de produto</td></tr>
+      <tr><td>Base operacional consolidada</td><td>Danilo</td><td>até 22/08</td><td>Bloqueia início da S4</td></tr>
+      <tr><td>Materiais de onboarding por área</td><td>Paulo</td><td>11/08 (v1)</td><td>Pode evoluir depois do onboarding</td></tr>
+      <tr><td>Mapa de ownership (org / áreas)</td><td>Vitor + Paulo</td><td>até 22/08</td><td>Pedido Rooger — sem bloquear S1/S2</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Resumo executivo</h2>
+  <div class="two-col">
+    <div class="box">
+      <h3>Agora (esta semana)</h3>
+      <p><strong>Uma entrega:</strong> Sprint 1</p>
+      <ul>
+        <li>Status novos no funil</li>
+        <li>Valor fechado para operacional</li>
+        <li>Tags Aprovação / Execução / PC</li>
+      </ul>
+      <p><strong>Explicitamente fora</strong></p>
+      <ul>
+        <li>Avisos automáticos TGov</li>
+        <li>OAuth Google Meet</li>
+        <li>IA / multicanal</li>
+        <li>Checklist operacional completo</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>Depois</h3>
+      <ul>
+        <li>15/08 — S2 avisos + agenda</li>
+        <li>22/08 — S3 canais / número único</li>
+        <li>22/08 — base Danilo</li>
+        <li>05/09 — S4 estrutura operacional v1</li>
+        <li>Após S4 — S5 IA (decisão, sem data forçada)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="risco">
+    <strong>Como a margem é protegida:</strong> se surgir pedido novo no meio do sprint, a data da entrega atual escorrega — não se “encaixa”.
+    Atraso da base do Danilo empurra só a S4. Integração Google completa (OAuth) é sprint próprio, não entra escondida na S2.
+  </div>
+
+  <footer>
+    Projetus · Plano de entregas CRM/Operacional v2 · Datas com buffer · 04/08/2026
+  </footer>
+
+</body>
+</html>

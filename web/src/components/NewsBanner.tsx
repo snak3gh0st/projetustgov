@@ -2,8 +2,14 @@
 
 import { useState, useEffect } from 'react'
 
-const NEWS_VERSION = 'v4.9'
+const NEWS_VERSION = 'v5.0'
 const NEWS_ITEMS = [
+  'CRM: novos status no funil — Contatado e Reunião Agendada',
+  'CRM: status pós-venda Impedimento Técnico e Cancelado',
+  'CRM: tag de tipo de serviço (Aprovação / Execução / Prestação de Contas) ao fechar venda',
+  'Operacional: valor da venda fechada e tipo de serviço agora visíveis em Execução',
+  'Comercial: aviso por e-mail quando a etapa no TransfereGov muda para leads seus',
+  'Lead: botão "Agendar" abre o Google Calendar/Meet direto do contato',
   'CSM: nova área de extração — baixe a base de clientes por cidade (Brasília, Goiânia) em CSV',
   'UI: tema escuro completo em todas as paginas',
   'UI: tema escuro disponivel em toda a plataforma (botao no menu lateral)',
@@ -11,7 +17,7 @@ const NEWS_ITEMS = [
   'UI: navegacao mobile com gaveta inferior (toque no botao azul no canto inferior esquerdo)',
   'UI: assinatura "Hub da PROJETUS" no lugar de "CRM de Vendas"',
 ]
-const STORAGE_KEY = `projetus-news-dismissed-v4.9`
+const STORAGE_KEY = `projetus-news-dismissed-v5.0`
 
 export default function NewsBanner() {
   const [dismissed, setDismissed] = useState(true)
