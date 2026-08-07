@@ -6,9 +6,8 @@ export interface DigestData {
   stale: DigestStale[]
 }
 
-
 /**
- * Get unseen notifications for a user (same logic as GET /api/tgov/notifications).
+ * Get unseen notifications for a TGov user (same logic as GET /api/tgov/notifications).
  */
 export async function getNotificationsForUser(userId: string, role: string): Promise<DigestData> {
   const items = await query<{
@@ -111,6 +110,59 @@ export async function getNotificationsForUser(userId: string, role: string): Pro
       transferGovId: r.transfer_gov_id,
     })),
     stale,
+  }
+}
+
+/**
+ * Digest for commercial users: TGov situacao changes on CNPJs they own.
+ * Does NOT mutate CRM status_contato — visibility/alert only.
+ */
+export async function getCommercialTgovUpdatesForUser(userId: string): Promise<DigestData> {
+  const items = await query<{
+    proposta_key: string
+    titulo: string | null
+    event_at: string
+    concedente: string | null
+    proponente: string | null
+    situacao: string | null
+    transfer_gov_id: string | null
+  }>(`
+    SELECT DISTINCT ON (tp.nr_proposta)
+      tp.nr_proposta AS proposta_key,
+      tp.titulo,
+      tp.situacao_changed_at::text AS event_at,
+      tp.orgao_superior AS concedente,
+      tp.proponente,
+      tp.situacao,
+      tp.transfer_gov_id
+    FROM tgov_propostas tp
+    WHERE tp.situacao_changed_at IS NOT NULL
+      AND tp.situacao_changed_at > NOW() - INTERVAL '48 hours'
+      AND NULLIF(TRIM(tp.nr_proposta), '') IS NOT NULL
+      AND EXISTS (
+        SELECT 1
+        FROM vendedor_projetos vp
+        WHERE vp.vendedor_id = $1
+          AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g')
+            = REGEXP_REPLACE(COALESCE(tp.proponente_cnpj, ''), '[^0-9]', '', 'g')
+          AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g') <> ''
+      )
+    ORDER BY tp.nr_proposta, tp.situacao_changed_at DESC
+    LIMIT 50
+  `, [userId])
+
+  return {
+    items: items.map(r => ({
+      propostaKey: r.proposta_key,
+      titulo: r.titulo,
+      eventType: 'situacao',
+      eventAt: r.event_at,
+      concedente: r.concedente,
+      proponente: r.proponente,
+      situacao: r.situacao,
+      transferGovId: r.transfer_gov_id,
+    })),
+    stale: [],
   }
 }
 

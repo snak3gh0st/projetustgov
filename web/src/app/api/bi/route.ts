@@ -120,19 +120,23 @@ export async function GET(request: Request) {
           )
       `, vendedorParams),
 
-      // 8. Chart: Pipeline Funnel — all 6 statuses in correct funnel order
+      // 8. Chart: Pipeline Funnel — statuses in funnel order
       query(`
         SELECT * FROM (
           SELECT
             CASE
-              WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 'Não Contatado'
+              WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado', 'Contactado') THEN 'Não Contatado'
               WHEN vp.status_contato IN ('Ainda Não', 'Sem Interesse') THEN 'Sem Interesse'
               WHEN vp.status_contato IN ('Retorno', 'Em Atendimento') THEN 'Em Atendimento'
+              WHEN vp.status_contato = 'Contatado' THEN 'Contatado'
+              WHEN vp.status_contato IN ('Reunião Agendada', 'Reuniao Agendada') THEN 'Reunião Agendada'
               WHEN vp.status_contato = 'Quente' THEN 'Quente'
               WHEN vp.status_contato = 'Muito Quente' THEN 'Muito Quente'
               WHEN vp.status_contato IN ('Proposta', 'Proposta Enviada') THEN 'Proposta Enviada'
               WHEN vp.status_contato IN ('Aguardando Closer', 'Em Aprovação') THEN 'Em Aprovação'
               WHEN vp.status_contato = 'Fechado' THEN 'Fechado'
+              WHEN vp.status_contato IN ('Impedimento Técnico', 'Impedimento Tecnico') THEN 'Impedimento Técnico'
+              WHEN vp.status_contato = 'Cancelado' THEN 'Cancelado'
               ELSE vp.status_contato
             END as status,
             COUNT(DISTINCT vp.cnpj)::int as count
@@ -146,12 +150,16 @@ export async function GET(request: Request) {
             WHEN 'Não Contatado' THEN 1
             WHEN 'Sem Interesse' THEN 2
             WHEN 'Em Atendimento' THEN 3
-            WHEN 'Quente' THEN 4
-            WHEN 'Muito Quente' THEN 5
-            WHEN 'Proposta Enviada' THEN 6
-            WHEN 'Em Aprovação' THEN 7
-            WHEN 'Fechado' THEN 8
-            ELSE 9
+            WHEN 'Contatado' THEN 4
+            WHEN 'Reunião Agendada' THEN 5
+            WHEN 'Quente' THEN 6
+            WHEN 'Muito Quente' THEN 7
+            WHEN 'Proposta Enviada' THEN 8
+            WHEN 'Em Aprovação' THEN 9
+            WHEN 'Fechado' THEN 10
+            WHEN 'Impedimento Técnico' THEN 11
+            WHEN 'Cancelado' THEN 12
+            ELSE 13
           END
       `, vendedorParams),
 

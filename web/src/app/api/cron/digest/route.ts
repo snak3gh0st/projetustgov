@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { getNotificationsForUser } from '@/lib/digest-email'
+import { getCommercialTgovUpdatesForUser, getNotificationsForUser } from '@/lib/digest-email'
 import { digestEmail } from '@/lib/email-templates'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-const TGOV_ROLES = ['adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao', 'gestor', 'admin']
+const TGOV_ROLES = [
+  'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista',
+  'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao',
+  'gestor', 'admin',
+]
+
+const CRM_DIGEST_ROLES = ['vendedor', 'coordenador', 'visualizador', 'gestor', 'admin']
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,8 +27,9 @@ export async function GET(request: NextRequest) {
     const { Resend } = await import('resend')
     const resend = new Resend(process.env.RESEND_API_KEY)
     const fromEmail = process.env.DIGEST_FROM_EMAIL || 'Projetus <noreply@projetus.org>'
+    const appUrl = process.env.NEXTAUTH_URL || 'https://projetus.vercel.app'
 
-    // Get all opted-in TGov users
+    // Opted-in users across TGov + commercial roles
     const users = await query<{
       id: string
       nome: string
@@ -32,22 +39,40 @@ export async function GET(request: NextRequest) {
       `SELECT id, nome, email, role FROM users
        WHERE email_digest = true AND active = true
        AND role = ANY($1::text[])`,
-      [TGOV_ROLES]
+      [[...TGOV_ROLES, ...CRM_DIGEST_ROLES].filter((r, i, arr) => arr.indexOf(r) === i)]
     )
 
     let sent = 0
     let skipped = 0
 
     for (const user of users) {
-      const data = await getNotificationsForUser(user.id, user.role)
+      const isTgov = TGOV_ROLES.includes(user.role)
+      const isCrm = CRM_DIGEST_ROLES.includes(user.role)
 
-      if (data.items.length === 0 && data.stale.length === 0) {
+      const tgovData = isTgov
+        ? await getNotificationsForUser(user.id, user.role)
+        : { items: [], stale: [] }
+
+      const crmData = isCrm
+        ? await getCommercialTgovUpdatesForUser(user.id)
+        : { items: [], stale: [] }
+
+      // Merge items (dedupe by proposta key + eventAt)
+      const seen = new Set<string>()
+      const items = [...tgovData.items, ...crmData.items].filter((item) => {
+        const key = `${item.propostaKey}|${item.eventAt}|${item.eventType}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      const stale = tgovData.stale
+
+      if (items.length === 0 && stale.length === 0) {
         skipped++
         continue
       }
 
-      const appUrl = process.env.NEXTAUTH_URL || 'https://projetus.vercel.app'
-      const { subject, html } = digestEmail({ nome: user.nome, items: data.items, stale: data.stale, appUrl })
+      const { subject, html } = digestEmail({ nome: user.nome, items, stale, appUrl })
 
       const { data: sendData, error: sendError } = await resend.emails.send({
         from: fromEmail,

@@ -38,20 +38,21 @@ export async function GET(request: NextRequest) {
 
     const porCategoria = projetos.reduce((acc, projeto) => {
       const status = normalizeCrmStatus(projeto.status_contato || 'Não Contatado')
-      if (status === 'Não Contatado') acc['Não Contatado'] += 1
-      else if (status === 'Sem Interesse') acc['Sem Interesse'] += 1
-      else if (status === 'Em Atendimento') acc['Em Atendimento'] += 1
-      else if (status === 'Proposta Enviada') acc['Proposta Enviada'] += 1
-      else if (status === 'Em Aprovação') acc['Em Aprovação'] += 1
-      else if (status === 'Fechado') acc['Fechado'] += 1
+      if (Object.prototype.hasOwnProperty.call(acc, status)) {
+        acc[status] += 1
+      }
       return acc
     }, {
       'Não Contatado': 0,
       'Sem Interesse': 0,
       'Em Atendimento': 0,
+      'Contatado': 0,
+      'Reunião Agendada': 0,
       'Proposta Enviada': 0,
       'Em Aprovação': 0,
       'Fechado': 0,
+      'Impedimento Técnico': 0,
+      'Cancelado': 0,
     } as Record<string, number>)
 
     return NextResponse.json({

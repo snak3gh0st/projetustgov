@@ -7,20 +7,10 @@ import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
 import SaleModal from '@/components/SaleModal'
-import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, normalizeCrmStatus } from '@/lib/crm-catalog'
+import { CRM_STATUS_BADGE_COLORS, CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, normalizeCrmStatus } from '@/lib/crm-catalog'
 
 const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
-const STATUS_COLORS: Record<string, string> = {
-  'Não Contatado': 'bg-orange-50 dark:bg-orange-500/15 text-orange-600 dark:text-orange-300',
-  'Sem Interesse': 'bg-yellow-50 dark:bg-yellow-500/15 text-yellow-600 dark:text-yellow-300',
-  'Em Atendimento': 'bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-amber-300',
-  'Quente': 'bg-red-50 dark:bg-red-500/15 text-red-600 dark:text-red-300',
-  'Muito Quente': 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300',
-  'Proposta Enviada': 'bg-blue-50 dark:bg-blue-500/15 text-[#0072F7]',
-  'Em Aprovação': 'bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300',
-  'Fechado': 'bg-green-50 dark:bg-green-500/15 text-green-600 dark:text-green-300',
-  'Telefone Invalido': 'bg-gray-50 dark:bg-gray-500/15 text-gray-500 dark:text-gray-400',
-}
+const STATUS_COLORS = CRM_STATUS_BADGE_COLORS
 
 interface Vendedor {
   id: string
@@ -305,7 +295,7 @@ export default function LeadsClient() {
   async function submitFechado(
     leadId: number,
     leadCnpj: string,
-    saleData: { valor_venda: number; status_contato?: string; contrato_assinado?: boolean }
+    saleData: { valor_venda: number; status_contato?: string; contrato_assinado?: boolean; tipo_servico: string }
   ) {
     try {
       const targetStatus = saleData.status_contato || 'Vendas Concluídas'
@@ -313,6 +303,7 @@ export default function LeadsClient() {
         id: leadId,
         status_contato: targetStatus,
         valor_venda: saleData.valor_venda,
+        tipo_servico: saleData.tipo_servico,
       }
       if (saleData.contrato_assinado !== undefined) {
         body.contrato_assinado = saleData.contrato_assinado
@@ -333,6 +324,7 @@ export default function LeadsClient() {
           ...l,
           status_contato: targetStatus,
           valor_venda: saleData.valor_venda,
+          tipo_servico: saleData.tipo_servico as VendedorProjeto['tipo_servico'],
           ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
           ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
           ...(data.comissao_bonus != null ? { comissao_bonus: Number(data.comissao_bonus) } : {}),

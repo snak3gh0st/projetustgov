@@ -145,6 +145,37 @@ export async function sendSituacaoChangeNotification(params: {
   }
 }
 
+/**
+ * Notifies commercial owners (vendedor/coordenador/gestor) when TransfereGov
+ * situacao changes for a CNPJ they own. Never mutates CRM funnel status.
+ */
+export async function sendCommercialSituacaoChangeNotification(params: {
+  recipientIds: string[]
+  propostaNr: string
+  propostaTitulo: string | null
+  cnpj: string | null
+  oldStatus: string
+  newStatus: string
+}): Promise<void> {
+  const users = filterCrm(await loadUsers(params.recipientIds))
+  const cnpjClean = String(params.cnpj ?? '').replace(/\D/g, '')
+  const leadUrl = cnpjClean
+    ? `${appUrl()}/lead/${encodeURIComponent(cnpjClean)}`
+    : `${appUrl()}/leads`
+
+  for (const u of users) {
+    const { subject, html } = situacaoChangeEmail({
+      nome: u.nome,
+      propostaNr: params.propostaNr,
+      propostaTitulo: params.propostaTitulo,
+      oldStatus: params.oldStatus,
+      newStatus: params.newStatus,
+      propostaUrl: leadUrl,
+    })
+    await sendOne(u.email, subject, html)
+  }
+}
+
 export async function sendAssignmentNotification(params: {
   recipientIds: string[]
   actorId: string

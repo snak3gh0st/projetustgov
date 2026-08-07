@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatCNPJ, formatCurrency, whatsappMeUrlFromTelefone } from '@/lib/format'
+import { formatCNPJ, formatCurrency, googleCalendarEventUrl, whatsappMeUrlFromTelefone } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import { formatCrmStatusLabel, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
@@ -10,9 +10,13 @@ const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-500/20',
   'Sem Interesse': 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-300',
   'Em Atendimento': 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
+  'Contatado': 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/20',
+  'Reunião Agendada': 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/20',
   'Proposta Enviada': 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border-blue-200 dark:border-blue-500/20',
   'Em Aprovação': 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-500/20',
   'Fechado': 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20',
+  'Impedimento Técnico': 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/20',
+  'Cancelado': 'bg-slate-100 dark:bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-500/20',
   'Telefone Invalido': 'bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600',
 }
 
@@ -190,7 +194,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
           )}
 
           {/* Sale Value & Commission Info */}
-          {normalizeCrmStatus(localLead.status_contato) === 'Fechado' && localLead.valor_venda && (
+          {(normalizeCrmStatus(localLead.status_contato) === 'Fechado' || normalizeCrmStatus(localLead.status_contato) === 'Em Aprovação') && localLead.valor_venda && (
             <div className="bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-400 dark:text-gray-500">Valor da Venda</span>
@@ -198,6 +202,14 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                   {formatCurrency(localLead.valor_venda)}
                 </span>
               </div>
+              {localLead.tipo_servico && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-400 dark:text-gray-500">Tipo de Serviço</span>
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-50 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300">
+                    {localLead.tipo_servico}
+                  </span>
+                </div>
+              )}
               {localLead.comissao_valor != null && localLead.comissao_valor > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-400 dark:text-gray-500">
@@ -363,6 +375,29 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                   )}
                 </div>
               )}
+              <a
+                href={googleCalendarEventUrl({
+                  title: `Reunião Projetus — ${localLead.nome || localLead.cnpj}`,
+                  details: [
+                    localLead.nome ? `Instituição: ${localLead.nome}` : null,
+                    localLead.telefone ? `Telefone: ${localLead.telefone}` : null,
+                    localLead.email ? `Email: ${localLead.email}` : null,
+                    `CNPJ: ${localLead.cnpj}`,
+                    'Local: Google Meet',
+                  ].filter(Boolean).join('\n'),
+                  guestEmail: localLead.email,
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                title="Abrir Google Calendar / Meet"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+                  <rect x="2" y="3" width="12" height="11" rx="1.5" />
+                  <path d="M2 6.5h12M5 1.5v3M11 1.5v3" strokeLinecap="round" />
+                </svg>
+                Agendar no Calendar
+              </a>
             </div>
           )}
 

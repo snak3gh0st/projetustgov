@@ -40,6 +40,7 @@ export interface VendedorProjeto {
   closer_comissao_valor: number | null
   contrato_assinado?: boolean
   valor_venda: number | null
+  tipo_servico?: 'Aprovação' | 'Execução' | 'Prestação de Contas' | null
   observacoes: string | null
   // Metadata
   importado_de: string | null
@@ -79,9 +80,13 @@ export interface DashboardStats {
     'Não Contatado': number
     'Sem Interesse': number
     'Em Atendimento': number
+    'Contatado': number
+    'Reunião Agendada': number
     'Proposta Enviada': number
     'Em Aprovação': number
     Fechado: number
+    'Impedimento Técnico': number
+    Cancelado: number
   }
 }
 
