@@ -1,0 +1,9 @@
+{
+  "crons": [
+    { "path": "/api/cron/sync-leads", "schedule": "30 12 * * *" },
+    { "path": "/api/cron/sync-execucao", "schedule": "0 13 * * *" },
+    { "path": "/api/cron/sync-tgov-only", "schedule": "30 13 * * *" },
+    { "path": "/api/cron/digest", "schedule": "20 14 * * *" },
+    { "path": "/api/cron/digest", "schedule": "0 22 * * *" }
+  ]
+}

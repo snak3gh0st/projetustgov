@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS propostas (
   data_inicio_vigencia DATE,
   data_fim_vigencia DATE,
   situacao VARCHAR,
+  situacao_changed_at TIMESTAMPTZ,
   estado VARCHAR(2),
   municipio VARCHAR,
   proponente VARCHAR,

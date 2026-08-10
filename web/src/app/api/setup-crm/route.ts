@@ -134,6 +134,7 @@ async function runSetup() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_cnpj ON vendedor_projetos(cnpj)`)
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_status_contato ON vendedor_projetos(status_contato)`)
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_uf ON vendedor_projetos(uf)`)
+    await pool.query(`ALTER TABLE propostas ADD COLUMN IF NOT EXISTS situacao_changed_at TIMESTAMPTZ`).catch(() => {})
 
     // 2a. Deduplicate on new granularity: (cnpj, codigo_programa, nr_emenda).
     // Old concatenated rows (nr_emenda = "EM1 | EM2") are cleaned up in repo-sync.ts AFTER

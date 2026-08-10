@@ -127,27 +127,58 @@ export async function getCommercialTgovUpdatesForUser(userId: string): Promise<D
     situacao: string | null
     transfer_gov_id: string | null
   }>(`
-    SELECT DISTINCT ON (tp.nr_proposta)
-      tp.nr_proposta AS proposta_key,
-      tp.titulo,
-      tp.situacao_changed_at::text AS event_at,
-      tp.orgao_superior AS concedente,
-      tp.proponente,
-      tp.situacao,
-      tp.transfer_gov_id
-    FROM tgov_propostas tp
-    WHERE tp.situacao_changed_at IS NOT NULL
-      AND tp.situacao_changed_at > NOW() - INTERVAL '48 hours'
-      AND NULLIF(TRIM(tp.nr_proposta), '') IS NOT NULL
-      AND EXISTS (
-        SELECT 1
-        FROM vendedor_projetos vp
-        WHERE vp.vendedor_id = $1
-          AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g')
-            = REGEXP_REPLACE(COALESCE(tp.proponente_cnpj, ''), '[^0-9]', '', 'g')
-          AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g') <> ''
-      )
-    ORDER BY tp.nr_proposta, tp.situacao_changed_at DESC
+    WITH commercial_updates AS (
+      SELECT
+        p.nr_proposta AS proposta_key,
+        p.titulo,
+        p.situacao_changed_at AS event_at,
+        p.orgao_superior AS concedente,
+        p.proponente,
+        p.situacao,
+        p.transfer_gov_id
+      FROM propostas p
+      WHERE p.situacao_changed_at IS NOT NULL
+        AND p.situacao_changed_at > NOW() - INTERVAL '48 hours'
+        AND NULLIF(TRIM(p.nr_proposta), '') IS NOT NULL
+        AND EXISTS (
+          SELECT 1
+          FROM vendedor_projetos vp
+          WHERE vp.vendedor_id = $1
+            AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g')
+              = REGEXP_REPLACE(COALESCE(p.proponente_cnpj, ''), '[^0-9]', '', 'g')
+            AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g') <> ''
+        )
+
+      UNION ALL
+
+      SELECT
+        tp.nr_proposta AS proposta_key,
+        tp.titulo,
+        tp.situacao_changed_at AS event_at,
+        tp.orgao_superior AS concedente,
+        tp.proponente,
+        tp.situacao,
+        tp.transfer_gov_id
+      FROM tgov_propostas tp
+      WHERE tp.situacao_changed_at IS NOT NULL
+        AND tp.situacao_changed_at > NOW() - INTERVAL '48 hours'
+        AND NULLIF(TRIM(tp.nr_proposta), '') IS NOT NULL
+        AND EXISTS (
+          SELECT 1
+          FROM vendedor_projetos vp
+          WHERE vp.vendedor_id = $1
+            AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g')
+              = REGEXP_REPLACE(COALESCE(tp.proponente_cnpj, ''), '[^0-9]', '', 'g')
+            AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g') <> ''
+        )
+    ), latest AS (
+      SELECT DISTINCT ON (proposta_key) *
+      FROM commercial_updates
+      ORDER BY proposta_key, event_at DESC
+    )
+    SELECT proposta_key, titulo, event_at::text, concedente, proponente, situacao, transfer_gov_id
+    FROM latest
+    ORDER BY event_at DESC
     LIMIT 50
   `, [userId])
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getCommercialTgovUpdatesForUser, getNotificationsForUser } from '@/lib/digest-email'
 import { digestEmail } from '@/lib/email-templates'
+import { ensureTgovTables } from '@/lib/tgov-tables'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
     const resend = new Resend(process.env.RESEND_API_KEY)
     const fromEmail = process.env.DIGEST_FROM_EMAIL || 'Projetus <noreply@projetus.org>'
     const appUrl = process.env.NEXTAUTH_URL || 'https://projetus.vercel.app'
+    await ensureTgovTables()
 
     // Opted-in users across TGov + commercial roles
     const users = await query<{

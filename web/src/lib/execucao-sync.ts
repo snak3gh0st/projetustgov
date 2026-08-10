@@ -20,10 +20,11 @@
 // Called by: /api/cron/sync-execucao (Phase 15 Plan 02)
 // ============================================================================
 
-import { getPool } from '@/lib/db'
+import { getPool, query } from '@/lib/db'
 import { buildStructuredLeadScopeSql } from '@/lib/crm-scope'
 import { cleanCNPJ, parseBRNumber, fixText, downloadAndStreamCSV, formatPhone } from '@/lib/repo-sync'
 import { APROVACAO_NR_PROPOSTAS } from '@/lib/tgov'
+import { sendCommercialSituacaoChangeNotification } from './email-service'
 
 // ---------------------------------------------------------------------------
 // Internal utility
@@ -151,6 +152,14 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
   // This replaces the hardcoded whitelist — uses the DB as source of truth
   // -------------------------------------------------------------------------
   const pool = getPool()
+  // Defensive compatibility for deployments that have not run the migration
+  // yet. The column is the source of truth for Sprint 2 commercial alerts.
+  await pool.query(`
+    ALTER TABLE propostas
+      ADD COLUMN IF NOT EXISTS situacao_changed_at TIMESTAMPTZ
+  `).catch((error) => {
+    console.warn('[execucao-sync] could not ensure propostas.situacao_changed_at:', error)
+  })
   const structuredLeadScopeSql = buildStructuredLeadScopeSql('vp')
   const clientCnpjResult = await pool.query<{ cnpj: string }>(`
     SELECT DISTINCT cnpj FROM (
@@ -274,14 +283,44 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     }
   }
 
+  const previousSituacaoByTransferGovId = new Map<string, string | null>()
+  const commercialSituacaoChanges: Array<{
+    propostaNr: string
+    propostaTitulo: string | null
+    cnpj: string
+    oldStatus: string
+    newStatus: string
+  }> = []
+
   const b2Client = await pool.connect()
   try {
+    if (b2IdPropostas.length > 0) {
+      const previousRows = await b2Client.query<{
+        transfer_gov_id: string
+        situacao: string | null
+      }>(
+        `SELECT transfer_gov_id, situacao
+         FROM propostas
+         WHERE transfer_gov_id = ANY($1::text[])`,
+        [b2IdPropostas],
+      )
+      for (const row of previousRows.rows) {
+        previousSituacaoByTransferGovId.set(row.transfer_gov_id, row.situacao)
+      }
+    }
+
     // B2a: UPDATE existing propostas rows (CRM + APROVACAO)
     if (b2IdPropostas.length > 0) {
       const b2Result = await b2Client.query<{ n: string }>(
         `WITH upd AS (
           UPDATE propostas
-          SET situacao = updates.situacao, updated_at = NOW()
+          SET
+            situacao = updates.situacao,
+            situacao_changed_at = CASE
+              WHEN propostas.situacao IS DISTINCT FROM updates.situacao THEN NOW()
+              ELSE propostas.situacao_changed_at
+            END,
+            updated_at = NOW()
           FROM (
             SELECT unnest($1::text[]) AS id_proposta,
                    unnest($2::text[]) AS situacao
@@ -331,6 +370,10 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
           ON CONFLICT (transfer_gov_id) DO UPDATE SET
             nr_proposta         = EXCLUDED.nr_proposta,
             situacao            = EXCLUDED.situacao,
+            situacao_changed_at = CASE
+              WHEN propostas.situacao IS DISTINCT FROM EXCLUDED.situacao THEN NOW()
+              ELSE propostas.situacao_changed_at
+            END,
             proponente_cnpj     = EXCLUDED.proponente_cnpj,
             proponente          = COALESCE(EXCLUDED.proponente, propostas.proponente),
             titulo              = COALESCE(EXCLUDED.titulo, propostas.titulo),
@@ -374,8 +417,46 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
     } else {
       console.log('[execucao-sync] STEP B2b: no APROVACAO proposals to upsert')
     }
+
+    // A first import is not an alert. Only a real transition from a stored
+    // status produces the immediate commercial notification.
+    for (const [transferGovId, oldSituacao] of Array.from(previousSituacaoByTransferGovId.entries())) {
+      const current = propostaMap.get(transferGovId)
+      if (!current?.nr_proposta || current.sit_proposta === oldSituacao) continue
+      commercialSituacaoChanges.push({
+        propostaNr: current.nr_proposta,
+        propostaTitulo: current.objeto,
+        cnpj: current.cnpj,
+        oldStatus: oldSituacao ?? '—',
+        newStatus: current.sit_proposta ?? '—',
+      })
+    }
   } finally {
     b2Client.release()
+  }
+
+  for (const change of commercialSituacaoChanges) {
+    try {
+      const owners = await query<{ vendedor_id: string }>(
+        `SELECT DISTINCT vendedor_id
+         FROM vendedor_projetos
+         WHERE vendedor_id IS NOT NULL
+           AND REGEXP_REPLACE(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1`,
+        [change.cnpj],
+      )
+      if (owners.length > 0) {
+        sendCommercialSituacaoChangeNotification({
+          recipientIds: owners.map(row => row.vendedor_id),
+          propostaNr: change.propostaNr,
+          propostaTitulo: change.propostaTitulo,
+          cnpj: change.cnpj,
+          oldStatus: change.oldStatus,
+          newStatus: change.newStatus,
+        }).catch(error => console.error('[execucao-sync] commercial situacao notification failed', error))
+      }
+    } catch (error) {
+      console.error('[execucao-sync] commercial situacao owner lookup failed', error)
+    }
   }
 
   // Memory guard after STEP B

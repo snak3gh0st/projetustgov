@@ -375,29 +375,6 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                   )}
                 </div>
               )}
-              <a
-                href={googleCalendarEventUrl({
-                  title: `Reunião Projetus — ${localLead.nome || localLead.cnpj}`,
-                  details: [
-                    localLead.nome ? `Instituição: ${localLead.nome}` : null,
-                    localLead.telefone ? `Telefone: ${localLead.telefone}` : null,
-                    localLead.email ? `Email: ${localLead.email}` : null,
-                    `CNPJ: ${localLead.cnpj}`,
-                    'Local: Google Meet',
-                  ].filter(Boolean).join('\n'),
-                  guestEmail: localLead.email,
-                })}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700"
-                title="Abrir Google Calendar / Meet"
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
-                  <rect x="2" y="3" width="12" height="11" rx="1.5" />
-                  <path d="M2 6.5h12M5 1.5v3M11 1.5v3" strokeLinecap="round" />
-                </svg>
-                Agendar no Calendar
-              </a>
             </div>
           )}
 
@@ -437,7 +414,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
         </div>
 
         {/* Quick Actions */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-3">
           <button
             disabled={!waUrl}
             onClick={() => {
@@ -461,6 +438,29 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
             </svg>
             Email
           </button>
+          <a
+            href={googleCalendarEventUrl({
+              title: `Reunião Projetus — ${localLead.nome || localLead.cnpj}`,
+              details: [
+                localLead.nome ? `Instituição: ${localLead.nome}` : null,
+                localLead.telefone ? `Telefone: ${localLead.telefone}` : null,
+                localLead.email ? `Email: ${localLead.email}` : null,
+                `CNPJ: ${localLead.cnpj}`,
+                'Local: Google Meet',
+              ].filter(Boolean).join('\n'),
+              guestEmail: localLead.email,
+            })}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
+            title="Abrir Google Calendar / Meet"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+              <rect x="2" y="3" width="12" height="11" rx="1.5" />
+              <path d="M2 6.5h12M5 1.5v3M11 1.5v3" strokeLinecap="round" />
+            </svg>
+            Agendar
+          </a>
           <button
             onClick={() => router.push(`/lead/${encodeURIComponent(lead.cnpj)}`)}
             className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#0072F7] hover:bg-[#0058C4] transition-all"

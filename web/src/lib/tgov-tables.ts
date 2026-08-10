@@ -128,6 +128,7 @@ export async function ensureTgovTables(): Promise<void> {
   await pool.query(`ALTER TABLE tgov_propostas ADD COLUMN IF NOT EXISTS situacao_changed_at TIMESTAMPTZ`)
   await pool.query(`ALTER TABLE tgov_propostas ADD COLUMN IF NOT EXISTS tecnico_assigned_at TIMESTAMPTZ`)
   await pool.query(`ALTER TABLE tgov_propostas ADD COLUMN IF NOT EXISTS tecnico_assigned_by UUID REFERENCES users(id) ON DELETE SET NULL`)
+  await pool.query(`ALTER TABLE propostas ADD COLUMN IF NOT EXISTS situacao_changed_at TIMESTAMPTZ`).catch(() => {})
 
   // Spec 2 — enable RLS on notification tables
   await pool.query(`ALTER TABLE tgov_proposta_participants ENABLE ROW LEVEL SECURITY`)
