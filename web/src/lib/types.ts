@@ -41,6 +41,7 @@ export interface VendedorProjeto {
   contrato_assinado?: boolean
   valor_venda: number | null
   tipo_servico?: 'Aprovação' | 'Execução' | 'Prestação de Contas' | null
+  venda_etapa?: 'aprovacao' | 'execucao_prestacao' | null
   observacoes: string | null
   // Metadata
   importado_de: string | null
@@ -116,7 +117,7 @@ export interface ContactNote {
   lead_cnpj: string
   vendedor_id: string
   vendedor_nome?: string
-  tipo: 'ligacao' | 'email' | 'whatsapp' | 'reuniao' | 'outro'
+  tipo: 'ligacao' | 'email' | 'whatsapp' | 'reuniao' | 'outro' | 'impedimento_tecnico' | 'cancelamento'
   observacao: string | null
   created_at: string
   updated_at: string

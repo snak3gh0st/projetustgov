@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
-import { isClosedCrmStatus, normalizeCrmStatus, normalizeTipoServico, normalizeTipoVendedor } from '@/lib/crm-catalog'
+import { isClosedCrmStatus, isCrmHistoryReasonStatus, isManagementCrmStatus, normalizeCrmStatus, normalizeTipoServico, normalizeTipoVendedor, normalizeVendaEtapa } from '@/lib/crm-catalog'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,8 +18,15 @@ export async function PATCH(
 
     const body = await request.json()
     const projectId = body.id
-    const requestedStatus = body.status_contato !== undefined
-      ? normalizeCrmStatus(String(body.status_contato))
+    const rawRequestedStatus = body.status_contato !== undefined ? String(body.status_contato) : undefined
+    if (rawRequestedStatus && isCrmHistoryReasonStatus(rawRequestedStatus)) {
+      return NextResponse.json(
+        { error: 'Impedimento técnico e cancelamento são motivos do histórico. Registre uma observação no histórico sem alterar a etapa do funil.' },
+        { status: 400 }
+      )
+    }
+    const requestedStatus = rawRequestedStatus !== undefined
+      ? normalizeCrmStatus(rawRequestedStatus)
       : undefined
 
     if (!projectId) {
@@ -32,8 +39,9 @@ export async function PATCH(
       closer_id: string | null
       valor_venda: string | number | null
       contrato_assinado: boolean | null
+      venda_etapa: string | null
     }>(
-      `SELECT status_contato, vendedor_id, closer_id, valor_venda, contrato_assinado
+      `SELECT status_contato, vendedor_id, closer_id, valor_venda, contrato_assinado, venda_etapa
        FROM vendedor_projetos
        WHERE id = $1
        LIMIT 1`,
@@ -46,6 +54,11 @@ export async function PATCH(
     }
 
     const currentStatus = normalizeCrmStatus(currentRow.status_contato)
+    const currentVendaEtapa = normalizeVendaEtapa(currentRow.venda_etapa)
+    const requestedVendaEtapa = requestedStatus === 'Fechado'
+      ? normalizeVendaEtapa(body.venda_etapa) || normalizeVendaEtapa(rawRequestedStatus) || currentVendaEtapa || 'aprovacao'
+      : null
+    const canManagePipeline = session.role === 'gestor' || session.role === 'admin'
 
     const updates: string[] = []
     const values: unknown[] = []
@@ -54,6 +67,8 @@ export async function PATCH(
     if (body.status_contato !== undefined) {
       updates.push(`status_contato = $${paramIndex++}`)
       values.push(requestedStatus)
+      updates.push(`venda_etapa = $${paramIndex++}`)
+      values.push(requestedVendaEtapa)
     }
     if (body.observacoes !== undefined) {
       updates.push(`observacoes = $${paramIndex++}`)
@@ -87,7 +102,7 @@ export async function PATCH(
       values.push(normalizeTipoVendedor(String(body.tipo_vendedor)))
     }
     if (body.contrato_assinado !== undefined) {
-      if (session.role !== 'gestor') {
+      if (!canManagePipeline) {
         return NextResponse.json({ error: 'Only gestores can confirm contrato_assinado' }, { status: 403 })
       }
       updates.push(`contrato_assinado = $${paramIndex++}`)
@@ -115,13 +130,23 @@ export async function PATCH(
       }
     }
 
-    if (isClosedCrmStatus(requestedStatus) && currentStatus !== 'Fechado') {
-      if (session.role !== 'gestor') {
-        return NextResponse.json({ error: 'Only gestores can move a lead to Vendas Concluídas' }, { status: 403 })
+    if (requestedStatus !== undefined && isManagementCrmStatus(requestedStatus) && !canManagePipeline && requestedStatus !== currentStatus) {
+      return NextResponse.json({ error: 'A partir de Aprovação, somente Rooger/gestão pode mover a etapa do funil' }, { status: 403 })
+    }
+
+    if (requestedStatus !== undefined && isClosedCrmStatus(requestedStatus) && currentStatus !== 'Fechado') {
+      if (!canManagePipeline) {
+        return NextResponse.json({ error: 'Somente Rooger/gestão pode mover uma venda para as etapas finais' }, { status: 403 })
       }
       if (currentStatus !== 'Em Aprovação') {
         return NextResponse.json(
-          { error: 'Lead must pass through Em Aprovação before closing' },
+          { error: 'O lead deve passar por Aprovação antes de entrar em Vendas Aprovação' },
+          { status: 400 }
+        )
+      }
+      if (requestedVendaEtapa !== 'aprovacao') {
+        return NextResponse.json(
+          { error: 'A primeira etapa de venda deve ser Vendas Aprovação; depois a gestão pode avançar para Execução e Prestação' },
           { status: 400 }
         )
       }
@@ -134,17 +159,31 @@ export async function PATCH(
       }
     }
 
+    if (requestedStatus === 'Em Aprovação' && currentStatus !== 'Em Aprovação' && currentStatus !== 'Proposta Enviada') {
+      return NextResponse.json({ error: 'Aprovação só pode ser iniciada depois de Proposta Enviada' }, { status: 400 })
+    }
+
+    if (requestedStatus === 'Fechado' && currentStatus === 'Fechado' && currentVendaEtapa !== requestedVendaEtapa) {
+      if (!canManagePipeline) {
+        return NextResponse.json({ error: 'Somente Rooger/gestão pode avançar a etapa final da venda' }, { status: 403 })
+      }
+      if (!(currentVendaEtapa === 'aprovacao' && requestedVendaEtapa === 'execucao_prestacao')) {
+        return NextResponse.json({ error: 'A etapa final deve avançar de Vendas Aprovação para Vendas Execução e Prestação de Contas' }, { status: 400 })
+      }
+    }
+
     updates.push(`updated_at = NOW()`)
     values.push(projectId)
 
-    // Vendedor/coordenador can update their own leads or leads where they are closer
-    // Exception: setting Aguardando Closer is allowed on ANY lead (SDR hands off to closer)
+    // Vendedor/coordenador can update their own leads or leads where they are closer.
+    // They cannot move the funnel past Proposta Enviada.
     let vendedorCondition = ''
     if (session.role === 'vendedor' || session.role === 'coordenador') {
-      if (normalizeCrmStatus(body.status_contato) !== 'Em Aprovação') {
-        values.push(session.userId)
-        vendedorCondition = `AND (vendedor_id = $${paramIndex + 1} OR closer_id = $${paramIndex + 1})`
+      if (requestedStatus !== undefined && isManagementCrmStatus(requestedStatus)) {
+        return NextResponse.json({ error: 'Vendedor só pode mover o lead até Proposta Enviada' }, { status: 403 })
       }
+      values.push(session.userId)
+      vendedorCondition = `AND (vendedor_id = $${paramIndex + 1} OR closer_id = $${paramIndex + 1})`
     }
 
     const updateResult = await query<{ id: number }>(`
@@ -218,7 +257,7 @@ export async function PATCH(
     // comissao_bonus (fundo comercial) and closer_comissao_valor (gestor override) are
     // management-only figures — mirror the role gating already applied in /api/comissoes.
     const updated = await query<Record<string, unknown>>(
-      `SELECT comissao_percentual, comissao_valor, comissao_bonus, tipo_vendedor, valor_venda, tipo_servico, status_contato, closer_id, closer_comissao_percentual, closer_comissao_valor, contrato_assinado FROM vendedor_projetos WHERE id = $1`,
+      `SELECT comissao_percentual, comissao_valor, comissao_bonus, tipo_vendedor, valor_venda, tipo_servico, status_contato, venda_etapa, closer_id, closer_comissao_percentual, closer_comissao_valor, contrato_assinado FROM vendedor_projetos WHERE id = $1`,
       [projectId]
     )
     const updatedRow = updated[0] || {}

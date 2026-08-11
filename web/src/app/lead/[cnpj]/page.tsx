@@ -114,7 +114,8 @@ export default function LeadDetailPage() {
       setProjetos(prev => prev.map(p =>
         p.id === id ? {
           ...p,
-          [field]: value,
+          [field]: data.status_contato ?? value,
+          ...(data.venda_etapa != null ? { venda_etapa: data.venda_etapa } : {}),
           ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
           ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
           ...(data.comissao_bonus != null ? { comissao_bonus: Number(data.comissao_bonus) } : {}),
@@ -128,7 +129,7 @@ export default function LeadDetailPage() {
 
     async function submitFechado(projetoId: number, saleData: { valor_venda: number; status_contato?: string; contrato_assinado?: boolean; tipo_servico: string }) {
     try {
-      const finalStatus = saleData.status_contato || 'Vendas Concluídas'
+      const finalStatus = saleData.status_contato || 'Vendas Aprovação'
       const body: Record<string, unknown> = {
         id: projetoId,
         status_contato: finalStatus,
@@ -152,7 +153,8 @@ export default function LeadDetailPage() {
       setProjetos(prev => prev.map(p =>
         p.id === projetoId ? {
           ...p,
-          status_contato: normalizeCrmStatus(finalStatus),
+          status_contato: data.status_contato ?? normalizeCrmStatus(finalStatus),
+          ...(data.venda_etapa != null ? { venda_etapa: data.venda_etapa } : {}),
           valor_venda: saleData.valor_venda,
           tipo_servico: saleData.tipo_servico as VendedorProjeto['tipo_servico'],
           ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
@@ -316,7 +318,7 @@ export default function LeadDetailPage() {
         <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 rounded-xl p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-purple-700">{formatCrmStatusLabel(first.status_contato)}</p>
+              <p className="text-sm font-semibold text-purple-700">{formatCrmStatusLabel(first.status_contato, first.venda_etapa)}</p>
               <p className="text-xs text-purple-500 mt-1">
                 Este lead foi enviado para conferência do gestor antes da conclusão
               </p>
@@ -566,7 +568,7 @@ export default function LeadDetailPage() {
                   <td className="px-4 py-3 text-sigma-neon text-xs">{formatCurrency(Number(p.valor_emenda) || 0)}</td>
                   <td className="px-4 py-3">
                     <select
-                      value={formatCrmStatusLabel(p.status_contato || 'Não Contatado')}
+                      value={formatCrmStatusLabel(p.status_contato || 'Não Contatado', p.venda_etapa)}
                       onChange={e => updateProjeto(p.id, 'status_contato', e.target.value)}
                       className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[normalizeCrmStatus(p.status_contato)] || STATUS_COLORS['Não Contatado']}`}
                     >

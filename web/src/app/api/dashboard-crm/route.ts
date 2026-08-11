@@ -8,18 +8,15 @@ export const dynamic = 'force-dynamic'
 const CRM_STATUS_SQL = `
   CASE
     WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado', 'Contactado') THEN 'Não Contatado'
-    WHEN COALESCE(vp.status_contato, '') = 'Ainda Não' THEN 'Sem Interesse'
-    WHEN COALESCE(vp.status_contato, '') = 'Sem Interesse' THEN 'Sem Interesse'
-    WHEN COALESCE(vp.status_contato, '') = 'Retorno' THEN 'Em Atendimento'
-    WHEN COALESCE(vp.status_contato, '') = 'Em Atendimento' THEN 'Em Atendimento'
+    WHEN COALESCE(vp.status_contato, '') IN ('Ainda Não', 'Sem Interesse') THEN 'Sem Interesse'
+    WHEN COALESCE(vp.status_contato, '') IN ('Retorno', 'Em Atendimento', 'Impedimento Técnico', 'Impedimento Tecnico', 'Cancelado') THEN 'Em Atendimento'
     WHEN COALESCE(vp.status_contato, '') = 'Contatado' THEN 'Contatado'
     WHEN COALESCE(vp.status_contato, '') IN ('Reunião Agendada', 'Reuniao Agendada') THEN 'Reunião Agendada'
     WHEN COALESCE(vp.status_contato, '') = 'Proposta' THEN 'Proposta Enviada'
     WHEN COALESCE(vp.status_contato, '') = 'Proposta Enviada' THEN 'Proposta Enviada'
-    WHEN COALESCE(vp.status_contato, '') = 'Aguardando Closer' THEN 'Em Aprovação'
-    WHEN COALESCE(vp.status_contato, '') = 'Em Aprovação' THEN 'Em Aprovação'
-    WHEN COALESCE(vp.status_contato, '') IN ('Impedimento Técnico', 'Impedimento Tecnico') THEN 'Impedimento Técnico'
-    WHEN COALESCE(vp.status_contato, '') = 'Cancelado' THEN 'Cancelado'
+    WHEN COALESCE(vp.status_contato, '') IN ('Aguardando Closer', 'Em Aprovação') THEN 'Aprovação'
+    WHEN COALESCE(vp.status_contato, '') = 'Fechado' AND COALESCE(vp.venda_etapa, 'aprovacao') = 'execucao_prestacao' THEN 'Vendas Execução e Prestação de Contas'
+    WHEN COALESCE(vp.status_contato, '') = 'Fechado' THEN 'Vendas Aprovação'
     ELSE COALESCE(vp.status_contato, 'Não Contatado')
   END
 `
@@ -30,6 +27,7 @@ const EXECUCAO_PIPELINE_STATUSES = [
   'Não Contatado',
   'Sem Interesse',
   'Em Atendimento',
+  'Contatado',
   'Quente',
   'Muito Quente',
   'Proposta Enviada',
@@ -114,10 +112,9 @@ export async function GET() {
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Contatado' THEN cnpj END)::int as status_contatado,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Reunião Agendada' THEN cnpj END)::int as status_reuniao_agendada,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Proposta Enviada' THEN cnpj END)::int as status_proposta_enviada,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Em Aprovação' THEN cnpj END)::int as status_em_aprovacao,
-          COUNT(DISTINCT CASE WHEN status_contato = 'Fechado' THEN cnpj END)::int as status_fechado,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Impedimento Técnico' THEN cnpj END)::int as status_impedimento,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Cancelado' THEN cnpj END)::int as status_cancelado
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Aprovação' THEN cnpj END)::int as status_aprovacao,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Vendas Aprovação' THEN cnpj END)::int as status_vendas_aprovacao,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Vendas Execução e Prestação de Contas' THEN cnpj END)::int as status_vendas_execucao
         FROM vendedor_projetos vp
         ${approvalFilter}
       `, vendedorParams),
@@ -129,12 +126,14 @@ export async function GET() {
           u.nome as vendedor_nome,
           COUNT(DISTINCT vp.cnpj)::int as total_leads,
           COUNT(DISTINCT CASE WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Não Contatado' THEN vp.cnpj END)::int as nao_contatado,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Sem Interesse' THEN vp.cnpj END)::int as sem_interesse,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Em Atendimento' THEN vp.cnpj END)::int as em_atendimento,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Contatado' THEN vp.cnpj END)::int as contatado,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Reunião Agendada' THEN vp.cnpj END)::int as reuniao_agendada,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Proposta Enviada' THEN vp.cnpj END)::int as proposta_enviada,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Em Aprovação' THEN vp.cnpj END)::int as em_aprovacao,
-          COUNT(DISTINCT CASE WHEN vp.status_contato = 'Fechado' THEN vp.cnpj END)::int as fechado,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Aprovação' THEN vp.cnpj END)::int as aprovacao,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Vendas Aprovação' THEN vp.cnpj END)::int as vendas_aprovacao,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Vendas Execução e Prestação de Contas' THEN vp.cnpj END)::int as vendas_execucao,
           COALESCE(SUM(vp.valor_emenda::numeric), 0) as valor_total_emenda,
           COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' AND u.role != 'gestor' THEN vp.comissao_valor::numeric ELSE 0 END), 0) as comissao_total,
           MAX(vp.updated_at) as last_activity
@@ -458,10 +457,9 @@ export async function GET() {
           'Contatado': Number(g.status_contatado) || 0,
           'Reunião Agendada': Number(g.status_reuniao_agendada) || 0,
           'Proposta Enviada': Number(g.status_proposta_enviada) || 0,
-          'Em Aprovação': Number(g.status_em_aprovacao) || 0,
-          'Fechado': Number(g.status_fechado) || 0,
-          'Impedimento Técnico': Number(g.status_impedimento) || 0,
-          'Cancelado': Number(g.status_cancelado) || 0,
+          'Aprovação': Number(g.status_aprovacao) || 0,
+          'Vendas Aprovação': Number(g.status_vendas_aprovacao) || 0,
+          'Vendas Execução e Prestação de Contas': Number(g.status_vendas_execucao) || 0,
         },
       },
       execucao_pipeline: {
@@ -488,12 +486,15 @@ export async function GET() {
           vendedor_nome: v.vendedor_nome,
           total_leads: Number(v.total_leads),
           nao_contatado: Number(v.nao_contatado),
+          sem_interesse: Number(v.sem_interesse) || 0,
           retorno: Number(v.em_atendimento),
           contatado: Number(v.contatado) || 0,
           reuniao_agendada: Number(v.reuniao_agendada) || 0,
           proposta: Number(v.proposta_enviada),
-          aguardando_closer: Number(v.em_aprovacao) || 0,
-          fechado: Number(v.fechado),
+          aprovacao: Number(v.aprovacao) || 0,
+          vendas_aprovacao: Number(v.vendas_aprovacao) || 0,
+          vendas_execucao: Number(v.vendas_execucao) || 0,
+          fechado: Number(v.vendas_aprovacao || 0) + Number(v.vendas_execucao || 0),
           valor_total_emenda: Number(v.valor_total_emenda),
           comissao_total: Number(v.comissao_total),
           last_activity: v.last_activity,

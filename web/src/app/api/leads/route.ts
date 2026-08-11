@@ -66,8 +66,18 @@ export async function GET(request: NextRequest) {
     }
 
     if (statusContato && statusContato !== 'all') {
-      conditions.push(`vp.status_contato = $${paramIndex++}`)
-      params.push(statusContato)
+      if (statusContato === 'Sem Interesse / Em Atendimento') {
+        conditions.push(`vp.status_contato IN ('Ainda Não', 'Sem Interesse', 'Retorno', 'Em Atendimento')`)
+      } else if (statusContato === 'Aprovação') {
+        conditions.push(`vp.status_contato IN ('Aguardando Closer', 'Em Aprovação')`)
+      } else if (statusContato === 'Vendas Aprovação') {
+        conditions.push(`vp.status_contato = 'Fechado' AND COALESCE(vp.venda_etapa, 'aprovacao') = 'aprovacao'`)
+      } else if (statusContato === 'Vendas Execução e Prestação de Contas') {
+        conditions.push(`vp.status_contato = 'Fechado' AND vp.venda_etapa = 'execucao_prestacao'`)
+      } else {
+        conditions.push(`vp.status_contato = $${paramIndex++}`)
+        params.push(statusContato)
+      }
     }
 
     if (emExecucao === 'true') {

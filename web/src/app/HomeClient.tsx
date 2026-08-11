@@ -2,16 +2,19 @@
 
 import { useEffect, useState } from 'react'
 import { formatCNPJ, formatCompactCurrency, formatCurrency, formatDate } from '@/lib/format'
-import { normalizeCrmStatus } from '@/lib/crm-catalog'
+import { CRM_STATUS_FUNNEL_ORDER, normalizeCrmStatus } from '@/lib/crm-catalog'
 
 // --- Types ---
 interface StatusCounts {
   'Não Contatado': number
+  'Contatado': number
   'Sem Interesse': number
   'Em Atendimento': number
+  'Reunião Agendada': number
   'Proposta Enviada': number
-  'Em Aprovação'?: number
-  'Fechado': number
+  'Aprovação': number
+  'Vendas Aprovação': number
+  'Vendas Execução e Prestação de Contas': number
   'Telefone Invalido'?: number
   [key: string]: number | undefined
 }
@@ -37,8 +40,11 @@ interface VendedorStats {
   vendedor_nome: string
   total_leads: number
   nao_contatado: number
+  sem_interesse: number
   retorno: number
   proposta: number
+  vendas_aprovacao: number
+  vendas_execucao: number
   fechado: number
   valor_total_emenda: number
   comissao_total: number
@@ -134,17 +140,18 @@ interface SyncLog {
 // --- Status config ---
 const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; label: string }> = {
   'Não Contatado': { color: 'text-orange-600 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-500/15 border-orange-200 dark:border-orange-500/30', bar: 'bg-orange-500', label: 'Não Contatado' },
+  'Contatado': { color: 'text-cyan-700 dark:text-cyan-300', bg: 'bg-cyan-50 dark:bg-cyan-500/15 border-cyan-200 dark:border-cyan-500/30', bar: 'bg-cyan-500', label: 'Contatado' },
+  // Legacy execution statuses remain available to the separate execution view.
   'Sem Interesse': { color: 'text-yellow-600 dark:text-yellow-300', bg: 'bg-yellow-50 dark:bg-yellow-500/15 border-yellow-200', bar: 'bg-yellow-500', label: 'Sem Interesse' },
   'Em Atendimento': { color: 'text-amber-600 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-500/15 border-amber-200 dark:border-amber-500/30', bar: 'bg-amber-500', label: 'Em Atendimento' },
-  'Contatado': { color: 'text-cyan-700 dark:text-cyan-300', bg: 'bg-cyan-50 dark:bg-cyan-500/15 border-cyan-200 dark:border-cyan-500/30', bar: 'bg-cyan-500', label: 'Contatado' },
   'Reunião Agendada': { color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-500/15 border-indigo-200 dark:border-indigo-500/30', bar: 'bg-indigo-500', label: 'Reunião Agendada' },
   'Quente': { color: 'text-red-600 dark:text-red-300', bg: 'bg-red-50 dark:bg-red-500/15 border-red-200 dark:border-red-500/30', bar: 'bg-red-500', label: 'Quente' },
   'Muito Quente': { color: 'text-red-700 dark:text-red-300', bg: 'bg-red-100 dark:bg-red-500/20 border-red-200 dark:border-red-500/30', bar: 'bg-red-600', label: 'Muito Quente' },
   'Proposta Enviada': { color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30', bar: 'bg-blue-500', label: 'Proposta Enviada' },
-  'Em Aprovação': { color: 'text-purple-600 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-500/15 border-purple-200 dark:border-purple-500/30', bar: 'bg-purple-500', label: 'Em Aprovação' },
+  'Aprovação': { color: 'text-purple-600 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-500/15 border-purple-200 dark:border-purple-500/30', bar: 'bg-purple-500', label: 'Aprovação' },
+  'Vendas Aprovação': { color: 'text-green-600 dark:text-green-300', bg: 'bg-green-50 dark:bg-green-500/15 border-green-200 dark:border-green-500/30', bar: 'bg-green-500', label: 'Vendas Aprovação' },
+  'Vendas Execução e Prestação de Contas': { color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200 dark:border-emerald-500/30', bar: 'bg-emerald-600', label: 'Vendas Execução e Prestação de Contas' },
   'Fechado': { color: 'text-green-600 dark:text-green-300', bg: 'bg-green-50 dark:bg-green-500/15 border-green-200 dark:border-green-500/30', bar: 'bg-green-500', label: 'Vendas Concluídas' },
-  'Impedimento Técnico': { color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-50 dark:bg-rose-500/15 border-rose-200 dark:border-rose-500/30', bar: 'bg-rose-500', label: 'Impedimento Técnico' },
-  'Cancelado': { color: 'text-slate-600 dark:text-slate-300', bg: 'bg-slate-100 dark:bg-slate-500/15 border-slate-200 dark:border-slate-500/30', bar: 'bg-slate-400', label: 'Cancelado' },
   'Telefone Invalido': { color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-50 dark:bg-gray-500/15 border-gray-200 dark:border-gray-700', bar: 'bg-gray-400', label: 'Telefone Invalido' },
   'Aguardando Prestação de Contas': { color: 'text-orange-600 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-500/15 border-orange-200', bar: 'bg-orange-500', label: 'Aguard. PC' },
   'Prestação de Contas enviada para Análise': { color: 'text-orange-500 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-500/10 border-orange-200', bar: 'bg-orange-400', label: 'PC Enviada' },
@@ -159,18 +166,7 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; la
   'Prestação de Contas Iniciada Por Antecipação': { color: 'text-orange-400 dark:text-orange-200', bg: 'bg-orange-50 dark:bg-orange-500/10 border-orange-200', bar: 'bg-orange-300', label: 'PC Antecipada' },
 }
 
-const STATUS_ORDER = [
-  'Não Contatado',
-  'Sem Interesse',
-  'Em Atendimento',
-  'Contatado',
-  'Reunião Agendada',
-  'Proposta Enviada',
-  'Em Aprovação',
-  'Fechado',
-  'Impedimento Técnico',
-  'Cancelado',
-] as const
+const STATUS_ORDER = CRM_STATUS_FUNNEL_ORDER
 const EXECUCAO_STATUS_ORDER = [
   'Não Contatado',
   'Sem Interesse',
@@ -979,9 +975,11 @@ export default function CRMDashboard() {
                 <div className="flex flex-wrap gap-2 mb-3">
                   {[
                     { key: 'nao_contatado' as const, status: 'Não Contatado', count: v.nao_contatado },
+                    { key: 'sem_interesse' as const, status: 'Sem Interesse', count: v.sem_interesse },
                     { key: 'retorno' as const, status: 'Em Atendimento', count: v.retorno },
                     { key: 'proposta' as const, status: 'Proposta Enviada', count: v.proposta },
-                    { key: 'fechado' as const, status: 'Fechado', count: v.fechado },
+                    { key: 'vendas_aprovacao' as const, status: 'Vendas Aprovação', count: v.vendas_aprovacao },
+                    { key: 'vendas_execucao' as const, status: 'Vendas Execução e Prestação de Contas', count: v.vendas_execucao },
                   ].map(({ status, count }) => {
                     const cfg = STATUS_CONFIG[status]
                     return (

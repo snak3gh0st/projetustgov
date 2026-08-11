@@ -460,35 +460,44 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
             [change.nrProposta],
           )
           if (participants.length > 0) {
-            sendSituacaoChangeNotification({
+            await sendSituacaoChangeNotification({
               recipientIds: participants.map(p => p.user_id),
               actorId: '00000000-0000-0000-0000-000000000000', // sync has no human actor; no recipient will match this
               propostaNr: change.nrProposta,
               propostaTitulo: change.titulo,
               oldStatus: change.oldSituacao,
               newStatus: change.newSituacao,
-            }).catch(err => console.error('[tgov-only-sync] situacao notification failed', err))
+            })
           }
 
           // Commercial owners of the CNPJ — alert only; never overwrite CRM funnel
           const cnpjClean = String(change.cnpj ?? '').replace(/\D/g, '')
           if (cnpjClean) {
-            const sellers = await query<{ vendedor_id: string }>(
-              `SELECT DISTINCT vendedor_id
-               FROM vendedor_projetos
-               WHERE vendedor_id IS NOT NULL
-                 AND REGEXP_REPLACE(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1`,
+            const sellers = await query<{ user_id: string }>(
+              `SELECT DISTINCT user_id
+               FROM (
+                 SELECT vendedor_id AS user_id
+                 FROM vendedor_projetos
+                 WHERE vendedor_id IS NOT NULL
+                   AND REGEXP_REPLACE(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1
+                 UNION
+                 SELECT closer_id AS user_id
+                 FROM vendedor_projetos
+                 WHERE closer_id IS NOT NULL
+                   AND REGEXP_REPLACE(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1
+               ) owners`,
               [cnpjClean],
             )
             if (sellers.length > 0) {
-              sendCommercialSituacaoChangeNotification({
-                recipientIds: sellers.map(s => s.vendedor_id),
+              await sendCommercialSituacaoChangeNotification({
+                recipientIds: sellers.map(s => s.user_id),
                 propostaNr: change.nrProposta,
                 propostaTitulo: change.titulo,
                 cnpj: cnpjClean,
                 oldStatus: change.oldSituacao,
                 newStatus: change.newSituacao,
-              }).catch(err => console.error('[tgov-only-sync] commercial situacao notification failed', err))
+              })
+              console.log(`[tgov-only-sync] commercial situacao notification sent to ${sellers.length} CRM owner(s) for ${change.nrProposta}`)
             }
           }
         } catch (err) {

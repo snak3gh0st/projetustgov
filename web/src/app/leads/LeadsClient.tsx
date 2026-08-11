@@ -280,7 +280,8 @@ export default function LeadsClient() {
       setLeads(prev => prev.map(l =>
         l.id === id ? {
           ...l,
-          [field]: value,
+          [field]: data.status_contato ?? value,
+          ...(data.venda_etapa != null ? { venda_etapa: data.venda_etapa } : {}),
           ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
           ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
           ...(data.comissao_bonus != null ? { comissao_bonus: Number(data.comissao_bonus) } : {}),
@@ -298,7 +299,7 @@ export default function LeadsClient() {
     saleData: { valor_venda: number; status_contato?: string; contrato_assinado?: boolean; tipo_servico: string }
   ) {
     try {
-      const targetStatus = saleData.status_contato || 'Vendas Concluídas'
+      const targetStatus = saleData.status_contato || 'Vendas Aprovação'
       const body: Record<string, unknown> = {
         id: leadId,
         status_contato: targetStatus,
@@ -631,7 +632,7 @@ export default function LeadsClient() {
                     </td>
                     <td className="px-3 py-2.5">
                       <select
-                        value={formatCrmStatusLabel(lead.status_contato)}
+                        value={formatCrmStatusLabel(lead.status_contato, lead.venda_etapa)}
                         onClick={e => e.stopPropagation()}
                         onChange={e => updateLead(lead.id, 'status_contato', e.target.value)}
                         className={`text-xs font-medium rounded-full px-3 py-1 border-0 cursor-pointer ${STATUS_COLORS[normalizeCrmStatus(lead.status_contato)] || STATUS_COLORS['Não Contatado']}`}
@@ -712,7 +713,7 @@ export default function LeadsClient() {
                       </td>
                       <td className="px-4 py-2" colSpan={sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador' ? 5 : 4}>
                         <select
-                          value={formatCrmStatusLabel(sub.status_contato)}
+                          value={formatCrmStatusLabel(sub.status_contato, sub.venda_etapa)}
                           onClick={e => e.stopPropagation()}
                           onChange={e => updateLead(sub.id, 'status_contato', e.target.value)}
                           className={`text-xs font-medium rounded-full px-2 py-0.5 border-0 cursor-pointer ${STATUS_COLORS[normalizeCrmStatus(sub.status_contato)] || STATUS_COLORS['Não Contatado']}`}

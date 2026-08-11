@@ -437,22 +437,31 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
 
   for (const change of commercialSituacaoChanges) {
     try {
-      const owners = await query<{ vendedor_id: string }>(
-        `SELECT DISTINCT vendedor_id
-         FROM vendedor_projetos
-         WHERE vendedor_id IS NOT NULL
-           AND REGEXP_REPLACE(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1`,
+      const owners = await query<{ user_id: string }>(
+        `SELECT DISTINCT user_id
+         FROM (
+           SELECT vendedor_id AS user_id
+           FROM vendedor_projetos
+           WHERE vendedor_id IS NOT NULL
+             AND REGEXP_REPLACE(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1
+           UNION
+           SELECT closer_id AS user_id
+           FROM vendedor_projetos
+           WHERE closer_id IS NOT NULL
+             AND REGEXP_REPLACE(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1
+         ) owners`,
         [change.cnpj],
       )
       if (owners.length > 0) {
-        sendCommercialSituacaoChangeNotification({
-          recipientIds: owners.map(row => row.vendedor_id),
+        await sendCommercialSituacaoChangeNotification({
+          recipientIds: owners.map(row => row.user_id),
           propostaNr: change.propostaNr,
           propostaTitulo: change.propostaTitulo,
           cnpj: change.cnpj,
           oldStatus: change.oldStatus,
           newStatus: change.newStatus,
-        }).catch(error => console.error('[execucao-sync] commercial situacao notification failed', error))
+        })
+        console.log(`[execucao-sync] commercial situacao notification sent to ${owners.length} CRM owner(s) for ${change.propostaNr}`)
       }
     } catch (error) {
       console.error('[execucao-sync] commercial situacao owner lookup failed', error)

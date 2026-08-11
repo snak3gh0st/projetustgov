@@ -14,6 +14,8 @@ const TIPO_CONFIG = {
   whatsapp: { label: 'WhatsApp', icon: 'WA', color: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/20' },
   reuniao: { label: 'Reuniao', icon: 'Reu', color: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-500/20' },
   outro: { label: 'Outro', icon: '--', color: 'text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700' },
+  impedimento_tecnico: { label: 'Impedimento técnico', icon: '!', color: 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20' },
+  cancelamento: { label: 'Cancelamento', icon: '×', color: 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-500/10 border-slate-200 dark:border-slate-500/20' },
 }
 
 export default function ContactNotesTimeline({ cnpj, canModify }: ContactNotesTimelineProps) {

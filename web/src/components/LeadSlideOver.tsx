@@ -106,7 +106,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
 
           {lead.status_contato && (
             <span className={`inline-block mt-3 text-xs font-medium rounded-full px-3 py-1 border ${STATUS_COLORS[normalizeCrmStatus(lead.status_contato)] || STATUS_COLORS['Não Contatado']}`}>
-              {formatCrmStatusLabel(lead.status_contato)}
+              {formatCrmStatusLabel(lead.status_contato, lead.venda_etapa)}
             </span>
           )}
 
@@ -148,7 +148,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                       {formatCurrency(Number(emenda.valor_emenda) || 0)}
                     </span>
                     <span className={`text-[10px] font-medium rounded-full px-2 py-0.5 border ${STATUS_COLORS[normalizeCrmStatus(emenda.status_contato)] || STATUS_COLORS['Não Contatado']}`}>
-                      {formatCrmStatusLabel(emenda.status_contato)}
+                      {formatCrmStatusLabel(emenda.status_contato, emenda.venda_etapa)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
