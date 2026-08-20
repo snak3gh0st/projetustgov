@@ -23,6 +23,7 @@ export interface NavItem {
 
 const LEADS_ITEM: NavItem = { href: '/leads', label: 'Lead Aprovacao', icon: 'leads' }
 const EXECUCAO_ITEM: NavItem = { href: '/execucao', label: 'Lead Execucao', icon: 'execucao' }
+const OPERACAO_ITEM: NavItem = { href: '/operacao', label: 'Operacao', icon: 'tgov' }
 
 const BASE_NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Pipeline', icon: 'pipeline' },
@@ -36,6 +37,7 @@ const BASE_WITH_EXECUCAO: NavItem[] = [
   { href: '/', label: 'Pipeline', icon: 'pipeline' },
   LEADS_ITEM,
   EXECUCAO_ITEM,
+  OPERACAO_ITEM,
   { href: '/comissoes', label: 'Comissoes', icon: 'comissoes' },
   { href: '/bi', label: 'BI Analytics', icon: 'bi' },
   { href: '/monitorar', label: 'Meus Monitorados', icon: 'monitorar' },
@@ -83,6 +85,7 @@ export function getNavItemsForRole(role: NavRole): NavItem[] {
   }
   if (role === 'adm_produto') {
     return [
+      OPERACAO_ITEM,
       { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
       { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
       { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
@@ -93,6 +96,7 @@ export function getNavItemsForRole(role: NavRole): NavItem[] {
   if (role === 'csm') {
     return [
       { href: '/csm', label: 'CSM', icon: 'csm' },
+      OPERACAO_ITEM,
       { href: '/csm/comissoes', label: 'Comissoes', icon: 'comissoes' },
       { href: '/csm/bi', label: 'BI Dashboard CSM', icon: 'bi' },
       { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
@@ -102,6 +106,7 @@ export function getNavItemsForRole(role: NavRole): NavItem[] {
   }
   if (role === 'coord_aprovacao' || role === 'assistente_aprovacao' || role === 'coord_execucao' || role === 'coord_prestacao') {
     return [
+      OPERACAO_ITEM,
       { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
       { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
       { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
@@ -110,6 +115,7 @@ export function getNavItemsForRole(role: NavRole): NavItem[] {
   }
   if (role === 'projetista' || role === 'assistente_execucao' || role === 'assistente_prestacao') {
     return [
+      ...(role === 'assistente_execucao' || role === 'assistente_prestacao' ? [OPERACAO_ITEM] : []),
       { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
       { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
       { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },

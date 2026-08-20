@@ -14,6 +14,7 @@ const TGOV_ROLES = [
 ]
 
 const CRM_DIGEST_ROLES = ['vendedor', 'coordenador', 'visualizador', 'gestor', 'admin']
+const COMMERCIAL_HEAD_EMAIL = process.env.PRIMARY_LEAD_MANAGER_EMAIL || 'rooger@projetus.org'
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,9 +40,10 @@ export async function GET(request: NextRequest) {
       role: string
     }>(
       `SELECT id, nome, email, role FROM users
-       WHERE email_digest = true AND active = true
-       AND role = ANY($1::text[])`,
-      [[...TGOV_ROLES, ...CRM_DIGEST_ROLES].filter((r, i, arr) => arr.indexOf(r) === i)]
+       WHERE active = true AND email IS NOT NULL
+       AND (email_digest = true OR LOWER(email) = LOWER($2))
+       AND (role = ANY($1::text[]) OR LOWER(email) = LOWER($2))`,
+      [[...TGOV_ROLES, ...CRM_DIGEST_ROLES].filter((r, i, arr) => arr.indexOf(r) === i), COMMERCIAL_HEAD_EMAIL]
     )
 
     let sent = 0
@@ -49,14 +51,15 @@ export async function GET(request: NextRequest) {
 
     for (const user of users) {
       const isTgov = TGOV_ROLES.includes(user.role)
-      const isCrm = CRM_DIGEST_ROLES.includes(user.role)
+      const isHead = user.email.toLowerCase() === COMMERCIAL_HEAD_EMAIL.toLowerCase()
+      const isCrm = isHead || CRM_DIGEST_ROLES.includes(user.role)
 
       const tgovData = isTgov
         ? await getNotificationsForUser(user.id, user.role)
         : { items: [], stale: [] }
 
       const crmData = isCrm
-        ? await getCommercialTgovUpdatesForUser(user.id)
+        ? await getCommercialTgovUpdatesForUser(user.id, isHead)
         : { items: [], stale: [] }
 
       // Merge items (dedupe by proposta key + eventAt)

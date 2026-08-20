@@ -117,7 +117,7 @@ export async function getNotificationsForUser(userId: string, role: string): Pro
  * Digest for commercial users: TGov situacao changes on CNPJs they own.
  * Does NOT mutate CRM status_contato — visibility/alert only.
  */
-export async function getCommercialTgovUpdatesForUser(userId: string): Promise<DigestData> {
+export async function getCommercialTgovUpdatesForUser(userId: string, isHead = false): Promise<DigestData> {
   const items = await query<{
     proposta_key: string
     titulo: string | null
@@ -140,13 +140,16 @@ export async function getCommercialTgovUpdatesForUser(userId: string): Promise<D
       WHERE p.situacao_changed_at IS NOT NULL
         AND p.situacao_changed_at > NOW() - INTERVAL '48 hours'
         AND NULLIF(TRIM(p.nr_proposta), '') IS NOT NULL
-        AND EXISTS (
-          SELECT 1
-          FROM vendedor_projetos vp
-          WHERE vp.vendedor_id = $1
-            AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g')
-              = REGEXP_REPLACE(COALESCE(p.proponente_cnpj, ''), '[^0-9]', '', 'g')
-            AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g') <> ''
+        AND (
+          $2::boolean
+          OR EXISTS (
+            SELECT 1
+            FROM vendedor_projetos vp
+            WHERE vp.vendedor_id = $1
+              AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g')
+                = REGEXP_REPLACE(COALESCE(p.proponente_cnpj, ''), '[^0-9]', '', 'g')
+              AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g') <> ''
+          )
         )
 
       UNION ALL
@@ -163,13 +166,16 @@ export async function getCommercialTgovUpdatesForUser(userId: string): Promise<D
       WHERE tp.situacao_changed_at IS NOT NULL
         AND tp.situacao_changed_at > NOW() - INTERVAL '48 hours'
         AND NULLIF(TRIM(tp.nr_proposta), '') IS NOT NULL
-        AND EXISTS (
-          SELECT 1
-          FROM vendedor_projetos vp
-          WHERE vp.vendedor_id = $1
-            AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g')
-              = REGEXP_REPLACE(COALESCE(tp.proponente_cnpj, ''), '[^0-9]', '', 'g')
-            AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g') <> ''
+        AND (
+          $2::boolean
+          OR EXISTS (
+            SELECT 1
+            FROM vendedor_projetos vp
+            WHERE vp.vendedor_id = $1
+              AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g')
+                = REGEXP_REPLACE(COALESCE(tp.proponente_cnpj, ''), '[^0-9]', '', 'g')
+              AND REGEXP_REPLACE(COALESCE(vp.cnpj, ''), '[^0-9]', '', 'g') <> ''
+          )
         )
     ), latest AS (
       SELECT DISTINCT ON (proposta_key) *
@@ -180,7 +186,7 @@ export async function getCommercialTgovUpdatesForUser(userId: string): Promise<D
     FROM latest
     ORDER BY event_at DESC
     LIMIT 50
-  `, [userId])
+  `, [userId, isHead])
 
   return {
     items: items.map(r => ({

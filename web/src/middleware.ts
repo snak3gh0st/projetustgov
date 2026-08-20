@@ -59,6 +59,11 @@ export default auth((req) => {
   const CSM_PATHS = ['/csm', '/api/csm']
   const isCsmPath = CSM_PATHS.some(p => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?'))
 
+  // Operação v1 has its own route-level RBAC and is shared by CRM/TGov operations.
+  // Let the page/API decide access without being swallowed by area isolation.
+  const isOperacaoPath = pathname === '/operacao' || pathname.startsWith('/operacao/') || pathname === '/api/operacao' || pathname.startsWith('/api/operacao/')
+  if (isOperacaoPath) return
+
   if (role === 'adm_produto') {
     if (isCrmPage || isCrmHome) {
       return Response.redirect(new URL('/tgov', req.url))

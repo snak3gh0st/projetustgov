@@ -14,7 +14,7 @@ interface StatusCounts {
   'Proposta Enviada': number
   'Aprovação': number
   'Vendas Aprovação': number
-  'Vendas Execução e Prestação de Contas': number
+  'Execução/Prestação': number
   'Telefone Invalido'?: number
   [key: string]: number | undefined
 }
@@ -150,7 +150,7 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; la
   'Proposta Enviada': { color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30', bar: 'bg-blue-500', label: 'Proposta Enviada' },
   'Aprovação': { color: 'text-purple-600 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-500/15 border-purple-200 dark:border-purple-500/30', bar: 'bg-purple-500', label: 'Aprovação' },
   'Vendas Aprovação': { color: 'text-green-600 dark:text-green-300', bg: 'bg-green-50 dark:bg-green-500/15 border-green-200 dark:border-green-500/30', bar: 'bg-green-500', label: 'Vendas Aprovação' },
-  'Vendas Execução e Prestação de Contas': { color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200 dark:border-emerald-500/30', bar: 'bg-emerald-600', label: 'Vendas Execução e Prestação de Contas' },
+  'Execução/Prestação': { color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200 dark:border-emerald-500/30', bar: 'bg-emerald-600', label: 'Execução/Prestação' },
   'Fechado': { color: 'text-green-600 dark:text-green-300', bg: 'bg-green-50 dark:bg-green-500/15 border-green-200 dark:border-green-500/30', bar: 'bg-green-500', label: 'Vendas Concluídas' },
   'Telefone Invalido': { color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-50 dark:bg-gray-500/15 border-gray-200 dark:border-gray-700', bar: 'bg-gray-400', label: 'Telefone Invalido' },
   'Aguardando Prestação de Contas': { color: 'text-orange-600 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-500/15 border-orange-200', bar: 'bg-orange-500', label: 'Aguard. PC' },
@@ -979,7 +979,7 @@ export default function CRMDashboard() {
                     { key: 'retorno' as const, status: 'Em Atendimento', count: v.retorno },
                     { key: 'proposta' as const, status: 'Proposta Enviada', count: v.proposta },
                     { key: 'vendas_aprovacao' as const, status: 'Vendas Aprovação', count: v.vendas_aprovacao },
-                    { key: 'vendas_execucao' as const, status: 'Vendas Execução e Prestação de Contas', count: v.vendas_execucao },
+                    { key: 'vendas_execucao' as const, status: 'Execução/Prestação', count: v.vendas_execucao },
                   ].map(({ status, count }) => {
                     const cfg = STATUS_CONFIG[status]
                     return (

@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatCNPJ, formatCurrency, googleCalendarEventUrl, whatsappMeUrlFromTelefone } from '@/lib/format'
+import { formatCNPJ, formatCurrency, googleCalendarEventUrl } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import { formatCrmStatusLabel, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
+import WhatsAppAction from '@/components/WhatsAppAction'
 
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-500/20',
@@ -70,8 +71,6 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
   }
 
   if (!lead || !localLead) return null
-
-  const waUrl = whatsappMeUrlFromTelefone(localLead.telefone)
 
   return (
     <div className="fixed inset-0 z-50">
@@ -291,15 +290,12 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                     />
                   ) : (
                     <>
-                      <span className="flex-1">
+                      <span className="flex-1 flex items-center gap-2 min-w-0">
                         {localLead.telefone ? (
-                          waUrl ? (
-                            <a href={waUrl} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-700" title="Conversar no WhatsApp">
-                              {localLead.telefone}
-                            </a>
-                          ) : (
-                            localLead.telefone
-                          )
+                          <>
+                            <span className="truncate">{localLead.telefone}</span>
+                            <WhatsAppAction telefone={localLead.telefone} compact label="Abrir" />
+                          </>
                         ) : (
                           <span className="text-gray-600 dark:text-gray-300">Sem telefone</span>
                         )}
@@ -415,18 +411,11 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
 
         {/* Quick Actions */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-3">
-          <button
-            disabled={!waUrl}
-            onClick={() => {
-              if (waUrl) window.open(waUrl, '_blank')
-            }}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-white bg-green-600 hover:bg-green-500 disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 transition-colors"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 1a7 7 0 00-6.1 10.4L1 15l3.7-.9A7 7 0 108 1zm3.6 9.8c-.15.43-.9.82-1.24.87-.34.05-.77.07-1.24-.08a11.4 11.4 0 01-1.12-.42 8.7 8.7 0 01-3.45-3.05c-.3-.39-.6-.8-.82-1.24-.22-.44-.11-.66.08-.87l.27-.31c.09-.1.19-.26.28-.39.1-.13.13-.22.19-.37.06-.15.03-.28-.02-.39s-.56-1.34-.76-1.84c-.2-.48-.41-.42-.56-.42h-.48c-.17 0-.43.06-.66.31s-.86.84-.86 2.06.88 2.39 1 2.56c.13.17 1.75 2.67 4.23 3.74.59.25 1.05.4 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.2-.58.2-1.08.14-1.18-.06-.1-.22-.16-.47-.28z"/>
-            </svg>
-            WhatsApp
-          </button>
+          <WhatsAppAction
+            telefone={localLead.telefone}
+            label="WhatsApp"
+            className="w-full min-h-[42px]"
+          />
           <button
             disabled={!lead.email}
             onClick={() => window.open(`mailto:${lead.email}`, '_blank')}

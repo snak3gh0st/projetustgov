@@ -7,6 +7,7 @@ export const CRM_STATUS_CANONICAL = [
   'Proposta Enviada',
   'Em Aprovação',
   'Fechado',
+  'Churn',
 ] as const
 
 /** Ordem do funil comercial ativo (pipeline / home). */
@@ -19,7 +20,8 @@ export const CRM_STATUS_FUNNEL_ORDER = [
   'Proposta Enviada',
   'Aprovação',
   'Vendas Aprovação',
-  'Vendas Execução e Prestação de Contas',
+  'Execução/Prestação',
+  'Churn',
 ] as const
 
 /** Opções de etapa comercial. Motivos de perda/bloqueio ficam no histórico. */
@@ -33,7 +35,8 @@ export const CRM_STATUS_SELECT_OPTIONS = [
   'Aprovação',
   // Subetapas da venda concluída, controladas pela gestão.
   'Vendas Aprovação',
-  'Vendas Execução e Prestação de Contas',
+  'Execução/Prestação',
+  'Churn',
 ] as const
 
 export const CRM_HISTORY_REASON_TYPES = [
@@ -70,6 +73,8 @@ export const CRM_STATUS_ALIASES: Record<string, CrmStatus> = {
   'Fechado': 'Fechado',
   'Vendas Concluídas': 'Fechado',
   'Vendas Aprovação': 'Fechado',
+  'Execução/Prestação': 'Fechado',
+  'Churn': 'Churn',
   'Vendas Execução e Prestação': 'Fechado',
   'Vendas Execução e Prestação de Contas': 'Fechado',
   // Filtros descontinuados — qualquer lead nesses status volta para uma etapa comercial.
@@ -93,7 +98,8 @@ export const CRM_STATUS_BADGE_COLORS: Record<string, string> = {
   'Aprovação': 'bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300',
   'Em Aprovação': 'bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300',
   'Vendas Aprovação': 'bg-green-50 dark:bg-green-500/15 text-green-600 dark:text-green-300',
-  'Vendas Execução e Prestação de Contas': 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+  'Execução/Prestação': 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+  'Churn': 'bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300',
   'Fechado': 'bg-green-50 dark:bg-green-500/15 text-green-600 dark:text-green-300',
 }
 
@@ -105,7 +111,7 @@ export function normalizeCrmStatus(status: string | null | undefined): CrmStatus
 export function normalizeVendaEtapa(value: string | null | undefined): CrmVendaEtapa | null {
   if (!value) return null
   if (value === 'aprovacao' || value === 'Vendas Aprovação') return 'aprovacao'
-  if (value === 'execucao_prestacao' || value === 'Vendas Execução e Prestação' || value === 'Vendas Execução e Prestação de Contas') return 'execucao_prestacao'
+  if (value === 'execucao_prestacao' || value === 'Execução/Prestação' || value === 'Vendas Execução e Prestação' || value === 'Vendas Execução e Prestação de Contas') return 'execucao_prestacao'
   return null
 }
 
@@ -114,7 +120,7 @@ export function formatCrmStatusLabel(status: string | null | undefined, vendaEta
   if (normalized === 'Em Aprovação') return 'Aprovação'
   if (normalized === 'Fechado') {
     return normalizeVendaEtapa(vendaEtapa) === 'execucao_prestacao'
-      ? 'Vendas Execução e Prestação de Contas'
+      ? 'Execução/Prestação'
       : 'Vendas Aprovação'
   }
   return normalized
@@ -130,7 +136,7 @@ export function isCrmHistoryReasonStatus(status: string | null | undefined): boo
 
 export function isManagementCrmStatus(status: string | null | undefined): boolean {
   const normalized = normalizeCrmStatus(status)
-  return normalized === 'Em Aprovação' || normalized === 'Fechado'
+  return normalized === 'Em Aprovação' || normalized === 'Fechado' || normalized === 'Churn'
 }
 
 /** Tipo de serviço fechado — tag para operacional. */

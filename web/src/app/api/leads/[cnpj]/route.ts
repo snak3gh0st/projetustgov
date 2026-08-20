@@ -168,7 +168,7 @@ export async function PATCH(
         return NextResponse.json({ error: 'Somente Rooger/gestão pode avançar a etapa final da venda' }, { status: 403 })
       }
       if (!(currentVendaEtapa === 'aprovacao' && requestedVendaEtapa === 'execucao_prestacao')) {
-        return NextResponse.json({ error: 'A etapa final deve avançar de Vendas Aprovação para Vendas Execução e Prestação de Contas' }, { status: 400 })
+        return NextResponse.json({ error: 'A etapa final deve avançar de Vendas Aprovação para Execução/Prestação' }, { status: 400 })
       }
     }
 

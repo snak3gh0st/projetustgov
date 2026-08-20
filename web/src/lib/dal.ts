@@ -107,6 +107,21 @@ export function canReadTgov(role: string | undefined): boolean {
       || role === 'coord_prestacao' || role === 'assistente_prestacao'
 }
 
+/** Operação v1: leitura da fila comum de execução e prestação. */
+export function canReadOperacao(role: string | undefined): boolean {
+  return role === 'gestor' || role === 'admin' || role === 'adm_produto' || role === 'csm'
+      || role === 'vendedor' || role === 'coordenador' || role === 'visualizador'
+      || role === 'coord_execucao' || role === 'assistente_execucao'
+      || role === 'coord_prestacao' || role === 'assistente_prestacao'
+}
+
+/** Operação v1: só coordenação/setor e administração alteram o overlay local. */
+export function canWriteOperacao(role: string | undefined): boolean {
+  return role === 'gestor' || role === 'admin' || role === 'coord_execucao'
+      || role === 'assistente_execucao' || role === 'coord_prestacao'
+      || role === 'assistente_prestacao'
+}
+
 /** TGov mutations privilegiadas (whitelist write, interaction PATCH, tecnico assignment). NÃO inclui CSM nem projetista. */
 export function canWriteTgov(role: string | undefined): boolean {
   return role === 'gestor' || role === 'admin' || role === 'adm_produto'

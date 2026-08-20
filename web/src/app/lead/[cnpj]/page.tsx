@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { formatCNPJ, formatCurrency, whatsappMeUrlFromTelefone } from '@/lib/format'
+import { formatCNPJ, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import ContactNotesTimeline from '@/components/ContactNotesTimeline'
 import LeadContacts from '@/components/LeadContacts'
+import WhatsAppAction from '@/components/WhatsAppAction'
 import SaleModal from '@/components/SaleModal'
-import { CRM_STATUS_BADGE_COLORS, CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
+import { CRM_STATUS_BADGE_COLORS, CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, isManagementCrmStatus, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
 const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
 const STATUS_COLORS = CRM_STATUS_BADGE_COLORS
@@ -472,13 +473,10 @@ export default function LeadDetailPage() {
                   className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md px-2 py-1 focus:outline-none focus:border-sigma-neon/50"
                 />
               ) : first.telefone ? (
-                whatsappMeUrlFromTelefone(first.telefone) ? (
-                  <a href={whatsappMeUrlFromTelefone(first.telefone)!} target="_blank" rel="noopener noreferrer" className="text-sm text-green-600 hover:text-green-700 block" title="Conversar no WhatsApp">
-                    {first.telefone}
-                  </a>
-                ) : (
+                <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-800 dark:text-gray-200">{first.telefone}</span>
-                )
+                  <WhatsAppAction telefone={first.telefone} compact label="WhatsApp" />
+                </div>
               ) : (
                 <span className="text-sm text-gray-600 dark:text-gray-400">Sem telefone</span>
               )}
@@ -572,7 +570,9 @@ export default function LeadDetailPage() {
                       onChange={e => updateProjeto(p.id, 'status_contato', e.target.value)}
                       className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[normalizeCrmStatus(p.status_contato)] || STATUS_COLORS['Não Contatado']}`}
                     >
-                      {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                      {(userRole === 'vendedor' || userRole === 'coordenador'
+                        ? STATUS_OPTIONS.filter(s => !isManagementCrmStatus(s))
+                        : STATUS_OPTIONS).map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </td>
                   <td className="px-4 py-3">

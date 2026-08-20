@@ -15,7 +15,7 @@ const CRM_STATUS_SQL = `
     WHEN COALESCE(vp.status_contato, '') = 'Proposta' THEN 'Proposta Enviada'
     WHEN COALESCE(vp.status_contato, '') = 'Proposta Enviada' THEN 'Proposta Enviada'
     WHEN COALESCE(vp.status_contato, '') IN ('Aguardando Closer', 'Em Aprovação') THEN 'Aprovação'
-    WHEN COALESCE(vp.status_contato, '') = 'Fechado' AND COALESCE(vp.venda_etapa, 'aprovacao') = 'execucao_prestacao' THEN 'Vendas Execução e Prestação de Contas'
+    WHEN COALESCE(vp.status_contato, '') = 'Fechado' AND COALESCE(vp.venda_etapa, 'aprovacao') = 'execucao_prestacao' THEN 'Execução/Prestação'
     WHEN COALESCE(vp.status_contato, '') = 'Fechado' THEN 'Vendas Aprovação'
     ELSE COALESCE(vp.status_contato, 'Não Contatado')
   END
@@ -114,7 +114,7 @@ export async function GET() {
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Proposta Enviada' THEN cnpj END)::int as status_proposta_enviada,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Aprovação' THEN cnpj END)::int as status_aprovacao,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Vendas Aprovação' THEN cnpj END)::int as status_vendas_aprovacao,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Vendas Execução e Prestação de Contas' THEN cnpj END)::int as status_vendas_execucao
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Execução/Prestação' THEN cnpj END)::int as status_vendas_execucao
         FROM vendedor_projetos vp
         ${approvalFilter}
       `, vendedorParams),
@@ -133,7 +133,7 @@ export async function GET() {
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Proposta Enviada' THEN vp.cnpj END)::int as proposta_enviada,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Aprovação' THEN vp.cnpj END)::int as aprovacao,
           COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Vendas Aprovação' THEN vp.cnpj END)::int as vendas_aprovacao,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Vendas Execução e Prestação de Contas' THEN vp.cnpj END)::int as vendas_execucao,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Execução/Prestação' THEN vp.cnpj END)::int as vendas_execucao,
           COALESCE(SUM(vp.valor_emenda::numeric), 0) as valor_total_emenda,
           COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' AND u.role != 'gestor' THEN vp.comissao_valor::numeric ELSE 0 END), 0) as comissao_total,
           MAX(vp.updated_at) as last_activity
@@ -459,7 +459,7 @@ export async function GET() {
           'Proposta Enviada': Number(g.status_proposta_enviada) || 0,
           'Aprovação': Number(g.status_aprovacao) || 0,
           'Vendas Aprovação': Number(g.status_vendas_aprovacao) || 0,
-          'Vendas Execução e Prestação de Contas': Number(g.status_vendas_execucao) || 0,
+          'Execução/Prestação': Number(g.status_vendas_execucao) || 0,
         },
       },
       execucao_pipeline: {

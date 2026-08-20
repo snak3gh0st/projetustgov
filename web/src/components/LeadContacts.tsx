@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import type { LeadContact, TelefoneStatus } from '@/lib/types'
-import { googleCalendarEventUrl, whatsappMeUrlFromTelefone } from '@/lib/format'
+import { googleCalendarEventUrl } from '@/lib/format'
+import WhatsAppAction from '@/components/WhatsAppAction'
 
 interface LeadContactsProps {
   cnpj: string
@@ -276,19 +277,10 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm">
                       {contact.telefone && (
-                        whatsappMeUrlFromTelefone(contact.telefone) ? (
-                          <a
-                            href={whatsappMeUrlFromTelefone(contact.telefone)!}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-green-600 hover:text-green-700"
-                            title="Abrir WhatsApp"
-                          >
-                            {contact.telefone}
-                          </a>
-                        ) : (
+                        <>
                           <span className="text-gray-700 dark:text-gray-300">{contact.telefone}</span>
-                        )
+                          <WhatsAppAction telefone={contact.telefone} compact label="WhatsApp" />
+                        </>
                       )}
                       {contact.email && (
                         <a

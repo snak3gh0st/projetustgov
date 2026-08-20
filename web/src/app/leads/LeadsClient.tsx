@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { formatCNPJ, formatCompactCurrency, formatCurrency, whatsappMeUrlFromTelefone } from '@/lib/format'
+import { formatCNPJ, formatCompactCurrency, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
 import SaleModal from '@/components/SaleModal'
-import { CRM_STATUS_BADGE_COLORS, CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, normalizeCrmStatus } from '@/lib/crm-catalog'
+import WhatsAppAction from '@/components/WhatsAppAction'
+import { CRM_STATUS_BADGE_COLORS, CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, isManagementCrmStatus, normalizeCrmStatus } from '@/lib/crm-catalog'
 
 const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
 const STATUS_COLORS = CRM_STATUS_BADGE_COLORS
@@ -492,7 +493,6 @@ export default function LeadsClient() {
               <tbody>
                 {displayLeads.map(lead => {
                   const hasContact = lead.telefone || lead.email
-                  const contatoWaUrl = lead.telefone ? whatsappMeUrlFromTelefone(lead.telefone) : null
                   const isExpanded = expandedCnpjs.has(lead.cnpj)
                   const hasMultipleEmendas = lead.emenda_count > 1
                   const totalComissao = (lead as any).totalComissao || 0
@@ -595,19 +595,14 @@ export default function LeadsClient() {
                               {lead.principal_telefone_status === 'nao_atende' && (
                                 <span className="w-2 h-2 rounded-full bg-amber-500 inline-block mr-1 flex-shrink-0" title="Nao atende" />
                               )}
-                              {contatoWaUrl ? (
-                                <a
-                                  href={contatoWaUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                              <span className="truncate">{lead.telefone}</span>
+                              {lead.telefone && (
+                                <WhatsAppAction
+                                  telefone={lead.telefone}
+                                  compact
+                                  label="WA"
                                   onClick={e => e.stopPropagation()}
-                                  className="text-green-600 hover:text-green-700 truncate"
-                                  title="Conversar no WhatsApp"
-                                >
-                                  {lead.telefone}
-                                </a>
-                              ) : (
-                                <span className="truncate">{lead.telefone}</span>
+                                />
                               )}
                             </div>
                           )}
@@ -637,7 +632,9 @@ export default function LeadsClient() {
                         onChange={e => updateLead(lead.id, 'status_contato', e.target.value)}
                         className={`text-xs font-medium rounded-full px-3 py-1 border-0 cursor-pointer ${STATUS_COLORS[normalizeCrmStatus(lead.status_contato)] || STATUS_COLORS['Não Contatado']}`}
                       >
-                        {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                        {(sessionUser?.role === 'vendedor' || sessionUser?.role === 'coordenador'
+                          ? STATUS_OPTIONS.filter(s => !isManagementCrmStatus(s))
+                          : STATUS_OPTIONS).map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </td>
                     {(sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador') && (
@@ -718,7 +715,9 @@ export default function LeadsClient() {
                           onChange={e => updateLead(sub.id, 'status_contato', e.target.value)}
                           className={`text-xs font-medium rounded-full px-2 py-0.5 border-0 cursor-pointer ${STATUS_COLORS[normalizeCrmStatus(sub.status_contato)] || STATUS_COLORS['Não Contatado']}`}
                         >
-                          {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                          {(sessionUser?.role === 'vendedor' || sessionUser?.role === 'coordenador'
+                            ? STATUS_OPTIONS.filter(s => !isManagementCrmStatus(s))
+                            : STATUS_OPTIONS).map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                       </td>
                     </tr>

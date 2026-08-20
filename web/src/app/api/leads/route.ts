@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
         conditions.push(`vp.status_contato IN ('Aguardando Closer', 'Em Aprovação')`)
       } else if (statusContato === 'Vendas Aprovação') {
         conditions.push(`vp.status_contato = 'Fechado' AND COALESCE(vp.venda_etapa, 'aprovacao') = 'aprovacao'`)
-      } else if (statusContato === 'Vendas Execução e Prestação de Contas') {
+      } else if (statusContato === 'Execução/Prestação' || statusContato === 'Vendas Execução e Prestação e Contas' || statusContato === 'Vendas Execução e Prestação de Contas') {
         conditions.push(`vp.status_contato = 'Fechado' AND vp.venda_etapa = 'execucao_prestacao'`)
       } else {
         conditions.push(`vp.status_contato = $${paramIndex++}`)
