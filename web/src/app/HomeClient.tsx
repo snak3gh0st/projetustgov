@@ -164,6 +164,20 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; la
   'Prestação de Contas Concluída': { color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200', bar: 'bg-emerald-600', label: 'PC Concluída' },
   'Prestação de Contas Rejeitada': { color: 'text-red-600 dark:text-red-300', bg: 'bg-red-50 dark:bg-red-500/15 border-red-200', bar: 'bg-red-500', label: 'PC Rejeitada' },
   'Prestação de Contas Iniciada Por Antecipação': { color: 'text-orange-400 dark:text-orange-200', bg: 'bg-orange-50 dark:bg-orange-500/10 border-orange-200', bar: 'bg-orange-300', label: 'PC Antecipada' },
+  'Em Aprovação': { color: 'text-purple-600 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-500/15 border-purple-200 dark:border-purple-500/30', bar: 'bg-purple-500', label: 'Aprovação' },
+  'Impedimento Técnico': { color: 'text-red-700 dark:text-red-300', bg: 'bg-red-50 dark:bg-red-500/15 border-red-200 dark:border-red-500/30', bar: 'bg-red-600', label: 'Impedimento Técnico' },
+  'Cancelado': { color: 'text-gray-600 dark:text-gray-300', bg: 'bg-gray-50 dark:bg-gray-500/15 border-gray-200 dark:border-gray-700', bar: 'bg-gray-500', label: 'Cancelado' },
+  'Churn': { color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-50 dark:bg-rose-500/15 border-rose-200 dark:border-rose-500/30', bar: 'bg-rose-500', label: 'Churn' },
+}
+
+const DEFAULT_STATUS_CONFIG = {
+  color: 'text-gray-600 dark:text-gray-300',
+  bg: 'bg-gray-50 dark:bg-gray-500/15 border-gray-200 dark:border-gray-700',
+  bar: 'bg-gray-400',
+}
+
+function getStatusConfig(status: string) {
+  return STATUS_CONFIG[status] ?? { ...DEFAULT_STATUS_CONFIG, label: status }
 }
 
 const STATUS_ORDER = CRM_STATUS_FUNNEL_ORDER
@@ -244,7 +258,7 @@ function PipelineSection({
         {statuses.map((status, idx) => {
           const count = counts[status] || 0
           const pct = total > 0 ? (count / total) * 100 : 0
-          const cfg = STATUS_CONFIG[status]
+          const cfg = getStatusConfig(status)
           const prevCount = idx > 0 ? (counts[statuses[idx - 1]] || 0) : null
           const conversionRate = prevCount && prevCount > 0 ? ((count / prevCount) * 100).toFixed(0) : null
 
@@ -270,7 +284,7 @@ function PipelineSection({
 
                 {conversionRate && Number(conversionRate) <= 100 && (
                   <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5">
-                    {conversionRate}% de {STATUS_CONFIG[statuses[idx - 1]].label}
+                    {conversionRate}% de {getStatusConfig(statuses[idx - 1]).label}
                   </p>
                 )}
 
@@ -282,7 +296,7 @@ function PipelineSection({
 
       <div className="hidden md:flex items-center justify-center gap-1 py-1">
         {statuses.map((status, idx) => {
-          const cfg = STATUS_CONFIG[status]
+          const cfg = getStatusConfig(status)
           return (
             <div key={`${title}-flow-${status}`} className="flex items-center gap-1 flex-1">
               <div className={`h-2 ${cfg.bar} rounded-full flex-1 transition-all opacity-80`} style={{ minWidth: '8px' }} />
@@ -740,7 +754,7 @@ export default function CRMDashboard() {
                     { status: 'Proposta Enviada', count: v.proposta },
                     { status: 'Fechado', count: v.fechado },
                   ].map(({ status, count }) => {
-                    const cfg = STATUS_CONFIG[status]
+                    const cfg = getStatusConfig(status)
                     return (
                       <span key={status} className={`px-2 py-0.5 rounded border text-xs font-medium ${cfg.bg} ${cfg.color}`}>
                         {cfg.label}: {count}
@@ -981,7 +995,7 @@ export default function CRMDashboard() {
                     { key: 'vendas_aprovacao' as const, status: 'Vendas Aprovação', count: v.vendas_aprovacao },
                     { key: 'vendas_execucao' as const, status: 'Execução/Prestação', count: v.vendas_execucao },
                   ].map(({ status, count }) => {
-                    const cfg = STATUS_CONFIG[status]
+                    const cfg = getStatusConfig(status)
                     return (
                       <span key={status} className={`px-2 py-0.5 rounded border text-xs font-medium ${cfg.bg} ${cfg.color}`}>
                         {cfg.label}: {count}

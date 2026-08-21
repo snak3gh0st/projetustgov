@@ -19,6 +19,7 @@ function check(condition, label) {
 }
 
 const catalog = read('src/lib/crm-catalog.ts')
+const home = read('src/app/HomeClient.tsx')
 const leads = read('src/app/leads/LeadsClient.tsx')
 const leadApi = read('src/app/api/leads/[cnpj]/route.ts')
 const executionApi = read('src/app/api/execucao/route.ts')
@@ -34,6 +35,10 @@ const s3Checklist = readFileSync(resolve(ROOT, '../docs/entregas/s3-whatsapp-met
 
 check(catalog.includes("'Contatado'") && catalog.includes("'Reunião Agendada'"), 'Sprint 1 status Contatado/Reunião Agendada')
 check(catalog.includes("'Impedimento Técnico'") && catalog.includes("'Cancelado'"), 'Sprint 1 status pós-venda')
+check(
+  home.includes("'Churn':") && home.includes("'Em Aprovação':") && home.includes("'Impedimento Técnico':") && home.includes("'Cancelado':") && home.includes('function getStatusConfig'),
+  'Dashboard CRM protege todos os status do pipeline contra configuração ausente'
+)
 check(catalog.includes("'Aprovação'") && catalog.includes("'Execução'") && catalog.includes("'Prestação de Contas'"), 'Sprint 1 tipos de serviço')
 check(leads.includes('CRM_STATUS_SELECT_OPTIONS') && leads.includes('tipo_servico'), 'Sprint 1 funil e tag na UI comercial')
 check(leadApi.includes('normalizeTipoServico') && leadApi.includes('tipo_servico'), 'Sprint 1 API grava tipo de serviço')
