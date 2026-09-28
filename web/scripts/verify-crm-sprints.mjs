@@ -30,8 +30,16 @@ const digest = read('src/lib/digest-email.ts')
 const emailService = read('src/lib/email-service.ts')
 const setup = read('src/app/api/setup-crm/route.ts')
 const whatsappAction = read('src/components/WhatsAppAction.tsx')
-const vercel = JSON.parse(read('vercel.json'))
 const s3Checklist = readFileSync(resolve(ROOT, '../docs/entregas/s3-whatsapp-meta-api-checklist.md'), 'utf8')
+const systemdDir = resolve(ROOT, '../docs/infra/systemd')
+const cronService = readFileSync(resolve(systemdDir, 'projetus-cron@.service'), 'utf8')
+const timerSchedules = [
+  ['projetus-cron@sync-leads.timer', '09:30:00'],
+  ['projetus-cron@sync-execucao.timer', '10:00:00'],
+  ['projetus-cron@sync-tgov-only.timer', '10:30:00'],
+  ['projetus-cron@digest.timer', '11:20:00'],
+  ['projetus-cron@digest-evening.timer', '19:00:00'],
+].map(([file, schedule]) => ({ file, schedule, content: readFileSync(resolve(systemdDir, file), 'utf8') }))
 
 check(catalog.includes("'Contatado'") && catalog.includes("'Reunião Agendada'"), 'Sprint 1 status Contatado/Reunião Agendada')
 check(catalog.includes("'Impedimento Técnico'") && catalog.includes("'Cancelado'"), 'Sprint 1 status pós-venda')
@@ -49,7 +57,11 @@ check(sync.includes('sendCommercialSituacaoChangeNotification') && sync.includes
 check(emailService.includes('PRIMARY_LEAD_MANAGER_EMAIL') && emailService.includes('rooger@projetus.org'), 'Sprint 2 head comercial recebe avisos')
 check(digest.includes("INTERVAL '48 hours'") && digest.includes('FROM propostas'), 'Sprint 2 digest consulta mudanças CRM em 48h')
 check(leadSlideOver.indexOf('{/* Quick Actions */}') < leadSlideOver.indexOf('Agendar'), 'Sprint 2 agenda disponível nas ações do contato')
-check(vercel.crons?.some(cron => cron.path === '/api/cron/digest'), 'Sprint 2 digest está agendado')
+check(cronService.includes('run-cron.sh projetus') && cronService.includes('%i'), 'Sprint 2 cron usa executor systemd do btapps')
+check(
+  timerSchedules.every(({ schedule, content }) => content.includes(`OnCalendar=*-*-* ${schedule}`) && content.includes('Persistent=true')),
+  'Crons Projetus têm horários e persistência versionados'
+)
 check(whatsappAction.includes('whatsappMeUrlFromTelefone') && whatsappAction.includes('WhatsApp indisponível'), 'Sprint 3 ação WhatsApp tem estado disponível/indisponível')
 check(s3Checklist.includes('Validacao do numero unico comercial') && s3Checklist.includes('Checklist Meta/API'), 'Sprint 3 checklist operacional documentado')
 

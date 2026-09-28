@@ -58,7 +58,7 @@ The system provides enriched, validated, and analysis-ready data while enabling 
                          ↓                                              ↓
                 ┌─────────────────┐                          ┌─────────────────┐
                 │   PostgreSQL    │◄─────────────────────────│   Next.js CRM   │
-                │    (Railway)    │                          │    (Vercel)     │
+                │ (btdb/Hetzner)  │                          │(btapps/Coolify) │
                 └─────────────────┘                          └─────────────────┘
                                                                        │
                                                                        ↓
@@ -74,7 +74,7 @@ The system provides enriched, validated, and analysis-ready data while enabling 
 - **Language**: Python 3.11+
 - **Web Automation**: Playwright
 - **Data Processing**: Polars, Pandas
-- **Database**: PostgreSQL (Railway)
+- **Database**: PostgreSQL on `btdb`
 - **ORM**: SQLAlchemy 2.0
 - **Validation**: Pydantic 2.0
 - **Scheduling**: APScheduler
@@ -86,11 +86,12 @@ The system provides enriched, validated, and analysis-ready data while enabling 
 - **Language**: TypeScript, React 18
 - **Authentication**: Auth.js v5 (next-auth)
 - **Styling**: Tailwind CSS
-- **Database**: PostgreSQL (Railway) via pg driver
+- **Database**: PostgreSQL on `btdb` via PgBouncer and pg driver
 - **Charts**: Recharts
 - **File Processing**: xlsx (Excel parsing)
 - **Password Hashing**: bcryptjs
-- **Deployment**: Vercel (iad1 region)
+- **Deployment**: Coolify on `btapps`
+- **Scheduling**: systemd timers on `btapps` (versioned in `docs/infra/systemd/`)
 
 ---
 
@@ -401,12 +402,12 @@ For more information, see the full [MIT License](LICENSE) text.
 - Protected API routes with middleware
 - Login/logout flow with role persistence
 
-### Version 2.0.0 (2026-02-11) - Next.js Migration
+### Version 2.0.0 (2026-02-11) - Next.js Migration (historical)
 
 **Migration:**
 - Migrated from Streamlit to Next.js 14
 - New PostgreSQL schema for CRM tables
-- Vercel deployment (iad1 region)
+- Initial Vercel deployment, later migrated to Coolify/Hetzner
 - React 18 with Tailwind CSS
 
 ### Version 1.0.0 (2026-02-09) - ETL Pipeline

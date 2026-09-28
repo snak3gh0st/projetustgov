@@ -1,5 +1,4 @@
-// Vercel Cron Job: Daily TGov-only sync (separate from CRM execucao/propostas syncs)
-// Schedule: 13:30 UTC daily (configured in vercel.json) — depois do sync-execucao das 13:00
+// systemd timer on btapps: daily TGov-only sync at 10:30 BRT, after sync-execucao.
 // Manual trigger: curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain/api/cron/sync-tgov-only
 //
 // Sincroniza tabelas TGov-only (tgov_propostas, tgov_projetos_execucao) sem
@@ -10,7 +9,6 @@ import { syncTgovOnly } from '@/lib/tgov-only-sync'
 import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 300
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')

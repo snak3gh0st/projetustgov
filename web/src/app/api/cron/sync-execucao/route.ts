@@ -1,5 +1,4 @@
-// Vercel Cron Job: Daily execucao sync from repositorio.dados.gov.br
-// Schedule: 13:00 UTC daily (configured in vercel.json)
+// systemd timer on btapps: daily execucao sync at 10:00 BRT.
 // Separate from lead sync to avoid 504 timeout cascade
 // Manual trigger: curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain/api/cron/sync-execucao
 
@@ -10,7 +9,6 @@ import { AUTO_DISTRIBUTION_ENABLED } from '@/lib/distribution-policy'
 import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 300
 
 export async function GET(request: Request) {
   // Allow cron secret OR gestor session for manual triggers

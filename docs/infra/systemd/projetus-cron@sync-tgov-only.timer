@@ -1,0 +1,10 @@
+[Unit]
+Description=projetus Cron Timer: sync-tgov-only
+
+[Timer]
+OnCalendar=*-*-* 10:30:00
+Persistent=true
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

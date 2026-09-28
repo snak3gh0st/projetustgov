@@ -25,8 +25,8 @@
 //
 // CRONS
 // -----
-// Chamado por /api/cron/sync-tgov-only (vercel.json — 13:30 UTC, depois do
-// sync-execucao). Pode ser disparado manualmente como gestor.
+// Chamado por /api/cron/sync-tgov-only via systemd no btapps, às 10:30 BRT,
+// depois do sync-execucao. Pode ser disparado manualmente como gestor.
 // ============================================================================
 
 import { getPool, query } from '@/lib/db'

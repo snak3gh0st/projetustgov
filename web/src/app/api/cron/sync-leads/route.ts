@@ -1,6 +1,5 @@
-// Vercel Cron Job: Daily lead sync from repositorio.dados.gov.br
-// Schedule: 12:30 UTC daily = 09:30 BRT (configured in vercel.json)
-// Env required: CRON_SECRET (auto-set by Vercel for cron jobs)
+// systemd timer on btapps: daily lead sync at 09:30 BRT.
+// Env required: CRON_SECRET from the Coolify application environment.
 // Manual trigger: curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain/api/cron/sync-leads
 
 import { NextResponse } from 'next/server'
@@ -8,7 +7,6 @@ import { syncLeadsFromRepo } from '@/lib/repo-sync'
 import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 300 // Vercel Pro max timeout
 
 export async function GET(request: Request) {
   // Allow cron secret OR gestor session for manual triggers

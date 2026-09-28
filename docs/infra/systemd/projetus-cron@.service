@@ -1,0 +1,11 @@
+[Unit]
+Description=Projetus Hub Cron Job: %i
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/sigma-cron
+ExecStart=/opt/sigma-cron/run-cron.sh projetus /data/coolify/applications/ohxmnamg1umgut184jgi2o57/.env %i
+StandardOutput=append:/var/log/sigma-cron/projetus.log
+StandardError=append:/var/log/sigma-cron/projetus.log

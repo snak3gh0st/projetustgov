@@ -27,7 +27,7 @@
 //     tipo_vendedor, observacoes, comissao_locked, comissao_bonus (CRM state)
 //   - COALESCE updates: uf, municipio, telefone, email, nome (fill if empty)
 //
-// CRON: Vercel cron triggers /api/cron/sync-leads daily at 12:30 UTC (09:30 BRT)
+// CRON: btapps systemd triggers /api/cron/sync-leads daily at 09:30 BRT.
 // ============================================================================
 //
 // Used by /api/cron/sync-leads for daily automated sync
