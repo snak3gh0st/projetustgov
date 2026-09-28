@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { Drawer } from 'vaul'
 import { logout } from '@/lib/auth-actions'
-import { getNavItemsForRole, type NavRole } from '@/lib/sidebar-nav-items'
+import { getNavItemsForRole, groupNavItems, type NavRole } from '@/lib/sidebar-nav-items'
 import ThemeToggle from '@/components/ThemeToggle'
+import { NavIcon } from '@/components/Sidebar'
+import BrandLockup from '@/components/BrandLockup'
 
 interface MobileDrawerProps {
   user: {
@@ -19,6 +21,7 @@ interface MobileDrawerProps {
 export default function MobileDrawer({ user }: MobileDrawerProps) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const navItems = getNavItemsForRole(user.role)
 
   // vaul issue #631 workaround: close drawer on route change
@@ -48,20 +51,21 @@ export default function MobileDrawer({ user }: MobileDrawerProps) {
             <div className="mx-auto mt-2 mb-3 h-1.5 w-12 rounded-full bg-gray-300 dark:bg-gray-700" />
 
             {/* Brand header */}
-            <div className="px-5 pb-3 border-b border-gray-200 dark:border-gray-800">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="Projete" style={{ width: 100, height: 'auto' }} />
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5 tracking-widest uppercase">
-                Hub da PROJETUS
-              </p>
+            <div className="px-5 pb-3 border-b border-slate-200 dark:border-zinc-800">
+              <BrandLockup />
             </div>
 
             {/* Nav */}
-            <nav className="flex-1 overflow-y-auto py-3">
-              {navItems.map(({ href, label }) => {
+            <nav className="flex-1 overflow-y-auto py-3" aria-label="Navegação principal">
+              {groupNavItems(navItems).map(({ section, items }) => (
+                <div key={section} className="mb-4 last:mb-0">
+                  <p className="px-5 pb-1.5 text-[10px] font-semibold tracking-wide text-slate-400 dark:text-zinc-500">
+                    {section}
+                  </p>
+                  {items.map(({ href, label, icon }) => {
                 const [hrefPath, hrefQuery] = href.split('?')
                 const hrefView = hrefQuery ? new URLSearchParams(hrefQuery).get('view') : null
-                const currentView = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('view') : null
+                const currentView = searchParams.get('view')
                 let isActive: boolean
                 if (href === '/') {
                   isActive = pathname === '/'
@@ -75,16 +79,20 @@ export default function MobileDrawer({ user }: MobileDrawerProps) {
                     key={href}
                     href={href}
                     onClick={() => setOpen(false)}
-                    className={`block px-5 py-3 text-sm transition-colors ${
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`mx-2 flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 ${
                       isActive
-                        ? 'text-[#0072F7] bg-blue-50 dark:bg-blue-950/40 border-l-4 border-[#0072F7]'
-                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        ? 'bg-blue-50 font-medium text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
                     }`}
                   >
-                    {label}
+                    <NavIcon name={icon} />
+                    <span>{label}</span>
                   </Link>
                 )
-              })}
+                  })}
+                </div>
+              ))}
             </nav>
 
             {/* Footer: ThemeToggle + user + logout */}

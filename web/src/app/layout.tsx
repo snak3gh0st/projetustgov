@@ -9,8 +9,8 @@ import Providers from '@/components/Providers'
 import MobileDrawer from '@/components/MobileDrawer'
 
 export const metadata: Metadata = {
-  title: 'Hub da PROJETUS',
-  description: 'Hub da PROJETUS — gestão de instrumentos governamentais',
+  title: 'Central da Mobilização',
+  description: 'Central da Mobilização — operação, monitoramento e dados em um só lugar',
 }
 
 export default async function RootLayout({
@@ -45,7 +45,7 @@ export default async function RootLayout({
               }}
             />
           )}
-          <main className={session ? `${sidebarOpen ? 'md:ml-56' : 'md:ml-14'} min-h-screen p-3 sm:p-4 lg:p-6 pb-24 md:pb-6 transition-[margin] duration-200` : "min-h-screen p-3 sm:p-4 lg:p-6"}>
+          <main className={session ? `${sidebarOpen ? 'md:ml-64' : 'md:ml-16'} min-h-screen p-3 sm:p-4 lg:p-6 pb-24 md:pb-6 transition-[margin] duration-200` : "min-h-screen p-3 sm:p-4 lg:p-6"}>
             {session?.user && <NewsBanner />}
             {session?.user && ['gestor', 'admin', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'].includes(
               session.user.role as string

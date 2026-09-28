@@ -111,14 +111,14 @@ export default function UploadClientesPage() {
           &#8592; Voltar ao dashboard
         </Link>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-4">Importar Clientes Existentes</h1>
-        <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Upload da base de clientes Projetus (CLIENTES.xlsx)</p>
+        <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Upload da base de clientes (CLIENTES.xlsx)</p>
       </div>
 
       {/* Instructions */}
       <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400 mb-2">Instrucoes</h3>
         <ul className="text-sm text-amber-600 dark:text-amber-400 space-y-1 list-disc list-inside">
-          <li>Faca upload do arquivo CLIENTES.xlsx com a base de clientes existentes da Projetus.</li>
+          <li>Faca upload do arquivo CLIENTES.xlsx com a base de clientes existentes.</li>
           <li>O arquivo deve conter as colunas: <strong>CNPJ</strong> e <strong>ENTIDADE</strong></li>
           <li>Clientes ja cadastrados serao ignorados automaticamente (sem duplicatas)</li>
           <li>Apenas gestores podem realizar esta operacao</li>

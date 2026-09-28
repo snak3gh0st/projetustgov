@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { formatCNPJ, formatCompactCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
+import SectionTabs from '@/components/SectionTabs'
 
 interface Vendedor {
   id: string
@@ -392,6 +393,16 @@ export default function DistribuirPage() {
         </p>
       </div>
 
+      <SectionTabs
+        tabs={[
+          { id: 'unassigned', label: 'Não atribuídos', count: uniqueUnassignedCount },
+          { id: 'assigned', label: 'Distribuídos', count: uniqueAssignedCount },
+        ]}
+        value={tab}
+        onChange={value => setTab(value as Tab)}
+        ariaLabel="Estado da distribuição"
+      />
+
       {/* Manual distribution helper */}
       {tab === 'unassigned' && leads.length > 0 && (
         <div className="border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 rounded-xl p-4 space-y-3">
@@ -470,40 +481,6 @@ export default function DistribuirPage() {
           )}
         </div>
       )}
-
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-1 w-fit">
-        <button
-          onClick={() => setTab('unassigned')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            tab === 'unassigned'
-              ? 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border border-blue-200 dark:border-blue-500/20'
-              : 'text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 border border-transparent'
-          }`}
-        >
-          Nao Atribuidos
-          <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
-            tab === 'unassigned' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
-          }`}>
-            {uniqueUnassignedCount}
-          </span>
-        </button>
-        <button
-          onClick={() => setTab('assigned')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            tab === 'assigned'
-              ? 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border border-blue-200 dark:border-blue-500/20'
-              : 'text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 border border-transparent'
-          }`}
-        >
-          Distribuidos
-          <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
-            tab === 'assigned' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
-          }`}>
-            {uniqueAssignedCount}
-          </span>
-        </button>
-      </div>
 
       {/* Vendedor cards - for unassigned tab: target selection; for assigned tab: summary */}
       {tab === 'unassigned' ? (

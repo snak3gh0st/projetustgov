@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 
-const NEWS_VERSION = 'v5.0'
+const NEWS_VERSION = 'v1.0'
 const NEWS_ITEMS = [
   'CRM: novos status no funil — Contatado e Reunião Agendada',
   'CRM: status pós-venda Impedimento Técnico e Cancelado',
@@ -15,9 +15,9 @@ const NEWS_ITEMS = [
   'UI: tema escuro disponivel em toda a plataforma (botao no menu lateral)',
   'UI: menu lateral pode ser recolhido para liberar espaco — preferencia salva entre sessoes',
   'UI: navegacao mobile com gaveta inferior (toque no botao azul no canto inferior esquerdo)',
-  'UI: assinatura "Hub da PROJETUS" no lugar de "CRM de Vendas"',
+  'UI: nova identidade da Central da Mobilização',
 ]
-const STORAGE_KEY = `projetus-news-dismissed-v5.0`
+const STORAGE_KEY = `central-mobilizacao-news-dismissed-${NEWS_VERSION}`
 
 export default function NewsBanner() {
   const [dismissed, setDismissed] = useState(true)
@@ -37,7 +37,7 @@ export default function NewsBanner() {
   }
 
   return (
-    <div className="bg-gradient-to-r from-[#FD225C]/5 via-[#7A4BAC]/5 to-[#0072F7]/5 border border-[#7A4BAC]/20 rounded-lg p-4 mb-6 relative">
+    <div className="bg-slate-50 dark:bg-zinc-900/70 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 mb-6 relative">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
           <span className="text-lg" role="img" aria-label="novidades">
@@ -68,7 +68,7 @@ export default function NewsBanner() {
         ))}
       </ul>
       <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
-        Projetus CRM {NEWS_VERSION} &mdash; BTerminal Systems
+        Central da Mobilização {NEWS_VERSION} &mdash; BTerminal Systems
       </p>
     </div>
   )

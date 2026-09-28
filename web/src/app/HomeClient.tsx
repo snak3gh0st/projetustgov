@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { formatCNPJ, formatCompactCurrency, formatCurrency, formatDate } from '@/lib/format'
 import { CRM_STATUS_FUNNEL_ORDER, normalizeCrmStatus } from '@/lib/crm-catalog'
+import SectionTabs from '@/components/SectionTabs'
 
 // --- Types ---
 interface StatusCounts {
@@ -499,8 +500,8 @@ export default function CRMDashboard() {
       {/* 0. Sync bar — gestor only, above everything */}
       <SyncBar role={role} />
 
-      {/* 1. Page header + Tab switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* 1. Page header + primary view switcher */}
+      <div className="space-y-4">
         <div>
           <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">
             {isVendedor ? 'Meu Pipeline — Campanha Emendas 2026' : 'Dashboard CRM — Campanha Emendas 2026'}
@@ -509,38 +510,16 @@ export default function CRMDashboard() {
             {isVendedor ? 'Seus leads e desempenho pessoal' : 'Visao administrativa do trabalho da equipe de vendas'}
           </p>
         </div>
-        <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
-          <button
-            onClick={() => setPipelineTab('aprovacao')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-              pipelineTab === 'aprovacao'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            Aprovação
-          </button>
-          <button
-            onClick={() => setPipelineTab('execucao')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-              pipelineTab === 'execucao'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            Execução
-          </button>
-          <button
-            onClick={() => setPipelineTab('prestacao_contas')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-              pipelineTab === 'prestacao_contas'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            Prest. Contas
-          </button>
-        </div>
+        <SectionTabs
+          ariaLabel="Área do pipeline"
+          value={pipelineTab}
+          onChange={value => setPipelineTab(value as typeof pipelineTab)}
+          tabs={[
+            { id: 'aprovacao', label: 'Aprovação' },
+            { id: 'execucao', label: 'Execução' },
+            { id: 'prestacao_contas', label: 'Prestação de contas' },
+          ]}
+        />
       </div>
 
       {/* 2. KPI cards — change based on active tab */}

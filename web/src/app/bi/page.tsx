@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { formatCompactCurrency, formatCurrency } from '@/lib/format'
+import SectionTabs from '@/components/SectionTabs'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, AreaChart, Area,
@@ -304,37 +305,24 @@ function HeaderControls({
   isGestor: boolean
 }) {
   return (
-    <div className="flex flex-col items-end gap-2">
-      {/* Tab switcher */}
-      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
-        <button
-          onClick={() => setPipeline('aprovacao')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-            pipeline === 'aprovacao'
-              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-          }`}
-        >
-          Aprovacao
-        </button>
-        <button
-          onClick={() => setPipeline('execucao')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-            pipeline === 'execucao'
-              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-          }`}
-        >
-          Execucao
-        </button>
-      </div>
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      <SectionTabs
+        ariaLabel="Área do BI"
+        value={pipeline}
+        onChange={value => setPipeline(value as typeof pipeline)}
+        tabs={[
+          { id: 'aprovacao', label: 'Aprovação' },
+          { id: 'execucao', label: 'Execução' },
+        ]}
+      />
 
       {/* Vendedor filter — gestor/coordenador only */}
       {isGestor && vendedoresList.length > 0 && (
         <select
           value={vendedorFilter}
           onChange={e => setVendedorFilter(e.target.value)}
-          className="text-sm border border-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          aria-label="Filtrar BI por vendedor"
+          className="min-h-10 text-sm border border-slate-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
         >
           <option value="">Todos os vendedores</option>
           {vendedoresList.map(v => (

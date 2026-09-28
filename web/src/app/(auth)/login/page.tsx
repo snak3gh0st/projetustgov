@@ -3,6 +3,7 @@
 import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { login } from '@/lib/auth-actions'
+import BrandLockup from '@/components/BrandLockup'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -27,10 +28,9 @@ export default function LoginPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="Projete" style={{ width: 180, height: 'auto' }} />
+            <BrandLockup />
           </div>
-          <p className="text-gray-400 dark:text-gray-500 text-sm">Hub da PROJETUS</p>
+          <p className="text-gray-400 dark:text-gray-500 text-sm">Central de operação e mobilização</p>
           <a
             href="https://bterminal.io"
             target="_blank"

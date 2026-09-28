@@ -429,7 +429,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
           </button>
           <a
             href={googleCalendarEventUrl({
-              title: `Reunião Projetus — ${localLead.nome || localLead.cnpj}`,
+              title: `Reunião Central da Mobilização — ${localLead.nome || localLead.cnpj}`,
               details: [
                 localLead.nome ? `Instituição: ${localLead.nome}` : null,
                 localLead.telefone ? `Telefone: ${localLead.telefone}` : null,

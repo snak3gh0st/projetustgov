@@ -219,7 +219,7 @@ export default function ContaAzulAdminClient() {
         <p className="font-semibold text-gray-900 dark:text-gray-100">Como conectar</p>
         <ol className="list-decimal pl-5 space-y-1">
           <li>Clique em Conectar Conta Azul (abre o login Conta Azul).</li>
-          <li>Autorize com a conta ERP da empresa PROJETUS.</li>
+          <li>Autorize com a conta ERP da operação.</li>
           <li>Você volta para esta página com status Conectado.</li>
           <li>Use Testar API para validar GET /v1/pessoas/conta-conectada.</li>
         </ol>

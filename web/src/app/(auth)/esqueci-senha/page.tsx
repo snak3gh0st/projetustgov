@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import BrandLockup from '@/components/BrandLockup'
 
 export default function EsqueciSenhaPage() {
   const [email, setEmail] = useState('')
@@ -32,10 +33,9 @@ export default function EsqueciSenhaPage() {
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 shadow-sm">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="Projete" style={{ width: 180, height: 'auto' }} />
+            <BrandLockup />
           </div>
-          <p className="text-gray-400 dark:text-gray-500 text-sm">Hub da PROJETUS</p>
+          <p className="text-gray-400 dark:text-gray-500 text-sm">Central de operação e mobilização</p>
         </div>
 
         {done ? (
