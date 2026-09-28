@@ -38,3 +38,29 @@ O fluxo principal da operação deixa de depender da planilha Drive: o time abre
 ## Gate antes de produção
 
 Aplicar o DDL idempotente da primeira abertura da área em uma base autorizada e validar com um usuário de cada perfil, um convênio em execução e um convênio em prestação. A aceitação live ainda exige observar o sync real e confirmar que o histórico retornado corresponde ao TransfereGov, sem usar o build como prova de deploy ou dado atualizado.
+
+## Registro de aceite operacional
+
+Preencher uma linha por cenario. Nao registrar CNPJ, nome de pessoa ou documento neste arquivo; use somente a referencia interna da evidencia.
+
+| Cenario | Testador | Papel/area | Data | Evidencia | Resultado observado | Decisao |
+|---|---|---|---|---|---|---|
+| Abrir fila de Execucao e filtrar um caso | | | | | | [ ] Aceito [ ] Rejeitado |
+| Abrir Prestacao de Contas e localizar um caso | | | | | | [ ] Aceito [ ] Rejeitado |
+| Atualizar checklist com perfil autorizado | | | | | | [ ] Aceito [ ] Rejeitado |
+| Atualizar status de documento com perfil autorizado | | | | | | [ ] Aceito [ ] Rejeitado |
+| Confirmar bloqueio de escrita para perfil somente leitura | | | | | | [ ] Aceito [ ] Rejeitado |
+| Comparar historico exibido com o TransfereGov | | | | | | [ ] Aceito [ ] Rejeitado |
+
+### Confirmacao da base operacional
+
+| Campo | Registro |
+|---|---|
+| Responsavel pela confirmacao (Danilo ou delegado formal) | |
+| Data/versao da base | |
+| Evidencia de consolidacao | |
+| Campos obrigatorios confirmados | |
+| Divergencias conhecidas | |
+| Decisao | [ ] Base aceita  [ ] Requer ajuste |
+
+A S4 esta tecnicamente implantada, mas o aceite de negocio permanece pendente enquanto as linhas aplicaveis e a confirmacao da base estiverem vazias.

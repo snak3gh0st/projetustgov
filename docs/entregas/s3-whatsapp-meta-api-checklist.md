@@ -26,6 +26,22 @@ Data do teste: ____/____/______
 
 Observacao: o CRM abre a conversa com o telefone do contato. A garantia de numero unico depende da sessao/conta WhatsApp usada pelo operador.
 
+### Registro de aceite do numero unico
+
+Preencher somente depois do teste acompanhado. Campo vazio significa pendente, nunca aprovado por inferencia.
+
+| Campo | Registro |
+|---|---|
+| Testador | |
+| Papel/area | |
+| Data e hora | |
+| Numero exibido ao destinatario | |
+| Lead/CNPJ de teste (referencia interna, sem PII neste documento) | |
+| Evidencia (ticket, captura ou ata) | |
+| Resultado observado | |
+| Decisao | [ ] Aceito  [ ] Rejeitado |
+| Pendencia e responsavel | |
+
 ## Checklist Meta/API
 
 ### Conta e acesso
@@ -55,3 +71,7 @@ Observacao: o CRM abre a conversa com o telefone do contato. A garantia de numer
 - OAuth completo do Google/Meet.
 - Disparo automatico de campanhas.
 - Integracao de IA ou roteamento multicanal.
+
+## Gate de encerramento S3
+
+A entrega tecnica esta pronta. A S3 so muda para aceita quando o registro acima estiver preenchido, o Checklist Meta/API estiver concluido nos itens aplicaveis e Rooger confirmar a decisao. Sem esses tres elementos, o status permanece `pronta para aceite`.
