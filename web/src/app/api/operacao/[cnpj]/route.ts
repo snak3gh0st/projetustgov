@@ -2,12 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { canReadOperacao, canWriteOperacao, getApiSession } from '@/lib/dal'
 import { ensureOperacaoTables } from '@/lib/operacao-tables'
-import { OPERACAO_CHECKLIST, OPERACAO_DOCUMENTOS, type OperacaoDocumentoStatus, type OperacaoItemStatus } from '@/lib/operacao'
+import { isOperacaoKind, isOperacaoStatus, OPERACAO_CHECKLIST, OPERACAO_DOCUMENTOS } from '@/lib/operacao'
 
 export const dynamic = 'force-dynamic'
-
-const CHECKLIST_STATUSES: OperacaoItemStatus[] = ['pendente', 'em_andamento', 'concluido', 'nao_aplicavel']
-const DOCUMENT_STATUSES: OperacaoDocumentoStatus[] = ['pendente', 'em_analise', 'recebido', 'aprovado', 'rejeitado', 'nao_aplicavel']
 
 function cleanCnpj(value: string): string { return value.replace(/\D/g, '') }
 
@@ -56,13 +53,13 @@ export async function PATCH(request: NextRequest, context: { params: { cnpj: str
   try {
     await ensureOperacaoTables()
     const cnpj = cleanCnpj(decodeURIComponent(context.params.cnpj))
-    const body = await request.json() as { kind?: 'checklist' | 'documento'; nr_convenio?: string; item_key?: string; status?: string; note?: string | null }
+    const body = await request.json() as { kind?: unknown; nr_convenio?: string; item_key?: string; status?: unknown; note?: string | null }
     const kind = body.kind
     const nrConvenio = body.nr_convenio?.trim()
     const itemKey = body.item_key?.trim()
-    if (!kind || !nrConvenio || !itemKey || !body.status) return NextResponse.json({ error: 'Informe item, convênio e status' }, { status: 400 })
-    const allowed = kind === 'checklist' ? CHECKLIST_STATUSES : DOCUMENT_STATUSES
-    if (!allowed.includes(body.status as never)) return NextResponse.json({ error: 'Status operacional inválido' }, { status: 400 })
+    if (!isOperacaoKind(kind)) return NextResponse.json({ error: 'Tipo de item operacional inválido' }, { status: 400 })
+    if (!nrConvenio || !itemKey || !body.status) return NextResponse.json({ error: 'Informe item, convênio e status' }, { status: 400 })
+    if (!isOperacaoStatus(kind, body.status)) return NextResponse.json({ error: 'Status operacional inválido' }, { status: 400 })
     const sourceCheck = await query(`SELECT 1 FROM projetos_execucao WHERE cnpj = $1 AND nr_convenio = $2 LIMIT 1`, [cnpj, nrConvenio])
     if (sourceCheck.length === 0) return NextResponse.json({ error: 'Convênio não pertence à fonte sincronizada' }, { status: 400 })
 

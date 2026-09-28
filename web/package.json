@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "tsx --test src/**/*.test.ts",
     "lint": "next lint",
     "backup": "node scripts/backup.mjs"
   },
@@ -41,6 +42,7 @@
     "eslint-config-next": "^14.2.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.5.0"
   }
 }

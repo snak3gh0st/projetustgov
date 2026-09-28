@@ -1,4 +1,5 @@
 export type OperacaoPainel = 'execucao' | 'prestacao_contas'
+export type OperacaoKind = 'checklist' | 'documento'
 
 export type OperacaoEtapa =
   | 'Aguardando execução'
@@ -9,6 +10,23 @@ export type OperacaoEtapa =
 
 export type OperacaoItemStatus = 'pendente' | 'em_andamento' | 'concluido' | 'nao_aplicavel'
 export type OperacaoDocumentoStatus = 'pendente' | 'em_analise' | 'recebido' | 'aprovado' | 'rejeitado' | 'nao_aplicavel'
+
+export const OPERACAO_ITEM_STATUSES: readonly OperacaoItemStatus[] = ['pendente', 'em_andamento', 'concluido', 'nao_aplicavel']
+export const OPERACAO_DOCUMENTO_STATUSES: readonly OperacaoDocumentoStatus[] = ['pendente', 'em_analise', 'recebido', 'aprovado', 'rejeitado', 'nao_aplicavel']
+
+export function isOperacaoKind(value: unknown): value is OperacaoKind {
+  return value === 'checklist' || value === 'documento'
+}
+
+export function isOperacaoStatus(
+  kind: OperacaoKind,
+  value: unknown
+): value is OperacaoItemStatus | OperacaoDocumentoStatus {
+  if (typeof value !== 'string') return false
+  return kind === 'checklist'
+    ? OPERACAO_ITEM_STATUSES.includes(value as OperacaoItemStatus)
+    : OPERACAO_DOCUMENTO_STATUSES.includes(value as OperacaoDocumentoStatus)
+}
 
 export const OPERACAO_CHECKLIST = [
   { key: 'contrato', label: 'Termo / contrato conferido' },
