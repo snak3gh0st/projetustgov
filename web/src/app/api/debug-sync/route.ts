@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
+import { assessLeadSyncFreshness, type SyncLogRow } from '@/lib/sync-freshness'
 
 export const dynamic = 'force-dynamic'
 // NOTE: POST triggers full sync (300s needed). Works in local dev.
@@ -24,6 +25,16 @@ export async function GET() {
 
     // Fetch last sync log row — handle case where table doesn't exist yet
     let lastSyncLog = null
+    let leadSyncFreshness = null
+    try {
+      const recent = await query<SyncLogRow>(
+        `SELECT ran_at, inserted, errors FROM cron_sync_log
+         WHERE source = 'sync-leads' ORDER BY ran_at DESC LIMIT 30`
+      )
+      leadSyncFreshness = assessLeadSyncFreshness(recent)
+    } catch {
+      leadSyncFreshness = null
+    }
     try {
       const logRows = await query(
         `SELECT ran_at, inserted, updated, errors, duration_ms
@@ -56,6 +67,7 @@ export async function GET() {
         last_repo_sync: recentUpdates[0]?.last_updated ?? null,
       },
       last_sync_log: lastSyncLog,
+      lead_sync_freshness: leadSyncFreshness,
       enrichment_queue: enrichmentQueue,
       cron_schedule: '12:30 UTC + 18:00 UTC daily (09:30 + 15:00 BRT)',
       note: 'POST to this endpoint to manually trigger a sync (gestor only)',
