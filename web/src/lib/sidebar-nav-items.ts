@@ -21,17 +21,25 @@ export interface NavItem {
   icon: string
 }
 
-export type NavSection = 'Operação' | 'TransfereGov' | 'Inteligência' | 'Gestão' | 'Administração'
+export type NavSection = 'Operação' | 'TransfereGov' | 'Inteligência' | 'Financeiro' | 'Gestão' | 'Administração'
 
 export const NAV_SECTION_ORDER: NavSection[] = [
   'Operação',
   'TransfereGov',
   'Inteligência',
+  'Financeiro',
   'Gestão',
   'Administração',
 ]
 
+/** The finance manager's home is the Financeiro area, so it leads their menu. */
+export function navSectionOrderForRole(role: NavRole): NavSection[] {
+  if (role !== 'gestor_financeiro') return NAV_SECTION_ORDER
+  return ['Financeiro', ...NAV_SECTION_ORDER.filter((s) => s !== 'Financeiro')]
+}
+
 export function getNavSection(item: NavItem): NavSection {
+  if (item.href === '/financeiro' || item.href.startsWith('/financeiro/') || item.href === '/admin/conta-azul') return 'Financeiro'
   if (item.href === '/tgov/pipeline' || item.href === '/tgov?view=dashboard') return 'TransfereGov'
   if (item.href === '/bi' || item.href === '/tgov' || item.href === '/csm/bi') return 'Inteligência'
   if (
@@ -43,8 +51,11 @@ export function getNavSection(item: NavItem): NavSection {
   return 'Operação'
 }
 
-export function groupNavItems(items: NavItem[]): Array<{ section: NavSection; items: NavItem[] }> {
-  return NAV_SECTION_ORDER
+export function groupNavItems(
+  items: NavItem[],
+  order: NavSection[] = NAV_SECTION_ORDER
+): Array<{ section: NavSection; items: NavItem[] }> {
+  return order
     .map(section => ({ section, items: items.filter(item => getNavSection(item) === section) }))
     .filter(group => group.items.length > 0)
 }
@@ -52,6 +63,8 @@ export function groupNavItems(items: NavItem[]): Array<{ section: NavSection; it
 const LEADS_ITEM: NavItem = { href: '/leads', label: 'Leads de aprovação', icon: 'leads' }
 const EXECUCAO_ITEM: NavItem = { href: '/execucao', label: 'Leads de execução', icon: 'execucao' }
 const OPERACAO_ITEM: NavItem = { href: '/operacao', label: 'Operação', icon: 'tgov' }
+const FINANCEIRO_ITEM: NavItem = { href: '/financeiro', label: 'BI Financeiro', icon: 'financeiro' }
+const CONTA_AZUL_ITEM: NavItem = { href: '/admin/conta-azul', label: 'Conta Azul', icon: 'conta-azul' }
 
 const BASE_NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Pipeline', icon: 'pipeline' },
@@ -74,7 +87,8 @@ const BASE_WITH_EXECUCAO: NavItem[] = [
 export function getNavItemsForRole(role: NavRole): NavItem[] {
   if (role === 'gestor_financeiro') {
     return [
-      { href: '/admin/conta-azul', label: 'Conta Azul', icon: 'comissoes' },
+      FINANCEIRO_ITEM,
+      CONTA_AZUL_ITEM,
       { href: '/comissoes', label: 'Comissões', icon: 'comissoes' },
       { href: '/bi', label: 'BI comercial', icon: 'bi' },
     ]
@@ -94,7 +108,8 @@ export function getNavItemsForRole(role: NavRole): NavItem[] {
       { href: '/csm/comissoes', label: 'Comissões CSM', icon: 'comissoes' },
       { href: '/csm/bi', label: 'BI CSM', icon: 'bi' },
       { href: '/produtos-digitais', label: 'Produtos Digitais', icon: 'produtos' },
-      { href: '/admin/conta-azul', label: 'Conta Azul', icon: 'comissoes' },
+      FINANCEIRO_ITEM,
+      CONTA_AZUL_ITEM,
       { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
       { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
       ...adminOnlyItems,
