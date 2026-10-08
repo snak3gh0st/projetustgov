@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Drawer } from 'vaul'
 import { logout } from '@/lib/auth-actions'
-import { getNavItemsForRole, groupNavItems, type NavRole } from '@/lib/sidebar-nav-items'
+import { getNavItemsForRole, groupNavItems, navSectionOrderForRole, type NavRole } from '@/lib/sidebar-nav-items'
 import ThemeToggle from '@/components/ThemeToggle'
 import { NavIcon } from '@/components/Sidebar'
 import BrandLockup from '@/components/BrandLockup'
@@ -57,7 +57,7 @@ export default function MobileDrawer({ user }: MobileDrawerProps) {
 
             {/* Nav */}
             <nav className="flex-1 overflow-y-auto py-3" aria-label="Navegação principal">
-              {groupNavItems(navItems).map(({ section, items }) => (
+              {groupNavItems(navItems, navSectionOrderForRole(user.role)).map(({ section, items }) => (
                 <div key={section} className="mb-4 last:mb-0">
                   <p className="px-5 pb-1.5 text-[10px] font-semibold tracking-wide text-slate-400 dark:text-zinc-500">
                     {section}

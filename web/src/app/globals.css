@@ -56,3 +56,51 @@ html.dark ::-webkit-scrollbar-thumb {
 html.dark ::-webkit-scrollbar-thumb:hover {
   background: #4B5563;
 }
+
+/* BI Financeiro chart tokens (palette validated for colour-vision deficiency and contrast in both modes). */
+.fin {
+  --fin-in: #0072F7;
+  --fin-in-soft: rgba(0, 114, 247, 0.38);
+  --fin-in-wash: rgba(0, 114, 247, 0.10);
+  --fin-out: #E8692E;
+  --fin-out-soft: rgba(232, 105, 46, 0.40);
+  --fin-od1: #F0985C;
+  --fin-od2: #DF6A2C;
+  --fin-od3: #B9501C;
+  --fin-od4: #86380F;
+  --fin-good: #047857;
+  --fin-warn: #B45309;
+  --fin-bad: #B91C1C;
+  --fin-neutral: #64748B;
+  --fin-grid: #EDF1F5;
+  --fin-axis: #CBD5E1;
+  --fin-text: #64748B;
+  --fin-ink: #0F172A;
+  --fin-ink2: #475569;
+  --fin-surface: #FFFFFF;
+  --fin-band: #F1F5F9;
+}
+.dark .fin {
+  --fin-in: #3D8EF8;
+  --fin-in-soft: rgba(61, 142, 248, 0.40);
+  --fin-in-wash: rgba(61, 142, 248, 0.12);
+  --fin-out: #E8692E;
+  --fin-out-soft: rgba(232, 105, 46, 0.42);
+  --fin-od1: #9A4A22;
+  --fin-od2: #C5602A;
+  --fin-od3: #E8803F;
+  --fin-od4: #F7AD72;
+  --fin-good: #34D399;
+  --fin-warn: #FBBF24;
+  --fin-bad: #F87171;
+  --fin-neutral: #A1A1AA;
+  --fin-grid: #1F2937;
+  --fin-axis: #374151;
+  --fin-text: #9CA3AF;
+  --fin-ink: #F9FAFB;
+  --fin-ink2: #D1D5DB;
+  --fin-surface: #111827;
+  --fin-band: #1F2937;
+}
+.fin .num { font-variant-numeric: tabular-nums; }
+.fin svg text { font-family: Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; }

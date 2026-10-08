@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react'
 
-const NEWS_VERSION = 'v1.0'
+const NEWS_VERSION = 'v1.1'
 const NEWS_ITEMS = [
+  'Financeiro: nova área BI Financeiro com dados do Conta Azul (caixa, resultado, pagar e receber, clientes e CRM)',
+  'Financeiro: sincronização diária às 05:00 e botão Sincronizar agora',
   'CRM: novos status no funil — Contatado e Reunião Agendada',
   'CRM: status pós-venda Impedimento Técnico e Cancelado',
   'CRM: tag de tipo de serviço (Aprovação / Execução / Prestação de Contas) ao fechar venda',

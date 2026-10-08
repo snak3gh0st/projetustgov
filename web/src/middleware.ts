@@ -155,6 +155,8 @@ export default auth((req) => {
 
   if (role === 'gestor_financeiro') {
     const FINANCE_PATHS = [
+      '/financeiro',
+      '/api/financeiro',
       '/admin/conta-azul',
       '/api/integrations/conta-azul',
       '/comissoes',
@@ -169,13 +171,13 @@ export default auth((req) => {
       (p) => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?')
     )
     if (pathname === '/' || isCrmHome) {
-      return Response.redirect(new URL('/admin/conta-azul', req.url))
+      return Response.redirect(new URL('/financeiro', req.url))
     }
     if (!isFinancePath) {
       if (pathname.startsWith('/api/')) {
         return Response.json({ error: 'Forbidden' }, { status: 403 })
       }
-      return Response.redirect(new URL('/admin/conta-azul', req.url))
+      return Response.redirect(new URL('/financeiro', req.url))
     }
   }
 

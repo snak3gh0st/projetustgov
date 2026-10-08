@@ -1,9 +1,10 @@
 import 'server-only'
-import { query } from '@/lib/db'
+import { getPool, query } from '@/lib/db'
 import { CONTA_AZUL_API_BASE, getContaAzulConfig } from './config'
 import { decryptSecret, encryptSecret } from './crypto'
 import { exchangeAuthorizationCode, refreshAccessToken, type ContaAzulTokenResponse } from './oauth'
 import { ensureContaAzulSchema } from './schema'
+import { refreshUnderLock, type TokenRow } from './token-refresh'
 
 export type ContaAzulConnection = {
   id: string
@@ -146,53 +147,58 @@ export async function disconnectConnection(userId: string) {
   )
 }
 
-/** Returns a valid access token, refreshing when needed. */
-export async function getValidAccessToken(): Promise<string> {
+/** Returns a valid access token, refreshing under the connection row lock when needed. */
+export async function getValidAccessToken(opts: { forceRefresh?: boolean } = {}): Promise<string> {
   await ensureContaAzulSchema()
   const { tenantKey } = getContaAzulConfig()
-  const rows = await query<ContaAzulConnection>(
-    `SELECT * FROM conta_azul_connections WHERE tenant_key = $1 LIMIT 1`,
-    [tenantKey]
+  const selectRow = `SELECT id, status, access_token_encrypted, refresh_token_encrypted, token_expires_at
+                     FROM conta_azul_connections WHERE tenant_key = $1 LIMIT 1`
+
+  return refreshUnderLock(
+    {
+      now: () => Date.now(),
+      decrypt: decryptSecret,
+      encrypt: encryptSecret,
+      refresh: refreshAccessToken,
+      readRow: async () => (await query<TokenRow>(selectRow, [tenantKey]))[0] ?? null,
+      withLockedRow: async (fn) => {
+        const client = await getPool().connect()
+        try {
+          await client.query('BEGIN')
+          const locked = await client.query<TokenRow>(`${selectRow} FOR UPDATE`, [tenantKey])
+          const row = locked.rows[0] ?? null
+          const result = await fn(row, {
+            save: async (t) => {
+              await client.query(
+                `UPDATE conta_azul_connections
+                 SET access_token_encrypted = $2,
+                     refresh_token_encrypted = $3,
+                     token_expires_at = $4,
+                     status = 'active',
+                     updated_at = NOW()
+                 WHERE id = $1`,
+                [row!.id, t.accessEnc, t.refreshEnc, t.expiresAt.toISOString()]
+              )
+            },
+            markExpired: async () => {
+              await client.query(
+                `UPDATE conta_azul_connections SET status = 'expired', updated_at = NOW() WHERE id = $1`,
+                [row!.id]
+              )
+            },
+          })
+          await client.query('COMMIT')
+          return result
+        } catch (err) {
+          await client.query('ROLLBACK').catch(() => undefined)
+          throw err
+        } finally {
+          client.release()
+        }
+      },
+    },
+    opts
   )
-  const conn = rows[0]
-  if (!conn?.access_token_encrypted || conn.status !== 'active') {
-    throw new Error('Conta Azul is not connected')
-  }
-
-  const expiresAt = conn.token_expires_at ? new Date(conn.token_expires_at).getTime() : 0
-  const stillValid = expiresAt - Date.now() > 60_000
-  if (stillValid) {
-    return decryptSecret(conn.access_token_encrypted)
-  }
-
-  if (!conn.refresh_token_encrypted) {
-    await query(
-      `UPDATE conta_azul_connections SET status = 'expired', updated_at = NOW() WHERE id = $1`,
-      [conn.id]
-    )
-    throw new Error('Conta Azul token expired; reconnect required')
-  }
-
-  const refreshToken = decryptSecret(conn.refresh_token_encrypted)
-  const tokens = await refreshAccessToken(refreshToken)
-  const accessEnc = encryptSecret(tokens.access_token)
-  const refreshEnc = tokens.refresh_token
-    ? encryptSecret(tokens.refresh_token)
-    : conn.refresh_token_encrypted
-  const expiresAtNew = expiresAtFromTokens(tokens)
-
-  await query(
-    `UPDATE conta_azul_connections
-     SET access_token_encrypted = $2,
-         refresh_token_encrypted = $3,
-         token_expires_at = $4,
-         status = 'active',
-         updated_at = NOW()
-     WHERE id = $1`,
-    [conn.id, accessEnc, refreshEnc, expiresAtNew.toISOString()]
-  )
-
-  return tokens.access_token
 }
 
 export async function testConnection() {
