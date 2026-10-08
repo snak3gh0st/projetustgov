@@ -325,11 +325,13 @@ export async function upsertSaldo(contaId: string, dataSP: string, saldo: number
 
 export type MirrorSums = { tipo: Tipo; itens: number; pago: number; aberto: number }
 
-/** Sums compared against the API's own `totais` (pago and aberto) after a sweep. */
+/** Sums compared against the API's own `totais` (pago and aberto) after a sweep, using the API's rules. */
 export async function mirrorSums(connectionId: string): Promise<MirrorSums[]> {
   const rows = await query<{ tipo: Tipo; itens: string; pago: string; aberto: string }>(
     `SELECT tipo, COUNT(*)::text AS itens,
-            COALESCE(SUM(valor_pago), 0)::text AS pago,
+            -- Conta Azul's totais.pago counts settled titles at their original value
+            -- (interest and fines excluded) and partial ones by the amount paid.
+            COALESCE(SUM(CASE WHEN status_busca = 'RECEBIDO' THEN valor_total WHEN nao_pago > 0 THEN valor_pago ELSE 0 END), 0)::text AS pago,
             COALESCE(SUM(nao_pago), 0)::text AS aberto
      FROM conta_azul_parcelas
      WHERE connection_id = $1 AND deleted_at IS NULL

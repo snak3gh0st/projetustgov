@@ -17,7 +17,7 @@ type Run = {
     progress?: { done: number; total: number }
     api_calls?: number
     conferencia?: { ok: boolean; varredura_completa?: boolean; checks?: { tipo: string; campo: string; diferenca: number; ok: boolean }[] }
-    detalhes?: { orcamento_esgotado?: boolean }
+    detalhes?: { orcamento_esgotado?: boolean; cota_excedida?: boolean }
   }
 }
 
@@ -57,6 +57,7 @@ function duration(run: Run) {
 function note(run: Run) {
   if (run.error_message) return run.error_message
   const conf = run.metadata.conferencia
+  if (run.metadata.detalhes?.cota_excedida) return 'Limite de chamadas do Conta Azul atingido; a próxima execução continua.'
   if (run.metadata.detalhes?.orcamento_esgotado) return 'Tempo esgotado; a próxima execução continua.'
   if (conf && !conf.ok) {
     if (conf.varredura_completa === false) return 'Varredura incompleta; totais não conferidos.'

@@ -21,7 +21,7 @@ import {
 import { dreCategoryPairs, flattenDreTree, type DreNode } from '../finance/dre'
 import type { BuscaRow, Tipo } from '../finance/types'
 import { ContaAzulReconnectRequiredError } from '../token-refresh'
-import { createCaClient, type CaClient } from './client'
+import { CaHttpError, createCaClient, type CaClient } from './client'
 import { reconcile, type ApiSideTotals } from './reconcile'
 import {
   failStaleRuns,
@@ -52,7 +52,7 @@ import {
 
 /**
  * Pull sync from Conta Azul into the finance mirror.
- * Steps: dimensions -> balances -> id sweep -> details (time budget) -> people -> reconciliation.
+ * Steps: dimensions -> balances -> people -> id sweep -> details (time budget, 3 workers) -> reconciliation.
  * A run that hits its time budget ends as `partial`; the next run picks up the
  * remaining details because "pending" is simply detail older than the search.
  */
@@ -63,6 +63,7 @@ const WEB_COOLDOWN_MS = 2 * 60_000
 const SWEEP_PAGE = 1000
 const DIM_PAGE = 500
 const PROGRESS_EVERY = 25
+const DETAIL_WORKERS = 3
 
 const PATHS: Record<Tipo, string> = {
   RECEITA: '/v1/financeiro/eventos-financeiros/contas-a-receber/buscar',
@@ -217,6 +218,9 @@ export async function executePullRun(
     await phase('saldos')
     meta.saldos = await syncSaldos(client)
 
+    await phase('pessoas')
+    meta.pessoas = await syncPessoas(client)
+
     await phase('varredura')
     const apiTotals: ApiSideTotals = {
       RECEITA: { itens: null, pago: null, aberto: null },
@@ -239,50 +243,86 @@ export async function executePullRun(
     pendingTotal = pending.length
     await phase('detalhes', { progress: { done: 0, total: pendingTotal } })
 
+    // A few workers share the client's 8 req/s throttle; a single sequential
+    // loop is bound by API latency (~3 req/s). An evento being saved by one
+    // worker is skipped by the others, since its rateio is replaced as a unit.
     const done = new Set<string>()
+    const inFlightEventos = new Set<string>()
     let budgetExhausted = false
-    for (const id of pending) {
-      if (done.has(id)) continue
-      if (Date.now() > deadline) {
-        budgetExhausted = true
-        break
-      }
-      try {
-        const detail = await client.get(`/v1/financeiro/eventos-financeiros/parcelas/${encodeURIComponent(id)}`)
-        const d = parcelaFromDetail(detail)
-        let details: unknown[] = [detail]
-        if (d.quantidade_parcelas > 1 && d.evento_id) {
-          const siblings = listItems(
-            await client.get(`/v1/financeiro/eventos-financeiros/${encodeURIComponent(d.evento_id)}/parcelas`)
-          )
-          if (siblings.length) details = siblings
+    let quotaHit = false
+    let cursor = 0
+    let fatal: unknown = null
+
+    const worker = async () => {
+      while (!fatal && !quotaHit) {
+        const id = pending[cursor++]
+        if (id === undefined) return
+        if (done.has(id)) continue
+        if (Date.now() > deadline) {
+          budgetExhausted = true
+          return
         }
-        const saved = await saveEventoDetails(connectionId, details)
-        saved.forEach((s) => done.add(s))
-        done.add(id)
-        detailsDone += 1
-      } catch (err) {
-        if (err instanceof ContaAzulReconnectRequiredError) throw err
-        detailsFailed += 1
-        meta.ultimo_erro_detalhe = err instanceof Error ? err.message.slice(0, 300) : String(err)
-        if (detailsFailed > 25 && detailsFailed > detailsDone) throw err
-      }
-      if ((detailsDone + detailsFailed) % PROGRESS_EVERY === 0) {
-        await phase('detalhes', { progress: { done: done.size, total: pendingTotal } })
+        let claimed: string | null = null
+        try {
+          const detail = await client.get(`/v1/financeiro/eventos-financeiros/parcelas/${encodeURIComponent(id)}`)
+          const d = parcelaFromDetail(detail)
+          if (d.evento_id) {
+            if (inFlightEventos.has(d.evento_id)) continue
+            inFlightEventos.add(d.evento_id)
+            claimed = d.evento_id
+          }
+          let details: unknown[] = [detail]
+          if (d.quantidade_parcelas > 1 && d.evento_id) {
+            const siblings = listItems(
+              await client.get(`/v1/financeiro/eventos-financeiros/${encodeURIComponent(d.evento_id)}/parcelas`)
+            )
+            if (siblings.length) details = siblings
+          }
+          const saved = await saveEventoDetails(connectionId, details)
+          saved.forEach((x) => done.add(x))
+          done.add(id)
+          detailsDone += 1
+        } catch (err) {
+          if (err instanceof ContaAzulReconnectRequiredError) {
+            fatal = err
+            return
+          }
+          if (err instanceof CaHttpError && err.status === 429) {
+            // Conta Azul quota exhausted even after backing off: stop cleanly,
+            // the next run resumes the remaining details.
+            quotaHit = true
+            return
+          }
+          detailsFailed += 1
+          meta.ultimo_erro_detalhe = err instanceof Error ? err.message.slice(0, 300) : String(err)
+          if (detailsFailed > 25 && detailsFailed > detailsDone) {
+            fatal = err
+            return
+          }
+        } finally {
+          if (claimed) inFlightEventos.delete(claimed)
+        }
+        if ((detailsDone + detailsFailed) % PROGRESS_EVERY === 0) {
+          await phase('detalhes', { progress: { done: done.size, total: pendingTotal } })
+        }
       }
     }
-    meta.detalhes = { pendentes: pendingTotal, atualizados: done.size, chamadas: detailsDone, falhas: detailsFailed, orcamento_esgotado: budgetExhausted }
-
-    if (!budgetExhausted) {
-      await phase('pessoas', { progress: { done: done.size, total: pendingTotal } })
-      meta.pessoas = await syncPessoas(client)
+    await Promise.all(Array.from({ length: DETAIL_WORKERS }, () => worker()))
+    if (fatal) throw fatal
+    meta.detalhes = {
+      pendentes: pendingTotal,
+      atualizados: done.size,
+      chamadas: detailsDone,
+      falhas: detailsFailed,
+      orcamento_esgotado: budgetExhausted,
+      cota_excedida: quotaHit,
     }
 
     await phase('conferencia')
     const rec = sweepComplete ? reconcile(apiTotals, await mirrorSums(connectionId)) : { ok: false, checks: [] }
     meta.conferencia = { ...rec, varredura_completa: sweepComplete, rateio_divergente: await rateioMismatchCount(connectionId) }
 
-    const status = budgetExhausted || !rec.ok || detailsFailed > 0 ? 'partial' : 'completed'
+    const status = budgetExhausted || quotaHit || !rec.ok || detailsFailed > 0 ? 'partial' : 'completed'
     meta.api_calls = client.calls()
     meta.phase = 'concluido'
     await finishRun(runId, status, { total: pendingTotal, success: done.size, failed: detailsFailed }, meta, null)

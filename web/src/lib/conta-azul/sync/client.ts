@@ -1,7 +1,8 @@
 /**
  * Minimal Conta Azul API v2 client for the pull sync.
- * - throttles to 8 req/s (the API allows 10 req/s and 600 req/min per account)
- * - retries 429, 5xx and network errors with exponential backoff (5 attempts)
+ * - throttles to 6 req/s (documented limit is 10 req/s and 600 req/min per account,
+ *   but quota violations were observed in practice well below that)
+ * - retries 429 (from 2s), 5xx and network errors (from 0.5s) with exponential backoff, 5 attempts
  * - on 401 forces a single token refresh and retries once
  * Dependencies are injected so the retry policy is unit-testable.
  */
@@ -38,8 +39,8 @@ export function buildQuery(query: CaQuery = {}): string {
   return s ? `?${s}` : ''
 }
 
-function backoffMs(attempt: number): number {
-  return Math.min(30_000, 500 * 2 ** (attempt - 1))
+function backoffMs(attempt: number, base = 500): number {
+  return Math.min(30_000, base * 2 ** (attempt - 1))
 }
 
 export type CaClient = {
@@ -49,7 +50,7 @@ export type CaClient = {
 
 export function createCaClient(deps: CaClientDeps): CaClient {
   const base = deps.baseUrl ?? CA_API_BASE
-  const interval = 1000 / (deps.ratePerSec ?? 8)
+  const interval = 1000 / (deps.ratePerSec ?? 6)
   const maxAttempts = deps.maxAttempts ?? 5
   let calls = 0
   let nextSlot = Number.NEGATIVE_INFINITY
@@ -93,7 +94,7 @@ export function createCaClient(deps: CaClientDeps): CaClient {
       if (res.status === 429 || res.status >= 500) {
         if (attempt >= maxAttempts) throw new CaHttpError(res.status, path, (await res.text()).slice(0, 300))
         const retryAfter = Number(res.headers.get('retry-after'))
-        await deps.sleep(retryAfter > 0 ? retryAfter * 1000 : backoffMs(attempt))
+        await deps.sleep(retryAfter > 0 ? retryAfter * 1000 : backoffMs(attempt, res.status === 429 ? 2000 : 500))
         continue
       }
 

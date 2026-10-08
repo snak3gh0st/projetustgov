@@ -45,7 +45,7 @@ test('returns parsed JSON on success', async () => {
 test('429 is retried with exponential backoff', async () => {
   const h = harness([{ status: 429 }, { status: 429 }, { status: 200, body: { ok: 1 } }])
   assert.deepEqual(await h.client.get('/v1/x'), { ok: 1 })
-  assert.deepEqual(h.sleeps.filter((s) => s >= 500), [500, 1000])
+  assert.deepEqual(h.sleeps.filter((s) => s >= 500), [2000, 4000])
 })
 
 test('Retry-After header wins over the default backoff', async () => {
@@ -65,6 +65,12 @@ test('a second 401 after refreshing fails', async () => {
   await assert.rejects(h.client.get('/v1/x'), (e: unknown) => e instanceof CaHttpError && e.status === 401)
 })
 
+test('5xx backs off from 500ms', async () => {
+  const h = harness([{ status: 502 }, { status: 200, body: {} }])
+  await h.client.get('/v1/x')
+  assert.deepEqual(h.sleeps.filter((s) => s >= 500), [500])
+})
+
 test('5xx gives up after five attempts', async () => {
   const h = harness(Array.from({ length: 6 }, () => ({ status: 503 })))
   await assert.rejects(h.client.get('/v1/x'), (e: unknown) => e instanceof CaHttpError && e.status === 503)
@@ -82,10 +88,10 @@ test('4xx other than 401/429 fails immediately', async () => {
   assert.equal(h.urls.length, 1)
 })
 
-test('throttle spaces consecutive calls by 125ms (8 req/s)', async () => {
+test('throttle spaces consecutive calls by ~167ms (6 req/s)', async () => {
   const h = harness([{ status: 200, body: {} }, { status: 200, body: {} }, { status: 200, body: {} }])
   await h.client.get('/a')
   await h.client.get('/b')
   await h.client.get('/c')
-  assert.deepEqual(h.sleeps, [125, 125])
+  assert.deepEqual(h.sleeps.map((x) => Math.round(x)), [167, 167])
 })
