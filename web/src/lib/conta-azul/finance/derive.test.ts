@@ -4,14 +4,20 @@ import test from 'node:test'
 import {
   apportionByRateio,
   baixasFromDetail,
+  categoriaFromApi,
+  centroCustoFromApi,
   cnpjDigits,
+  contaFinanceiraFromApi,
   diffSweep,
   listItems,
   listTotal,
   normalizeTs,
   parcelaFromBusca,
   parcelaFromDetail,
+  pessoaFromApi,
   rateioFromEvento,
+  saldoFromApi,
+  totalsFromBusca,
 } from './derive'
 import type { StoredMeta } from './types'
 
@@ -217,4 +223,25 @@ test('diffSweep never deletes when the sweep was incomplete', () => {
   const stored = new Map<string, StoredMeta>([['gone', meta({})]])
   const d = diffSweep(stored, [], { complete: false })
   assert.deepEqual(d.deleted, [])
+})
+
+test('dimension mappers read the real field names', () => {
+  assert.deepEqual(
+    categoriaFromApi({ id: 'c1', versao: 2, nome: 'Aluguel', categoria_pai: 'c0', tipo: 'DESPESA', entrada_dre: 'DESPESAS_ADMINISTRATIVAS', considera_custo_dre: false }),
+    { id: 'c1', nome: 'Aluguel', tipo: 'DESPESA', categoria_pai: 'c0', entrada_dre: 'DESPESAS_ADMINISTRATIVAS', considera_custo_dre: false }
+  )
+  assert.equal(centroCustoFromApi({ id: 'cc', codigo: '01', nome: 'Aprovação', ativo: false }).ativo, false)
+  const conta = contaFinanceiraFromApi({ id: 'cf', banco: 'ITAU', codigo_banco: 341, nome: 'Principal', ativo: true, tipo: 'CONTA_CORRENTE', conta_padrao: true, agencia: null, numero: null })
+  assert.equal(conta.codigo_banco, 341)
+  assert.equal(conta.conta_padrao, true)
+  const pessoa = pessoaFromApi({ id: 'p', nome: 'X', documento: '60.701.190/0001-04', perfis: [{ tipo_perfil: 'Cliente' }], tipo_pessoa: 'Jurídica', ativo: true })
+  assert.deepEqual(pessoa.perfis, ['Cliente'])
+  assert.equal(pessoa.documento_digits, '60701190000104')
+  assert.deepEqual(pessoaFromApi({ id: 'q', perfis: ['Fornecedor'] }).perfis, ['Fornecedor'])
+  assert.deepEqual(
+    totalsFromBusca({ totais: { pago: { valor: 4164502.23 }, vencido: { valor: 199773.36 }, aberto: { valor: 638559.68 }, todos: 4803061.91 } }),
+    { pago: 4164502.23, aberto: 638559.68, vencido: 199773.36, todos: 4803061.91 }
+  )
+  assert.equal(saldoFromApi({ saldo_atual: -14470.5 }), -14470.5)
+  assert.equal(saldoFromApi({}), null)
 })

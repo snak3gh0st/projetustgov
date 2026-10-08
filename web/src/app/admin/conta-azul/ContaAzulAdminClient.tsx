@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import ContaAzulSyncPanel from './ContaAzulSyncPanel'
 
 type StatusResponse = {
   configured: boolean
@@ -214,6 +215,8 @@ export default function ContaAzulAdminClient() {
           </button>
         </div>
       </div>
+
+      {conn && <ContaAzulSyncPanel enabled={Boolean(active)} />}
 
       <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 text-sm text-gray-600 dark:text-gray-400 space-y-2">
         <p className="font-semibold text-gray-900 dark:text-gray-100">Como conectar</p>

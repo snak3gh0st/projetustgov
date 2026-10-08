@@ -235,3 +235,102 @@ export function diffSweep(
     : []
   return { upserts: fetched, needDetail, deleted }
 }
+
+export type CategoriaRow = {
+  id: string
+  nome: string
+  tipo: string | null
+  categoria_pai: string | null
+  entrada_dre: string | null
+  considera_custo_dre: boolean | null
+}
+
+export function categoriaFromApi(item: unknown): CategoriaRow {
+  const o = obj(item)
+  return {
+    id: String(o.id),
+    nome: str(o.nome) ?? '(sem nome)',
+    tipo: str(o.tipo),
+    categoria_pai: str(o.categoria_pai) ?? str(obj(o.categoria_pai).id),
+    entrada_dre: str(o.entrada_dre),
+    considera_custo_dre: typeof o.considera_custo_dre === 'boolean' ? o.considera_custo_dre : null,
+  }
+}
+
+export type CentroCustoRow = { id: string; codigo: string | null; nome: string; ativo: boolean }
+
+export function centroCustoFromApi(item: unknown): CentroCustoRow {
+  const o = obj(item)
+  return { id: String(o.id), codigo: str(o.codigo), nome: str(o.nome) ?? '(sem nome)', ativo: o.ativo !== false }
+}
+
+export type ContaFinanceiraRow = {
+  id: string
+  nome: string
+  banco: string | null
+  codigo_banco: number | null
+  tipo: string | null
+  ativo: boolean
+  conta_padrao: boolean
+  agencia: string | null
+  numero: string | null
+}
+
+export function contaFinanceiraFromApi(item: unknown): ContaFinanceiraRow {
+  const o = obj(item)
+  return {
+    id: String(o.id),
+    nome: str(o.nome) ?? '(sem nome)',
+    banco: str(o.banco),
+    codigo_banco: numOrNull(o.codigo_banco),
+    tipo: str(o.tipo),
+    ativo: o.ativo !== false,
+    conta_padrao: o.conta_padrao === true,
+    agencia: str(o.agencia),
+    numero: str(o.numero),
+  }
+}
+
+export type PessoaRow = {
+  id: string
+  nome: string | null
+  documento: string | null
+  documento_digits: string | null
+  tipo_pessoa: string | null
+  perfis: string[]
+  ativo: boolean | null
+}
+
+export function pessoaFromApi(item: unknown): PessoaRow {
+  const o = obj(item)
+  const perfis = (Array.isArray(o.perfis) ? o.perfis : [])
+    .map((p) => (typeof p === 'string' ? p : str(obj(p).tipo_perfil) ?? str(obj(p).perfil)))
+    .filter((p): p is string => Boolean(p))
+  return {
+    id: String(o.id),
+    nome: str(o.nome) ?? str(o.nome_empresa),
+    documento: str(o.documento),
+    documento_digits: cnpjDigits(o.documento),
+    tipo_pessoa: str(o.tipo_pessoa),
+    perfis,
+    ativo: typeof o.ativo === 'boolean' ? o.ativo : null,
+  }
+}
+
+export type ApiTotals = { pago: number | null; aberto: number | null; vencido: number | null; todos: number | null }
+
+/** Reads the `totais` block of the contas-a-receber/pagar search. */
+export function totalsFromBusca(body: unknown): ApiTotals {
+  const t = obj(obj(body).totais)
+  const pick = (v: unknown): number | null => {
+    if (typeof v === 'number') return v
+    const n = obj(v).valor
+    return typeof n === 'number' ? n : null
+  }
+  return { pago: pick(t.pago), aberto: pick(t.aberto), vencido: pick(t.vencido), todos: pick(t.todos) }
+}
+
+export function saldoFromApi(body: unknown): number | null {
+  const o = obj(body)
+  return numOrNull(o.saldo_atual ?? o.saldo)
+}

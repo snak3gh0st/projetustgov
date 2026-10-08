@@ -153,6 +153,11 @@ export function canManageContaAzul(role: string | undefined): boolean {
   return role === 'gestor' || role === 'admin' || role === 'gestor_financeiro'
 }
 
+/** BI Financeiro (dados do Conta Azul: caixa, DRE, pagar e receber). Área do gestor financeiro. */
+export function canReadBiFinanceiro(role: string | undefined): boolean {
+  return role === 'gestor' || role === 'admin' || role === 'gestor_financeiro'
+}
+
 /** Leitura financeira operacional (comissões, BI, fundo). */
 export function canReadFinanceiro(role: string | undefined): boolean {
   return role === 'gestor' || role === 'admin' || role === 'gestor_financeiro' || role === 'coordenador' || role === 'visualizador'
