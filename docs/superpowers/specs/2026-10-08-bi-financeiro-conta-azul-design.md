@@ -107,12 +107,16 @@ Código em `web/src/lib/conta-azul/sync/`. Roda dentro do app Next.js existente 
 4. **Detalhes:**
    - Para cada parcela pendente: `GET parcelas/{id}`. Se o lançamento tem mais de uma parcela, `GET {evento}/parcelas` atualiza todas de uma vez.
    - Em uma transação: payload + baixas (apaga e reinsere) + rateio do lançamento (apaga e reinsere).
-   - Throttle de 8 req/s. Retry com backoff exponencial em 429/5xx, até 5 tentativas. Em 401, força o refresh uma única vez.
+   - 3 workers compartilham um throttle de 6 req/s; uma execução sequencial fica presa na latência da API (cerca de 3 req/s).
+   - Retry com backoff exponencial: 429 a partir de 2 s, 5xx a partir de 0,5 s, até 5 tentativas. Em 401, força o refresh uma única vez.
+   - Se a cota do Conta Azul estourar mesmo assim, os detalhes param de forma limpa e a execução termina `partial` com `cota_excedida`. No teste real isso aconteceu perto de 3,1 mil chamadas em cerca de 20 min, abaixo do limite documentado.
    - **Orçamento de tempo:** 12 min no cron, 10 min no botão. Se estourar, a execução termina `partial` e a próxima continua de onde parou.
-5. **Pessoas:** listagens explícitas (Cliente e Fornecedor × Física e Jurídica), 1.000 por página.
+5. **Pessoas:** listagens explícitas (Cliente e Fornecedor × Física e Jurídica). Na implementação roda antes da varredura, para os CNPJs existirem mesmo quando o orçamento dos detalhes acaba.
 6. **Saldos:** `saldo-atual` de cada conta ativa → upsert do snapshot do dia.
 7. **Conferência:**
-   - a soma das linhas não removidas por tipo deve bater com `totais.todos` e `totais.aberto` (diferença ≤ R$ 1);
+   - por tipo, o número de itens e as somas devem bater com `totais` da API (diferença ≤ R$ 1):
+     - `pago` segue a regra da própria API: títulos liquidados pelo valor original, parciais pelo valor pago;
+     - `aberto` = soma do não pago;
    - o número de lançamentos cujo Σ rateio difere do Σ valor das parcelas também é registrado;
    - divergência → `partial`, com o aviso visível na tela.
 8. Atualiza `last_polled_at` da conexão.
@@ -211,16 +215,26 @@ APIs: `/api/financeiro/{overview,resultado,caixa,titulos,clientes,sync}` e `/api
 
 ## 8. Rollout
 
-1. **PR 1, dados:** lock do token, migration, sync, rotas de cron e de sync, histórico no admin.
-   - Aplicar a migration no btdb.
-   - Merge no `main` (Coolify faz o deploy).
-   - Carga completa e conferência.
-   - Instalar o timer no btapps.
-2. **PR 2, telas:** área Financeiro, menu, middleware, NewsBanner.
+Uma PR única para `main`. A divisão em duas foi abandonada porque o redirect do gestor financeiro e as correções do teste com dados reais ficaram em commits misturados.
 
-Cada passo que toca produção (migration, merge/deploy, timer) é confirmado com o responsável antes de executar.
+1. Aplicar a migration no btdb.
+2. Merge no `main` (Coolify faz o deploy), de preferência fora do horário de uso.
+3. Primeira importação a partir do btapps: chamar a rota de cron com `CRON_SECRET` e `--max-time 900`. Esperar pelo menos 1 hora depois de qualquer outro uso intenso da API, por causa da cota. Pode precisar de duas execuções.
+4. Conferir a reconciliação em `/admin/conta-azul`.
+5. Instalar o timer e o drop-in no btapps (`daemon-reload`, `enable --now`, `list-timers`).
 
-## 9. Riscos e pontos em aberto
+Cada passo é confirmado com o responsável antes de executar.
+
+## 9. Achados nos dados reais (teste de 2026-10-08)
+
+- Cerca de 50% do valor do rateio está em categorias sem linha no DRE do Conta Azul. As maiores:
+  - Prestação de Serviço PJ, Serviços Prestados, Cartão de Crédito (precisam ser classificadas);
+  - Distribuição de Lucro, Empréstimos de Bancos, Transferência entre Empresas do Grupo (ficam fora de propósito).
+- A conta do Conta Azul reúne contas bancárias de várias empresas do grupo (PROJETUS, TALENT HUB, ATOM, TS&CO, ACADEMIA, PAD). Há 12 contas com saldo negativo, sinal de conciliação pendente.
+- Das 62 vendas fechadas no CRM, só 21 CNPJs existem como pessoa no Conta Azul.
+- O "a pagar" inclui parcelas de empréstimo até 2031, então a posição líquida inclui obrigações de longo prazo.
+
+## 10. Riscos e pontos em aberto
 
 - **Renegociações** (status RENEGOCIADO) podem gerar novos lançamentos. A conferência da carga completa mostra se há dupla contagem no DRE. Se houver, a regra de exclusão é ajustada.
 - **URLs de OAuth:** a documentação diz que mudaram em 14/08/2026 (`login.contaazul.com`, `api-v2.contaazul.com/oauth/token`). As atuais ainda funcionam, inclusive o refresh de hoje. Acompanhar uma possível data de desligamento.
