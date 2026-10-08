@@ -401,7 +401,7 @@ function PositionPanel({ data }: { data: Overview }) {
   const Op = ({ c }: { c: string }) => <span className="text-base text-slate-400 dark:text-gray-500">{c}</span>
   return (
     <Panel>
-      <PanelHead title="Posição financeira" aside="Visão de caixa a partir do Conta Azul. Não substitui o balanço contábil." />
+      <PanelHead title="Posição financeira" aside={`Vencidos e o que vence até ${dayMonth(p.horizonte)}/${p.horizonte.slice(0, 4)}. Não substitui o balanço contábil.`} />
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2 text-sm text-slate-600 dark:text-gray-400">
         <Item label="Saldo em contas" value={p.saldo} />
         <Op c="+" />
@@ -416,6 +416,17 @@ function PositionPanel({ data }: { data: Overview }) {
           <b className={`text-lg font-semibold tabular-nums ${p.liquida < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-gray-100'}`}>{moneyCompact(p.liquida)}</b>
         </span>
       </div>
+      {(p.longoPrazo.pagar > 0 || p.longoPrazo.receber > 0) && (
+        <p className="mt-3 border-t border-slate-200 pt-3 text-[13px] text-slate-600 dark:border-gray-800 dark:text-gray-400">
+          Longo prazo, depois de 12 meses: a pagar <b className="tabular-nums text-slate-900 dark:text-gray-100">{moneyCompact(p.longoPrazo.pagar)}</b>
+          {p.longoPrazo.receber > 0 && (
+            <>
+              {' '}e a receber <b className="tabular-nums text-slate-900 dark:text-gray-100">{moneyCompact(p.longoPrazo.receber)}</b>
+            </>
+          )}
+          , fora da posição líquida acima.
+        </p>
+      )}
     </Panel>
   )
 }

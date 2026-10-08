@@ -224,7 +224,9 @@ export async function getOverview(): Promise<Overview> {
   const dayOfMonth = Number(today.slice(8, 10))
   const prevSamePoint = `${addMonths(curMonth, -1)}-${String(Math.min(dayOfMonth, 28)).padStart(2, '0')}`
 
-  const [balances, serie30, flows, proximos, atrasados, inputs, values, mtd, agingR, np, payOpen, loansRows] = await Promise.all([
+  // Financial position looks 12 months ahead; longer-term titles (e.g. loan instalments years out) are shown apart.
+  const horizon = addDaysISO(today, 365)
+  const [balances, serie30, flows, proximos, atrasados, inputs, values, mtd, agingR, np, payOpen, loansRows, recvHorizon] = await Promise.all([
     latestBalances(),
     query<{ date: string; balance: number }>(
       `SELECT data::text AS date, SUM(saldo)::float8 AS balance
@@ -266,14 +268,21 @@ export async function getOverview(): Promise<Overview> {
       `SELECT p.data_vencimento::text AS d, p.nao_pago::float8 AS v, p.pessoa_nome
        FROM conta_azul_parcelas p WHERE ${OPEN} AND p.tipo = 'DESPESA'`
     ),
-    query<{ categoria_id: string | null; v: number }>(
+    query<{ categoria_id: string | null; longo: boolean; v: number }>(
       `WITH t AS (SELECT evento_id, SUM(valor) AS total FROM conta_azul_rateio GROUP BY evento_id)
-       SELECT r.categoria_id, SUM(p.nao_pago * r.valor / NULLIF(t.total, 0))::float8 AS v
+       SELECT r.categoria_id, (p.data_vencimento > $1::date) AS longo,
+              SUM(p.nao_pago * r.valor / NULLIF(t.total, 0))::float8 AS v
        FROM conta_azul_parcelas p
        JOIN conta_azul_rateio r ON r.evento_id = p.evento_id
        JOIN t ON t.evento_id = p.evento_id
        WHERE ${OPEN} AND p.tipo = 'DESPESA'
-       GROUP BY 1`
+       GROUP BY 1, 2`,
+      [horizon]
+    ),
+    query<{ longo: boolean; v: number }>(
+      `SELECT (p.data_vencimento > $1::date) AS longo, SUM(p.nao_pago)::float8 AS v
+       FROM conta_azul_parcelas p WHERE ${OPEN} AND p.tipo = 'RECEITA' GROUP BY 1`,
+      [horizon]
     ),
   ])
 
@@ -288,10 +297,12 @@ export async function getOverview(): Promise<Overview> {
   // payables: overdue go to the first week, then 4 weeks from today
   const semanas = Array.from({ length: 4 }, (_, i) => ({ from: addDaysISO(today, i * 7), to: addDaysISO(today, i * 7 + 6), valor: 0 }))
   const payLate: { v: number; nome: string | null }[] = []
-  let pagarTotal = 0
+  let pagar12 = 0
+  let pagarLongo = 0
   for (const r of payOpen) {
     const v = Number(r.v)
-    pagarTotal += v
+    if (r.d > horizon) pagarLongo += v
+    else pagar12 += v
     if (r.d < today) {
       payLate.push({ v, nome: r.pessoa_nome })
       semanas[0].valor += v
@@ -305,14 +316,23 @@ export async function getOverview(): Promise<Overview> {
   const loanLine = inputs.lines.find((l) => l.codigo === '07.2')?.id
   let emprestimos = 0
   if (loanLine) {
-    const loanDre = buildDre(inputs.lines, inputs.pairs, inputs.cats, loansRows.map((r) => ({ categoria_id: r.categoria_id, idx: 0, valor: Number(r.v) })), 1)
+    const loanDre = buildDre(
+      inputs.lines,
+      inputs.pairs,
+      inputs.cats,
+      loansRows.map((r) => ({ categoria_id: r.categoria_id, idx: r.longo ? 1 : 0, valor: Number(r.v) })),
+      2
+    )
     emprestimos = loanDre.rows.find((r) => r.id === loanLine)?.values[0] ?? 0
   }
+  const receber12 = Number(recvHorizon.find((r) => !r.longo)?.v ?? 0)
+  const receberLongo = Number(recvHorizon.find((r) => r.longo)?.v ?? 0)
 
   const aberto = agingR.reduce((a, b) => a + b, 0)
   const vencido = agingR[1] + agingR[2] + agingR[3] + agingR[4]
   const saldoBase = saldoTotal ?? 0
-  const pagarSemEmprestimos = Math.max(0, pagarTotal - emprestimos)
+  const pagarSemEmprestimos = Math.max(0, pagar12 - emprestimos)
+  const r2 = (n: number) => Math.round(n * 100) / 100
 
   return {
     today,
@@ -338,10 +358,12 @@ export async function getOverview(): Promise<Overview> {
     },
     posicao: {
       saldo: saldoBase,
-      receber: aberto,
-      pagar: Math.round(pagarSemEmprestimos * 100) / 100,
-      emprestimos: Math.round(emprestimos * 100) / 100,
-      liquida: Math.round((saldoBase + aberto - pagarTotal) * 100) / 100,
+      receber: r2(receber12),
+      pagar: r2(pagarSemEmprestimos),
+      emprestimos: r2(emprestimos),
+      liquida: r2(saldoBase + receber12 - pagar12),
+      horizonte: horizon,
+      longoPrazo: { receber: r2(receberLongo), pagar: r2(pagarLongo) },
     },
   }
 }

@@ -35,7 +35,7 @@ export type Overview = {
   resultado: { atual: ResultadoMes | null; anterior: ResultadoMes | null; foraDoDre: number; mtd: { atual: number; mesmoPontoAnterior: number; diasUteis: number } }
   receber: { aging: number[]; aberto: number; vencido: number; inadimplencia: number; inadimplenciaSerie: { mes: string; taxa: number }[] }
   pagar: { semanas: { from: string; to: string; valor: number }[]; atrasados: { count: number; total: number; nomes: string[] } }
-  posicao: { saldo: number; receber: number; pagar: number; emprestimos: number; liquida: number }
+  posicao: { saldo: number; receber: number; pagar: number; emprestimos: number; liquida: number; horizonte: string; longoPrazo: { receber: number; pagar: number } }
 }
 
 export type ResultadoResponse = {
