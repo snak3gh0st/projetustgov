@@ -316,7 +316,7 @@ export async function getOverview(): Promise<Overview> {
 
   return {
     today,
-    saldo: { total: saldoTotal, contas: active.length, data: saldoData, variacao30 },
+    saldo: { total: saldoTotal, contas: active.length, negativas: active.filter((b) => Number(b.saldo) < 0).length, data: saldoData, variacao30, desde: serie30[0]?.date ?? null },
     saldoSerie: serie30.map((s) => ({ date: s.date, balance: Number(s.balance) })),
     projecao: dailyProjection(saldoBase, flows, today, 60),
     proximos7: proximos.map((r) => toTitulo(r, today)),

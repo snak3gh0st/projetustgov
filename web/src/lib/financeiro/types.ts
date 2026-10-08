@@ -27,7 +27,7 @@ export type ResultadoMes = {
 
 export type Overview = {
   today: string
-  saldo: { total: number | null; contas: number; data: string | null; variacao30: number | null }
+  saldo: { total: number | null; contas: number; negativas: number; data: string | null; variacao30: number | null; desde: string | null }
   saldoSerie: { date: string; balance: number }[]
   projecao: ProjectionPoint[]
   proximos7: TituloRow[]
