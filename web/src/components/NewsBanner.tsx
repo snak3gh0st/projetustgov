@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 
-const NEWS_VERSION = 'v1.1'
+const NEWS_VERSION = 'v1.2'
 const NEWS_ITEMS = [
+  'UI: identidade Projete de volta (logo e nome no menu, login e aba do navegador)',
   'Financeiro: nova área BI Financeiro com dados do Conta Azul (caixa, resultado, pagar e receber, clientes e CRM)',
   'Financeiro: sincronização diária às 05:00 e botão Sincronizar agora',
   'CRM: novos status no funil — Contatado e Reunião Agendada',
@@ -17,9 +18,8 @@ const NEWS_ITEMS = [
   'UI: tema escuro disponivel em toda a plataforma (botao no menu lateral)',
   'UI: menu lateral pode ser recolhido para liberar espaco — preferencia salva entre sessoes',
   'UI: navegacao mobile com gaveta inferior (toque no botao azul no canto inferior esquerdo)',
-  'UI: nova identidade da Central da Mobilização',
 ]
-const STORAGE_KEY = `central-mobilizacao-news-dismissed-${NEWS_VERSION}`
+const STORAGE_KEY = `projete-news-dismissed-${NEWS_VERSION}`
 
 export default function NewsBanner() {
   const [dismissed, setDismissed] = useState(true)
@@ -70,7 +70,7 @@ export default function NewsBanner() {
         ))}
       </ul>
       <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
-        Central da Mobilização {NEWS_VERSION} &mdash; BTerminal Systems
+        Projete {NEWS_VERSION} &mdash; BTerminal Systems
       </p>
     </div>
   )

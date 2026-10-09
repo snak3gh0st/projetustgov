@@ -9,8 +9,8 @@ import Providers from '@/components/Providers'
 import MobileDrawer from '@/components/MobileDrawer'
 
 export const metadata: Metadata = {
-  title: 'Central da Mobilização',
-  description: 'Central da Mobilização — operação, monitoramento e dados em um só lugar',
+  title: 'Projete',
+  description: 'Projete, o hub da PROJETUS para gestão de instrumentos governamentais',
 }
 
 export default async function RootLayout({
