@@ -293,8 +293,8 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
                       <a
                         href={googleCalendarEventUrl({
                           title: contact.nome_pessoa
-                            ? `Reunião Central da Mobilização — ${contact.nome_pessoa}`
-                            : `Reunião Central da Mobilização — ${cnpj}`,
+                            ? `Reunião PROJETUS — ${contact.nome_pessoa}`
+                            : `Reunião PROJETUS — ${cnpj}`,
                           details: [
                             contact.nome_pessoa ? `Contato: ${contact.nome_pessoa}` : null,
                             contact.cargo ? `Cargo: ${contact.cargo}` : null,

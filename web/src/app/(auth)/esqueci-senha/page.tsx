@@ -35,7 +35,7 @@ export default function EsqueciSenhaPage() {
           <div className="flex justify-center mb-3">
             <BrandLockup />
           </div>
-          <p className="text-gray-400 dark:text-gray-500 text-sm">Central de operação e mobilização</p>
+          <p className="text-gray-400 dark:text-gray-500 text-sm">Hub da PROJETUS</p>
         </div>
 
         {done ? (
