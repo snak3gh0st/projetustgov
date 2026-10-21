@@ -71,6 +71,8 @@ export default function MobileDrawer({ user }: MobileDrawerProps) {
                   isActive = pathname === '/'
                 } else if (hrefPath === '/tgov') {
                   isActive = pathname === '/tgov' && (currentView ?? null) === (hrefView ?? null)
+                } else if (hrefPath === '/execucao') {
+                  isActive = pathname === '/execucao' && (searchParams.get('fase') ?? 'execucao') === new URLSearchParams(hrefQuery).get('fase')
                 } else {
                   isActive = pathname.startsWith(hrefPath)
                 }

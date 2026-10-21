@@ -61,7 +61,8 @@ export function groupNavItems(
 }
 
 const LEADS_ITEM: NavItem = { href: '/leads', label: 'Leads de aprovação', icon: 'leads' }
-const EXECUCAO_ITEM: NavItem = { href: '/execucao', label: 'Leads de execução', icon: 'execucao' }
+const EXECUCAO_ITEM: NavItem = { href: '/execucao?fase=execucao', label: 'Leads de execução', icon: 'execucao' }
+const PRESTACAO_ITEM: NavItem = { href: '/execucao?fase=prestacao_contas', label: 'Leads de prestação de contas', icon: 'execucao' }
 const OPERACAO_ITEM: NavItem = { href: '/operacao', label: 'Operação', icon: 'tgov' }
 const FINANCEIRO_ITEM: NavItem = { href: '/financeiro', label: 'BI Financeiro', icon: 'financeiro' }
 const CONTA_AZUL_ITEM: NavItem = { href: '/admin/conta-azul', label: 'Conta Azul', icon: 'conta-azul' }
@@ -77,6 +78,7 @@ const BASE_WITH_EXECUCAO: NavItem[] = [
   { href: '/', label: 'Pipeline', icon: 'pipeline' },
   LEADS_ITEM,
   EXECUCAO_ITEM,
+  PRESTACAO_ITEM,
   OPERACAO_ITEM,
   { href: '/comissoes', label: 'Comissões', icon: 'comissoes' },
   { href: '/bi', label: 'BI comercial', icon: 'bi' },

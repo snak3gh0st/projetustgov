@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { buildStructuredLeadScopeSql } from '@/lib/crm-scope'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
+import { execucaoFaseSql } from '@/lib/execucao-fase'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,18 +24,27 @@ const CRM_STATUS_SQL = `
 
 const CRM_STATUS_SQL_VP2 = CRM_STATUS_SQL.replaceAll('vp.', 'vp2.')
 
+// Mesma ordem do funil de Execução/PC na tela inicial (HomeClient EXECUCAO_STATUS_ORDER).
 const EXECUCAO_PIPELINE_STATUSES = [
   'Não Contatado',
   'Sem Interesse',
   'Em Atendimento',
   'Contatado',
+  'Reunião Agendada',
   'Quente',
   'Muito Quente',
   'Proposta Enviada',
   'Em Aprovação',
   'Telefone Invalido',
   'Fechado',
+  'Impedimento Técnico',
+  'Cancelado',
 ] as const
+
+// Uma coluna status_<i> por status, na ordem acima (constantes, sem input do usuário).
+const EXECUCAO_STATUS_COUNTS_SQL = EXECUCAO_PIPELINE_STATUSES
+  .map((status, i) => `COUNT(*) FILTER (WHERE crm_status = '${status}')::int AS status_${i}`)
+  .join(',\n          ')
 
 const EXECUCAO_STATUS_NORMALIZED_SQL = `
   CASE
@@ -64,6 +74,12 @@ const EXECUCAO_STATUS_PRIORITY_SQL = `
   END
 `
 
+function commercialByStatus(row: Record<string, unknown>): Record<string, number> {
+  return Object.fromEntries(
+    EXECUCAO_PIPELINE_STATUSES.map((status, i) => [status, Number(row[`status_${i}`]) || 0])
+  )
+}
+
 export async function GET() {
   try {
     const session = await getApiSession()
@@ -83,7 +99,56 @@ export async function GET() {
       ? `WHERE ${approvalScopeSql} AND (vp.vendedor_id = $1 OR vp.closer_id = $1)`
       : `WHERE ${approvalScopeSql}`
     // Run all queries in parallel to avoid sequential connection queuing
-    const [globalRows, vendedorRows, todayRows, contactHealthRows, execucaoPipelineRows, execVendedorRows, execAlertRows, pcByStatusRows, pcTotalsRows] = await Promise.all([
+    // Funil comercial (status_contato_execucao) dos CNPJs com convênios na fase.
+    // Execução e Prestação de Contas compartilham o status: são vendidas juntas.
+    const commercialPipelineSql = (faseSql: string) => `
+        WITH execucao_agg AS (
+          SELECT
+            pe.cnpj,
+            SUM(pe.valor_global) AS total_valor_global,
+            SUM(pe.saldo_conta) AS total_saldo,
+            BOOL_OR(pe.valor_desembolsado = 0) AS tem_alerta
+          FROM projetos_execucao pe
+          WHERE ${faseSql}
+          ${isFiltered ? `AND EXISTS (
+            SELECT 1
+            FROM vendedor_projetos vp_owner
+            WHERE REGEXP_REPLACE(vp_owner.cnpj, '[^0-9]', '', 'g') = pe.cnpj
+              AND (vp_owner.vendedor_id = $1 OR vp_owner.closer_id = $1)
+          )` : ''}
+          GROUP BY pe.cnpj
+        ),
+        vp_statuses AS (
+          SELECT DISTINCT ON (REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'))
+            REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
+            ${EXECUCAO_STATUS_NORMALIZED_SQL} AS crm_status
+          FROM vendedor_projetos vp
+          ${isFiltered ? 'WHERE (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
+          ORDER BY
+            REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'),
+            ${EXECUCAO_STATUS_PRIORITY_SQL} ASC,
+            vp.updated_at DESC NULLS LAST
+        ),
+        execucao_status AS (
+          SELECT
+            ea.cnpj,
+            COALESCE(vs.crm_status, 'Não Contatado') AS crm_status,
+            ea.total_valor_global,
+            ea.total_saldo,
+            ea.tem_alerta
+          FROM execucao_agg ea
+          LEFT JOIN vp_statuses vs ON vs.cnpj_clean = ea.cnpj
+        )
+        SELECT
+          COUNT(*)::int AS total_cnpjs,
+          COALESCE(SUM(total_valor_global), 0) AS total_valor_global,
+          COALESCE(SUM(total_saldo), 0) AS total_saldo,
+          COUNT(*) FILTER (WHERE tem_alerta)::int AS total_alertas,
+          ${EXECUCAO_STATUS_COUNTS_SQL}
+        FROM execucao_status
+      `
+
+    const [globalRows, vendedorRows, todayRows, contactHealthRows, execucaoPipelineRows, pcPipelineRows, execVendedorRows, execAlertRows, pcByStatusRows, pcTotalsRows] = await Promise.all([
       // 1. Global stats with status breakdown
       query(`
         SELECT
@@ -180,60 +245,11 @@ export async function GET() {
           AND vp.vendedor_id IS NOT NULL
       `, vendedorParams),
 
-      // 8. Separate execution pipeline based only on projetos_execucao CNPJs
-      query(`
-        WITH execucao_agg AS (
-          SELECT
-            pe.cnpj,
-            SUM(pe.valor_global) AS total_valor_global,
-            SUM(pe.saldo_conta) AS total_saldo,
-            BOOL_OR(pe.valor_desembolsado = 0) AS tem_alerta
-          FROM projetos_execucao pe
-          ${isFiltered ? `WHERE EXISTS (
-            SELECT 1
-            FROM vendedor_projetos vp_owner
-            WHERE REGEXP_REPLACE(vp_owner.cnpj, '[^0-9]', '', 'g') = pe.cnpj
-              AND (vp_owner.vendedor_id = $1 OR vp_owner.closer_id = $1)
-          )` : ''}
-          GROUP BY pe.cnpj
-        ),
-        vp_statuses AS (
-          SELECT DISTINCT ON (REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'))
-            REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
-            ${EXECUCAO_STATUS_NORMALIZED_SQL} AS crm_status
-          FROM vendedor_projetos vp
-          ${isFiltered ? 'WHERE (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
-          ORDER BY
-            REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'),
-            ${EXECUCAO_STATUS_PRIORITY_SQL} ASC,
-            vp.updated_at DESC NULLS LAST
-        ),
-        execucao_status AS (
-          SELECT
-            ea.cnpj,
-            COALESCE(vs.crm_status, 'Não Contatado') AS crm_status,
-            ea.total_valor_global,
-            ea.total_saldo,
-            ea.tem_alerta
-          FROM execucao_agg ea
-          LEFT JOIN vp_statuses vs ON vs.cnpj_clean = ea.cnpj
-        )
-        SELECT
-          COUNT(*)::int AS total_cnpjs,
-          COALESCE(SUM(total_valor_global), 0) AS total_valor_global,
-          COALESCE(SUM(total_saldo), 0) AS total_saldo,
-          COUNT(*) FILTER (WHERE tem_alerta)::int AS total_alertas,
-          COUNT(*) FILTER (WHERE crm_status = 'Não Contatado')::int AS status_nao_contatado,
-          COUNT(*) FILTER (WHERE crm_status = 'Sem Interesse')::int AS status_sem_interesse,
-          COUNT(*) FILTER (WHERE crm_status = 'Em Atendimento')::int AS status_em_atendimento,
-          COUNT(*) FILTER (WHERE crm_status = 'Quente')::int AS status_quente,
-          COUNT(*) FILTER (WHERE crm_status = 'Muito Quente')::int AS status_muito_quente,
-          COUNT(*) FILTER (WHERE crm_status = 'Proposta Enviada')::int AS status_proposta_enviada,
-          COUNT(*) FILTER (WHERE crm_status = 'Em Aprovação')::int AS status_em_aprovacao,
-          COUNT(*) FILTER (WHERE crm_status = 'Telefone Invalido')::int AS status_telefone_invalido,
-          COUNT(*) FILTER (WHERE crm_status = 'Fechado')::int AS status_fechado
-        FROM execucao_status
-      `, vendedorParams),
+      // 8. Commercial pipeline — CNPJs com convênios em execução
+      query(commercialPipelineSql(execucaoFaseSql('execucao', 'pe')), vendedorParams),
+
+      // 8b. Commercial pipeline — CNPJs com convênios em prestação de contas
+      query(commercialPipelineSql(execucaoFaseSql('prestacao_contas', 'pe')), vendedorParams),
 
       // 9. Execution per-vendedor stats
       query(`
@@ -374,17 +390,7 @@ export async function GET() {
         total_valor_global: Number(execucao.total_valor_global) || 0,
         total_saldo: Number(execucao.total_saldo) || 0,
         total_alertas: Number(execucao.total_alertas) || 0,
-        by_status: {
-          [EXECUCAO_PIPELINE_STATUSES[0]]: Number(execucao.status_nao_contatado) || 0,
-          [EXECUCAO_PIPELINE_STATUSES[1]]: Number(execucao.status_sem_interesse) || 0,
-          [EXECUCAO_PIPELINE_STATUSES[2]]: Number(execucao.status_em_atendimento) || 0,
-          [EXECUCAO_PIPELINE_STATUSES[3]]: Number(execucao.status_quente) || 0,
-          [EXECUCAO_PIPELINE_STATUSES[4]]: Number(execucao.status_muito_quente) || 0,
-          [EXECUCAO_PIPELINE_STATUSES[5]]: Number(execucao.status_proposta_enviada) || 0,
-          [EXECUCAO_PIPELINE_STATUSES[6]]: Number(execucao.status_em_aprovacao) || 0,
-          [EXECUCAO_PIPELINE_STATUSES[7]]: Number(execucao.status_telefone_invalido) || 0,
-          [EXECUCAO_PIPELINE_STATUSES[8]]: Number(execucao.status_fechado) || 0,
-        },
+        by_status: commercialByStatus(execucao),
       },
       vendedores: vendedorRows.map((v: Record<string, unknown>) => {
         const today = todayByVendedor.get(v.vendedor_id as string)
@@ -446,6 +452,8 @@ export async function GET() {
           em_risco: Number(totals.em_risco) || 0,
           concluidas: Number(totals.concluidas) || 0,
           by_status: byStatus,
+          commercial_total: Number(pcPipelineRows[0]?.total_cnpjs) || 0,
+          commercial_by_status: commercialByStatus(pcPipelineRows[0] || {}),
         }
       })(),
     })

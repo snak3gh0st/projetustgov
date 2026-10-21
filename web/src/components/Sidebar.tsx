@@ -123,6 +123,9 @@ export default function Sidebar({ user, defaultOpen = true }: SidebarProps) {
             isActive = pathname === '/'
           } else if (hrefPath === '/tgov') {
             isActive = pathname === '/tgov' && (currentView ?? null) === (hrefView ?? null)
+          } else if (hrefPath === '/execucao') {
+            // Execução e Prestação de Contas são a mesma página, por fase
+            isActive = pathname === '/execucao' && (searchParams.get('fase') ?? 'execucao') === new URLSearchParams(hrefQuery).get('fase')
           } else {
             isActive = pathname.startsWith(hrefPath)
           }

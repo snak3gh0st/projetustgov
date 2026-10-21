@@ -88,6 +88,8 @@ interface PrestacaoContasPipelineStats {
   em_risco: number
   concluidas: number
   by_status: { [situacao: string]: number }
+  commercial_total: number
+  commercial_by_status: StatusCounts
 }
 
 interface DashboardData {
@@ -638,12 +640,12 @@ export default function CRMDashboard() {
       {pipelineTab === 'execucao' && (
         <PipelineSection
           title="Pipeline Execução"
-          subtitle="CNPJs com projetos em execução, mantendo a etapa comercial separada do funil de aprovação."
+          subtitle="CNPJs com convênios em execução no TransfereGov, mantendo a etapa comercial separada do funil de aprovação."
           total={execucao_pipeline.total_cnpjs}
           totalLabel="CNPJs em execução"
           statuses={EXECUCAO_STATUS_ORDER}
           counts={execucao_pipeline.by_status}
-          hrefForStatus={() => '/execucao'}
+          hrefForStatus={status => `/execucao?fase=execucao&status=${encodeURIComponent(status)}`}
         />
       )}
 
@@ -736,7 +738,7 @@ export default function CRMDashboard() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div
                 role="button"
-                onClick={() => { window.location.href = '/tgov?view=dashboard&tab=prestacao_contas' }}
+                onClick={() => { window.location.href = '/execucao?fase=prestacao_contas' }}
                 className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
               >
                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">CNPJs em PC</p>
@@ -744,7 +746,7 @@ export default function CRMDashboard() {
               </div>
               <div
                 role="button"
-                onClick={() => { window.location.href = '/tgov?view=dashboard&tab=prestacao_contas' }}
+                onClick={() => { window.location.href = '/execucao?fase=prestacao_contas' }}
                 className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
               >
                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor Global</p>
@@ -753,7 +755,7 @@ export default function CRMDashboard() {
               </div>
               <div
                 role="button"
-                onClick={() => { window.location.href = '/tgov?view=dashboard&tab=prestacao_contas' }}
+                onClick={() => { window.location.href = '/execucao?fase=prestacao_contas' }}
                 className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
               >
                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Em Risco</p>
@@ -762,7 +764,7 @@ export default function CRMDashboard() {
               </div>
               <div
                 role="button"
-                onClick={() => { window.location.href = '/tgov?view=dashboard&tab=prestacao_contas' }}
+                onClick={() => { window.location.href = '/execucao?fase=prestacao_contas' }}
                 className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
               >
                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Concluídas</p>
@@ -771,14 +773,24 @@ export default function CRMDashboard() {
               </div>
             </div>
 
+            <PipelineSection
+              title="Pipeline Prestação de Contas"
+              subtitle="Funil comercial dos CNPJs com convênios em prestação de contas. O status é o mesmo da Execução: os dois serviços são vendidos juntos."
+              total={pc.commercial_total}
+              totalLabel="CNPJs em prestação de contas"
+              statuses={EXECUCAO_STATUS_ORDER}
+              counts={pc.commercial_by_status}
+              hrefForStatus={status => `/execucao?fase=prestacao_contas&status=${encodeURIComponent(status)}`}
+            />
+
             {pcStatuses.length > 0 && (
               <PipelineSection
-                title="Pipeline Prestação de Contas"
-                subtitle="Status por convenio no TransfereGov"
+                title="Situação no TransfereGov"
+                subtitle="Etapa da prestação de contas de cada convênio"
                 total={pc.total_cnpjs}
                 statuses={pcStatuses}
                 counts={pc.by_status}
-                hrefForStatus={() => '/tgov?view=dashboard&tab=prestacao_contas'}
+                hrefForStatus={() => '/execucao?fase=prestacao_contas'}
                 totalLabel="CNPJs"
               />
             )}

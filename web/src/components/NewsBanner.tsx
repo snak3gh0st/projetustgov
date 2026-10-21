@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react'
 
-const NEWS_VERSION = 'v1.3'
+const NEWS_VERSION = 'v1.4'
 const NEWS_ITEMS = [
+  'Prestação de Contas: novo funil comercial e lista de leads (menu "Leads de prestação de contas"), com o mesmo status da Execução',
+  'Execução: lista e funil mostram só convênios em execução; correção das contagens por status no Pipeline',
   'Pipeline: Atividade Recente mostra as movimentações reais e atualiza a cada minuto',
   'Lead: histórico de movimentação com data e horário (status e atribuição)',
   'Distribuição: vendas fechadas sem dono podem ser redistribuídas — a comissão vai junto e fica registrada no histórico',

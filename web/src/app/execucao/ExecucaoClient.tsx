@@ -6,6 +6,7 @@ import KPIRow from '@/components/KPIRow'
 import ExecucaoSlideOver from '@/components/ExecucaoSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
 import { CRM_STATUS_BADGE_COLORS, CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, normalizeCrmStatus } from '@/lib/crm-catalog'
+import type { ExecucaoFase } from '@/lib/execucao-fase'
 
 interface ExecucaoAggRow {
   cnpj: string
@@ -52,7 +53,36 @@ const UF_OPTIONS = [
 const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
 const STATUS_COLORS = CRM_STATUS_BADGE_COLORS
 
-export default function ExecucaoClient({ userRole }: { userRole: string }) {
+const FASE_OPTIONS: { value: ExecucaoFase | ''; label: string }[] = [
+  { value: 'execucao', label: 'Execução' },
+  { value: 'prestacao_contas', label: 'Prestação de Contas' },
+  { value: '', label: 'Todas' },
+]
+
+const FASE_HEADER: Record<ExecucaoFase | '', { title: string; subtitle: string }> = {
+  execucao: {
+    title: 'Leads de Execução',
+    subtitle: 'Proponentes com convênios em execução — dados TransfereGov',
+  },
+  prestacao_contas: {
+    title: 'Leads de Prestação de Contas',
+    subtitle: 'Proponentes com convênios em prestação de contas — dados TransfereGov. Mesmo status comercial da Execução: os serviços são vendidos juntos.',
+  },
+  '': {
+    title: 'Projetos em Execução e Prestação de Contas',
+    subtitle: 'Convênios por proponente — dados TransfereGov',
+  },
+}
+
+export default function ExecucaoClient({
+  userRole,
+  initialFase = null,
+  initialStatus = '',
+}: {
+  userRole: string
+  initialFase?: ExecucaoFase | null
+  initialStatus?: string
+}) {
   const isGestor = userRole === 'gestor' || userRole === 'coordenador'
   const [rows, setRows] = useState<ExecucaoAggRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,7 +91,8 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
   const [lastSynced, setLastSynced] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [uf, setUf] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState(initialStatus ? normalizeCrmStatus(initialStatus) : '')
+  const [fase, setFase] = useState<ExecucaoFase | ''>(initialFase ?? '')
   const [alertOnly, setAlertOnly] = useState(false)
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
   const [selectedCnpj, setSelectedCnpj] = useState<string | null>(null)
@@ -97,6 +128,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
     if (uf) params.set('uf', uf)
     if (alertOnly) params.set('alert_only', 'true')
     if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
+    if (fase) params.set('fase', fase)
     try {
       const res = await fetch(`/api/execucao?${params}`, { signal: controller.signal })
       if (!res.ok) throw new Error('fetch failed')
@@ -120,7 +152,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
         else setLoading(false)
       }
     }
-  }, [search, uf, alertOnly, vendedorFilter])
+  }, [search, uf, alertOnly, vendedorFilter, fase])
 
   useEffect(() => {
     const timer = setTimeout(() => { void fetchData() }, 300)
@@ -130,6 +162,14 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
   useEffect(() => {
     return () => fetchAbortRef.current?.abort()
   }, [])
+
+  // Mantém a fase na URL para links e menu (/execucao?fase=prestacao_contas)
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    url.searchParams.set('fase', fase || 'todas')
+    url.searchParams.delete('status')
+    window.history.replaceState(null, '', url)
+  }, [fase])
 
   // Fetch vendedores list for filter (gestor only)
   useEffect(() => {
@@ -292,14 +332,14 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
       {/* Header */}
       <div>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">Projetos em Execucao</h1>
+          <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">{FASE_HEADER[fase].title}</h1>
           {refreshing && (
             <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-[#0072F7]">
               Atualizando lista...
             </span>
           )}
         </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Convenios ativos por proponente — dados TransferenciaGov</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{FASE_HEADER[fase].subtitle}</p>
         {lastSynced && (
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Dados atualizados em {formatDate(lastSynced)}</p>
         )}
@@ -307,6 +347,23 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
 
       {/* KPI Row */}
       {!showBlockingLoad && !showBlockingError && <KPIRow items={kpis} />}
+
+      {/* Fase no TransfereGov: abas comerciais de Execução e Prestação de Contas */}
+      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit">
+        {FASE_OPTIONS.map(opt => (
+          <button
+            key={opt.value || 'todas'}
+            onClick={() => setFase(opt.value)}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              fase === opt.value
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
 
       {/* Filter bar */}
       <div className="flex flex-wrap gap-3 items-center">
@@ -715,6 +772,7 @@ export default function ExecucaoClient({ userRole }: { userRole: string }) {
                   const params = new URLSearchParams()
                   if (statusFilter) params.set('status', statusFilter)
                   if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
+                  if (fase) params.set('fase', fase)
                   window.open(`/api/execucao/export?${params}`, '_blank')
                 }}
                 className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"

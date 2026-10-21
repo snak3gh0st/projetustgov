@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
 import { normalizeCrmStatus } from '@/lib/crm-catalog'
+import { execucaoFaseSql, parseExecucaoFase } from '@/lib/execucao-fase'
 
 export const dynamic = 'force-dynamic'
 
@@ -103,6 +104,7 @@ export async function GET(request: NextRequest) {
     const uf = searchParams.get('uf')
     const alert_only = searchParams.get('alert_only')
     const vendedor_id = searchParams.get('vendedor_id')
+    const fase = parseExecucaoFase(searchParams.get('fase'))
 
     const conditions: string[] = ['1=1']
     const params: unknown[] = []
@@ -157,6 +159,11 @@ export async function GET(request: NextRequest) {
         )`)
         params.push(vendedor_id)
       }
+    }
+
+    // Aba comercial: só os convênios da fase (Execução ou Prestação de Contas)
+    if (fase) {
+      conditions.push(execucaoFaseSql(fase, 'pe'))
     }
 
     const rows = await query<ExecucaoAggRow>(`
