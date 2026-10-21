@@ -283,6 +283,10 @@ export default function DistribuirPage() {
         if (extra > 0) {
           msg += ` (${extra} adicionais por agrupamento CNPJ)`
         }
+        const skipped = data.skipped_closed ?? 0
+        if (skipped > 0) {
+          msg += ` | ${skipped} venda(s) fechada(s) de outro vendedor nao foram alteradas`
+        }
         if (warnings.length > 0) {
           msg += ` | Avisos: ${warnings.join('; ')}`
         }
@@ -318,16 +322,24 @@ export default function DistribuirPage() {
       const cnpjArray = Array.from(selectedCnpjs)
 
       let totalUnassigned = 0
+      let keptClosed = 0
       for (const cnpj of cnpjArray) {
         const res = await fetch('/api/leads/assign', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ cnpj, unassign: true }),
         })
-        if (res.ok) totalUnassigned++
+        if (!res.ok) continue
+        const data = await res.json()
+        if ((data.rows_updated ?? 0) > 0) totalUnassigned++
+        else keptClosed++
       }
 
-      setToast(`${totalUnassigned} CNPJ(s) desatribuidos com sucesso!`)
+      let msg = `${totalUnassigned} CNPJ(s) desatribuidos com sucesso!`
+      if (keptClosed > 0) {
+        msg += ` | ${keptClosed} CNPJ(s) com venda fechada mantidos com o vendedor`
+      }
+      setToast(msg)
       setSelectedLeadIds(new Set())
       fetchLeads()
       fetchAssignedLeads()
