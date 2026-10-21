@@ -45,13 +45,13 @@ function StageCell({
   return (
     <Link
       href={stage.href}
-      className={`group relative flex min-w-[7.25rem] flex-1 basis-0 flex-col justify-between gap-2.5 px-3.5 py-3.5 transition-colors duration-fast hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60 ${
+      className={`group relative flex min-w-[6.5rem] flex-1 basis-0 flex-col justify-between gap-2.5 px-3 py-3.5 transition-colors duration-fast hover:bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60 ${
         outcome ? 'bg-canvas/70 dark:bg-canvas/40' : ''
       } ${index === 0 ? '' : outcomeStart ? 'border-l-2 border-line-strong' : 'border-l border-line'}`}
     >
-      <div className="flex min-h-[2.5rem] items-start gap-1.5 text-[13px] leading-tight text-ink-2">
+      <div className="flex min-h-[2.5rem] items-start gap-1.5 text-[12.5px] leading-tight text-ink-2">
         <span aria-hidden className={`mt-1 h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
-        <span className="line-clamp-2 group-hover:text-ink">{stage.label}</span>
+        <span className="line-clamp-2 group-hover:text-ink">{stage.label.replace('/', '/\u200b')}</span>
       </div>
       <div className="flex items-baseline justify-between gap-2">
         <AnimatedNumber value={stage.count} className="font-heading text-2xl font-semibold leading-none text-ink" />
