@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { formatCNPJ, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import ContactNotesTimeline from '@/components/ContactNotesTimeline'
+import { LeadHistory } from '@/components/LeadEvents'
 import LeadContacts from '@/components/LeadContacts'
 import WhatsAppAction from '@/components/WhatsAppAction'
 import SaleModal from '@/components/SaleModal'
@@ -600,6 +601,15 @@ export default function LeadDetailPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Histórico de movimentação (status e atribuição) */}
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
+        <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100 mb-3">Histórico de Movimentação</h2>
+        <LeadHistory
+          cnpj={cnpj}
+          refreshKey={projetos.map(p => `${p.status_contato}|${p.vendedor_id}`).join(',')}
+        />
       </div>
 
       {/* Contact notes timeline */}

@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { formatCNPJ, formatCompactCurrency, formatCurrency, formatDate } from '@/lib/format'
-import { CRM_STATUS_FUNNEL_ORDER, normalizeCrmStatus } from '@/lib/crm-catalog'
+import { CRM_STATUS_FUNNEL_ORDER } from '@/lib/crm-catalog'
 import SectionTabs from '@/components/SectionTabs'
+import { RecentActivityFeed } from '@/components/LeadEvents'
 
 // --- Types ---
 interface StatusCounts {
@@ -55,28 +56,10 @@ interface VendedorStats {
   fechados_hoje: number
 }
 
-interface RecentActivity {
-  cnpj: string
-  nome: string
-  vendedor_nome: string
-  status_contato: string
-  updated_at: string
-}
-
 interface ContactHealth {
   stale_count: number
   never_contacted_count: number
   invalid_phone_count: number
-}
-
-interface StaleLead {
-  cnpj: string
-  nome: string
-  vendedor_nome: string
-  status_contato: string
-  last_contact_date: string | null
-  days_since_last_contact: number | null
-  principal_telefone_status: string | null
 }
 
 interface ExecucaoVendedorStats {
@@ -113,16 +96,7 @@ interface DashboardData {
   execucao_pipeline: ExecucaoPipelineStats
   prestacao_contas_pipeline?: PrestacaoContasPipelineStats
   vendedores: VendedorStats[]
-  recent_activity: RecentActivity[]
-  commission_breakdown?: {
-    status_contato: string
-    count: number
-    total_comissao: number
-    total_venda: number
-    locked_count: number
-  }[]
   contact_health?: ContactHealth
-  stale_leads?: StaleLead[]
   execucao_vendedores?: ExecucaoVendedorStats[]
   execucao_alerts?: ExecucaoAlert[]
 }
@@ -492,7 +466,7 @@ export default function CRMDashboard() {
     )
   }
 
-  const { global: g, execucao_pipeline, vendedores, recent_activity, role } = data
+  const { global: g, execucao_pipeline, vendedores, role } = data
   const isVendedor = role === 'vendedor' || role === 'coordenador' || role === 'gestor'
 
   return (
@@ -576,10 +550,9 @@ export default function CRMDashboard() {
             </p>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatCurrency(g.total_valor_emenda)}</p>
           </div>
-          {isVendedor && vendedores.length > 0 && (() => {
-            const comissaoTotal = role === 'gestor'
-              ? vendedores.reduce((sum: number, v: { comissao_total?: number }) => sum + (v.comissao_total || 0), 0)
-              : (vendedores[0]?.comissao_total || 0)
+          {/* Comissionamento: visível apenas para o gestor comercial */}
+          {role === 'gestor' && vendedores.length > 0 && (() => {
+            const comissaoTotal = vendedores.reduce((sum: number, v: { comissao_total?: number }) => sum + (v.comissao_total || 0), 0)
             return (
               <div
                 role="button"
@@ -857,96 +830,6 @@ export default function CRMDashboard() {
         </div>
       )}
 
-      {/* 3c. Stale leads needing follow-up — aprovacao only */}
-      {pipelineTab === 'aprovacao' && data.stale_leads && data.stale_leads.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100">Leads Precisando de Atencao</h2>
-            <p className="text-xs text-gray-400 dark:text-gray-500">Leads com mais tempo sem contato (exceto Vendas Concluídas)</p>
-          </div>
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {data.stale_leads.map((lead, i) => {
-              const normalizedLeadStatus = normalizeCrmStatus(lead.status_contato)
-              const cfg = STATUS_CONFIG[normalizedLeadStatus] || STATUS_CONFIG['Não Contatado']
-              const daysLabel = lead.days_since_last_contact == null
-                ? { text: 'Nunca', cls: 'bg-gray-100 text-gray-500 dark:text-gray-400' }
-                : lead.days_since_last_contact <= 2
-                ? { text: `${lead.days_since_last_contact}d`, cls: 'bg-green-100 text-green-700' }
-                : lead.days_since_last_contact <= 7
-                ? { text: `${lead.days_since_last_contact}d`, cls: 'bg-amber-100 text-amber-700' }
-                : { text: `${lead.days_since_last_contact}d`, cls: 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300' }
-              const phoneIcon = lead.principal_telefone_status === 'invalido'
-                ? 'bg-red-500'
-                : lead.principal_telefone_status === 'nao_atende'
-                ? 'bg-amber-500'
-                : lead.principal_telefone_status === 'valido'
-                ? 'bg-green-500'
-                : null
-              return (
-                <a
-                  key={lead.cnpj}
-                  href={`/lead/${encodeURIComponent(lead.cnpj)}`}
-                  className={`px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${i % 2 === 0 ? 'bg-gray-50/50 dark:bg-gray-800/30' : ''}`}
-                >
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${daysLabel.cls}`}>
-                    {daysLabel.text}
-                  </span>
-                  {phoneIcon && (
-                    <span className={`w-2 h-2 rounded-full ${phoneIcon} flex-shrink-0`} />
-                  )}
-                  <span className="text-sm text-gray-900 dark:text-gray-100 font-medium truncate flex-1">{lead.nome || lead.cnpj}</span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 hidden sm:block">{lead.vendedor_nome}</span>
-                  <span className={`px-2 py-0.5 rounded border text-[10px] font-medium ${cfg.bg} ${cfg.color}`}>
-                    {normalizedLeadStatus}
-                  </span>
-                </a>
-              )
-            })}
-          </div>
-          <div className="p-3 border-t border-gray-200 dark:border-gray-700 text-center">
-            <a href="/leads" className="text-sm text-[#0072F7] hover:text-blue-800 transition-colors">
-              Ver todos os leads →
-            </a>
-          </div>
-        </div>
-      )}
-
-      {/* Commission breakdown for vendedor — aprovacao only */}
-      {pipelineTab === 'aprovacao' && isVendedor && data.commission_breakdown && data.commission_breakdown.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
-          <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100 mb-3">
-            Detalhamento Comissoes
-          </h2>
-          <div className="space-y-2">
-            {data.commission_breakdown.map(item => {
-              const normalizedItemStatus = normalizeCrmStatus(item.status_contato)
-              const cfg = STATUS_CONFIG[normalizedItemStatus] || STATUS_CONFIG['Não Contatado']
-              return (
-                <div key={item.status_contato} className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 last:border-0">
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded border text-xs font-medium ${cfg.bg} ${cfg.color}`}>
-                      {normalizedItemStatus}
-                    </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">{item.count} leads</span>
-                    {item.locked_count > 0 && (
-                      <span className="text-xs text-green-500">({item.locked_count} confirmadas)</span>
-                    )}
-                  </div>
-                  <span className="text-base font-semibold text-[#0072F7]">
-                    {formatCurrency(item.total_comissao)}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-            <a href="/comissoes" className="text-sm text-[#0072F7] hover:text-blue-800 transition-colors">
-              Ver relatorio completo →
-            </a>
-          </div>
-        </div>
-      )}
-
       {/* 4. Per-vendedor cards — aprovacao only */}
       {pipelineTab === 'aprovacao' && vendedores.length > 0 && !isVendedor && (
         <div>
@@ -999,7 +882,7 @@ export default function CRMDashboard() {
                   </div>
                 )}
 
-                {/* Valor, commission, and last activity */}
+                {/* Valor, commission (gestor only), and last activity */}
                 <div className="space-y-2 pt-3 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor Emendas</span>
@@ -1007,12 +890,14 @@ export default function CRMDashboard() {
                       {formatCompactCurrency(v.valor_total_emenda)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Comissão Total</span>
-                    <span className="text-lg font-heading font-bold text-[#0072F7]">
-                      {formatCurrency(v.comissao_total)}
-                    </span>
-                  </div>
+                  {role === 'gestor' && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Comissão Total</span>
+                      <span className="text-lg font-heading font-bold text-[#0072F7]">
+                        {formatCurrency(v.comissao_total)}
+                      </span>
+                    </div>
+                  )}
                   <div className="text-xs text-gray-400 dark:text-gray-500 text-right">
                     Ultima atividade {timeAgo(v.last_activity)}
                   </div>
@@ -1023,35 +908,8 @@ export default function CRMDashboard() {
         </div>
       )}
 
-      {/* 5. Recent activity feed — aprovacao only */}
-      {pipelineTab === 'aprovacao' && recent_activity.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100">Atividade Recente</h2>
-            <p className="text-xs text-gray-400 dark:text-gray-500">Ultimas atualizacoes de leads</p>
-          </div>
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {recent_activity.map((a, i) => {
-              const cfg = STATUS_CONFIG[normalizeCrmStatus(a.status_contato)] || STATUS_CONFIG['Não Contatado']
-              return (
-                <div key={`${a.cnpj}-${i}`} className={`px-4 py-3 text-sm ${i % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800/50' : ''}`}>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-gray-900 dark:text-gray-100 font-medium">{a.vendedor_nome}</span>
-                    <span className="text-gray-400 dark:text-gray-500">atualizou</span>
-                    <span className="text-gray-700 dark:text-gray-300">{a.nome}</span>
-                    <span className="text-gray-400 dark:text-gray-500 font-mono text-xs">({formatCNPJ(a.cnpj)})</span>
-                    <span className="text-gray-400 dark:text-gray-500">para</span>
-                    <span className={`px-2 py-0.5 rounded border text-xs font-medium ${cfg.bg} ${cfg.color}`}>
-                      {a.status_contato}
-                    </span>
-                    <span className="text-gray-400 dark:text-gray-500 text-xs ml-auto">{timeAgo(a.updated_at)}</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      {/* 5. Recent activity feed — movimentações reais (lead_events), atualiza a cada minuto */}
+      <RecentActivityFeed />
     </div>
   )
 }

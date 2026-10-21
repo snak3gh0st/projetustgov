@@ -2,8 +2,12 @@
 
 import { useState, useEffect } from 'react'
 
-const NEWS_VERSION = 'v1.2'
+const NEWS_VERSION = 'v1.3'
 const NEWS_ITEMS = [
+  'Pipeline: Atividade Recente mostra as movimentações reais e atualiza a cada minuto',
+  'Lead: histórico de movimentação com data e horário (status e atribuição)',
+  'Distribuição: vendas fechadas sem dono podem ser redistribuídas — a comissão vai junto e fica registrada no histórico',
+  'Pipeline: tela inicial mais enxuta (comissão visível só para o gestor)',
   'UI: identidade Projete de volta (logo e nome no menu, login e aba do navegador)',
   'Financeiro: nova área BI Financeiro com dados do Conta Azul (caixa, resultado, pagar e receber, clientes e CRM)',
   'Financeiro: sincronização diária às 05:00 e botão Sincronizar agora',
