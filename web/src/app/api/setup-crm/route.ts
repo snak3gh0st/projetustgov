@@ -50,7 +50,7 @@ async function runSetup() {
           'coord_aprovacao', 'assistente_aprovacao', 'projetista',
           'coord_execucao', 'assistente_execucao',
           'coord_prestacao', 'assistente_prestacao',
-          'gestor_financeiro'
+          'gestor_financeiro', 'diretoria'
         )),
         active BOOLEAN DEFAULT true,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -69,7 +69,7 @@ async function runSetup() {
           'coord_aprovacao', 'assistente_aprovacao', 'projetista',
           'coord_execucao', 'assistente_execucao',
           'coord_prestacao', 'assistente_prestacao',
-          'gestor_financeiro'
+          'gestor_financeiro', 'diretoria'
         ));
       END $$;
     `).catch(() => {}) // Ignore if constraint doesn't exist or already updated
