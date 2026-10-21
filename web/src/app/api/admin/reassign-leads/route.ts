@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { query } from '@/lib/db'
+import { query, queryAs } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
@@ -74,7 +74,8 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  const result = await query<{ id: number }>(
+  const result = await queryAs<{ id: number }>(
+    { userId: session.userId, origem: 'distribuicao' },
     `UPDATE vendedor_projetos
      SET vendedor_id = $1, updated_at = NOW()
      WHERE vendedor_id = $2

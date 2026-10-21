@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { query } from '@/lib/db'
+import { query, queryAs } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
 import { isClosedCrmStatus, isCrmHistoryReasonStatus, isManagementCrmStatus, normalizeCrmStatus, normalizeTipoServico, normalizeTipoVendedor, normalizeVendaEtapa } from '@/lib/crm-catalog'
 
@@ -186,7 +186,8 @@ export async function PATCH(
       vendedorCondition = `AND (vendedor_id = $${paramIndex + 1} OR closer_id = $${paramIndex + 1})`
     }
 
-    const updateResult = await query<{ id: number }>(`
+    const actor = { userId: session.userId, origem: 'manual' }
+    const updateResult = await queryAs<{ id: number }>(actor, `
       UPDATE vendedor_projetos
       SET ${updates.join(', ')}
       WHERE id = $${paramIndex} ${vendedorCondition}
@@ -205,7 +206,7 @@ export async function PATCH(
     } else if (isClosedCrmStatus(requestedStatus) && currentStatus !== 'Fechado') {
       // Autorização de fechamento — só chega aqui como gestor, com contrato_assinado confirmado (gate acima).
       // Step 1: Ensure vendedor_id is set. If NULL, assign current user as vendedor.
-      await query(`
+      await queryAs(actor, `
         UPDATE vendedor_projetos
         SET vendedor_id = $2, updated_at = NOW()
         WHERE id = $1 AND vendedor_id IS NULL

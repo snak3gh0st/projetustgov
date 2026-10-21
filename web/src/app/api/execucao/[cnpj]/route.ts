@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { query } from '@/lib/db'
+import { query, queryAs } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
 import { isClosedCrmStatus, normalizeCrmStatus } from '@/lib/crm-catalog'
 
@@ -80,7 +80,8 @@ export async function PATCH(
 
     if (session.role === 'vendedor') {
       updateParams.push(cnpjClean, session.userId)
-      await query(
+      await queryAs(
+        { userId: session.userId, origem: 'manual' },
         `UPDATE vendedor_projetos
          SET ${setClauses.join(', ')}
          WHERE REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') = $${pi++}
@@ -89,7 +90,8 @@ export async function PATCH(
       )
     } else {
       updateParams.push(cnpjClean)
-      await query(
+      await queryAs(
+        { userId: session.userId, origem: 'manual' },
         `UPDATE vendedor_projetos
          SET ${setClauses.join(', ')}
          WHERE REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') = $${pi++}`,

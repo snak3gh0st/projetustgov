@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { query } from '@/lib/db'
+import { query, queryAs } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
@@ -55,7 +55,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Assign all rows for this CNPJ to the current lead manager (tipo_vendedor = 'In-Sites Sells')
-  await query(
+  await queryAs(
+    { userId: session.userId, origem: 'distribuicao' },
     `UPDATE vendedor_projetos
      SET vendedor_id = $1, tipo_vendedor = 'In-Sites Sells', updated_at = NOW()
      WHERE cnpj = $2`,

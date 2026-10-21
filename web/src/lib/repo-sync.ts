@@ -805,6 +805,8 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     // Only propagates within the same vendedor assignment (same vendedor_id).
     // Also copies closer_id so the closer assignment is consistent across emendas.
     {
+      // Marca a origem para o histórico (lead_events): fica fora da Atividade Recente.
+      await client.query(`SELECT set_config('app.origem', 'sincronizacao', false)`)
       const inheritResult = await client.query(`
         UPDATE vendedor_projetos AS target
         SET
@@ -841,7 +843,7 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
         WHERE target.cnpj = source.cnpj
           AND target.vendedor_id = source.vendedor_id
           AND (target.status_contato IS NULL OR target.status_contato = 'Não Contatado')
-      `)
+      `).finally(() => client.query(`SELECT set_config('app.origem', '', false)`))
       if (inheritResult.rowCount && inheritResult.rowCount > 0) {
         console.log(`[repo-sync] STEP 7c: Inherited status_contato for ${inheritResult.rowCount} new emenda rows`)
       }
