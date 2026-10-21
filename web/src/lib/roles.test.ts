@@ -14,6 +14,7 @@ import {
   canReadBiFinanceiro,
   canReadOperacao,
   canReadTgov,
+  canRunSystemSetup,
   canWriteOperacao,
   canWriteTgov,
   hasTeamCommercialView,
@@ -63,4 +64,8 @@ test('diretoria manages what gestor managed, plus gestor', () => {
 test('diretoria sees every lead, like gestor', () => {
   assert.deepEqual(buildVendedorFilter('diretoria', 'u1', 1), { clause: '', params: [], nextIndex: 1 })
   assert.deepEqual(buildVendedorFilter('vendedor', 'u1', 1).params, ['u1'])
+})
+
+test('only diretoria can run the system setup that rewrites users', () => {
+  assert.deepEqual(ALL_ROLES.filter((r) => canRunSystemSetup(r)), ['diretoria'])
 })

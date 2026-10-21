@@ -2,13 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { m } from 'motion/react'
 import { logout } from '@/lib/auth-actions'
 import ThemeToggle from '@/components/ThemeToggle'
 import { AREAS, activeNavHref, getAreaNav, getAreasForRole, resolveArea, sidebarWidthClass, type AreaId } from '@/lib/areas'
 import type { Role } from '@/lib/roles'
-import AreaRail from '@/components/AreaRail'
+import AreaRail, { rememberArea } from '@/components/AreaRail'
 import { NavIcon } from '@/components/NavIcon'
 import BrandLockup from '@/components/BrandLockup'
 import NotificationBell from '@/components/NotificationBell'
@@ -68,6 +68,14 @@ export default function Sidebar({ user, defaultOpen = true, showBell = false, pr
 
   const hasRail = getAreasForRole(user.role).length > 1
   const area: AreaId = resolveArea(user.role, pathname, searchParams, chosenArea)
+  // A área exibida vira a preferência: telas que estão em duas áreas não fazem o menu pular.
+  useEffect(() => {
+    if (area === chosenArea) return
+    setChosenArea(area)
+    // No celular o menu lateral fica oculto; quem escolhe a área lá é o drawer.
+    if (window.matchMedia('(min-width: 768px)').matches) rememberArea(area)
+  }, [area, chosenArea])
+
   const items = getAreaNav(user.role, area)
   const activeHref = activeNavHref(items.map((i) => i.href), pathname, searchParams)
   const groups = [

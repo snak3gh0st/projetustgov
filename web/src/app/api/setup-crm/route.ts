@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Pool } from 'pg'
 import bcrypt from 'bcryptjs'
-import { getApiSession } from '@/lib/dal'
+import { canRunSystemSetup, getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -19,16 +19,16 @@ function getPool() {
 
 export async function GET() {
   const session = await getApiSession()
-  if (!session || (session.role !== 'gestor' && session.role !== 'diretoria')) {
-    return NextResponse.json({ error: 'Unauthorized — gestor only' }, { status: 401 })
+  if (!session || !canRunSystemSetup(session.role)) {
+    return NextResponse.json({ error: 'Unauthorized — diretoria only' }, { status: 401 })
   }
   return runSetup()
 }
 
 export async function POST() {
   const session = await getApiSession()
-  if (!session || (session.role !== 'gestor' && session.role !== 'diretoria')) {
-    return NextResponse.json({ error: 'Unauthorized — gestor only' }, { status: 401 })
+  if (!session || !canRunSystemSetup(session.role)) {
+    return NextResponse.json({ error: 'Unauthorized — diretoria only' }, { status: 401 })
   }
   return runSetup()
 }

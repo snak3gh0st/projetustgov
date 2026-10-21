@@ -148,3 +148,8 @@ export function canReadBiFinanceiro(role: string | undefined): boolean {
 export function canExportContacts(role: string | undefined | null): boolean {
   return role === 'gestor' || role === 'diretoria' || role === 'admin' || role === 'coordenador'
 }
+
+/** /api/setup-crm reescreve senha e papel de usuários: só a diretoria roda. */
+export function canRunSystemSetup(role: string | undefined): boolean {
+  return role === 'diretoria'
+}

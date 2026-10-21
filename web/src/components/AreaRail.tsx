@@ -11,6 +11,11 @@ export function rememberArea(id: AreaId) {
   document.cookie = `${AREA_COOKIE}=${id}; path=/; max-age=31536000; SameSite=Lax`
 }
 
+export function readRememberedArea(): string | null {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${AREA_COOKIE}=([^;]*)`))
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 interface AreaRailProps {
   role: Role
   current: AreaId

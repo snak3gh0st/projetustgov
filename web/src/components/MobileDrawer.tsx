@@ -11,7 +11,7 @@ import ThemeToggle from '@/components/ThemeToggle'
 import { NavIcon } from '@/components/NavIcon'
 import BrandLockup from '@/components/BrandLockup'
 import SectionTabs from '@/components/SectionTabs'
-import { rememberArea } from '@/components/AreaRail'
+import { readRememberedArea, rememberArea } from '@/components/AreaRail'
 
 interface MobileDrawerProps {
   user: {
@@ -27,14 +27,14 @@ export default function MobileDrawer({ user, preferredArea = null }: MobileDrawe
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const areas = getAreasForRole(user.role)
-  const routeArea = resolveArea(user.role, pathname, searchParams, preferredArea)
-  const [area, setArea] = useState<AreaId>(routeArea)
+  const [area, setArea] = useState<AreaId>(() => resolveArea(user.role, pathname, searchParams, preferredArea))
 
-  // vaul issue #631 workaround: close drawer on route change
+  // vaul issue #631 workaround: close drawer on route change.
+  // A área vem do cookie atual (o layout não re-renderiza na navegação do cliente).
   useEffect(() => {
     setOpen(false)
-    setArea(routeArea)
-  }, [pathname, routeArea])
+    setArea(resolveArea(user.role, pathname, searchParams, readRememberedArea()))
+  }, [pathname, searchParams, user.role])
 
   const items = getAreaNav(user.role, area)
   const activeHref = activeNavHref(items.map((i) => i.href), pathname, searchParams)
