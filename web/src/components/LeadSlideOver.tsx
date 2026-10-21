@@ -6,6 +6,7 @@ import { formatCNPJ, formatCurrency, googleCalendarEventUrl } from '@/lib/format
 import type { VendedorProjeto } from '@/lib/types'
 import { formatCrmStatusLabel, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 import WhatsAppAction from '@/components/WhatsAppAction'
+import { LeadHistory } from '@/components/LeadEvents'
 
 const STATUS_COLORS: Record<string, string> = {
   'Não Contatado': 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-500/20',
@@ -407,6 +408,12 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
               )}
             </div>
           )}
+
+          {/* Histórico de movimentação */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Histórico</h3>
+            <LeadHistory cnpj={lead.cnpj} refreshKey={localLead?.status_contato} />
+          </div>
         </div>
 
         {/* Quick Actions */}

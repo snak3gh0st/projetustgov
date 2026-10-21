@@ -44,3 +44,35 @@ export async function query<T = Record<string, unknown>>(
 
   throw lastError
 }
+
+// Quem está alterando, lido pelo trigger de histórico (lead_events) via
+// app.user_id / app.origem. Origens: 'manual', 'distribuicao', 'sincronizacao'.
+export interface DbActor {
+  userId?: string | null
+  origem: string
+}
+
+// Roda um único statement numa transação com o ator definido, para que o
+// trigger de histórico saiba quem fez a mudança. Sem retry: escrita.
+export async function queryAs<T = Record<string, unknown>>(
+  actor: DbActor,
+  text: string,
+  params?: unknown[]
+): Promise<T[]> {
+  const client = await getPool().connect()
+  try {
+    await client.query('BEGIN')
+    await client.query(
+      `SELECT set_config('app.user_id', $1, true), set_config('app.origem', $2, true)`,
+      [actor.userId ?? '', actor.origem]
+    )
+    const result = await client.query(text, params)
+    await client.query('COMMIT')
+    return result.rows as T[]
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {})
+    throw err
+  } finally {
+    client.release()
+  }
+}

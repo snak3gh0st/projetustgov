@@ -71,7 +71,6 @@ const BASE_NAV_ITEMS: NavItem[] = [
   LEADS_ITEM,
   { href: '/comissoes', label: 'Comissões', icon: 'comissoes' },
   { href: '/bi', label: 'BI comercial', icon: 'bi' },
-  { href: '/monitorar', label: 'Meus monitorados', icon: 'monitorar' },
 ]
 
 const BASE_WITH_EXECUCAO: NavItem[] = [
@@ -81,7 +80,6 @@ const BASE_WITH_EXECUCAO: NavItem[] = [
   OPERACAO_ITEM,
   { href: '/comissoes', label: 'Comissões', icon: 'comissoes' },
   { href: '/bi', label: 'BI comercial', icon: 'bi' },
-  { href: '/monitorar', label: 'Meus monitorados', icon: 'monitorar' },
 ]
 
 export function getNavItemsForRole(role: NavRole): NavItem[] {
@@ -111,7 +109,6 @@ export function getNavItemsForRole(role: NavRole): NavItem[] {
       FINANCEIRO_ITEM,
       CONTA_AZUL_ITEM,
       { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
-      { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
       ...adminOnlyItems,
       { href: '/cadastro-vendedor', label: 'Usuários', icon: 'vendedores' },
     ]
@@ -120,11 +117,10 @@ export function getNavItemsForRole(role: NavRole): NavItem[] {
     return [
       ...BASE_WITH_EXECUCAO,
       { href: '/distribuir', label: 'Distribuir Leads', icon: 'distribuir' },
-      { href: '/monitoramento', label: 'Monitoramento', icon: 'monitoramento' },
     ]
   }
   if (role === 'visualizador') {
-    return BASE_NAV_ITEMS.filter((item) => item.href !== '/monitorar')
+    return BASE_NAV_ITEMS
   }
   if (role === 'adm_produto') {
     return [

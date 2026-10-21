@@ -82,23 +82,8 @@ export async function GET() {
       : isCoordenador
       ? `WHERE ${approvalScopeSql} AND (vp.vendedor_id = $1 OR vp.closer_id = $1)`
       : `WHERE ${approvalScopeSql}`
-    const approvalExistsFilter = isFiltered
-      ? `AND EXISTS (
-          SELECT 1
-          FROM vendedor_projetos vp_scope
-          WHERE vp_scope.cnpj = cn.lead_cnpj
-            AND ${buildStructuredLeadScopeSql('vp_scope')}
-            AND (vp_scope.vendedor_id = $1 OR vp_scope.closer_id = $1)
-        )`
-      : `AND EXISTS (
-          SELECT 1
-          FROM vendedor_projetos vp_scope
-          WHERE vp_scope.cnpj = cn.lead_cnpj
-            AND ${buildStructuredLeadScopeSql('vp_scope')}
-        )`
-
     // Run all queries in parallel to avoid sequential connection queuing
-    const [globalRows, vendedorRows, todayRows, recentRows, commissionRows, contactHealthRows, staleLeadsRows, execucaoPipelineRows, execVendedorRows, execAlertRows, pcByStatusRows, pcTotalsRows] = await Promise.all([
+    const [globalRows, vendedorRows, todayRows, contactHealthRows, execucaoPipelineRows, execVendedorRows, execAlertRows, pcByStatusRows, pcTotalsRows] = await Promise.all([
       // 1. Global stats with status breakdown
       query(`
         SELECT
@@ -160,39 +145,6 @@ export async function GET() {
         GROUP BY vp.vendedor_id
       `, vendedorParams),
 
-      // 4. Recent activity (last 10 updates)
-      query(`
-        SELECT
-          vp.cnpj,
-          vp.nome,
-          COALESCE(u.nome, 'Sem vendedor') as vendedor_nome,
-          COALESCE(vp.status_contato, 'Não Contatado') as status_contato,
-          vp.updated_at
-        FROM vendedor_projetos vp
-        LEFT JOIN users u ON u.id = vp.vendedor_id
-        ${approvalFilter}
-          AND vp.updated_at IS NOT NULL
-        ORDER BY vp.updated_at DESC
-        LIMIT 10
-      `, vendedorParams),
-
-      // 5. Commission breakdown — só Fechados ganham comissão (gestor rows zeroed out)
-      query(`
-        SELECT
-          'Fechado' as status_contato,
-          COUNT(*)::int as count,
-          SUM(CASE WHEN u.role != 'gestor' THEN vp.comissao_valor ELSE 0 END)::numeric as total_comissao,
-          COALESCE(SUM(vp.valor_venda), 0)::numeric as total_venda,
-          SUM(CASE WHEN vp.comissao_locked = true THEN 1 ELSE 0 END)::int as locked_count
-        FROM vendedor_projetos vp
-        JOIN users u ON u.id = vp.vendedor_id
-        ${approvalFilter}
-          AND vp.vendedor_id IS NOT NULL
-          AND vp.comissao_valor IS NOT NULL
-          AND vp.comissao_valor > 0
-          AND vp.status_contato = 'Fechado'
-      `, vendedorParams),
-
       // 6. Contact health: stale leads (no contact_notes in >7d or never), invalid phones
       query(`
         SELECT
@@ -226,51 +178,6 @@ export async function GET() {
         FROM vendedor_projetos vp
         ${approvalFilter}
           AND vp.vendedor_id IS NOT NULL
-      `, vendedorParams),
-
-      // 7. Top stale leads needing follow-up (oldest contact or never contacted)
-      query(`
-        SELECT
-          vp.cnpj,
-          vp.nome,
-          COALESCE(u.nome, 'Sem vendedor') as vendedor_nome,
-          vp.status_contato,
-          (
-            SELECT GREATEST(
-              (SELECT MAX(cn.created_at) FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj),
-              (SELECT MAX(vp2.updated_at) FROM vendedor_projetos vp2
-               WHERE vp2.cnpj = vp.cnpj AND vp2.status_contato != 'Não Contatado')
-            )
-          ) as last_contact_date,
-          (
-            SELECT EXTRACT(DAY FROM NOW() - GREATEST(
-              (SELECT MAX(cn.created_at) FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj),
-              (SELECT MAX(vp2.updated_at) FROM vendedor_projetos vp2
-               WHERE vp2.cnpj = vp.cnpj AND vp2.status_contato != 'Não Contatado')
-            ))::int
-          ) as days_since_last_contact,
-          (
-            SELECT lc.telefone_status
-            FROM lead_contacts lc
-            WHERE lc.lead_cnpj = vp.cnpj
-            ORDER BY lc.principal DESC, lc.created_at ASC
-            LIMIT 1
-          ) as principal_telefone_status
-        FROM vendedor_projetos vp
-        LEFT JOIN users u ON u.id = vp.vendedor_id
-        ${approvalFilter}
-          AND vp.vendedor_id IS NOT NULL
-          AND vp.status_contato NOT IN ('Fechado')
-        GROUP BY vp.cnpj, vp.nome, u.nome, vp.status_contato, vp.updated_at
-        ORDER BY
-          CASE WHEN NOT EXISTS (
-            SELECT 1 FROM contact_notes cn
-            WHERE cn.lead_cnpj = vp.cnpj
-            ${approvalExistsFilter}
-          )
-            THEN 0 ELSE 1 END,
-          (SELECT MAX(cn.created_at) FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj) ASC NULLS FIRST
-        LIMIT 8
       `, vendedorParams),
 
       // 8. Separate execution pipeline based only on projetos_execucao CNPJs
@@ -496,27 +403,14 @@ export async function GET() {
           vendas_execucao: Number(v.vendas_execucao) || 0,
           fechado: Number(v.vendas_aprovacao || 0) + Number(v.vendas_execucao || 0),
           valor_total_emenda: Number(v.valor_total_emenda),
-          comissao_total: Number(v.comissao_total),
+          // Comissionamento: visível apenas para o gestor comercial
+          comissao_total: session.role === 'gestor' ? Number(v.comissao_total) : 0,
           last_activity: v.last_activity,
           ligacoes_hoje: today?.ligacoes || 0,
           propostas_hoje: today?.propostas || 0,
           fechados_hoje: today?.fechados || 0,
         }
       }),
-      recent_activity: recentRows.map((r: Record<string, unknown>) => ({
-        cnpj: r.cnpj,
-        nome: r.nome,
-        vendedor_nome: r.vendedor_nome,
-        status_contato: r.status_contato,
-        updated_at: r.updated_at,
-      })),
-      commission_breakdown: commissionRows.map(r => ({
-        status_contato: r.status_contato,
-        count: Number(r.count),
-        total_comissao: Number(r.total_comissao) || 0,
-        total_venda: Number(r.total_venda) || 0,
-        locked_count: Number(r.locked_count) || 0,
-      })),
       contact_health: {
         stale_count: Number(contactHealthRows[0]?.stale_count) || 0,
         never_contacted_count: Number(contactHealthRows[0]?.never_contacted_count) || 0,
@@ -539,15 +433,6 @@ export async function GET() {
         alert_count: Number(r.alert_count) || 0,
         vigencia_proxima: r.vigencia_proxima,
         vendedor_nome: r.vendedor_nome,
-      })),
-      stale_leads: staleLeadsRows.map(r => ({
-        cnpj: r.cnpj,
-        nome: r.nome,
-        vendedor_nome: r.vendedor_nome,
-        status_contato: r.status_contato,
-        last_contact_date: r.last_contact_date,
-        days_since_last_contact: r.days_since_last_contact != null ? Number(r.days_since_last_contact) : null,
-        principal_telefone_status: r.principal_telefone_status,
       })),
       prestacao_contas_pipeline: (() => {
         const totals = pcTotalsRows[0] || {}
