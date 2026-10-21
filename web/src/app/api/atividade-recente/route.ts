@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { getApiSession } from '@/lib/dal'
+import { getApiSession, hasTeamCommercialView } from '@/lib/dal'
 import { AUTOMATIC_ORIGINS, fetchLeadEvents, leadEventsReady } from '@/lib/lead-events'
 
 export const dynamic = 'force-dynamic'
 
-const CRM_ROLES = ['gestor', 'admin', 'visualizador', 'vendedor', 'coordenador']
+const CRM_ROLES = ['gestor', 'diretoria', 'admin', 'visualizador', 'vendedor', 'coordenador']
 
 // Atividade Recente da tela inicial: movimentações feitas por pessoas
 // (status e atribuição), lidas do histórico lead_events. A tela consulta a cada 60s.
@@ -33,7 +33,7 @@ export async function GET() {
     }
 
     const events = await fetchLeadEvents(`e.origem <> ALL($1) ${scope}`, params, 15, {
-      includeCommission: session.role === 'gestor',
+      includeCommission: hasTeamCommercialView(session.role),
     })
     return NextResponse.json({ events })
   } catch (error) {

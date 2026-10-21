@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { buildStructuredLeadScopeSql } from '@/lib/crm-scope'
 import { CRM_STATUS_CANONICAL } from '@/lib/crm-catalog'
 import { query } from '@/lib/db'
-import { getApiSession } from '@/lib/dal'
+import { getApiSession, hasTeamCommercialView } from '@/lib/dal'
 import { execucaoFaseSql } from '@/lib/execucao-fase'
 import { crmAliasSql, normalizedStatusOrderSql, normalizedStatusSql } from '@/lib/execucao-status'
 
@@ -371,7 +371,7 @@ export async function GET() {
           fechado: Number(v.vendas_aprovacao || 0) + Number(v.vendas_execucao || 0),
           valor_total_emenda: Number(v.valor_total_emenda),
           // Comissionamento: visível apenas para o gestor comercial
-          comissao_total: session.role === 'gestor' ? Number(v.comissao_total) : 0,
+          comissao_total: hasTeamCommercialView(session.role) ? Number(v.comissao_total) : 0,
           last_activity: v.last_activity,
           ligacoes_hoje: today?.ligacoes || 0,
           propostas_hoje: today?.propostas || 0,

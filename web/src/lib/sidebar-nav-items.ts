@@ -14,6 +14,7 @@ export type NavRole =
   | 'coord_prestacao'
   | 'assistente_prestacao'
   | 'gestor_financeiro'
+  | 'diretoria'
 
 export interface NavItem {
   href: string

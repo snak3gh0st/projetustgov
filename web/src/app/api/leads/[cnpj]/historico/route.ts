@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getApiSession, verifyLeadAccess } from '@/lib/dal'
+import { getApiSession, hasTeamCommercialView, verifyLeadAccess } from '@/lib/dal'
 import { fetchLeadEvents, leadEventsReady } from '@/lib/lead-events'
 
 export const dynamic = 'force-dynamic'
@@ -29,7 +29,7 @@ export async function GET(
       `REGEXP_REPLACE(e.cnpj, '[^0-9]', '', 'g') = $1`,
       [cnpj.replace(/\D/g, '')],
       100,
-      { includeCommission: session.role === 'gestor' }
+      { includeCommission: hasTeamCommercialView(session.role) }
     )
     return NextResponse.json({ events })
   } catch (error) {

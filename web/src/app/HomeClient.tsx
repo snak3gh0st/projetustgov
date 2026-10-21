@@ -6,6 +6,7 @@ import { AnimatePresence, m } from 'motion/react'
 import { formatCNPJ, formatCompactCurrency, formatCurrency, formatDate } from '@/lib/format'
 import { CRM_STATUS_CANONICAL, CRM_STATUS_FUNNEL_ORDER } from '@/lib/crm-catalog'
 import { statusStyle } from '@/lib/status-style'
+import { hasTeamCommercialView } from '@/lib/roles'
 import SectionTabs from '@/components/SectionTabs'
 import { RecentActivityFeed } from '@/components/LeadEvents'
 import PageHeader from '@/components/ui/PageHeader'
@@ -183,14 +184,14 @@ function SyncBar({ role, onSynced }: { role: string | undefined; onSynced: () =>
   const [justFinished, setJustFinished] = useState(false)
 
   useEffect(() => {
-    if (role !== 'gestor') return
+    if (!hasTeamCommercialView(role)) return
     fetch('/api/debug-sync')
       .then(r => r.json())
       .then(d => setSyncLog(d.last_sync_log ?? null))
       .catch(() => {})
   }, [role])
 
-  if (role !== 'gestor') return null
+  if (!hasTeamCommercialView(role)) return null
 
   const handleSync = async () => {
     setSyncing(true)
@@ -521,7 +522,7 @@ export default function CRMDashboard() {
   useEffect(() => { void load() }, [load])
 
   const role = data?.role
-  const isVendedor = role === 'vendedor' || role === 'coordenador' || role === 'gestor'
+  const isVendedor = role === 'vendedor' || role === 'coordenador' || hasTeamCommercialView(role)
 
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-6">
@@ -590,7 +591,7 @@ export default function CRMDashboard() {
 function AprovacaoView({ data, isVendedor }: { data: DashboardData; isVendedor: boolean }) {
   const { global: g, vendedores, role } = data
   // Comissionamento: visível apenas para o gestor comercial
-  const showCommission = role === 'gestor'
+  const showCommission = hasTeamCommercialView(role)
   const comissaoTotal = vendedores.reduce((sum, v) => sum + (v.comissao_total || 0), 0)
   const pctOf = (n: number) => (g.total_leads > 0 ? `${Math.round((n / g.total_leads) * 100)}% do total` : '0% do total')
 

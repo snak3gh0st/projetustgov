@@ -13,7 +13,7 @@ import NotificationBell from '@/components/NotificationBell'
 interface SidebarProps {
   user: {
     name?: string | null
-    role: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao' | 'gestor_financeiro'
+    role: 'gestor' | 'diretoria' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao' | 'gestor_financeiro'
     email?: string | null
   }
   defaultOpen?: boolean
@@ -63,7 +63,8 @@ export function NavIcon({ name, className }: { name: string; className?: string 
 }
 
 const ROLE_LABEL: Record<SidebarProps['user']['role'], string> = {
-  gestor: 'Gestor',
+  gestor: 'Gestor comercial',
+  diretoria: 'Diretoria',
   admin: 'Admin',
   vendedor: 'Vendedor',
   visualizador: 'Visualizador',

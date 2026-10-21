@@ -80,7 +80,7 @@ export default function DistribuirPage() {
 
   useEffect(() => {
     fetch('/api/auth/session').then(r => r.json()).then(s => {
-      if (s?.user?.role !== 'gestor' && s?.user?.role !== 'coordenador') {
+      if (s?.user?.role !== 'gestor' && s?.user?.role !== 'diretoria' && s?.user?.role !== 'coordenador') {
         window.location.href = '/'
       } else {
         setUserRole(s.user.role)
@@ -89,7 +89,7 @@ export default function DistribuirPage() {
   }, [])
 
   useEffect(() => {
-    if (userRole === 'gestor' || userRole === 'coordenador') {
+    if (userRole === 'gestor' || userRole === 'diretoria' || userRole === 'coordenador') {
       fetchLeads()
       fetchAssignedLeads()
       fetchVendedores()
@@ -387,7 +387,7 @@ export default function DistribuirPage() {
     }
   }
 
-  if (userRole !== 'gestor' && userRole !== 'coordenador') {
+  if (userRole !== 'gestor' && userRole !== 'diretoria' && userRole !== 'coordenador') {
     return <div className="flex items-center justify-center py-20 text-gray-500">Verificando permissoes...</div>
   }
 
@@ -452,7 +452,7 @@ export default function DistribuirPage() {
       )}
 
       {/* CNPJ Monitoring section - gestor only, assign directly to Rooger */}
-      {userRole === 'gestor' && (
+      {(userRole === 'gestor' || userRole === 'diretoria') && (
         <div className="border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 rounded-xl p-4">
           <h2 className="text-sm font-semibold text-amber-800 mb-3">Adicionar CNPJ Monitorado (Rooger)</h2>
           <div className="flex flex-wrap gap-3 items-start">

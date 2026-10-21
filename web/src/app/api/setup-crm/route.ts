@@ -19,7 +19,7 @@ function getPool() {
 
 export async function GET() {
   const session = await getApiSession()
-  if (!session || session.role !== 'gestor') {
+  if (!session || (session.role !== 'gestor' && session.role !== 'diretoria')) {
     return NextResponse.json({ error: 'Unauthorized — gestor only' }, { status: 401 })
   }
   return runSetup()
@@ -27,7 +27,7 @@ export async function GET() {
 
 export async function POST() {
   const session = await getApiSession()
-  if (!session || session.role !== 'gestor') {
+  if (!session || (session.role !== 'gestor' && session.role !== 'diretoria')) {
     return NextResponse.json({ error: 'Unauthorized — gestor only' }, { status: 401 })
   }
   return runSetup()
@@ -544,8 +544,8 @@ async function runSetup() {
       { nome: 'Vitória', email: 'vitoria@projetus.org', role: 'vendedor', password: 'Vitoria#904' },
       { nome: 'Rooger', email: 'rooger@projetus.org', role: 'gestor', password: 'Rjr*940302' },
       { nome: 'Bruno', email: 'bruno@projetus.org', role: 'csm', password: 'Bruno#837' },
-      { nome: 'Philipe', email: 'philipe@projetus.org', role: 'gestor', password: 'Philipe#268' },
-      { nome: 'Tito', email: 'tito@projetus.org', role: 'gestor', password: 'Tito#351' },
+      { nome: 'Philipe', email: 'philipe@projetus.org', role: 'diretoria', password: 'Philipe#268' },
+      { nome: 'Tito', email: 'tito@projetus.org', role: 'diretoria', password: 'Tito#351' },
       { nome: 'Paulo', email: 'paulo@projetus.org', role: 'coordenador', password: 'Paulo#649' },
       { nome: 'Admin', email: 'admin@projetus.org', role: 'admin', password: 'admin123' },
     ]

@@ -346,7 +346,7 @@ interface CnpjSearchResult {
 // ---------------------------------------------------------------------------
 
 interface TGovDashboardClientProps {
-  userRole: 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'projetista' | 'assistente_aprovacao' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao'
+  userRole: 'gestor' | 'diretoria' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'projetista' | 'assistente_aprovacao' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao'
   view?: 'pipeline' | 'dashboard'
   highlight?: string
   /** Scroll to a section after sidecard opens (e.g. 'comments') */

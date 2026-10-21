@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 // Gestor only — dry-runs by default. confirm=true is required to move open leads.
 export async function POST(request: NextRequest) {
   const session = await getApiSession()
-  if (!session || session.role !== 'gestor') {
+  if (!session || (session.role !== 'gestor' && session.role !== 'diretoria')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

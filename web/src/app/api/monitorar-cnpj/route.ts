@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: NextRequest) {
   const session = await getApiSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.role !== 'gestor') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (session.role !== 'gestor' && session.role !== 'diretoria') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
   const { cnpj, force } = body

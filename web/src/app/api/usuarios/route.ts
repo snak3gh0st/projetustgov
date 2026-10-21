@@ -12,7 +12,7 @@ export async function GET() {
     }
 
     const actorRole = session.role as Role
-    const isGestor = actorRole === 'gestor'
+    const isGestor = actorRole === 'diretoria'
     const managedRoles = ROLE_CAN_CREATE[actorRole] ?? []
 
     // Roles with no managed subordinates have no access to this endpoint

@@ -146,7 +146,7 @@ export default function BIDashboard() {
 
   // Detect role from whichever dataset loaded first
   const role = data?.role || execData?.role || ''
-  const isGestor = role === 'gestor' || role === 'coordenador'
+  const isGestor = role === 'gestor' || role === 'diretoria' || role === 'coordenador'
 
   // Fetch vendedores list on mount (for gestor/coordenador dropdown)
   useEffect(() => {

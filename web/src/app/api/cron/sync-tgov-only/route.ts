@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`
   if (!isCron) {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto')) {
+    if (!session || (session.role !== 'diretoria' && session.role !== 'admin' && session.role !== 'adm_produto')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
   }

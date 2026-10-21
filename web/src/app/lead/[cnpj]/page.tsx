@@ -325,7 +325,7 @@ export default function LeadDetailPage() {
                 Este lead foi enviado para conferência do gestor antes da conclusão
               </p>
             </div>
-            {userRole === 'gestor' && canModify && (
+            {(userRole === 'gestor' || userRole === 'diretoria') && canModify && (
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 text-sm text-purple-700 cursor-pointer select-none">
                   <input

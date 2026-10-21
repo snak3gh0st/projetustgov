@@ -82,7 +82,7 @@ export default function LeadsClient() {
 
   // Fetch vendedores for gestor/coordenador filter
   useEffect(() => {
-    if (sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador') {
+    if (sessionUser?.role === 'gestor' || sessionUser?.role === 'diretoria' || sessionUser?.role === 'coordenador') {
       fetch('/api/vendedores').then(r => r.json()).then(data => {
         if (Array.isArray(data)) setVendedores(data)
       }).catch(() => {})
@@ -339,7 +339,7 @@ export default function LeadsClient() {
   }
 
   const isCoordinator = sessionUser?.role === 'coordenador'
-  const canExportCSV = sessionUser?.role === 'gestor' || sessionUser?.role === 'admin' || isCoordinator
+  const canExportCSV = sessionUser?.role === 'gestor' || sessionUser?.role === 'diretoria' || sessionUser?.role === 'admin' || isCoordinator
   const coordinatorHasCommercialFilter = vendedorFilter !== '' && vendedorFilter !== 'unassigned'
   const exportDisabled = isCoordinator && !coordinatorHasCommercialFilter
 
@@ -395,7 +395,7 @@ export default function LeadsClient() {
           <option value="">Todos Status</option>
           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-        {(sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador') && (
+        {(sessionUser?.role === 'gestor' || sessionUser?.role === 'diretoria' || sessionUser?.role === 'coordenador') && (
           <>
             <select value={vendedorFilter} onChange={e => setVendedorFilter(e.target.value)} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-[#0072F7]">
               <option value="">Todos Vendedores</option>
@@ -482,7 +482,7 @@ export default function LeadsClient() {
                   <th className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">Contato</th>
                   <th onClick={() => handleSort('dias')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Ult. Contato<SortIcon col="dias" /></th>
                   <th onClick={() => handleSort('status')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Status<SortIcon col="status" /></th>
-                  {(sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador') && (
+                  {(sessionUser?.role === 'gestor' || sessionUser?.role === 'diretoria' || sessionUser?.role === 'coordenador') && (
                     <th onClick={() => handleSort('vendedor')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
                       Responsável
                       <SortIcon col="vendedor" />
@@ -637,9 +637,9 @@ export default function LeadsClient() {
                           : STATUS_OPTIONS).map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </td>
-                    {(sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador') && (
+                    {(sessionUser?.role === 'gestor' || sessionUser?.role === 'diretoria' || sessionUser?.role === 'coordenador') && (
                       <td className="px-3 py-2.5">
-                        {sessionUser?.role === 'gestor' ? (
+                        {sessionUser?.role === 'gestor' || sessionUser?.role === 'diretoria' ? (
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-gray-500 dark:text-gray-400">{lead.vendedor_nome || '-'}</span>
@@ -708,7 +708,7 @@ export default function LeadsClient() {
                       <td className="px-4 py-2">
                         <div className="text-gray-400 dark:text-gray-500 text-xs">{sub.orgao_concedente || '-'}</div>
                       </td>
-                      <td className="px-4 py-2" colSpan={sessionUser?.role === 'gestor' || sessionUser?.role === 'coordenador' ? 5 : 4}>
+                      <td className="px-4 py-2" colSpan={sessionUser?.role === 'gestor' || sessionUser?.role === 'diretoria' || sessionUser?.role === 'coordenador' ? 5 : 4}>
                         <select
                           value={formatCrmStatusLabel(sub.status_contato, sub.venda_etapa)}
                           onClick={e => e.stopPropagation()}

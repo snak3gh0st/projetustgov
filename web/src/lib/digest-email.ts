@@ -53,7 +53,7 @@ export async function getNotificationsForUser(userId: string, role: string): Pro
     LIMIT 50
   `, [userId])
 
-  const canSeeStale = ['coord_aprovacao', 'assistente_aprovacao', 'coord_execucao', 'assistente_execucao', 'adm_produto', 'gestor', 'admin'].includes(role)
+  const canSeeStale = ['coord_aprovacao', 'assistente_aprovacao', 'coord_execucao', 'assistente_execucao', 'adm_produto', 'diretoria', 'admin'].includes(role)
   let stale: DigestStale[] = []
 
   if (canSeeStale) {

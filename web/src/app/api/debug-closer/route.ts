@@ -13,7 +13,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (session.role !== 'gestor' && session.role !== 'coordenador') {
+    if (session.role !== 'gestor' && session.role !== 'diretoria' && session.role !== 'coordenador') {
       return NextResponse.json({ error: 'Forbidden — gestor access only' }, { status: 403 })
     }
 

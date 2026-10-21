@@ -10,10 +10,10 @@ export const maxDuration = 60
 const TGOV_ROLES = [
   'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista',
   'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao',
-  'gestor', 'admin',
+  'diretoria', 'admin',
 ]
 
-const CRM_DIGEST_ROLES = ['vendedor', 'coordenador', 'visualizador', 'gestor', 'admin']
+const CRM_DIGEST_ROLES = ['vendedor', 'coordenador', 'visualizador', 'gestor', 'diretoria', 'admin']
 const COMMERCIAL_HEAD_EMAIL = process.env.PRIMARY_LEAD_MANAGER_EMAIL || 'rooger@projetus.org'
 
 export async function GET(request: NextRequest) {

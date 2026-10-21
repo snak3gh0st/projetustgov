@@ -372,7 +372,8 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
               </thead>
               <tbody>
                 {usuarios.map((usuario) => {
-                  const isGestor = usuario.role === 'gestor'
+                  // Gestor comercial só a diretoria gerencia; diretoria ninguém gerencia por aqui.
+                  const isGestor = usuario.role === 'diretoria' || (usuario.role === 'gestor' && userRole !== 'diretoria')
                   const isSelf = usuario.is_self
 
                   return (
@@ -439,7 +440,7 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex gap-2 items-center">
-                          {(userRole === 'admin' || userRole === 'gestor') && !isSelf && (
+                          {(userRole === 'admin' || userRole === 'gestor' || userRole === 'diretoria') && !isSelf && (
                             <button
                               type="button"
                               onClick={() => setResetTarget({ id: usuario.id, nome: usuario.nome, email: usuario.email })}
@@ -456,7 +457,7 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
                               Excluir
                             </button>
                           ) : (
-                            (!((userRole === 'admin' || userRole === 'gestor') && !isSelf)) && (
+                            (!((userRole === 'admin' || userRole === 'gestor' || userRole === 'diretoria') && !isSelf)) && (
                               <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                             )
                           )}

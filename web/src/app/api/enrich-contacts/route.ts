@@ -49,7 +49,7 @@ export async function GET() {
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  if (session.role !== 'gestor') {
+  if (session.role !== 'gestor' && session.role !== 'diretoria') {
     return NextResponse.json({ error: 'Forbidden: gestor only' }, { status: 403 })
   }
 

@@ -83,7 +83,7 @@ export default function ExecucaoClient({
   initialFase?: ExecucaoFase | null
   initialStatus?: string
 }) {
-  const isGestor = userRole === 'gestor' || userRole === 'coordenador'
+  const isGestor = userRole === 'gestor' || userRole === 'diretoria' || userRole === 'coordenador'
   const [rows, setRows] = useState<ExecucaoAggRow[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -770,7 +770,7 @@ export default function ExecucaoClient({
           </div>
           <div className="flex items-center gap-2">
             {/* mirrors canExportContacts() in dal.ts — admin-tier only */}
-            {(userRole === 'gestor' || userRole === 'admin') && (
+            {(userRole === 'gestor' || userRole === 'diretoria' || userRole === 'admin') && (
               <button
                 onClick={() => {
                   const params = new URLSearchParams()
