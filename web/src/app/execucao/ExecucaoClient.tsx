@@ -388,6 +388,10 @@ export default function ExecucaoClient({
           className="bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
         >
           <option value="">Todos Status</option>
+          {/* Etapa vinda do funil da tela inicial que não está entre as opções */}
+          {statusFilter && !(STATUS_OPTIONS as readonly string[]).includes(statusFilter) && (
+            <option value={statusFilter}>{formatCrmStatusLabel(statusFilter)}</option>
+          )}
           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         {isGestor && (

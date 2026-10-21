@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { buildStructuredLeadScopeSql } from '@/lib/crm-scope'
+import { CRM_STATUS_CANONICAL } from '@/lib/crm-catalog'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
 import { execucaoFaseSql } from '@/lib/execucao-fase'
+import { crmAliasSql, normalizedStatusOrderSql, normalizedStatusSql } from '@/lib/execucao-status'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,55 +26,15 @@ const CRM_STATUS_SQL = `
 
 const CRM_STATUS_SQL_VP2 = CRM_STATUS_SQL.replaceAll('vp.', 'vp2.')
 
-// Mesma ordem do funil de Execução/PC na tela inicial (HomeClient EXECUCAO_STATUS_ORDER).
-const EXECUCAO_PIPELINE_STATUSES = [
-  'Não Contatado',
-  'Sem Interesse',
-  'Em Atendimento',
-  'Contatado',
-  'Reunião Agendada',
-  'Quente',
-  'Muito Quente',
-  'Proposta Enviada',
-  'Em Aprovação',
-  'Telefone Invalido',
-  'Fechado',
-  'Impedimento Técnico',
-  'Cancelado',
-] as const
+// Etapas canônicas: o funil escolhe e normaliza o status como a lista /execucao
+// (lib/execucao-status), então o número do card = linhas da lista.
+const EXECUCAO_PIPELINE_STATUSES = CRM_STATUS_CANONICAL
 
 // Uma coluna status_<i> por status, na ordem acima (constantes, sem input do usuário).
 const EXECUCAO_STATUS_COUNTS_SQL = EXECUCAO_PIPELINE_STATUSES
   .map((status, i) => `COUNT(*) FILTER (WHERE crm_status = '${status}')::int AS status_${i}`)
   .join(',\n          ')
 
-const EXECUCAO_STATUS_NORMALIZED_SQL = `
-  CASE
-    WHEN COALESCE(vp.status_contato_execucao, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado') THEN 'Não Contatado'
-    WHEN COALESCE(vp.status_contato_execucao, '') IN ('Ainda Não', 'Sem Interesse') THEN 'Sem Interesse'
-    WHEN COALESCE(vp.status_contato_execucao, '') IN ('Retorno', 'Em Atendimento') THEN 'Em Atendimento'
-    WHEN COALESCE(vp.status_contato_execucao, '') = 'Quente' THEN 'Quente'
-    WHEN COALESCE(vp.status_contato_execucao, '') = 'Muito Quente' THEN 'Muito Quente'
-    WHEN COALESCE(vp.status_contato_execucao, '') IN ('Proposta', 'Proposta Enviada') THEN 'Proposta Enviada'
-    WHEN COALESCE(vp.status_contato_execucao, '') IN ('Aguardando Closer', 'Em Aprovação') THEN 'Em Aprovação'
-    ELSE COALESCE(vp.status_contato_execucao, 'Não Contatado')
-  END
-`
-
-const EXECUCAO_STATUS_PRIORITY_SQL = `
-  CASE
-    WHEN ${EXECUCAO_STATUS_NORMALIZED_SQL} = 'Fechado' THEN 1
-    WHEN ${EXECUCAO_STATUS_NORMALIZED_SQL} = 'Em Aprovação' THEN 2
-    WHEN ${EXECUCAO_STATUS_NORMALIZED_SQL} = 'Proposta Enviada' THEN 3
-    WHEN ${EXECUCAO_STATUS_NORMALIZED_SQL} = 'Em Atendimento' THEN 4
-    WHEN ${EXECUCAO_STATUS_NORMALIZED_SQL} = 'Sem Interesse' THEN 5
-    WHEN ${EXECUCAO_STATUS_NORMALIZED_SQL} = 'Quente' THEN 6
-    WHEN ${EXECUCAO_STATUS_NORMALIZED_SQL} = 'Muito Quente' THEN 7
-    WHEN ${EXECUCAO_STATUS_NORMALIZED_SQL} = 'Telefone Invalido' THEN 8
-    WHEN ${EXECUCAO_STATUS_NORMALIZED_SQL} = 'Não Contatado' THEN 10
-    ELSE 9
-  END
-`
 
 function commercialByStatus(row: Record<string, unknown>): Record<string, number> {
   return Object.fromEntries(
@@ -121,12 +83,11 @@ export async function GET() {
         vp_statuses AS (
           SELECT DISTINCT ON (REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'))
             REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
-            ${EXECUCAO_STATUS_NORMALIZED_SQL} AS crm_status
+            ${crmAliasSql(normalizedStatusSql('vp.status_contato_execucao'))} AS crm_status
           FROM vendedor_projetos vp
-          ${isFiltered ? 'WHERE (vp.vendedor_id = $1 OR vp.closer_id = $1)' : ''}
           ORDER BY
             REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'),
-            ${EXECUCAO_STATUS_PRIORITY_SQL} ASC,
+            ${normalizedStatusOrderSql(normalizedStatusSql('vp.status_contato_execucao'))} ASC,
             vp.updated_at DESC NULLS LAST
         ),
         execucao_status AS (

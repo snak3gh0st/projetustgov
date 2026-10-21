@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { formatCNPJ, formatCompactCurrency, formatCurrency, formatDate } from '@/lib/format'
-import { CRM_STATUS_FUNNEL_ORDER } from '@/lib/crm-catalog'
+import { CRM_STATUS_CANONICAL, CRM_STATUS_FUNNEL_ORDER } from '@/lib/crm-catalog'
 import SectionTabs from '@/components/SectionTabs'
 import { RecentActivityFeed } from '@/components/LeadEvents'
 
@@ -158,21 +158,8 @@ function getStatusConfig(status: string) {
 }
 
 const STATUS_ORDER = CRM_STATUS_FUNNEL_ORDER
-const EXECUCAO_STATUS_ORDER = [
-  'Não Contatado',
-  'Sem Interesse',
-  'Em Atendimento',
-  'Contatado',
-  'Reunião Agendada',
-  'Quente',
-  'Muito Quente',
-  'Proposta Enviada',
-  'Em Aprovação',
-  'Telefone Invalido',
-  'Fechado',
-  'Impedimento Técnico',
-  'Cancelado',
-] as const
+// Execução/PC: etapas canônicas, as mesmas da lista /execucao (normalizeCrmStatus).
+const EXECUCAO_STATUS_ORDER = CRM_STATUS_CANONICAL
 
 const PC_STATUS_ORDER = [
   'Aguardando Prestação de Contas',
