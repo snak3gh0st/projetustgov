@@ -30,9 +30,12 @@ CREATE INDEX IF NOT EXISTS idx_lead_events_created ON lead_events (created_at DE
 
 CREATE OR REPLACE FUNCTION log_lead_event() RETURNS trigger AS $$
 DECLARE
-  v_user UUID := NULLIF(current_setting('app.user_id', true), '')::uuid;
-  v_origem TEXT := COALESCE(NULLIF(current_setting('app.origem', true), ''), 'sistema');
+  v_user UUID;
+  v_origem TEXT;
 BEGIN
+  v_user := NULLIF(current_setting('app.user_id', true), '')::uuid;
+  v_origem := COALESCE(NULLIF(current_setting('app.origem', true), ''), 'sistema');
+
   IF NEW.status_contato IS DISTINCT FROM OLD.status_contato THEN
     INSERT INTO lead_events (lead_id, cnpj, nome, tipo, valor_anterior, valor_novo, vendedor_novo_id, user_id, origem)
     VALUES (NEW.id, NEW.cnpj, NEW.nome, 'status', OLD.status_contato, NEW.status_contato, NEW.vendedor_id, v_user, v_origem);
@@ -52,6 +55,10 @@ BEGIN
     );
   END IF;
 
+  RETURN NULL;
+EXCEPTION WHEN OTHERS THEN
+  -- O histórico nunca pode bloquear a gravação do lead.
+  RAISE WARNING 'log_lead_event failed for vendedor_projetos.id=%: %', NEW.id, SQLERRM;
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;

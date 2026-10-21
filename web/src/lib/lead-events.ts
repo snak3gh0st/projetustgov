@@ -37,7 +37,12 @@ export async function leadEventsReady(): Promise<boolean> {
  * gera um evento por linha. Agrupa a mesma mudança, do mesmo autor, no mesmo minuto.
  * `where` recebe o alias `e` (lead_events) e `vp` (vendedor_projetos).
  */
-export async function fetchLeadEvents(where: string, params: unknown[], limit: number): Promise<LeadEvent[]> {
+export async function fetchLeadEvents(
+  where: string,
+  params: unknown[],
+  limit: number,
+  opts: { includeCommission: boolean }
+): Promise<LeadEvent[]> {
   const rows = await query<Record<string, unknown>>(`
     SELECT
       e.cnpj,
@@ -84,7 +89,8 @@ export async function fetchLeadEvents(where: string, params: unknown[], limit: n
       autor_nome: (r.autor_nome as string | null) ?? null,
       origem: r.origem as string,
       linhas: Number(r.linhas) || 1,
-      comissao_valor: r.comissao_valor != null ? Number(r.comissao_valor) : null,
+      // Comissionamento: visível apenas para o gestor comercial
+      comissao_valor: opts.includeCommission && r.comissao_valor != null ? Number(r.comissao_valor) : null,
       created_at: new Date(r.created_at as string).toISOString(),
     }
   })

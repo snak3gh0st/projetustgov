@@ -28,7 +28,8 @@ export async function GET(
     const events = await fetchLeadEvents(
       `REGEXP_REPLACE(e.cnpj, '[^0-9]', '', 'g') = $1`,
       [cnpj.replace(/\D/g, '')],
-      100
+      100,
+      { includeCommission: session.role === 'gestor' }
     )
     return NextResponse.json({ events })
   } catch (error) {

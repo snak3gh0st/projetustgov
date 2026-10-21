@@ -4,6 +4,8 @@ import { AUTOMATIC_ORIGINS, fetchLeadEvents, leadEventsReady } from '@/lib/lead-
 
 export const dynamic = 'force-dynamic'
 
+const CRM_ROLES = ['gestor', 'admin', 'visualizador', 'vendedor', 'coordenador']
+
 // Atividade Recente da tela inicial: movimentações feitas por pessoas
 // (status e atribuição), lidas do histórico lead_events. A tela consulta a cada 60s.
 export async function GET() {
@@ -11,6 +13,9 @@ export async function GET() {
     const session = await getApiSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (!CRM_ROLES.includes(session.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     if (!(await leadEventsReady())) {
@@ -27,7 +32,9 @@ export async function GET() {
       scope = `AND (vp.vendedor_id = $2 OR vp.closer_id = $2)`
     }
 
-    const events = await fetchLeadEvents(`e.origem <> ALL($1) ${scope}`, params, 15)
+    const events = await fetchLeadEvents(`e.origem <> ALL($1) ${scope}`, params, 15, {
+      includeCommission: session.role === 'gestor',
+    })
     return NextResponse.json({ events })
   } catch (error) {
     console.error('Atividade recente error:', error)
