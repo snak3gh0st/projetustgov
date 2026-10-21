@@ -16,7 +16,7 @@ export default function BrandLockup({ compact = false }: BrandLockupProps) {
     <div className="flex flex-col items-start gap-1" aria-label="Projete">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/logo.png" alt="Projete" className="h-8 w-auto" />
-      <span className="text-[11px] font-medium text-slate-500 dark:text-zinc-400">Hub da PROJETUS</span>
+      <span className="text-[11px] font-medium text-ink-3">Hub da PROJETUS</span>
     </div>
   )
 }

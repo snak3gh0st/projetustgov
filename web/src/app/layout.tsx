@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Inter, Space_Grotesk } from 'next/font/google'
 import './globals.css'
 import Sidebar from '@/components/Sidebar'
 import NewsBanner from '@/components/NewsBanner'
@@ -8,10 +9,22 @@ import { cookies } from 'next/headers'
 import Providers from '@/components/Providers'
 import MobileDrawer from '@/components/MobileDrawer'
 
+const inter = Inter({ subsets: ['latin'], variable: '--font-body', display: 'swap' })
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-heading',
+  display: 'swap',
+})
+
 export const metadata: Metadata = {
   title: 'Projete',
   description: 'Projete, o hub da PROJETUS para gestão de instrumentos governamentais',
 }
+
+type SidebarRole = 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao' | 'gestor_financeiro'
+
+const BELL_ROLES = ['gestor', 'admin', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao']
 
 export default async function RootLayout({
   children,
@@ -21,39 +34,30 @@ export default async function RootLayout({
   const session = await auth()
   const cookieStore = cookies()
   const sidebarOpen = cookieStore.get('sidebar:state')?.value !== 'false'
+  const user = session?.user
+    ? { name: session.user.name, role: session.user.role as SidebarRole, email: session.user.email }
+    : null
+  const showBell = Boolean(user && BELL_ROLES.includes(user.role))
 
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
-      <body className="bg-slate-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 font-body">
+    <html lang="pt-BR" suppressHydrationWarning className={`${inter.variable} ${spaceGrotesk.variable}`}>
+      <body className="bg-canvas text-ink font-body">
         <Providers>
-          {session?.user && (
-            <Sidebar
-              user={{
-                name: session.user.name,
-                role: session.user.role as 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao',
-                email: session.user.email,
-              }}
-              defaultOpen={sidebarOpen}
-            />
-          )}
-          {session?.user && (
-            <MobileDrawer
-              user={{
-                name: session.user.name,
-                role: session.user.role as 'gestor' | 'admin' | 'vendedor' | 'visualizador' | 'coordenador' | 'adm_produto' | 'csm' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao',
-                email: session.user.email,
-              }}
-            />
-          )}
-          <main className={session ? `${sidebarOpen ? 'md:ml-64' : 'md:ml-16'} min-h-screen p-3 sm:p-4 lg:p-6 pb-24 md:pb-6 transition-[margin] duration-200` : "min-h-screen p-3 sm:p-4 lg:p-6"}>
-            {session?.user && <NewsBanner />}
-            {session?.user && ['gestor', 'admin', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'].includes(
-              session.user.role as string
-            ) && (
-              <div className="flex justify-end mb-2">
+          {user && <Sidebar user={user} defaultOpen={sidebarOpen} showBell={showBell} />}
+          {user && <MobileDrawer user={user} />}
+          <main
+            className={
+              user
+                ? `${sidebarOpen ? 'md:ml-64' : 'md:ml-16'} min-h-screen px-3 pb-24 pt-4 sm:px-4 lg:pt-6 lg:px-6 md:pb-8 transition-[margin] duration-base ease-out-quart`
+                : 'min-h-screen p-3 sm:p-4 lg:p-6'
+            }
+          >
+            {showBell && (
+              <div className="mb-2 flex justify-end md:hidden">
                 <NotificationBell />
               </div>
             )}
+            {user && <NewsBanner />}
             {children}
           </main>
         </Providers>

@@ -1,10 +1,20 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { AnimatePresence, m } from 'motion/react'
 import { formatCNPJ, formatCompactCurrency, formatCurrency, formatDate } from '@/lib/format'
 import { CRM_STATUS_CANONICAL, CRM_STATUS_FUNNEL_ORDER } from '@/lib/crm-catalog'
+import { statusStyle } from '@/lib/status-style'
 import SectionTabs from '@/components/SectionTabs'
 import { RecentActivityFeed } from '@/components/LeadEvents'
+import PageHeader from '@/components/ui/PageHeader'
+import Button from '@/components/ui/Button'
+import EmptyState from '@/components/ui/EmptyState'
+import { Skeleton } from '@/components/ui/Skeleton'
+import StatTile from '@/components/dashboard/StatTile'
+import FunnelStrip, { type FunnelStage } from '@/components/dashboard/FunnelStrip'
+import SituacaoBars from '@/components/dashboard/SituacaoBars'
 
 // --- Types ---
 interface StatusCounts {
@@ -114,49 +124,6 @@ interface SyncLog {
   execucao_errors?: number
 }
 
-// --- Status config ---
-const STATUS_CONFIG: Record<string, { color: string; bg: string; bar: string; label: string }> = {
-  'Não Contatado': { color: 'text-orange-600 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-500/15 border-orange-200 dark:border-orange-500/30', bar: 'bg-orange-500', label: 'Não Contatado' },
-  'Contatado': { color: 'text-cyan-700 dark:text-cyan-300', bg: 'bg-cyan-50 dark:bg-cyan-500/15 border-cyan-200 dark:border-cyan-500/30', bar: 'bg-cyan-500', label: 'Contatado' },
-  // Legacy execution statuses remain available to the separate execution view.
-  'Sem Interesse': { color: 'text-yellow-600 dark:text-yellow-300', bg: 'bg-yellow-50 dark:bg-yellow-500/15 border-yellow-200', bar: 'bg-yellow-500', label: 'Sem Interesse' },
-  'Em Atendimento': { color: 'text-amber-600 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-500/15 border-amber-200 dark:border-amber-500/30', bar: 'bg-amber-500', label: 'Em Atendimento' },
-  'Reunião Agendada': { color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-500/15 border-indigo-200 dark:border-indigo-500/30', bar: 'bg-indigo-500', label: 'Reunião Agendada' },
-  'Quente': { color: 'text-red-600 dark:text-red-300', bg: 'bg-red-50 dark:bg-red-500/15 border-red-200 dark:border-red-500/30', bar: 'bg-red-500', label: 'Quente' },
-  'Muito Quente': { color: 'text-red-700 dark:text-red-300', bg: 'bg-red-100 dark:bg-red-500/20 border-red-200 dark:border-red-500/30', bar: 'bg-red-600', label: 'Muito Quente' },
-  'Proposta Enviada': { color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30', bar: 'bg-blue-500', label: 'Proposta Enviada' },
-  'Aprovação': { color: 'text-purple-600 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-500/15 border-purple-200 dark:border-purple-500/30', bar: 'bg-purple-500', label: 'Aprovação' },
-  'Vendas Aprovação': { color: 'text-green-600 dark:text-green-300', bg: 'bg-green-50 dark:bg-green-500/15 border-green-200 dark:border-green-500/30', bar: 'bg-green-500', label: 'Vendas Aprovação' },
-  'Execução/Prestação': { color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200 dark:border-emerald-500/30', bar: 'bg-emerald-600', label: 'Execução/Prestação' },
-  'Fechado': { color: 'text-green-600 dark:text-green-300', bg: 'bg-green-50 dark:bg-green-500/15 border-green-200 dark:border-green-500/30', bar: 'bg-green-500', label: 'Vendas Concluídas' },
-  'Telefone Invalido': { color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-50 dark:bg-gray-500/15 border-gray-200 dark:border-gray-700', bar: 'bg-gray-400', label: 'Telefone Invalido' },
-  'Aguardando Prestação de Contas': { color: 'text-orange-600 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-500/15 border-orange-200', bar: 'bg-orange-500', label: 'Aguard. PC' },
-  'Prestação de Contas enviada para Análise': { color: 'text-orange-500 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-500/10 border-orange-200', bar: 'bg-orange-400', label: 'PC Enviada' },
-  'Prestação de Contas em Complementação': { color: 'text-amber-600 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-500/15 border-amber-200', bar: 'bg-amber-500', label: 'PC Complement.' },
-  'Prestação de Contas em Análise': { color: 'text-amber-500 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200', bar: 'bg-amber-400', label: 'PC em Análise' },
-  'Prestação de Contas Comprovada': { color: 'text-teal-600 dark:text-teal-300', bg: 'bg-teal-50 dark:bg-teal-500/15 border-teal-200', bar: 'bg-teal-500', label: 'PC Comprovada' },
-  'Prestação de Contas Comprovada em Análise': { color: 'text-teal-500 dark:text-teal-300', bg: 'bg-teal-50 dark:bg-teal-500/10 border-teal-200', bar: 'bg-teal-400', label: 'PC Comprov. Análise' },
-  'Prestação de Contas Aprovada': { color: 'text-teal-700 dark:text-teal-300', bg: 'bg-teal-50 dark:bg-teal-500/15 border-teal-300', bar: 'bg-teal-600', label: 'PC Aprovada' },
-  'Prestação de Contas Aprovada com Ressalvas': { color: 'text-teal-500 dark:text-teal-200', bg: 'bg-teal-50 dark:bg-teal-500/10 border-teal-200', bar: 'bg-teal-300', label: 'PC Aprov. Ressalvas' },
-  'Prestação de Contas Concluída': { color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200', bar: 'bg-emerald-600', label: 'PC Concluída' },
-  'Prestação de Contas Rejeitada': { color: 'text-red-600 dark:text-red-300', bg: 'bg-red-50 dark:bg-red-500/15 border-red-200', bar: 'bg-red-500', label: 'PC Rejeitada' },
-  'Prestação de Contas Iniciada Por Antecipação': { color: 'text-orange-400 dark:text-orange-200', bg: 'bg-orange-50 dark:bg-orange-500/10 border-orange-200', bar: 'bg-orange-300', label: 'PC Antecipada' },
-  'Em Aprovação': { color: 'text-purple-600 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-500/15 border-purple-200 dark:border-purple-500/30', bar: 'bg-purple-500', label: 'Aprovação' },
-  'Impedimento Técnico': { color: 'text-red-700 dark:text-red-300', bg: 'bg-red-50 dark:bg-red-500/15 border-red-200 dark:border-red-500/30', bar: 'bg-red-600', label: 'Impedimento Técnico' },
-  'Cancelado': { color: 'text-gray-600 dark:text-gray-300', bg: 'bg-gray-50 dark:bg-gray-500/15 border-gray-200 dark:border-gray-700', bar: 'bg-gray-500', label: 'Cancelado' },
-  'Churn': { color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-50 dark:bg-rose-500/15 border-rose-200 dark:border-rose-500/30', bar: 'bg-rose-500', label: 'Churn' },
-}
-
-const DEFAULT_STATUS_CONFIG = {
-  color: 'text-gray-600 dark:text-gray-300',
-  bg: 'bg-gray-50 dark:bg-gray-500/15 border-gray-200 dark:border-gray-700',
-  bar: 'bg-gray-400',
-}
-
-function getStatusConfig(status: string) {
-  return STATUS_CONFIG[status] ?? { ...DEFAULT_STATUS_CONFIG, label: status }
-}
-
 const STATUS_ORDER = CRM_STATUS_FUNNEL_ORDER
 // Execução/PC: etapas canônicas, as mesmas da lista /execucao (normalizeCrmStatus).
 const EXECUCAO_STATUS_ORDER = CRM_STATUS_CANONICAL
@@ -175,110 +142,41 @@ const PC_STATUS_ORDER = [
   'Prestação de Contas Rejeitada',
 ] as const
 
+type PipelineTab = 'aprovacao' | 'execucao' | 'prestacao_contas'
+
+const TAB_EASE = [0.16, 1, 0.3, 1] as const
+
 function timeAgo(date: string | null): string {
   if (!date) return 'nunca'
-  const now = new Date().getTime()
-  const then = new Date(date).getTime()
-  const diff = now - then
-  const minutes = Math.floor(diff / 60000)
+  const minutes = Math.floor((Date.now() - new Date(date).getTime()) / 60000)
   if (minutes < 1) return 'agora'
-  if (minutes < 60) return `ha ${minutes}m`
+  if (minutes < 60) return `há ${minutes} min`
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `ha ${hours}h`
-  const days = Math.floor(hours / 24)
-  return `ha ${days}d`
+  if (hours < 24) return `há ${hours} h`
+  return `há ${Math.floor(hours / 24)} d`
 }
 
-function PipelineSection({
-  title,
-  subtitle,
-  total,
-  statuses,
-  counts,
-  hrefForStatus,
-  isVendedor,
-  role,
-  totalLabel,
-}: {
-  title: string
-  subtitle: string
-  total: number
-  statuses: readonly string[]
-  counts: Record<string, number | undefined>
-  hrefForStatus: (status: string) => string
-  isVendedor?: boolean
-  role?: string
-  totalLabel: string
-}) {
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-1">
-        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">{title}</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>
-        <p className="text-xs text-gray-400 dark:text-gray-500">{total.toLocaleString('pt-BR')} {totalLabel}</p>
-      </div>
+const formatMoney = (n: number) => formatCompactCurrency(n)
 
-      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${statuses.length > 6 ? 'md:grid-cols-3 xl:grid-cols-9' : 'md:grid-cols-6'}`}>
-        {statuses.map((status, idx) => {
-          const count = counts[status] || 0
-          const pct = total > 0 ? (count / total) * 100 : 0
-          const cfg = getStatusConfig(status)
-          const prevCount = idx > 0 ? (counts[statuses[idx - 1]] || 0) : null
-          const conversionRate = prevCount && prevCount > 0 ? ((count / prevCount) * 100).toFixed(0) : null
+// Rótulo de etapa no funil: as chaves do funil já são o rótulo, menos as canônicas.
+const FUNNEL_LABEL: Record<string, string> = { 'Em Aprovação': 'Aprovação', 'Fechado': 'Vendas concluídas' }
+const stageLabel = (status: string) => FUNNEL_LABEL[status] ?? status
 
-          return (
-            <div
-              key={`${title}-${status}`}
-              role="button"
-              onClick={() => { window.location.href = hrefForStatus(status) }}
-              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-            >
-              <div className={`h-1.5 ${cfg.bar}`} />
-              <div className="p-4">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className={`text-3xl font-heading font-bold ${cfg.color}`}>{count}</span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">{pct.toFixed(0)}%</span>
-                </div>
-
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mt-1">{cfg.label}</p>
-
-                <div className="mt-2 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                  <div className={`h-full ${cfg.bar} rounded-full transition-all`} style={{ width: `${Math.min(Math.max(pct, 2), 100)}%` }} />
-                </div>
-
-                {conversionRate && Number(conversionRate) <= 100 && (
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5">
-                    {conversionRate}% de {getStatusConfig(statuses[idx - 1]).label}
-                  </p>
-                )}
-
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      <div className="hidden md:flex items-center justify-center gap-1 py-1">
-        {statuses.map((status, idx) => {
-          const cfg = getStatusConfig(status)
-          return (
-            <div key={`${title}-flow-${status}`} className="flex items-center gap-1 flex-1">
-              <div className={`h-2 ${cfg.bar} rounded-full flex-1 transition-all opacity-80`} style={{ minWidth: '8px' }} />
-              {idx < statuses.length - 1 && (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-gray-300 dark:text-gray-600 flex-shrink-0">
-                  <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
+function stagesFor(
+  statuses: readonly string[],
+  counts: Record<string, number | undefined>,
+  href: (status: string) => string
+): FunnelStage[] {
+  return statuses.map((status) => ({
+    status,
+    label: stageLabel(status),
+    count: counts[status] || 0,
+    href: href(status),
+  }))
 }
 
-// --- SyncBar: top status strip for gestor ---
-function SyncBar({ role }: { role: string | undefined }) {
+// --- SyncBar: status da sincronização com o governo (só gestor) ---
+function SyncBar({ role, onSynced }: { role: string | undefined; onSynced: () => void }) {
   const [syncLog, setSyncLog] = useState<SyncLog | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
@@ -326,85 +224,279 @@ function SyncBar({ role }: { role: string | undefined }) {
         execucao_errors: execucao?.ok ? (execucao.d.errors ?? 0) : undefined,
       })
       setJustFinished(true)
+      onSynced()
       setTimeout(() => setJustFinished(false), 8000)
     } catch {
-      setSyncError('Erro de conexao ao sincronizar')
+      setSyncError('Erro de conexão ao sincronizar')
     } finally {
       setSyncing(false)
     }
   }
 
-  return (
-    <div className={`flex items-center justify-between gap-4 px-4 py-2 rounded-xl border transition-all ${
-      syncing ? 'bg-blue-50/60 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700' :
-      syncError ? 'bg-red-50/60 border-red-200 dark:bg-red-900/20 dark:border-red-700' :
-      justFinished ? 'bg-green-50/60 border-green-200 dark:bg-green-900/20 dark:border-green-700' :
-      'bg-gray-50/60 border-gray-200 dark:bg-gray-800/40 dark:border-gray-700'
-    }`}>
-      {/* Left: status info */}
-      <div className="flex items-center gap-3 min-w-0">
-        {/* Dot indicator */}
-        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-          syncing ? 'bg-[#0072F7] animate-pulse' :
-          syncError ? 'bg-red-500' :
-          justFinished ? 'bg-green-500' :
-          'bg-gray-400'
-        }`} />
+  const dot = syncing ? 'bg-accent animate-pulse' : syncError ? 'bg-red-500' : justFinished ? 'bg-emerald-500' : 'bg-neutral-400'
 
+  return (
+    <div
+      className={`flex items-center justify-between gap-4 rounded-lg px-3 py-2 text-sm transition-colors duration-base ${
+        syncError ? 'bg-red-50 dark:bg-red-500/10' : justFinished ? 'bg-emerald-50 dark:bg-emerald-500/10' : 'bg-raised/70'
+      }`}
+    >
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${dot}`} />
         {syncing ? (
-          <span className="text-xs text-[#0072F7] font-medium">Sincronizando dados do governo...</span>
+          <span className="font-medium text-accent-ink">Sincronizando dados do TransfereGov…</span>
         ) : syncError ? (
-          <span className="text-xs text-red-600">{syncError}</span>
+          <span className="text-red-700 dark:text-red-300">{syncError}</span>
         ) : syncLog ? (
-          <div className="flex items-center gap-2 flex-wrap text-xs">
-            <span className="text-gray-500 dark:text-gray-400">
-              Sync {timeAgo(syncLog.ran_at)}
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-ink-2">
+            <span className="whitespace-nowrap">Sincronizado {timeAgo(syncLog.ran_at)}</span>
+            <span className="hidden text-ink-3 sm:inline">·</span>
+            <span className="tabular">
+              Leads: <span className="font-medium text-ink">{syncLog.inserted}</span> novos,{' '}
+              <span className="font-medium text-ink">{syncLog.updated}</span> atualizados
+              {syncLog.errors > 0 && <span className="text-red-600 dark:text-red-400">, {syncLog.errors} erros</span>}
             </span>
-            <span className="text-gray-300 dark:text-gray-600 hidden sm:inline">|</span>
-            <span className="text-gray-500 dark:text-gray-400 hidden sm:inline">Leads:</span>
-            <span className="text-green-600 font-medium">{syncLog.inserted} novos</span>
-            <span className="text-[#0072F7] font-medium">{syncLog.updated} atualizados</span>
-            {syncLog.errors > 0 && (
-              <span className="text-red-500 font-medium">{syncLog.errors} erros</span>
-            )}
             {syncLog.execucao_updated !== undefined && (
-              <>
-                <span className="text-gray-300 dark:text-gray-600 hidden sm:inline">|</span>
-                <span className="text-gray-500 dark:text-gray-400 hidden sm:inline">Exec:</span>
-                <span className="text-[#0072F7] font-medium">{syncLog.execucao_updated} atualizados</span>
+              <span className="tabular">
+                Execução: <span className="font-medium text-ink">{syncLog.execucao_updated}</span> atualizados
                 {(syncLog.execucao_errors ?? 0) > 0 && (
-                  <span className="text-red-500 font-medium">{syncLog.execucao_errors} erros</span>
+                  <span className="text-red-600 dark:text-red-400">, {syncLog.execucao_errors} erros</span>
                 )}
-              </>
+              </span>
             )}
-            <span className="text-gray-400 dark:text-gray-500">{(syncLog.duration_ms / 1000).toFixed(1)}s</span>
-          </div>
+            <span className="hidden text-xs text-ink-3 tabular sm:inline">{(syncLog.duration_ms / 1000).toFixed(1)} s</span>
+          </p>
         ) : (
-          <span className="text-xs text-gray-400 dark:text-gray-500">Nenhum sync registrado</span>
+          <span className="text-ink-3">Nenhuma sincronização registrada</span>
         )}
       </div>
-
-      {/* Right: action button */}
-      <button
+      <Button
+        size="sm"
+        variant="ghost"
         onClick={handleSync}
-        disabled={syncing}
-        className={`flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all disabled:cursor-not-allowed ${
-          syncing
-            ? 'bg-[#0072F7]/10 text-[#0072F7]'
-            : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-[#0072F7] hover:text-[#0072F7] shadow-sm'
-        }`}
+        loading={syncing}
+        icon={
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M21.015 4.356v4.992" /></svg>
+        }
       >
-        {syncing ? (
-          <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-          </svg>
-        ) : (
-          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M21.015 4.356v4.992" /></svg>
-        )}
-        {syncing ? 'Sincronizando...' : 'Sincronizar'}
-      </button>
+        <span className="sr-only sm:not-sr-only">{syncing ? 'Sincronizando' : 'Sincronizar agora'}</span>
+      </Button>
     </div>
+  )
+}
+
+function DashboardSkeleton() {
+  return (
+    <div role="status" aria-label="Carregando pipeline" className="space-y-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} className="rounded-xl border border-line bg-surface px-5 py-4">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="mt-3 h-7 w-20" />
+          </div>
+        ))}
+      </div>
+      <div className="rounded-xl border border-line bg-surface">
+        <div className="border-b border-line px-5 py-4"><Skeleton className="h-4 w-40" /></div>
+        <div className="flex divide-x divide-line">
+          {[0, 1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="flex-1 space-y-3 px-4 py-4">
+              <Skeleton className="h-3.5 w-20" />
+              <Skeleton className="h-6 w-12" />
+              <Skeleton className="h-1 w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SectionHeading({ children, hint }: { children: React.ReactNode; hint?: React.ReactNode }) {
+  return (
+    <div className="mb-3 flex items-baseline justify-between gap-4">
+      <h2 className="font-body text-base font-semibold tracking-normal text-ink">{children}</h2>
+      {hint && <div className="text-sm">{hint}</div>}
+    </div>
+  )
+}
+
+// Contato pendente: três sinais em uma faixa só, cada um leva à lista de leads.
+function ContactHealthStrip({ health }: { health: ContactHealth }) {
+  const items = [
+    { label: 'Sem contato há mais de 7 dias', value: health.stale_count, tone: 'text-red-700 dark:text-red-300', dot: 'bg-red-500' },
+    { label: 'Nunca contatados', value: health.never_contacted_count, tone: 'text-ink', dot: 'bg-neutral-400' },
+    { label: 'Telefone principal inválido', value: health.invalid_phone_count, tone: 'text-amber-700 dark:text-amber-300', dot: 'bg-amber-500' },
+  ].filter(i => i.value > 0)
+  if (items.length === 0) return null
+  return (
+    <section aria-label="Contato pendente" className="grid divide-y divide-line rounded-xl border border-line bg-surface sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      {items.map(item => (
+        <Link
+          key={item.label}
+          href="/leads"
+          className="flex items-center gap-3 px-5 py-3.5 transition-colors duration-fast hover:bg-raised"
+        >
+          <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${item.dot}`} />
+          <span className="min-w-0 flex-1 text-sm text-ink-2">{item.label}</span>
+          <span className={`font-heading text-xl font-semibold tabular ${item.tone}`}>{item.value.toLocaleString('pt-BR')}</span>
+        </Link>
+      ))}
+    </section>
+  )
+}
+
+const SELLER_SEGMENTS = [
+  { key: 'nao_contatado', status: 'Não Contatado' },
+  { key: 'retorno', status: 'Em Atendimento' },
+  { key: 'proposta', status: 'Proposta Enviada' },
+  { key: 'vendas_aprovacao', status: 'Vendas Aprovação' },
+  { key: 'vendas_execucao', status: 'Execução/Prestação' },
+  { key: 'sem_interesse', status: 'Sem Interesse' },
+] as const
+
+// Desempenho por vendedor em tabela: comparar linhas é a tarefa, não admirar cartões.
+function SellerTable({ vendedores, showCommission }: { vendedores: VendedorStats[]; showCommission: boolean }) {
+  return (
+    <section aria-label="Desempenho por vendedor">
+      <SectionHeading
+        hint={
+          <ul className="hidden flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-3 lg:flex">
+            {SELLER_SEGMENTS.map(s => (
+              <li key={s.key} className="flex items-center gap-1.5">
+                <span aria-hidden className={`h-2 w-2 rounded-sm ${statusStyle(s.status).bar}`} />
+                {stageLabel(s.status)}
+              </li>
+            ))}
+          </ul>
+        }
+      >
+        Desempenho por vendedor
+      </SectionHeading>
+      <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+        <table className="w-full min-w-[720px] text-sm">
+          <thead>
+            <tr className="border-b border-line text-left text-xs font-medium text-ink-3">
+              <th scope="col" className="px-5 py-2.5 font-medium">Vendedor</th>
+              <th scope="col" className="px-3 py-2.5 text-right font-medium">Leads</th>
+              <th scope="col" className="w-[32%] px-3 py-2.5 font-medium">Distribuição por etapa</th>
+              <th scope="col" className="px-3 py-2.5 font-medium">Hoje</th>
+              <th scope="col" className="px-3 py-2.5 text-right font-medium">Valor em emendas</th>
+              {showCommission && <th scope="col" className="px-3 py-2.5 text-right font-medium">Comissão</th>}
+              <th scope="col" className="px-5 py-2.5 text-right font-medium">Última atividade</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {vendedores.map(v => {
+              const total = Math.max(1, v.total_leads)
+              return (
+                <tr key={v.vendedor_id} className="transition-colors duration-fast hover:bg-raised/60">
+                  <th scope="row" className="px-5 py-3 text-left font-medium text-ink">{v.vendedor_nome}</th>
+                  <td className="px-3 py-3 text-right font-medium text-ink tabular">{v.total_leads.toLocaleString('pt-BR')}</td>
+                  <td className="px-3 py-3">
+                    <div
+                      className="flex h-2 overflow-hidden rounded-full bg-line/70"
+                      title={SELLER_SEGMENTS.map(s => `${stageLabel(s.status)}: ${v[s.key] ?? 0}`).join(' · ')}
+                    >
+                      {SELLER_SEGMENTS.map(s => {
+                        const n = v[s.key] ?? 0
+                        if (!n) return null
+                        return <span key={s.key} className={statusStyle(s.status).bar} style={{ width: `${(n / total) * 100}%` }} />
+                      })}
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-xs text-ink-2 tabular">
+                    {v.ligacoes_hoje || v.propostas_hoje || v.fechados_hoje ? (
+                      <span className="flex flex-wrap gap-x-2">
+                        {v.ligacoes_hoje > 0 && <span>{v.ligacoes_hoje} em atendimento</span>}
+                        {v.propostas_hoje > 0 && <span>{v.propostas_hoje} propostas</span>}
+                        {v.fechados_hoje > 0 && <span className="text-emerald-700 dark:text-emerald-300">{v.fechados_hoje} fechados</span>}
+                      </span>
+                    ) : (
+                      <span className="text-ink-3">Sem movimento</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-3 text-right text-ink tabular">{formatCompactCurrency(v.valor_total_emenda)}</td>
+                  {showCommission && (
+                    <td className="px-3 py-3 text-right font-medium text-ink tabular">{formatCurrency(v.comissao_total)}</td>
+                  )}
+                  <td className="px-5 py-3 text-right text-xs text-ink-3">{timeAgo(v.last_activity)}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
+function ExecucaoAlerts({ alerts }: { alerts: ExecucaoAlert[] }) {
+  return (
+    <section aria-label="CNPJs com alerta">
+      <SectionHeading
+        hint={
+          <Link href="/execucao?alert_only=true" className="font-medium text-accent-ink hover:underline">
+            Ver todos os alertas
+          </Link>
+        }
+      >
+        Convênios sem desembolso
+      </SectionHeading>
+      <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+        {alerts.map(a => (
+          <li key={a.cnpj}>
+            <Link href="/execucao?alert_only=true" className="flex items-center gap-4 px-5 py-3 transition-colors duration-fast hover:bg-raised">
+              <span className="inline-flex shrink-0 items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-200 tabular dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/25">
+                {a.alert_count}/{a.total_convenios}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-ink">{a.nome || formatCNPJ(a.cnpj)}</span>
+                <span className="block text-xs text-ink-3">{a.vendedor_nome || 'Sem dono'}</span>
+              </span>
+              {a.vigencia_proxima && (
+                <span className="hidden text-xs text-ink-3 sm:block">Vigência até {formatDate(a.vigencia_proxima)}</span>
+              )}
+              <span className="text-sm font-medium text-ink tabular">{formatCompactCurrency(a.valor_global)}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function ExecSellerTable({ rows }: { rows: ExecucaoVendedorStats[] }) {
+  const cols = [
+    { key: 'nao_contatado', label: 'Não contatado' },
+    { key: 'retorno', label: 'Em atendimento' },
+    { key: 'proposta', label: 'Proposta enviada' },
+    { key: 'fechado', label: 'Fechados' },
+  ] as const
+  return (
+    <section aria-label="Execução por vendedor">
+      <SectionHeading>Execução por vendedor</SectionHeading>
+      <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+        <table className="w-full min-w-[560px] text-sm">
+          <thead>
+            <tr className="border-b border-line text-left text-xs text-ink-3">
+              <th scope="col" className="px-5 py-2.5 font-medium">Vendedor</th>
+              <th scope="col" className="px-3 py-2.5 text-right font-medium">CNPJs</th>
+              {cols.map(c => <th key={c.key} scope="col" className="px-3 py-2.5 text-right font-medium">{c.label}</th>)}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {rows.map(v => (
+              <tr key={v.vendedor_id} className="transition-colors duration-fast hover:bg-raised/60">
+                <th scope="row" className="px-5 py-3 text-left font-medium text-ink">{v.vendedor_nome}</th>
+                <td className="px-3 py-3 text-right font-medium text-ink tabular">{v.total_cnpjs}</td>
+                {cols.map(c => <td key={c.key} className="px-3 py-3 text-right text-ink-2 tabular">{v[c.key]}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   )
 }
 
@@ -412,503 +504,196 @@ export default function CRMDashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
-  const [pipelineTab, setPipelineTab] = useState<'aprovacao' | 'execucao' | 'prestacao_contas'>('aprovacao')
+  const [pipelineTab, setPipelineTab] = useState<PipelineTab>('aprovacao')
 
-  useEffect(() => {
-    fetch('/api/dashboard-crm')
+  const load = useCallback(() => {
+    return fetch('/api/dashboard-crm')
       .then(r => r.json())
       .then(d => {
         if (d.error) { setError(true); return }
+        setError(false)
         setData(d)
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) {
-    return (
-      <div className="space-y-6 w-full max-w-[1800px] mx-auto">
-        <div>
-          <div className="h-8 w-96 bg-gray-200 rounded animate-pulse" />
-          <div className="h-4 w-64 bg-gray-100 dark:bg-gray-800 rounded animate-pulse mt-2" />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => (
-            <div key={i} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 h-28 animate-pulse" />
-          ))}
-        </div>
-        <div className="h-16 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl animate-pulse" />
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[1,2,3].map(i => (
-            <div key={i} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 h-48 animate-pulse" />
-          ))}
-        </div>
-      </div>
-    )
-  }
+  useEffect(() => { void load() }, [load])
 
-  if (error || !data) {
-    return (
-      <div className="flex items-center justify-center py-20 text-gray-400 dark:text-gray-500">
-        Erro ao carregar dashboard CRM
-      </div>
-    )
-  }
-
-  const { global: g, execucao_pipeline, vendedores, role } = data
+  const role = data?.role
   const isVendedor = role === 'vendedor' || role === 'coordenador' || role === 'gestor'
 
   return (
-    <div className="space-y-6 w-full max-w-[1800px] mx-auto">
-      {/* 0. Sync bar — gestor only, above everything */}
-      <SyncBar role={role} />
+    <div className="mx-auto w-full max-w-[1600px] space-y-6">
+      <PageHeader
+        title={!data || isVendedor ? 'Meu pipeline' : 'Pipeline da equipe'}
+        description={
+          !data || isVendedor
+            ? 'Campanha Emendas 2026: seus leads, etapas e movimentações.'
+            : 'Campanha Emendas 2026: trabalho da equipe de vendas por etapa.'
+        }
+        actions={
+          <SectionTabs
+            ariaLabel="Área do pipeline"
+            value={pipelineTab}
+            onChange={value => setPipelineTab(value as PipelineTab)}
+            tabs={[
+              { id: 'aprovacao', label: 'Aprovação' },
+              { id: 'execucao', label: 'Execução' },
+              { id: 'prestacao_contas', label: 'Prestação de contas' },
+            ]}
+          />
+        }
+      />
 
-      {/* 1. Page header + primary view switcher */}
-      <div className="space-y-4">
-        <div>
-          <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {isVendedor ? 'Meu Pipeline — Campanha Emendas 2026' : 'Dashboard CRM — Campanha Emendas 2026'}
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {isVendedor ? 'Seus leads e desempenho pessoal' : 'Visao administrativa do trabalho da equipe de vendas'}
-          </p>
+      <SyncBar role={role} onSynced={() => void load()} />
+
+      {loading ? (
+        <DashboardSkeleton />
+      ) : error || !data ? (
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState
+            title="Não foi possível carregar o pipeline"
+            description="Verifique a conexão e tente de novo. Se continuar, avise o suporte."
+            action={<Button variant="primary" onClick={() => { setLoading(true); void load() }}>Tentar novamente</Button>}
+          />
         </div>
-        <SectionTabs
-          ariaLabel="Área do pipeline"
-          value={pipelineTab}
-          onChange={value => setPipelineTab(value as typeof pipelineTab)}
-          tabs={[
-            { id: 'aprovacao', label: 'Aprovação' },
-            { id: 'execucao', label: 'Execução' },
-            { id: 'prestacao_contas', label: 'Prestação de contas' },
-          ]}
+      ) : (
+        <AnimatePresence mode="wait" initial={false}>
+          <m.div
+            key={pipelineTab}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
+            transition={{ duration: 0.22, ease: TAB_EASE }}
+            className="space-y-6"
+          >
+            {pipelineTab === 'aprovacao' && (
+              <AprovacaoView data={data} isVendedor={isVendedor} />
+            )}
+            {pipelineTab === 'execucao' && (
+              <ExecucaoView data={data} isVendedor={isVendedor} />
+            )}
+            {pipelineTab === 'prestacao_contas' && (
+              <PrestacaoView data={data} />
+            )}
+          </m.div>
+        </AnimatePresence>
+      )}
+
+      {/* Atividade recente: movimentações reais (lead_events), atualiza a cada minuto */}
+      <RecentActivityFeed />
+    </div>
+  )
+}
+
+function AprovacaoView({ data, isVendedor }: { data: DashboardData; isVendedor: boolean }) {
+  const { global: g, vendedores, role } = data
+  // Comissionamento: visível apenas para o gestor comercial
+  const showCommission = role === 'gestor'
+  const comissaoTotal = vendedores.reduce((sum, v) => sum + (v.comissao_total || 0), 0)
+  const pctOf = (n: number) => (g.total_leads > 0 ? `${Math.round((n / g.total_leads) * 100)}% do total` : '0% do total')
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
+        <StatTile label="Leads" value={g.total_leads} href="/leads" hint="No funil de aprovação" />
+        {!isVendedor && <StatTile label="Atribuídos" value={g.total_assigned} href="/leads" hint={pctOf(g.total_assigned)} />}
+        {!isVendedor && (
+          <StatTile
+            label="Não atribuídos"
+            value={g.total_unassigned}
+            href="/distribuir"
+            tone={g.total_unassigned > 0 ? 'warn' : 'default'}
+            hint={pctOf(g.total_unassigned)}
+          />
+        )}
+        <StatTile label="Valor em emendas" value={g.total_valor_emenda} format={formatMoney} href="/leads" hint={formatCurrency(g.total_valor_emenda)} />
+        {showCommission && vendedores.length > 0 && (
+          <StatTile label="Comissão de vendas" value={comissaoTotal} format={formatMoney} href="/comissoes" hint={formatCurrency(comissaoTotal)} />
+        )}
+      </div>
+
+      <FunnelStrip
+        title="Funil de aprovação"
+        total={g.total_leads}
+        totalLabel="leads"
+        stages={stagesFor(STATUS_ORDER, g.by_status, status => `/leads?status_contato=${encodeURIComponent(status)}`)}
+      />
+
+      {data.contact_health && <ContactHealthStrip health={data.contact_health} />}
+
+      {vendedores.length > 0 && !isVendedor && <SellerTable vendedores={vendedores} showCommission={showCommission} />}
+    </>
+  )
+}
+
+function ExecucaoView({ data, isVendedor }: { data: DashboardData; isVendedor: boolean }) {
+  const ex = data.execucao_pipeline
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
+        <StatTile label="CNPJs em execução" value={ex.total_cnpjs} href="/execucao?fase=execucao" />
+        <StatTile label="Valor dos convênios" value={ex.total_valor_global} format={formatMoney} href="/execucao?fase=execucao" hint={formatCurrency(ex.total_valor_global)} />
+        <StatTile label="Saldo em conta" value={ex.total_saldo} format={formatMoney} href="/execucao?fase=execucao" hint={formatCurrency(ex.total_saldo)} />
+        <StatTile
+          label="Alertas ativos"
+          value={ex.total_alertas}
+          href="/execucao?alert_only=true"
+          tone={ex.total_alertas > 0 ? 'warn' : 'default'}
+          hint={ex.total_cnpjs > 0 ? `${Math.round((ex.total_alertas / ex.total_cnpjs) * 100)}% dos CNPJs` : undefined}
         />
       </div>
 
-      {/* 2. KPI cards — change based on active tab */}
-      {pipelineTab === 'aprovacao' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          <div
-            role="button"
-            onClick={() => { window.location.href = '/leads' }}
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-          >
-            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Leads</p>
-            <p className="text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-2">
-              {g.total_leads.toLocaleString('pt-BR')}
-            </p>
-          </div>
-          {!isVendedor && (
-            <div
-              role="button"
-              onClick={() => { window.location.href = '/leads' }}
-              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-            >
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Atribuidos</p>
-              <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
-                {g.total_assigned.toLocaleString('pt-BR')}
-              </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                {g.total_leads > 0 ? `${((g.total_assigned / g.total_leads) * 100).toFixed(0)}% do total` : '0%'}
-              </p>
-            </div>
-          )}
-          {!isVendedor && (
-            <div
-              role="button"
-              onClick={() => { window.location.href = '/leads' }}
-              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-            >
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nao Atribuidos</p>
-              <p className="text-3xl font-heading font-bold text-amber-600 mt-2">
-                {g.total_unassigned.toLocaleString('pt-BR')}
-              </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                {g.total_leads > 0 ? `${((g.total_unassigned / g.total_leads) * 100).toFixed(0)}% do total` : '0%'}
-              </p>
-            </div>
-          )}
-          <div
-            role="button"
-            onClick={() => { window.location.href = '/leads' }}
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-          >
-            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor em Emendas</p>
-            <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
-              {formatCompactCurrency(g.total_valor_emenda)}
-            </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatCurrency(g.total_valor_emenda)}</p>
-          </div>
-          {/* Comissionamento: visível apenas para o gestor comercial */}
-          {role === 'gestor' && vendedores.length > 0 && (() => {
-            const comissaoTotal = vendedores.reduce((sum: number, v: { comissao_total?: number }) => sum + (v.comissao_total || 0), 0)
-            return (
-              <div
-                role="button"
-                onClick={() => { window.location.href = '/comissoes' }}
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-              >
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Comissão Vendas</p>
-                <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
-                  {formatCompactCurrency(comissaoTotal)}
-                </p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatCurrency(comissaoTotal)}</p>
-              </div>
-            )
-          })()}
-        </div>
-      )}
+      <FunnelStrip
+        title="Funil de execução"
+        description="CNPJs com convênios em execução no TransfereGov."
+        total={ex.total_cnpjs}
+        totalLabel="CNPJs"
+        stages={stagesFor(EXECUCAO_STATUS_ORDER, ex.by_status, status => `/execucao?fase=execucao&status=${encodeURIComponent(status)}`)}
+      />
 
-      {pipelineTab === 'execucao' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          <div
-            role="button"
-            onClick={() => { window.location.href = '/execucao' }}
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-          >
-            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">CNPJs em Execução</p>
-            <p className="text-3xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-2">
-              {execucao_pipeline.total_cnpjs.toLocaleString('pt-BR')}
-            </p>
-          </div>
-          <div
-            role="button"
-            onClick={() => { window.location.href = '/execucao' }}
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-          >
-            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor Convênios</p>
-            <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
-              {formatCompactCurrency(execucao_pipeline.total_valor_global)}
-            </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatCurrency(execucao_pipeline.total_valor_global)}</p>
-          </div>
-          <div
-            role="button"
-            onClick={() => { window.location.href = '/execucao' }}
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-          >
-            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Saldo em Conta</p>
-            <p className="text-3xl font-heading font-bold text-[#0072F7] mt-2">
-              {formatCompactCurrency(execucao_pipeline.total_saldo)}
-            </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatCurrency(execucao_pipeline.total_saldo)}</p>
-          </div>
-          <div
-            role="button"
-            onClick={() => { window.location.href = '/execucao?alert_only=true' }}
-            className="bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-500/30 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-          >
-            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Alertas Ativos</p>
-            <p className="text-3xl font-heading font-bold text-amber-600 mt-2">
-              {execucao_pipeline.total_alertas.toLocaleString('pt-BR')}
-            </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-              {execucao_pipeline.total_cnpjs > 0 ? `${((execucao_pipeline.total_alertas / execucao_pipeline.total_cnpjs) * 100).toFixed(0)}% dos CNPJs` : '0%'}
-            </p>
-          </div>
-        </div>
-      )}
+      {data.execucao_alerts && data.execucao_alerts.length > 0 && <ExecucaoAlerts alerts={data.execucao_alerts} />}
 
-      {/* 3. Status pipeline */}
-      {pipelineTab === 'aprovacao' && (
-        <PipelineSection
-          title="Pipeline Aprovação"
-          subtitle="Funil comercial atual baseado em vendedor_projetos para acompanhar a campanha de emendas."
-          total={g.total_leads}
-          totalLabel="leads no pipeline"
-          statuses={STATUS_ORDER}
-          counts={g.by_status}
-          hrefForStatus={status => `/leads?status_contato=${encodeURIComponent(status)}`}
-          isVendedor={isVendedor}
-          role={role}
+      {data.execucao_vendedores && data.execucao_vendedores.length > 0 && !isVendedor && (
+        <ExecSellerTable rows={data.execucao_vendedores} />
+      )}
+    </>
+  )
+}
+
+function PrestacaoView({ data }: { data: DashboardData }) {
+  const pc = data.prestacao_contas_pipeline
+  if (!pc) return null
+  const situacoes = PC_STATUS_ORDER
+    .filter(s => (pc.by_status[s] || 0) > 0)
+    .map(s => ({ label: s.replace('Prestação de Contas', 'PC'), count: pc.by_status[s] || 0 }))
+  const pcHref = '/execucao?fase=prestacao_contas'
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
+        <StatTile label="CNPJs em prestação de contas" value={pc.total_cnpjs} href={pcHref} />
+        <StatTile label="Valor global" value={pc.total_valor_global} format={formatMoney} href={pcHref} hint={formatCurrency(pc.total_valor_global)} />
+        <StatTile label="Em risco" value={pc.em_risco} href={pcHref} tone={pc.em_risco > 0 ? 'danger' : 'default'} hint="Rejeitada ou em complementação" />
+        <StatTile label="Concluídas" value={pc.concluidas} href={pcHref} tone="good" hint="Aprovada ou concluída" />
+      </div>
+
+      <FunnelStrip
+        title="Funil de prestação de contas"
+        description="Mesmo status comercial da Execução: os dois serviços são vendidos juntos."
+        total={pc.commercial_total}
+        totalLabel="CNPJs"
+        stages={stagesFor(EXECUCAO_STATUS_ORDER, pc.commercial_by_status, status => `${pcHref}&status=${encodeURIComponent(status)}`)}
+      />
+
+      {situacoes.length > 0 && (
+        <SituacaoBars
+          title="Situação no TransfereGov"
+          description="Etapa da prestação de contas de cada convênio."
+          items={situacoes}
+          href={pcHref}
         />
       )}
-
-      {pipelineTab === 'execucao' && (
-        <PipelineSection
-          title="Pipeline Execução"
-          subtitle="CNPJs com convênios em execução no TransfereGov, mantendo a etapa comercial separada do funil de aprovação."
-          total={execucao_pipeline.total_cnpjs}
-          totalLabel="CNPJs em execução"
-          statuses={EXECUCAO_STATUS_ORDER}
-          counts={execucao_pipeline.by_status}
-          hrefForStatus={status => `/execucao?fase=execucao&status=${encodeURIComponent(status)}`}
-        />
-      )}
-
-      {/* === EXECUTION-ONLY SECTIONS === */}
-
-      {/* Exec: Alert CNPJs — top value at risk */}
-      {pipelineTab === 'execucao' && data.execucao_alerts && data.execucao_alerts.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100">CNPJs com Alerta</h2>
-            <p className="text-xs text-gray-400 dark:text-gray-500">Maiores valores com convênio sem desembolso</p>
-          </div>
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {data.execucao_alerts.map((a, i) => (
-              <a
-                key={a.cnpj}
-                href={`/execucao`}
-                className={`px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${i % 2 === 0 ? 'bg-gray-50/50 dark:bg-gray-800/30' : ''}`}
-              >
-                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                  {a.alert_count}/{a.total_convenios}
-                </span>
-                <span className="text-sm text-gray-900 dark:text-gray-100 font-medium truncate flex-1">{a.nome || formatCNPJ(a.cnpj)}</span>
-                <span className="text-xs text-gray-400 dark:text-gray-500 hidden sm:block">{a.vendedor_nome || 'Sem dono'}</span>
-                <span className="text-sm font-semibold text-[#0072F7]">{formatCompactCurrency(a.valor_global)}</span>
-                {a.vigencia_proxima && (
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500">{formatDate(a.vigencia_proxima)}</span>
-                )}
-              </a>
-            ))}
-          </div>
-          <div className="p-3 border-t border-gray-200 dark:border-gray-700 text-center">
-            <a href="/execucao?alert_only=true" className="text-sm text-[#0072F7] hover:text-blue-800 transition-colors">
-              Ver todos os alertas →
-            </a>
-          </div>
-        </div>
-      )}
-
-      {/* Exec: Per-vendedor cards */}
-      {pipelineTab === 'execucao' && data.execucao_vendedores && data.execucao_vendedores.length > 0 && !isVendedor && (
-        <div>
-          <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100 mb-3">
-            Execução por Vendedor
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {data.execucao_vendedores.map(v => (
-              <div
-                key={v.vendedor_id}
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 hover:scale-[1.02] transition-transform"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{v.vendedor_nome}</h3>
-                  <span className="text-2xl font-heading font-bold text-[#0072F7]">{v.total_cnpjs}</span>
-                </div>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {[
-                    { status: 'Não Contatado', count: v.nao_contatado },
-                    { status: 'Em Atendimento', count: v.retorno },
-                    { status: 'Proposta Enviada', count: v.proposta },
-                    { status: 'Fechado', count: v.fechado },
-                  ].map(({ status, count }) => {
-                    const cfg = getStatusConfig(status)
-                    return (
-                      <span key={status} className={`px-2 py-0.5 rounded border text-xs font-medium ${cfg.bg} ${cfg.color}`}>
-                        {cfg.label}: {count}
-                      </span>
-                    )
-                  })}
-                </div>
-                <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">CNPJs em Execução</span>
-                    <span className="text-sm font-semibold text-[#0072F7]">{v.total_cnpjs}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* === PRESTAÇÃO DE CONTAS SECTIONS === */}
-
-      {pipelineTab === 'prestacao_contas' && data.prestacao_contas_pipeline && (() => {
-        const pc = data.prestacao_contas_pipeline!
-        const pcStatuses = PC_STATUS_ORDER.filter(s => (pc.by_status[s] || 0) > 0)
-        return (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div
-                role="button"
-                onClick={() => { window.location.href = '/execucao?fase=prestacao_contas' }}
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-              >
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">CNPJs em PC</p>
-                <p className="text-3xl font-heading font-bold text-orange-600 dark:text-orange-300 mt-1">{pc.total_cnpjs.toLocaleString('pt-BR')}</p>
-              </div>
-              <div
-                role="button"
-                onClick={() => { window.location.href = '/execucao?fase=prestacao_contas' }}
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-              >
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor Global</p>
-                <p className="text-3xl font-heading font-bold text-gray-800 dark:text-gray-100 mt-1">{formatCompactCurrency(pc.total_valor_global)}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatCurrency(pc.total_valor_global)}</p>
-              </div>
-              <div
-                role="button"
-                onClick={() => { window.location.href = '/execucao?fase=prestacao_contas' }}
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-              >
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Em Risco</p>
-                <p className="text-3xl font-heading font-bold text-red-600 dark:text-red-400 mt-1">{pc.em_risco.toLocaleString('pt-BR')}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Rejeitada ou Complementação</p>
-              </div>
-              <div
-                role="button"
-                onClick={() => { window.location.href = '/execucao?fase=prestacao_contas' }}
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 cursor-pointer hover:shadow-md transition-shadow"
-              >
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Concluídas</p>
-                <p className="text-3xl font-heading font-bold text-emerald-600 dark:text-emerald-400 mt-1">{pc.concluidas.toLocaleString('pt-BR')}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Aprovada ou Concluída</p>
-              </div>
-            </div>
-
-            <PipelineSection
-              title="Pipeline Prestação de Contas"
-              subtitle="Funil comercial dos CNPJs com convênios em prestação de contas. O status é o mesmo da Execução: os dois serviços são vendidos juntos."
-              total={pc.commercial_total}
-              totalLabel="CNPJs em prestação de contas"
-              statuses={EXECUCAO_STATUS_ORDER}
-              counts={pc.commercial_by_status}
-              hrefForStatus={status => `/execucao?fase=prestacao_contas&status=${encodeURIComponent(status)}`}
-            />
-
-            {pcStatuses.length > 0 && (
-              <PipelineSection
-                title="Situação no TransfereGov"
-                subtitle="Etapa da prestação de contas de cada convênio"
-                total={pc.total_cnpjs}
-                statuses={pcStatuses}
-                counts={pc.by_status}
-                hrefForStatus={() => '/execucao?fase=prestacao_contas'}
-                totalLabel="CNPJs"
-              />
-            )}
-          </>
-        )
-      })()}
-
-      {/* === APPROVAL-ONLY SECTIONS === */}
-
-      {/* 3b. Contact health alerts — aprovacao only */}
-      {pipelineTab === 'aprovacao' && data.contact_health && (data.contact_health.stale_count > 0 || data.contact_health.invalid_phone_count > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white dark:bg-gray-800 border border-red-200 dark:border-red-500/30 shadow-sm rounded-xl p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center flex-shrink-0">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-500">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-            </div>
-            <div>
-              <p className="text-2xl font-heading font-bold text-red-600">{data.contact_health.stale_count}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Leads sem contato ha +7 dias</p>
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400 dark:text-gray-500">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-                <line x1="1" y1="1" x2="23" y2="23" strokeWidth="2"/>
-              </svg>
-            </div>
-            <div>
-              <p className="text-2xl font-heading font-bold text-gray-600 dark:text-gray-300">{data.contact_health.never_contacted_count}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Nunca contatados</p>
-            </div>
-          </div>
-          {data.contact_health.invalid_phone_count > 0 && (
-            <div className="bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-500/30 shadow-sm rounded-xl p-4 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-500">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
-              </div>
-              <div>
-                <p className="text-2xl font-heading font-bold text-amber-600">{data.contact_health.invalid_phone_count}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Telefone invalido (principal)</p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 4. Per-vendedor cards — aprovacao only */}
-      {pipelineTab === 'aprovacao' && vendedores.length > 0 && !isVendedor && (
-        <div>
-          <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100 mb-3">
-            Desempenho por Vendedor
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {vendedores.map(v => (
-              <div
-                key={v.vendedor_id}
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 hover:scale-[1.02] transition-transform"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{v.vendedor_nome}</h3>
-                  <span className="text-2xl font-heading font-bold text-[#0072F7]">{v.total_leads}</span>
-                </div>
-
-                {/* Status badges */}
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {[
-                    { key: 'nao_contatado' as const, status: 'Não Contatado', count: v.nao_contatado },
-                    { key: 'sem_interesse' as const, status: 'Sem Interesse', count: v.sem_interesse },
-                    { key: 'retorno' as const, status: 'Em Atendimento', count: v.retorno },
-                    { key: 'proposta' as const, status: 'Proposta Enviada', count: v.proposta },
-                    { key: 'vendas_aprovacao' as const, status: 'Vendas Aprovação', count: v.vendas_aprovacao },
-                    { key: 'vendas_execucao' as const, status: 'Execução/Prestação', count: v.vendas_execucao },
-                  ].map(({ status, count }) => {
-                    const cfg = getStatusConfig(status)
-                    return (
-                      <span key={status} className={`px-2 py-0.5 rounded border text-xs font-medium ${cfg.bg} ${cfg.color}`}>
-                        {cfg.label}: {count}
-                      </span>
-                    )
-                  })}
-                </div>
-
-                {/* Today's activity */}
-                {(v.ligacoes_hoje > 0 || v.propostas_hoje > 0 || v.fechados_hoje > 0) && (
-                  <div className="flex gap-3 mb-3 text-xs">
-                    <span className="text-gray-400 dark:text-gray-500">Hoje:</span>
-                    {v.ligacoes_hoje > 0 && (
-                      <span className="text-amber-600">{v.ligacoes_hoje} ligacoes</span>
-                    )}
-                    {v.propostas_hoje > 0 && (
-                      <span className="text-[#0072F7]">{v.propostas_hoje} propostas</span>
-                    )}
-                    {v.fechados_hoje > 0 && (
-                      <span className="text-green-600">{v.fechados_hoje} fechados</span>
-                    )}
-                  </div>
-                )}
-
-                {/* Valor, commission (gestor only), and last activity */}
-                <div className="space-y-2 pt-3 border-t border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor Emendas</span>
-                    <span className="text-sm font-semibold text-[#0072F7]">
-                      {formatCompactCurrency(v.valor_total_emenda)}
-                    </span>
-                  </div>
-                  {role === 'gestor' && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Comissão Total</span>
-                      <span className="text-lg font-heading font-bold text-[#0072F7]">
-                        {formatCurrency(v.comissao_total)}
-                      </span>
-                    </div>
-                  )}
-                  <div className="text-xs text-gray-400 dark:text-gray-500 text-right">
-                    Ultima atividade {timeAgo(v.last_activity)}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 5. Recent activity feed — movimentações reais (lead_events), atualiza a cada minuto */}
-      <RecentActivityFeed />
-    </div>
+    </>
   )
 }

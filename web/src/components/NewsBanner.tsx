@@ -1,83 +1,127 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { AnimatePresence, m } from 'motion/react'
 
-const NEWS_VERSION = 'v1.4'
-const NEWS_ITEMS = [
-  'Prestação de Contas: novo funil comercial e lista de leads (menu "Leads de prestação de contas"), com o mesmo status da Execução',
-  'Execução: lista e funil mostram só convênios em execução; correção das contagens por status no Pipeline',
-  'Pipeline: Atividade Recente mostra as movimentações reais e atualiza a cada minuto',
-  'Lead: histórico de movimentação com data e horário (status e atribuição)',
-  'Distribuição: vendas fechadas sem dono podem ser redistribuídas — a comissão vai junto e fica registrada no histórico',
-  'Pipeline: tela inicial mais enxuta (comissão visível só para o gestor)',
-  'UI: identidade Projete de volta (logo e nome no menu, login e aba do navegador)',
-  'Financeiro: nova área BI Financeiro com dados do Conta Azul (caixa, resultado, pagar e receber, clientes e CRM)',
-  'Financeiro: sincronização diária às 05:00 e botão Sincronizar agora',
-  'CRM: novos status no funil — Contatado e Reunião Agendada',
-  'CRM: status pós-venda Impedimento Técnico e Cancelado',
-  'CRM: tag de tipo de serviço (Aprovação / Execução / Prestação de Contas) ao fechar venda',
-  'Operacional: valor da venda fechada e tipo de serviço agora visíveis em Execução',
-  'Comercial: aviso por e-mail quando a etapa no TransfereGov muda para leads seus',
-  'Lead: botão "Agendar" abre o Google Calendar/Meet direto do contato',
-  'CSM: nova área de extração — baixe a base de clientes por cidade (Brasília, Goiânia) em CSV',
-  'UI: tema escuro completo em todas as paginas',
-  'UI: tema escuro disponivel em toda a plataforma (botao no menu lateral)',
-  'UI: menu lateral pode ser recolhido para liberar espaco — preferencia salva entre sessoes',
-  'UI: navegacao mobile com gaveta inferior (toque no botao azul no canto inferior esquerdo)',
+// Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
+const NEWS_RELEASES: { version: string; items: string[] }[] = [
+  {
+    version: 'v1.5',
+    items: [
+      'Visual renovado: cores, tipografia e espaçamento unificados em todo o app',
+      'Pipeline: funil em uma linha só, com as etapas em sequência e os desfechos separados',
+      'Animações suaves para abas, painéis, números e novas movimentações',
+      'Novidades e notificações agora ficam na barra do topo',
+    ],
+  },
+  {
+    version: 'v1.4',
+    items: [
+      'Prestação de Contas: novo funil comercial e lista de leads (menu "Leads de prestação de contas"), com o mesmo status da Execução',
+      'Execução: lista e funil mostram só convênios em execução; correção das contagens por status no Pipeline',
+    ],
+  },
+  {
+    version: 'v1.3',
+    items: [
+      'Pipeline: Atividade Recente mostra as movimentações reais e atualiza a cada minuto',
+      'Lead: histórico de movimentação com data e horário (status e atribuição)',
+      'Distribuição: vendas fechadas sem dono podem ser redistribuídas; a comissão vai junto e fica registrada no histórico',
+      'Pipeline: tela inicial mais enxuta (comissão visível só para o gestor)',
+    ],
+  },
 ]
-const STORAGE_KEY = `projete-news-dismissed-${NEWS_VERSION}`
+
+const CURRENT = NEWS_RELEASES[0]
+const STORAGE_KEY = `projete-news-dismissed-${CURRENT.version}`
+
+function readDismissed(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
 
 export default function NewsBanner() {
   const [dismissed, setDismissed] = useState(true)
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored !== 'true') {
-      setDismissed(false)
-    }
+    setDismissed(readDismissed())
   }, [])
 
-  if (dismissed) return null
-
   function handleDismiss() {
-    localStorage.setItem(STORAGE_KEY, 'true')
+    try {
+      localStorage.setItem(STORAGE_KEY, 'true')
+    } catch {}
     setDismissed(true)
   }
 
   return (
-    <div className="bg-slate-50 dark:bg-zinc-900/70 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 mb-6 relative">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-lg" role="img" aria-label="novidades">
-            &#9733;
-          </span>
-          <h3 className="font-semibold text-gray-800 dark:text-gray-200">
-            Novidades &mdash; {NEWS_VERSION}
-          </h3>
-        </div>
-        <button
-          onClick={handleDismiss}
-          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 transition-colors"
-          aria-label="Fechar"
+    <AnimatePresence initial={false}>
+      {!dismissed && (
+        <m.section
+          key="news"
+          aria-label={`Novidades ${CURRENT.version}`}
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+          className="overflow-hidden"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            className="w-5 h-5"
-          >
-            <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-          </svg>
-        </button>
-      </div>
-      <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-2 space-y-1">
-        {NEWS_ITEMS.map((item) => (
-          <li key={item}>{item}</li>
-        ))}
-      </ul>
-      <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
-        Projete {NEWS_VERSION} &mdash; BTerminal Systems
-      </p>
-    </div>
+          <div className="mb-5 rounded-xl border border-accent/20 bg-accent-soft/60 dark:bg-accent-soft/40">
+            <div className="flex items-center gap-3 px-4 py-2.5">
+              <span className="inline-flex h-6 items-center rounded-md bg-accent px-2 text-xs font-semibold text-white tabular">
+                {CURRENT.version}
+              </span>
+              <p className="min-w-0 flex-1 truncate text-sm text-ink">
+                <span className="font-medium">Novidades</span>
+                <span className="hidden text-ink-2 sm:inline">: {CURRENT.items[0]}</span>
+              </p>
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                aria-expanded={expanded}
+                className="shrink-0 rounded-md px-2 py-1 text-sm font-medium text-accent-ink transition-colors duration-fast hover:bg-accent/10"
+              >
+                {expanded ? 'Fechar' : `Ver ${CURRENT.items.length}`}<span className="hidden sm:inline">{expanded ? ' lista' : ' novidades'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDismiss}
+                aria-label="Dispensar novidades"
+                className="shrink-0 rounded-md p-1.5 text-ink-3 transition-colors duration-fast hover:bg-accent/10 hover:text-ink"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden>
+                  <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                </svg>
+              </button>
+            </div>
+            <AnimatePresence initial={false}>
+              {expanded && (
+                <m.div
+                  key="list"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+                  className="overflow-hidden"
+                >
+                  <ul className="space-y-1.5 border-t border-accent/15 px-4 py-3 text-sm text-ink-2">
+                    {CURRENT.items.map((item) => (
+                      <li key={item} className="flex gap-2">
+                        <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </m.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </m.section>
+      )}
+    </AnimatePresence>
   )
 }
