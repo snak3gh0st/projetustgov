@@ -6,6 +6,14 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.6',
+    items: [
+      'Menu organizado por área: cada equipe vê só o que é do seu trabalho',
+      'Diretoria com acesso a todas as áreas e ao BI de cada uma',
+      'Gestor comercial com a área Comercial completa e a gestão da própria equipe',
+    ],
+  },
+  {
     version: 'v1.5',
     items: [
       'Visual renovado: cores, tipografia e espaçamento unificados em todo o app',
