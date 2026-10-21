@@ -80,6 +80,11 @@ test('shared screen follows the chosen area', () => {
   assert.equal(resolveArea('diretoria', '/bi', none), 'gestao')
 })
 
+test('screen outside every menu keeps the chosen area', () => {
+  assert.equal(resolveArea('diretoria', '/lead/123', none, 'comercial'), 'comercial')
+  assert.equal(resolveArea('diretoria', '/lead/123', none), 'gestao')
+})
+
 test('unknown or foreign cookie is ignored', () => {
   assert.equal(resolveArea('vendedor', '/leads', none, 'financeiro'), 'comercial')
   assert.equal(resolveArea('vendedor', '/leads', none, 'lixo'), 'comercial')

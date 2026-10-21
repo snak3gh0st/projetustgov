@@ -6,11 +6,11 @@ import type { Role } from './roles'
 export type AreaId = 'comercial' | 'operacao' | 'financeiro' | 'gestao' | 'admin'
 
 export const AREAS: Record<AreaId, { id: AreaId; label: string; short: string; icon: string }> = {
-  comercial: { id: 'comercial', label: 'Comercial', short: 'Comercial', icon: 'pipeline' },
+  comercial: { id: 'comercial', label: 'Comercial', short: 'Comercial', icon: 'leads' },
   operacao: { id: 'operacao', label: 'Operação TransfereGov', short: 'Operação', icon: 'tgov' },
   financeiro: { id: 'financeiro', label: 'Financeiro', short: 'Financeiro', icon: 'financeiro' },
   gestao: { id: 'gestao', label: 'Gestão', short: 'Gestão', icon: 'bi' },
-  admin: { id: 'admin', label: 'Administração', short: 'Admin', icon: 'vendedores' },
+  admin: { id: 'admin', label: 'Administração', short: 'Admin', icon: 'monitoramento' },
 }
 
 export const AREA_COOKIE = 'projete-area'
@@ -132,6 +132,15 @@ export function activeNavHref(hrefs: string[], pathname: string, search: URLSear
 export function resolveArea(role: Role, pathname: string, search: URLSearchParams, preferred?: string | null): AreaId {
   const areas = getAreasForRole(role)
   const candidates = areas.filter((a) => getAreaNav(role, a).some((i) => isNavItemActive(i.href, pathname, search)))
-  if (preferred && candidates.includes(preferred as AreaId)) return preferred as AreaId
-  return candidates[0] ?? areas[0]
+  const chosen = preferred && areas.includes(preferred as AreaId) ? (preferred as AreaId) : null
+  if (candidates.length === 0) return chosen ?? areas[0]
+  if (chosen && candidates.includes(chosen)) return chosen
+  return candidates[0]
+}
+
+/** Largura do menu lateral, para o layout reservar o mesmo espaço. */
+export function sidebarWidthClass(role: Role, open: boolean): { aside: string; main: string } {
+  const rail = getAreasForRole(role).length > 1
+  if (open) return rail ? { aside: 'w-[18.5rem]', main: 'md:ml-[18.5rem]' } : { aside: 'w-64', main: 'md:ml-64' }
+  return rail ? { aside: 'w-[7.5rem]', main: 'md:ml-[7.5rem]' } : { aside: 'w-16', main: 'md:ml-16' }
 }
