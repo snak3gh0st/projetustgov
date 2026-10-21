@@ -1,6 +1,6 @@
 # PROJETE: uma área por equipe (nova organização de UI/UX)
 
-Data: 21/10/2026 · Autor: Paulo (com Claude) · Status: aguardando aprovação
+Data: 21/10/2026 · Autor: Paulo (com Claude) · Status: aguardando aprovação final
 
 ## Por que
 
@@ -24,8 +24,8 @@ A resposta é reorganizar o app em **áreas, uma por equipe**, com a mesma marca
 
 ## Antiobjetivos (seria fracasso mesmo funcionando)
 
-- Alguém perder acesso a uma tela que usa hoje.
-- Consultor ver comissão ou números da equipe.
+- Alguém perder acesso a uma tela que usa hoje, fora a exceção decidida para o gestor comercial (ver Regras).
+- Consultor ver comissão de outra pessoa ou números da equipe.
 - Seções vazias do tipo "em breve" ou listas falsas de conversas/reuniões antes de a integração existir.
 - Links e favoritos atuais quebrarem (ex.: `/leads`, `/execucao?fase=...`, `/lead/<cnpj>`, `/tgov/...`, `/financeiro`).
 - Esconder no menu ser tratado como segurança. A autorização continua nas páginas e APIs (`lib/dal.ts`), como hoje.
@@ -48,19 +48,23 @@ O Rooger é **gestor comercial**, não gestor da empresa. O papel `gestor` passa
 
 | Área | Quem tem como área principal | Telas |
 |---|---|---|
-| **Comercial** (Rooger) | vendedor, coordenador, gestor comercial (Rooger), csm, visualizador | Meu dia · Pipeline (do consultor) / Pipeline da equipe (gestor) · Conversas (quando houver canal) · Leads (abas Aprovação, Execução, Prestação) · Distribuir leads ¹ · Comissões ¹ · BI comercial ¹ · CSM · Produtos Digitais |
+| **Comercial** (Rooger) | vendedor, coordenador, gestor comercial (Rooger), csm, visualizador | Meu dia · Pipeline (do consultor) / Pipeline da equipe (gestor) · Conversas (quando houver canal) · Leads (abas Aprovação, Execução, Prestação) · Distribuir leads ¹ · Comissões ² · BI comercial ² · Equipe ³ · CSM · Produtos Digitais |
 | **Operação TransfereGov** | projetista, coord_aprovacao, assistente_aprovacao, coord_execucao, assistente_execucao, coord_prestacao, assistente_prestacao, adm_produto | Operação · Pipeline de instrumentos · Painel de instrumentos · Análises de instrumentos · Usuários TGov (coordenadores e adm_produto) |
 | **Financeiro** | gestor_financeiro | BI Financeiro · Conta Azul · Comissões a pagar |
 | **Gestão** (Philipe e Tito) | diretoria | Visão geral (nova) · BI comercial · BI CSM · BI Financeiro · Análises de instrumentos |
-| **Administração** | admin | Usuários · Saúde do sistema |
+| **Administração** | admin, diretoria | Usuários · Saúde do sistema (só admin) |
 
-¹ só gestor e coordenador, como hoje (Comissões só gestor).
+¹ gestor e coordenador, como hoje.
+² como hoje: vendedor e coordenador veem só os próprios dados (a própria comissão); gestor comercial e diretoria veem a equipe inteira.
+³ só gestor comercial: cadastro de usuários da área Comercial (vendedor, coordenador, csm, visualizador). Decisão do autor, para o Rooger continuar montando a equipe depois de sair de Usuários.
 
 Regras:
-- **Ninguém perde acesso.** O conjunto de telas que cada perfil acessa hoje (`getNavItemsForRole` em `web/src/lib/sidebar-nav-items.ts`) é preservado; as áreas só reagrupam. Quem hoje vê telas de mais de uma área ganha acesso às áreas correspondentes (ex.: gestor e admin veem todas; csm vê Comercial e Operação; adm_produto vê Operação e Produtos Digitais no Comercial).
+- **Ninguém perde acesso, com uma exceção.** O conjunto de telas que cada perfil acessa hoje (`getNavItemsForRole` em `web/src/lib/sidebar-nav-items.ts`) é preservado; as áreas só reagrupam. Quem hoje vê telas de mais de uma área ganha acesso às áreas correspondentes (ex.: admin e diretoria veem todas; csm vê Comercial e Operação; adm_produto vê Operação e Produtos Digitais no Comercial).
+- **Exceção, gestor comercial (decisão do Paulo):** o papel `gestor` (Rooger) fica **só na Área Comercial**. Perde Financeiro (BI Financeiro, Conta Azul), Operação TransfereGov (Operação e telas de instrumentos), Usuários e Saúde do sistema. A remoção vale também nas páginas e APIs dessas telas, não só no menu. Ganha "Equipe" (³) no Comercial.
+- **Comissão (decisão do Paulo):** vendedor e coordenador continuam vendo só a própria; gestor comercial e diretoria veem tudo; gestor financeiro continua vendo, como "Comissões a pagar" na área Financeiro.
 - **Área principal** define para onde a pessoa vai ao entrar e o que `/` mostra.
 - **Troca de área** por uma barra fina escura à esquerda (ícones das áreas). Só aparece para quem tem mais de uma área. No celular, a troca fica no topo do menu (drawer).
-- Philipe e Tito hoje têm papel `gestor`, igual ao Rooger. Para separar a área Gestão do Comercial, eles precisam de um papel próprio (nome sugerido: `diretoria`), com acesso a todas as áreas e Gestão como principal. Isso exige alterar a constraint `users_role_check`, o tipo `Role` em `lib/dal.ts` e as checagens de permissão que hoje aceitam `gestor` (diretoria deve passar onde gestor passa, salvo comissão; ver pergunta aberta). A atualização dos dois usuários em produção precisa de OK do Paulo.
+- Philipe e Tito hoje têm papel `gestor`, igual ao Rooger. Para separar a área Gestão do Comercial, eles precisam de um papel próprio (nome sugerido: `diretoria`), com acesso a todas as áreas e Gestão como principal. Isso exige alterar a constraint `users_role_check`, o tipo `Role` em `lib/dal.ts` e as checagens de permissão que hoje aceitam `gestor` (diretoria passa onde gestor passa hoje, inclusive comissão e criação de usuários com a lista atual de `ROLE_CAN_CREATE` do gestor). A atualização dos dois usuários em produção precisa de OK do Paulo.
 
 ### Comercial: tela inicial do consultor ("Meu dia")
 
@@ -124,8 +128,8 @@ Cada etapa é um PR, com tsc, lint, build e capturas em claro, escuro e 375 px. 
 ## Decisões do autor após revisão (conferir)
 
 - **Nome**: "hub" foi descartado; as divisões se chamam **áreas** (Área Comercial, Operação TransfereGov, Financeiro, Gestão, Administração).
-- **Diretoria e o papel gestor**: em produção, Philipe e Tito não são donos nem closers de nenhum lead e não distribuíram leads. Por isso `diretoria` pode passar onde `gestor` passa para acesso sem alterar somas de comissão, rankings ou listas de vendedores. Cada checagem de `'gestor'` ligada a comissão é revista uma a uma conforme a resposta sobre comissão da diretoria.
-- **Tela solta de outra área**: quando um perfil acessa só uma ou duas telas de outra área (ex.: vendedor e `/operacao`, gestor financeiro e `/bi`), a tela aparece no menu da área principal dele, não como uma área a mais. A barra de áreas só aparece para quem tem acesso real a mais de uma área (diretoria, admin, csm, adm_produto e, conforme resposta abaixo, o gestor comercial).
+- **Diretoria e o papel gestor**: em produção, Philipe e Tito não são donos nem closers de nenhum lead e não distribuíram leads. Por isso `diretoria` pode passar onde `gestor` passa para acesso sem alterar somas de comissão, rankings ou listas de vendedores. Cada checagem de `'gestor'` é revista uma a uma: as de acesso ao Comercial e à comissão passam a aceitar `diretoria`; as de Financeiro, Operação, Usuários e Saúde deixam de aceitar `gestor` e aceitam `diretoria`.
+- **Tela solta de outra área**: quando um perfil acessa só uma ou duas telas de outra área (ex.: vendedor e `/operacao`, gestor financeiro e `/bi`), a tela aparece no menu da área principal dele, não como uma área a mais. A barra de áreas só aparece para quem tem acesso real a mais de uma área (diretoria, admin, csm, adm_produto); o gestor comercial não tem barra de áreas.
 - **Card do lead com vários projetos no mesmo CNPJ**: o cabeçalho mostra só dados do CNPJ (nome, CNPJ, município/UF) e o(s) responsável(is). O status fica por projeto, na seção de emendas/projetos, cada um com o funil a que pertence e o controle de status que já existe hoje para ele (Aprovação por linha de `vendedor_projetos`; Execução/Prestação por CNPJ).
 
 ## Deixado ao construtor
@@ -136,7 +140,6 @@ Cada etapa é um PR, com tsc, lint, build e capturas em claro, escuro e 375 px. 
 - Ícones das áreas, microcopy e estados vazios, dentro das regras de cópia do produto.
 - Como unificar a página de Leads por dentro (wrapper com abas sobre os componentes atuais é o caminho mais curto).
 
-## Perguntas abertas (para o Paulo/Rooger)
+## Perguntas abertas
 
-- Philipe e Tito (diretoria) veem comissão? A nota diz "visível apenas para gestor comercial, não para toda a empresa".
-- O gestor financeiro (Thiago) continua vendo Comissões? Hoje vê; no desenho fica como "Comissões a pagar" na área Financeiro.
+Nenhuma. Respondidas pelo Paulo em 21/10/2026 e incorporadas acima (comissão do consultor, da diretoria e do financeiro; acesso do gestor comercial).
