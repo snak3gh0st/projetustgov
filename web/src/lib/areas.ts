@@ -28,8 +28,8 @@ const TGOV_TEAM: Role[] = [
   'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista',
   'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao', 'diretoria', 'admin',
 ]
-const SELLERS: Role[] = ['vendedor', 'coordenador', 'visualizador', 'gestor', 'diretoria', 'admin']
-const SELLERS_WITH_EXECUCAO: Role[] = ['vendedor', 'coordenador', 'gestor', 'diretoria', 'admin']
+export const SELLERS: Role[] = ['vendedor', 'coordenador', 'visualizador', 'gestor', 'diretoria', 'admin']
+export const SELLERS_WITH_EXECUCAO: Role[] = ['vendedor', 'coordenador', 'gestor', 'diretoria', 'admin']
 const CSM_VIEW: Role[] = ['csm', 'gestor', 'diretoria', 'admin']
 
 const AREA_NAV: Record<AreaId, Item[]> = {
