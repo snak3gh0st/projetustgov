@@ -175,3 +175,13 @@ test('landingPath agrees with the home of the main area where it redirects', () 
     assert.equal(landingPath(role), areaHome(role, primaryAreaForRole(role)), role)
   }
 })
+
+test('Conversas only shows with WhatsApp on, and never for visualizador or csm', () => {
+  for (const role of ['vendedor', 'coordenador', 'gestor', 'diretoria', 'admin'] as const) {
+    assert.ok(!getAreaNav(role, 'comercial').some((i) => i.href === '/conversas'), `${role} sem canal`)
+    assert.ok(getAreaNav(role, 'comercial', { whatsapp: true }).some((i) => i.href === '/conversas'), `${role} com canal`)
+  }
+  for (const role of ['visualizador', 'csm'] as const) {
+    assert.ok(!getAreaNav(role, 'comercial', { whatsapp: true }).some((i) => i.href === '/conversas'), role)
+  }
+})

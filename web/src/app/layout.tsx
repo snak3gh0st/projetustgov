@@ -1,3 +1,4 @@
+import { whatsappConfigured } from '@/lib/whatsapp/evolution'
 import type { Metadata } from 'next'
 import { Inter, Space_Grotesk } from 'next/font/google'
 import './globals.css'
@@ -39,13 +40,14 @@ export default async function RootLayout({
     ? { name: session.user.name, role: session.user.role as Role, email: session.user.email }
     : null
   const showBell = Boolean(user && BELL_ROLES.includes(user.role))
+  const whatsapp = whatsappConfigured()
 
   return (
     <html lang="pt-BR" suppressHydrationWarning className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <body className="bg-canvas text-ink font-body">
         <Providers>
-          {user && <Sidebar user={user} defaultOpen={sidebarOpen} showBell={showBell} preferredArea={preferredArea} />}
-          {user && <MobileDrawer user={user} preferredArea={preferredArea} />}
+          {user && <Sidebar user={user} defaultOpen={sidebarOpen} showBell={showBell} preferredArea={preferredArea} whatsapp={whatsapp} />}
+          {user && <MobileDrawer user={user} preferredArea={preferredArea} whatsapp={whatsapp} />}
           <main
             className={
               user

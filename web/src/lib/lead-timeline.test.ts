@@ -104,3 +104,23 @@ test('the sale modal opens only when a lead enters the closed stage, not when th
   assert.equal(abreModalDeVenda('Fechado', 'Vendas Aprovação'), false)
   assert.equal(abreModalDeVenda('Contatado', 'Reunião Agendada'), false)
 })
+
+const msg = (id: number, at: string, direcao: 'recebida' | 'enviada' = 'recebida') => ({
+  id, direcao, origem: direcao === 'recebida' ? 'contato' as const : 'projete' as const, texto: `m${id}`, tipo: 'texto', midia: null,
+  status: 'entregue' as const, enviada_em: at, autor_nome: null, telefone: '5561998765432',
+})
+
+test('WhatsApp messages join notes and moves in time order, with stable keys', () => {
+  const items = buildTimeline([note('n1', '2026-10-18T10:00:00Z')], [event('2026-10-20T10:00:00Z')], 'tudo', [msg(1, '2026-10-19T10:00:00Z'), msg(2, '2026-10-21T10:00:00Z', 'enviada')])
+  assert.deepEqual(items.map((i) => i.kind), ['nota', 'whatsapp', 'evento', 'whatsapp'])
+  assert.ok(items.some((i) => i.id === 'whatsapp-1'))
+})
+
+test('the WhatsApp filter keeps only messages; Notas and Movimentações leave them out', () => {
+  const notes = [note('n1', '2026-10-18T10:00:00Z')]
+  const events = [event('2026-10-20T10:00:00Z')]
+  const msgs = [msg(1, '2026-10-19T10:00:00Z')]
+  assert.deepEqual(buildTimeline(notes, events, 'whatsapp', msgs).map((i) => i.kind), ['whatsapp'])
+  assert.deepEqual(buildTimeline(notes, events, 'notas', msgs).map((i) => i.kind), ['nota'])
+  assert.deepEqual(buildTimeline(notes, events, 'movimentacoes', msgs).map((i) => i.kind), ['evento'])
+})

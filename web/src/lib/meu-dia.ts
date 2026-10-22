@@ -26,6 +26,17 @@ export interface MeuDia {
   novos: MeuDiaItem[]
   parados: MeuDiaItem[]
   reunioes: MeuDiaItem[]
+  /** Só quando o WhatsApp está ligado: conversas em que o consultor responde e o contato espera. */
+  aguardando?: MeuDiaAguardando[]
+}
+
+export interface MeuDiaAguardando {
+  conversaId: number
+  nome: string
+  telefone: string
+  cnpj: string | null
+  previa: string | null
+  desde: string
 }
 
 export const NOVO_JANELA_DIAS = 7

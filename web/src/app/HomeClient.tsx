@@ -9,6 +9,7 @@ import { statusStyle } from '@/lib/status-style'
 import { hasTeamCommercialView } from '@/lib/roles'
 import SectionTabs from '@/components/SectionTabs'
 import { RecentActivityFeed } from '@/components/LeadEvents'
+import ConversasSemResposta from '@/components/whatsapp/ConversasSemResposta'
 import PageHeader from '@/components/ui/PageHeader'
 import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
@@ -581,6 +582,9 @@ export default function CRMDashboard() {
           </m.div>
         </AnimatePresence>
       )}
+
+      {/* WhatsApp: só aparece para a gestão e com o canal ligado */}
+      <ConversasSemResposta />
 
       {/* Atividade recente: movimentações reais (lead_events), atualiza a cada minuto */}
       <RecentActivityFeed />

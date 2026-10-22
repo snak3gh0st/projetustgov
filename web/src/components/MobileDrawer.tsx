@@ -20,9 +20,11 @@ interface MobileDrawerProps {
     email?: string | null
   }
   preferredArea?: string | null
+  /** Canal de WhatsApp ligado (mostra Conversas). */
+  whatsapp?: boolean
 }
 
-export default function MobileDrawer({ user, preferredArea = null }: MobileDrawerProps) {
+export default function MobileDrawer({ user, preferredArea = null, whatsapp = false }: MobileDrawerProps) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -36,7 +38,7 @@ export default function MobileDrawer({ user, preferredArea = null }: MobileDrawe
     setArea(resolveArea(user.role, pathname, searchParams, readRememberedArea()))
   }, [pathname, searchParams, user.role])
 
-  const items = getAreaNav(user.role, area)
+  const items = getAreaNav(user.role, area, { whatsapp })
   const activeHref = activeNavHref(items.map((i) => i.href), pathname, searchParams)
   const groups = [
     { key: 'main', title: null as string | null, items: items.filter((i) => !i.section) },

@@ -23,6 +23,8 @@ interface SidebarProps {
   showBell?: boolean
   /** Área escolhida por último (cookie), lida no servidor. */
   preferredArea?: string | null
+  /** Canal de WhatsApp ligado (mostra Conversas). */
+  whatsapp?: boolean
 }
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -49,7 +51,7 @@ function initials(name: string): string {
   return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || '?'
 }
 
-export default function Sidebar({ user, defaultOpen = true, showBell = false, preferredArea = null }: SidebarProps) {
+export default function Sidebar({ user, defaultOpen = true, showBell = false, preferredArea = null, whatsapp = false }: SidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
@@ -76,7 +78,7 @@ export default function Sidebar({ user, defaultOpen = true, showBell = false, pr
     if (window.matchMedia('(min-width: 768px)').matches) rememberArea(area)
   }, [area, chosenArea])
 
-  const items = getAreaNav(user.role, area)
+  const items = getAreaNav(user.role, area, { whatsapp })
   const activeHref = activeNavHref(items.map((i) => i.href), pathname, searchParams)
   const groups = [
     { key: 'main', title: null as string | null, items: items.filter((i) => !i.section) },

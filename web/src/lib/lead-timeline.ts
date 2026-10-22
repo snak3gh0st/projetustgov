@@ -19,19 +19,37 @@ export interface TimelineEvent {
   created_at: string
 }
 
-export type TimelineFilter = 'tudo' | 'notas' | 'movimentacoes'
+export type TimelineFilter = 'tudo' | 'whatsapp' | 'notas' | 'movimentacoes'
+
+/** Mensagem de WhatsApp de uma conversa ligada ao lead (mesmo formato de MensagemView, com o telefone da conversa). */
+export interface TimelineMensagem {
+  id: number
+  direcao: 'recebida' | 'enviada'
+  origem: 'contato' | 'projete' | 'celular'
+  texto: string | null
+  tipo: string
+  midia: { mimetype?: string; fileName?: string } | null
+  status: 'enviando' | 'enviada' | 'entregue' | 'lida' | 'falhou'
+  enviada_em: string
+  autor_nome: string | null
+  telefone: string
+}
 
 export type TimelineItem =
   | { kind: 'nota'; id: string; at: string; note: TimelineNote }
   | { kind: 'evento'; id: string; at: string; event: TimelineEvent }
+  | { kind: 'whatsapp'; id: string; at: string; mensagem: TimelineMensagem }
 
 /** Ordem cronológica crescente: o mais recente fica embaixo, junto da caixa de nota. */
-export function buildTimeline(notes: TimelineNote[], events: TimelineEvent[], filter: TimelineFilter): TimelineItem[] {
+export function buildTimeline(notes: TimelineNote[], events: TimelineEvent[], filter: TimelineFilter, mensagens: TimelineMensagem[] = []): TimelineItem[] {
   const items: TimelineItem[] = []
-  if (filter !== 'movimentacoes') {
+  if (filter === 'tudo' || filter === 'whatsapp') {
+    for (const m of mensagens) items.push({ kind: 'whatsapp', id: `whatsapp-${m.id}`, at: m.enviada_em, mensagem: m })
+  }
+  if (filter === 'tudo' || filter === 'notas') {
     for (const note of notes) items.push({ kind: 'nota', id: `nota-${note.id}`, at: note.created_at, note })
   }
-  if (filter !== 'notas') {
+  if (filter === 'tudo' || filter === 'movimentacoes') {
     // Chave pelo conteúdo: um evento novo não muda a chave dos que já estão na tela.
     const seen = new Map<string, number>()
     for (const event of events) {

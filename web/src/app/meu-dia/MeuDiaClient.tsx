@@ -14,7 +14,7 @@ import SectionTabs from '@/components/SectionTabs'
 import { Tag, TAG_TONE } from '@/components/leads/list-ui'
 import { formatCNPJ } from '@/lib/format'
 import { LEAD_TAB_LABEL } from '@/lib/lead-tabs'
-import { calendarDaysBetween, type MeuDia, type MeuDiaFunil, type MeuDiaItem } from '@/lib/meu-dia'
+import { calendarDaysBetween, type MeuDia, type MeuDiaAguardando, type MeuDiaFunil, type MeuDiaItem } from '@/lib/meu-dia'
 
 const REFRESH_MS = 60_000
 
@@ -29,7 +29,9 @@ const FUNIL_TONE: Record<MeuDiaFunil, keyof typeof TAG_TONE> = {
 }
 
 // Ordem de prioridade do dia: quem acabou de chegar, quem está esfriando, quem já tem reunião.
-const COLUMNS: { key: keyof MeuDia; title: string; hint: string; empty: string }[] = [
+type ColumnKey = 'novos' | 'parados' | 'reunioes'
+
+const COLUMNS: { key: ColumnKey; title: string; hint: string; empty: string }[] = [
   {
     key: 'novos',
     title: 'Novos para você',
@@ -105,6 +107,52 @@ function ItemRow({ item, index }: { item: MeuDiaItem; index: number }) {
   )
 }
 
+function esperandoLabel(desde: string): string {
+  const mins = Math.max(0, Math.floor((Date.now() - new Date(desde).getTime()) / 60000))
+  if (mins < 60) return `há ${mins} min`
+  const horas = Math.floor(mins / 60)
+  if (horas < 24) return `há ${horas} h`
+  return `há ${Math.floor(horas / 24)} d`
+}
+
+// Conversas de WhatsApp em que o contato espera resposta do consultor (só com o canal ligado).
+function AguardandoColumn({ items }: { items: MeuDiaAguardando[] }) {
+  return (
+    <section aria-labelledby="meu-dia-aguardando" className="overflow-hidden rounded-xl border border-line bg-surface">
+      <header className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+        <div className="min-w-0">
+          <h2 id="meu-dia-aguardando" className="text-sm font-semibold text-ink">Esperando sua resposta</h2>
+          <p className="mt-0.5 text-xs text-ink-3">Mensagens de WhatsApp sem resposta</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-raised px-2 py-0.5 text-xs font-semibold tabular-nums text-ink-2">{items.length}</span>
+      </header>
+      {items.length === 0 ? (
+        <p className="px-4 py-6 text-center text-sm text-ink-3">Nenhuma mensagem esperando você.</p>
+      ) : (
+        <ul className="divide-y divide-line lg:max-h-[calc(100dvh-15rem)] lg:overflow-y-auto">
+          {items.map((a) => (
+            <li key={a.conversaId}>
+              <Link
+                href={`/conversas?c=${a.conversaId}`}
+                className="block px-4 py-2.5 transition-colors duration-fast hover:bg-raised focus:outline-none focus-visible:bg-raised focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/50"
+              >
+                <div className="flex items-baseline gap-3">
+                  <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{a.nome}</p>
+                  <span className="shrink-0 text-xs font-medium tabular-nums text-amber-700 dark:text-amber-300">{esperandoLabel(a.desde)}</span>
+                </div>
+                <div className="mt-1 flex min-w-0 items-center gap-1.5">
+                  <Tag tone="emerald">WhatsApp</Tag>
+                  {a.previa && <span className="min-w-0 truncate text-xs text-ink-2">{a.previa}</span>}
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 function ColumnSkeleton() {
   return (
     <div className="space-y-4 px-4 py-3" aria-hidden>
@@ -156,14 +204,15 @@ export default function MeuDiaClient() {
   }, [load])
 
   const all = useMemo(() => (data ? [...data.novos, ...data.parados, ...data.reunioes] : []), [data])
-  const total = all.length
+  const total = all.length + (data?.aguardando?.length ?? 0)
+  const comWhatsapp = data?.aguardando !== undefined
 
   const filterTabs = useMemo(() => [
     { id: 'todos', label: 'Todos', count: total },
     ...FUNIS.map((f) => ({ id: f, label: LEAD_TAB_LABEL[f], count: all.filter((i) => i.funil === f).length })),
   ], [all, total])
 
-  const visible = (key: keyof MeuDia) => {
+  const visible = (key: ColumnKey) => {
     const items = data?.[key] ?? []
     return filtro === 'todos' ? items : items.filter((i) => i.funil === filtro)
   }
@@ -199,7 +248,8 @@ export default function MeuDiaClient() {
           />
         </Panel>
       ) : (
-        <div className="grid items-start gap-4 lg:grid-cols-3">
+        <div className={`grid items-start gap-4 ${comWhatsapp ? 'lg:grid-cols-2 xl:grid-cols-4' : 'lg:grid-cols-3'}`}>
+          {comWhatsapp && <AguardandoColumn items={data!.aguardando!} />}
           {COLUMNS.map((column) => {
             const items = visible(column.key)
             const headingId = `meu-dia-${column.key}`
