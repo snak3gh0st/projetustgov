@@ -6,7 +6,8 @@ export type MensagemTipo = 'texto' | 'imagem' | 'audio' | 'video' | 'documento' 
 
 export type WebhookEvent =
   | {
-      kind: 'mensagem'; instancia: string; waId: string; telefone: string | null; jid: string; nome: string | null
+      // lid: identificador do contato no WhatsApp (…@lid), quando vier; o histórico só tem ele.
+      kind: 'mensagem'; instancia: string; waId: string; telefone: string | null; jid: string; lid: string | null; nome: string | null
       fromMe: boolean; texto: string | null; tipo: MensagemTipo; midia: { mimetype?: string; fileName?: string } | null; enviadaEm: string
     }
   | { kind: 'status'; instancia: string; waId: string; status: 'enviada' | 'entregue' | 'lida' | 'falhou' }
@@ -31,11 +32,14 @@ const ESTADO: Record<string, 'conectado' | 'conectando' | 'desconectado'> = {
   open: 'conectado', connecting: 'conectando', close: 'desconectado', refused: 'desconectado',
 }
 
-function parseMessage(instancia: string, d: unknown): WebhookEvent {
+/** Uma mensagem no formato do Evolution: o data de messages.upsert ou um registro de /chat/findMessages. */
+export function parseMensagem(instancia: string, d: unknown): WebhookEvent {
   if (!isObj(d) || !isObj(d.key) || !isObj(d.message)) return { kind: 'ignorado', motivo: 'mensagem sem chave' }
   const k = d.key
   let jid = str(k.remoteJid)
-  if (jid?.endsWith('@lid') && str(k.remoteJidAlt)) jid = str(k.remoteJidAlt)
+  const alt = str(k.remoteJidAlt)
+  const lid = jid?.endsWith('@lid') ? jid : alt?.endsWith('@lid') ? alt : null
+  if (jid?.endsWith('@lid') && alt) jid = alt
   const waId = str(k.id)
   if (!jid || !waId) return { kind: 'ignorado', motivo: 'mensagem sem contato' }
   if (jid.endsWith('@g.us') || jid.endsWith('@broadcast') || jid.endsWith('@newsletter')) {
@@ -68,6 +72,7 @@ function parseMessage(instancia: string, d: unknown): WebhookEvent {
     waId,
     telefone: phoneFromJid(jid),
     jid,
+    lid,
     // pushName de mensagem enviada é o nome do próprio número, não do contato.
     nome: fromMe ? null : str(d.pushName),
     fromMe,
@@ -87,7 +92,7 @@ export function parseWebhook(body: unknown): WebhookEvent[] {
   switch (event) {
     case 'MESSAGES_UPSERT': {
       const list = Array.isArray(data) ? data : isObj(data) && Array.isArray(data.messages) ? data.messages : [data]
-      return list.map((d) => parseMessage(instancia, d))
+      return list.map((d) => parseMensagem(instancia, d))
     }
     case 'MESSAGES_UPDATE': {
       const list = Array.isArray(data) ? data : [data]

@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { phoneFromJid } from './phone'
+
 // Cliente do Evolution API (serviço que mantém o número das consultorias ligado ao WhatsApp).
 
 export interface WhatsappConfig {
@@ -83,6 +85,31 @@ export async function ensureInstanceAndQr(webhookUrl: string): Promise<{ estado:
   if (estado === 'conectado') return { estado, qrBase64: null }
   const qr = await call<{ base64?: string }>('GET', `/instance/connect/${instancePath()}`)
   return { estado, qrBase64: qr.data?.base64 ?? null }
+}
+
+/**
+ * Lid e telefone do mesmo contato, pelas mensagens ao vivo guardadas no Evolution (key.remoteJid = lid,
+ * key.remoteJidAlt = telefone). O histórico não traz o par; sem mensagem ao vivo, devolve o que se sabe.
+ */
+export async function parDoContato(jid: string): Promise<{ lid: string | null; telefone: string | null }> {
+  const par = { lid: jid.endsWith('@lid') ? jid : null, telefone: phoneFromJid(jid) }
+  try {
+    const { status, data } = await call<{ messages?: { records?: { key?: { remoteJid?: string; remoteJidAlt?: string } }[] } }>(
+      'POST', `/chat/findMessages/${instancePath()}`, { where: { key: { remoteJid: jid, remoteJidAlt: jid } }, offset: 20, page: 1 }, 5_000
+    )
+    if (status >= 300) return par
+    for (const r of data?.messages?.records ?? []) {
+      for (const j of [r.key?.remoteJid, r.key?.remoteJidAlt]) {
+        if (!j) continue
+        if (!par.lid && j.endsWith('@lid')) par.lid = j
+        if (!par.telefone) par.telefone = phoneFromJid(j)
+      }
+      if (par.lid && par.telefone) break
+    }
+  } catch {
+    // Sem o Evolution, segue com o que já se sabe.
+  }
+  return par
 }
 
 export async function mediaBase64(waId: string): Promise<{ base64: string; mimetype: string }> {

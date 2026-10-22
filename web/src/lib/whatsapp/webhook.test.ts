@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { parseWebhook } from './webhook'
+import { parseMensagem, parseWebhook } from './webhook'
 
 const upsert = (data: Record<string, unknown>, event = 'messages.upsert') => ({ event, instance: 'consultorias', data, apikey: 'x' })
 const key = (over: Record<string, unknown> = {}) => ({ remoteJid: '5561998765432@s.whatsapp.net', fromMe: false, id: 'ABC1', ...over })
@@ -9,7 +9,7 @@ const key = (over: Record<string, unknown> = {}) => ({ remoteJid: '5561998765432
 test('a received text becomes a message from the contact', () => {
   const [ev] = parseWebhook(upsert({ key: key(), pushName: 'Maria', message: { conversation: 'Bom dia' }, messageType: 'conversation', messageTimestamp: 1761130800 }))
   assert.deepEqual(ev, {
-    kind: 'mensagem', instancia: 'consultorias', waId: 'ABC1', telefone: '5561998765432', jid: '5561998765432@s.whatsapp.net',
+    kind: 'mensagem', instancia: 'consultorias', waId: 'ABC1', telefone: '5561998765432', jid: '5561998765432@s.whatsapp.net', lid: null,
     nome: 'Maria', fromMe: false, texto: 'Bom dia', tipo: 'texto', midia: null, enviadaEm: new Date(1761130800 * 1000).toISOString(),
   })
 })
@@ -68,4 +68,37 @@ test('unknown events and broken bodies never throw', () => {
   assert.deepEqual(parseWebhook(null), [])
   assert.deepEqual(parseWebhook('x'), [])
   assert.equal(parseWebhook(upsert({}))[0].kind, 'ignorado')
+})
+
+test('a live message keeps both the lid and the phone', () => {
+  const [ev] = parseWebhook(upsert({ key: key({ remoteJid: '10415396397278@lid', remoteJidAlt: '556292253866@s.whatsapp.net' }), message: { conversation: 'oi' }, messageTimestamp: 1 }))
+  assert.equal(ev.kind === 'mensagem' && ev.lid, '10415396397278@lid')
+  assert.equal(ev.kind === 'mensagem' && ev.telefone, '5562992253866')
+  assert.equal(ev.kind === 'mensagem' && ev.jid, '556292253866@s.whatsapp.net')
+})
+
+test('the lid is kept when Evolution puts the phone first', () => {
+  const [ev] = parseWebhook(upsert({ key: key({ remoteJid: '556292253866@s.whatsapp.net', remoteJidAlt: '10415396397278@lid' }), message: { conversation: 'oi' }, messageTimestamp: 1 }))
+  assert.equal(ev.kind === 'mensagem' && ev.lid, '10415396397278@lid')
+  assert.equal(ev.kind === 'mensagem' && ev.telefone, '5562992253866')
+})
+
+test('a history message has only the lid', () => {
+  const [ev] = parseWebhook(upsert({ key: key({ remoteJid: '85822355300446@lid' }), message: { conversation: 'antiga' }, messageTimestamp: 1 }))
+  assert.equal(ev.kind, 'mensagem')
+  if (ev.kind !== 'mensagem') return
+  assert.equal(ev.lid, '85822355300446@lid')
+  assert.equal(ev.telefone, null)
+  assert.equal(ev.jid, '85822355300446@lid')
+})
+
+test('a phone-only message has no lid', () => {
+  const [ev] = parseWebhook(upsert({ key: key(), message: { conversation: 'oi' }, messageTimestamp: 1 }))
+  assert.equal(ev.kind === 'mensagem' && ev.lid, null)
+})
+
+test('parseMensagem reads a findMessages record like the webhook data', () => {
+  const ev = parseMensagem('consultorias', { key: { remoteJid: '85822355300446@lid', fromMe: true, id: 'H1' }, message: { conversation: 'histórico' }, messageTimestamp: 1761130800 })
+  assert.equal(ev.kind === 'mensagem' && ev.waId, 'H1')
+  assert.equal(ev.kind === 'mensagem' && ev.fromMe, true)
 })
