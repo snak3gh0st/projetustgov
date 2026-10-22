@@ -65,6 +65,7 @@ function NoteItem({
   const [texto, setTexto] = useState(note.observacao ?? '')
   const [busy, setBusy] = useState(false)
   const tipoInfo = TIPO_BY_VALUE.get(note.tipo) ?? TIPO_BY_VALUE.get('outro')!
+  const autor = note.vendedor_nome || 'Sem autor'
 
   async function save() {
     setBusy(true)
@@ -76,7 +77,7 @@ function NoteItem({
   return (
     <div className="rounded-lg border border-line bg-surface px-3.5 py-3">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="text-sm font-medium text-ink">{note.vendedor_nome || 'Sem autor'}</span>
+        <span className="text-sm font-medium text-ink">{autor}</span>
         <Tag tone={tipoInfo.tone}>{tipoInfo.label}</Tag>
         <time dateTime={note.created_at} title={absolute(note.created_at)} className="ml-auto whitespace-nowrap text-xs tabular-nums text-ink-3">
           {formatWhen(note.created_at)}
@@ -102,14 +103,21 @@ function NoteItem({
         <div className="mt-2 flex items-center justify-end gap-1 text-xs">
           {confirming ? (
             <>
-              <span className="mr-1 text-ink-2">Excluir esta nota?</span>
-              <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>Manter</Button>
+              <span className="mr-1 text-ink-2" id={`confirmar-${note.id}`}>Excluir esta nota?</span>
+              <Button size="sm" variant="ghost" autoFocus aria-describedby={`confirmar-${note.id}`} onClick={() => setConfirming(false)}>Manter</Button>
               <Button size="sm" variant="danger" onClick={() => { setConfirming(false); void onDelete(note.id) }}>Excluir nota</Button>
             </>
           ) : (
             <>
-              <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>Editar</Button>
-              <Button size="sm" variant="ghost" onClick={() => setConfirming(true)}>Excluir</Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={`Editar nota de ${autor}`}
+                onClick={() => { setTipo(note.tipo); setTexto(note.observacao ?? ''); setEditing(true) }}
+              >
+                Editar
+              </Button>
+              <Button size="sm" variant="ghost" aria-label={`Excluir nota de ${autor}`} onClick={() => setConfirming(true)}>Excluir</Button>
             </>
           )}
         </div>
@@ -132,10 +140,12 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey }: LeadTi
   const loadNotes = useCallback(async () => {
     try {
       const res = await fetch(notesUrl, { cache: 'no-store' })
-      const data = res.ok ? await res.json() : []
+      if (!res.ok) throw new Error(String(res.status))
+      const data = await res.json()
       setNotes(Array.isArray(data) ? data : [])
     } catch {
-      setNotes([])
+      // Primeira carga sem resposta: lista vazia. Depois disso, mantém o que já está na tela.
+      setNotes((prev) => prev ?? [])
     }
   }, [notesUrl])
 
@@ -154,11 +164,16 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey }: LeadTi
   const items = useMemo(() => (ready ? buildTimeline(notes, events, filter) : []), [ready, notes, events, filter])
   const counts = useMemo(() => ({ notas: notes?.length ?? 0, movimentacoes: events?.length ?? 0 }), [notes, events])
 
-  // O mais recente fica embaixo, junto da caixa de nota.
+  // O mais recente fica embaixo, junto da caixa de nota: rola até ele ao abrir, ao trocar o filtro
+  // e quando entra item novo (excluir não mexe na posição).
+  const lastCount = useRef<{ filter: TimelineFilter; count: number } | null>(null)
   useLayoutEffect(() => {
+    if (!ready) return
     const el = scrollRef.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [items.length, filter])
+    const prev = lastCount.current
+    if (el && (!prev || prev.filter !== filter || items.length > prev.count)) el.scrollTop = el.scrollHeight
+    lastCount.current = { filter, count: items.length }
+  }, [ready, items.length, filter])
 
   async function addNote() {
     const observacao = texto.trim()
@@ -213,6 +228,7 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey }: LeadTi
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
         <h2 id="linha-do-tempo" className="text-sm font-semibold text-ink">Linha do tempo</h2>
         <SectionTabs
+          controls="linha-do-tempo-itens"
           ariaLabel="Filtrar linha do tempo"
           value={filter}
           onChange={(v) => setFilter(v as TimelineFilter)}
@@ -224,7 +240,14 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey }: LeadTi
         />
       </header>
 
-      <div ref={scrollRef} className="min-h-[12rem] flex-1 overflow-y-auto px-4 py-4 lg:max-h-[calc(100dvh-20rem)]">
+      <div
+        ref={scrollRef}
+        id="linha-do-tempo-itens"
+        role="tabpanel"
+        aria-label="Itens da linha do tempo"
+        tabIndex={0}
+        className="max-h-[65dvh] min-h-[12rem] flex-1 overflow-y-auto px-4 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40 lg:max-h-[calc(100dvh-20rem)]"
+      >
         {!ready ? (
           <div className="space-y-3" aria-hidden>
             <Skeleton className="h-16 w-full" />

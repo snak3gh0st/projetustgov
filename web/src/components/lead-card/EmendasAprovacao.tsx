@@ -46,7 +46,7 @@ function Comissao({ p }: { p: VendedorProjeto }) {
           <dd className="font-medium tabular-nums text-ink">{formatCurrency(gestor)}{p.closer_nome ? <span className="font-normal text-ink-3"> · {p.closer_nome}</span> : null}</dd>
         </div>
       )}
-      {p.comissao_bonus != null && (
+      {Number(p.comissao_bonus) > 0 && (
         <div><dt className="text-ink-3">Fundo comercial</dt><dd className="font-medium tabular-nums text-ink">{formatCurrency(Number(p.comissao_bonus))}</dd></div>
       )}
     </dl>

@@ -27,6 +27,7 @@ import {
 } from '@/components/leads/list-ui'
 import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, isManagementCrmStatus, normalizeCrmStatus } from '@/lib/crm-catalog'
 import { canEditLeads, canReopenClosedSale, hasTeamCommercialView } from '@/lib/roles'
+import { abreModalDeVenda } from '@/lib/lead-timeline'
 
 const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
 
@@ -269,7 +270,7 @@ export default function LeadsClient() {
       if (!lead) return
 
       // If status is changing to the closed stage, open SaleModal instead of proceeding directly
-      if (field === 'status_contato' && isClosedCrmStatus(value)) {
+      if (field === 'status_contato' && abreModalDeVenda(lead.status_contato, value)) {
         setSaleModal({
           leadId: id,
           leadCnpj: lead.cnpj,

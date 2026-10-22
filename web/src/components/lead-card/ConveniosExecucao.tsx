@@ -20,10 +20,12 @@ interface ConveniosExecucaoProps {
   /** null: o CNPJ não tem linha no CRM, então não há onde gravar o status. */
   onStatus: ((value: string) => void) | null
   canChange: boolean
+  /** Opções do select; o consultor não recebe as etapas de venda concluída. */
+  options?: readonly string[]
 }
 
 // Convênios do CNPJ em Execução e Prestação de Contas: status comercial por CNPJ, como na lista.
-export default function ConveniosExecucao({ convenios, status, onStatus, canChange }: ConveniosExecucaoProps) {
+export default function ConveniosExecucao({ convenios, status, onStatus, canChange, options = CRM_STATUS_SELECT_OPTIONS }: ConveniosExecucaoProps) {
   return (
     <div>
       <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
@@ -33,7 +35,7 @@ export default function ConveniosExecucao({ convenios, status, onStatus, canChan
             ariaLabel="Status de Execução e Prestação"
             status={status}
             label={formatCrmStatusLabel(status)}
-            options={CRM_STATUS_SELECT_OPTIONS}
+            options={options}
             disabled={!canChange}
             onChange={onStatus}
           />

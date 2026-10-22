@@ -15,6 +15,8 @@ interface SectionTabsProps {
   onChange: (value: string) => void
   ariaLabel: string
   className?: string
+  /** id do painel que as abas controlam (aria-controls). */
+  controls?: string
 }
 
 // Abas segmentadas com indicador que desliza até a aba ativa.
@@ -24,6 +26,7 @@ export default function SectionTabs({
   onChange,
   ariaLabel,
   className = '',
+  controls,
 }: SectionTabsProps) {
   const indicatorId = useId()
 
@@ -52,6 +55,7 @@ export default function SectionTabs({
             type="button"
             role="tab"
             aria-selected={active}
+            aria-controls={controls}
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(tab.id)}
             className={`relative inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-lg px-2.5 text-sm font-medium sm:px-3.5 transition-colors duration-fast focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel } from './crm-catalog'
-import { buildTimeline, execucaoStatusDoCnpj, faseDaSituacao, responsaveis, type TimelineEvent, type TimelineNote } from './lead-timeline'
+import { abreModalDeVenda, buildTimeline, contatoExibido, execucaoStatusDoCnpj, faseDaSituacao, responsaveis, type TimelineEvent, type TimelineNote } from './lead-timeline'
 
 const note = (id: string, at: string): TimelineNote => ({
   id, lead_cnpj: '1', vendedor_id: 'u', vendedor_nome: 'Ana', tipo: 'ligacao', observacao: 'x', created_at: at, updated_at: at,
@@ -47,16 +47,17 @@ test('fase of a convênio comes from its TransfereGov situation', () => {
 })
 
 test('the Execução status of a CNPJ is the most advanced of its rows, like the list', () => {
-  assert.equal(execucaoStatusDoCnpj([null, 'Contatado', 'Proposta']), 'Proposta Enviada')
-  assert.equal(execucaoStatusDoCnpj(['Aguardando Closer', 'Contatado']), 'Em Aprovação')
-  assert.equal(execucaoStatusDoCnpj([null, null]), 'Não Contatado')
+  const rows = (...statuses: (string | null)[]) => statuses.map((s) => ({ status: s, updated_at: '2026-10-01T00:00:00Z' }))
+  assert.equal(execucaoStatusDoCnpj(rows(null, 'Contatado', 'Proposta')), 'Proposta Enviada')
+  assert.equal(execucaoStatusDoCnpj(rows('Aguardando Closer', 'Contatado')), 'Em Aprovação')
+  assert.equal(execucaoStatusDoCnpj(rows(null, null)), 'Não Contatado')
   assert.equal(execucaoStatusDoCnpj([]), 'Não Contatado')
-  assert.equal(execucaoStatusDoCnpj(['Retorno', 'Ainda Não']), 'Em Atendimento')
+  assert.equal(execucaoStatusDoCnpj(rows('Retorno', 'Ainda Não')), 'Em Atendimento')
 })
 
 test('legacy Execução values always land on a status the select can show', () => {
   for (const legacy of ['Quente', 'Muito Quente', 'Telefone Invalido', 'Retorno', 'Aguardando Closer', 'Contactado', 'Cancelado', 'Impedimento Tecnico', 'Fechado']) {
-    const label = formatCrmStatusLabel(execucaoStatusDoCnpj([legacy]))
+    const label = formatCrmStatusLabel(execucaoStatusDoCnpj([{ status: legacy, updated_at: null }]))
     assert.ok((CRM_STATUS_SELECT_OPTIONS as readonly string[]).includes(label), `${legacy} -> ${label}`)
   }
 })
@@ -64,4 +65,42 @@ test('legacy Execução values always land on a status the select can show', () 
 test('responsáveis are the distinct owners, without blanks', () => {
   assert.deepEqual(responsaveis([{ vendedor_nome: 'Ana' }, { vendedor_nome: null }, { vendedor_nome: 'Caio' }, { vendedor_nome: 'Ana' }]), ['Ana', 'Caio'])
   assert.deepEqual(responsaveis([{ vendedor_nome: null }]), [])
+})
+
+test('ties in the Execução ranking go to the most recently updated row, like the list', () => {
+  assert.equal(execucaoStatusDoCnpj([
+    { status: 'Churn', updated_at: '2026-10-01T00:00:00Z' },
+    { status: 'Vendas Aprovação', updated_at: '2026-10-05T00:00:00Z' },
+  ]), 'Fechado')
+  assert.equal(execucaoStatusDoCnpj([
+    { status: 'Vendas Aprovação', updated_at: '2026-10-01T00:00:00Z' },
+    { status: 'Churn', updated_at: '2026-10-05T00:00:00Z' },
+  ]), 'Churn')
+})
+
+test('existing events keep their keys when a newer move arrives', () => {
+  const older = event('2026-10-19T10:00:00Z')
+  const before = buildTimeline([], [older], 'tudo').map((i) => i.id)
+  const after = buildTimeline([], [event('2026-10-21T10:00:00Z', 'Proposta Enviada'), older], 'tudo').map((i) => i.id)
+  assert.ok(after.includes(before[0]))
+})
+
+test('the card shows the first contact (main first) and edits where the value came from', () => {
+  const contacts = [
+    { id: 2, principal: false, created_at: '2026-01-02T00:00:00Z', telefone: '222', email: null },
+    { id: 1, principal: true, created_at: '2026-01-03T00:00:00Z', telefone: '111', email: null },
+  ]
+  const shown = contatoExibido(contacts, { telefone: '999', email: 'lead@x.org' })
+  assert.deepEqual(shown.telefone, { valor: '111', contatoId: 1 })
+  assert.deepEqual(shown.email, { valor: 'lead@x.org', contatoId: null })
+  const semContatos = contatoExibido([], { telefone: '999', email: null })
+  assert.deepEqual(semContatos.telefone, { valor: '999', contatoId: null })
+  assert.deepEqual(semContatos.email, { valor: null, contatoId: null })
+})
+
+test('the sale modal opens only when a lead enters the closed stage, not when the stage advances', () => {
+  assert.equal(abreModalDeVenda('Em Aprovação', 'Vendas Aprovação'), true)
+  assert.equal(abreModalDeVenda('Fechado', 'Execução/Prestação'), false)
+  assert.equal(abreModalDeVenda('Fechado', 'Vendas Aprovação'), false)
+  assert.equal(abreModalDeVenda('Contatado', 'Reunião Agendada'), false)
 })

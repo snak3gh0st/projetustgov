@@ -16,9 +16,10 @@ import LeadTimeline from '@/components/lead-card/LeadTimeline'
 import EmendasAprovacao from '@/components/lead-card/EmendasAprovacao'
 import ConveniosExecucao, { type ConvenioRow } from '@/components/lead-card/ConveniosExecucao'
 import ContatoLead from '@/components/lead-card/ContatoLead'
-import { canEditLeads, canModifyData } from '@/lib/roles'
-import { isClosedCrmStatus, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
-import { execucaoStatusDoCnpj, responsaveis } from '@/lib/lead-timeline'
+import { canEditLeads, canModifyData, hasTeamCommercialView } from '@/lib/roles'
+import { CRM_STATUS_SELECT_OPTIONS, isClosedCrmStatus, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
+import { abreModalDeVenda, contatoExibido, execucaoStatusDoCnpj, responsaveis } from '@/lib/lead-timeline'
+import type { LeadContact } from '@/lib/types'
 
 type SaleModalState = { projetoId: number; tipoVendedor: string | null; isExclusivo: boolean; contratoAssinado: boolean }
 
@@ -62,6 +63,11 @@ export default function LeadDetailPage() {
   const [loading, setLoading] = useState(true)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [saleModal, setSaleModal] = useState<SaleModalState | null>(null)
+  const [contatos, setContatos] = useState<LeadContact[]>([])
+  // Sobem depois de uma gravação confirmada: recarregam histórico e lista de contatos.
+  const [historyBump, setHistoryBump] = useState(0)
+  const [contactsBump, setContactsBump] = useState(0)
+  const [contatosReload, setContatosReload] = useState(0)
 
   useEffect(() => {
     Promise.all([
@@ -90,12 +96,22 @@ export default function LeadDetailPage() {
   const canModify = canEditLeads(role)
   const first = projetos[0]
   // As rotas do lead comparam o CNPJ exato gravado em vendedor_projetos.
-  const apiCnpj = first?.cnpj ?? cnpj
-  const execStatus = useMemo(() => execucaoStatusDoCnpj(projetos.map((p) => p.status_contato_execucao)), [projetos])
-  const timelineKey = useMemo(
-    () => projetos.map((p) => `${p.status_contato}|${p.vendedor_id}|${p.status_contato_execucao ?? ''}`).join(','),
+  const apiCnpj = first?.cnpj ?? cnpjClean
+  const execStatus = useMemo(
+    () => execucaoStatusDoCnpj(projetos.map((p) => ({ status: p.status_contato_execucao, updated_at: p.updated_at }))),
     [projetos]
   )
+  const bumpHistory = () => setHistoryBump((n) => n + 1)
+
+  useEffect(() => {
+    if (loading) return
+    let cancelled = false
+    fetch(`/api/leads/${encodeURIComponent(apiCnpj)}/contacts`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => { if (!cancelled) setContatos(Array.isArray(d) ? d : []) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [apiCnpj, loading, contactsBump, contatosReload])
 
   async function patchLead(body: Record<string, unknown>): Promise<Record<string, unknown> | null> {
     try {
@@ -116,20 +132,22 @@ export default function LeadDetailPage() {
     }
   }
 
-  const mergeCommission = (data: Record<string, unknown>) => ({
-    ...(data.venda_etapa != null ? { venda_etapa: data.venda_etapa as VendedorProjeto['venda_etapa'] } : {}),
-    ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
-    ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
-    ...(data.comissao_bonus != null ? { comissao_bonus: Number(data.comissao_bonus) } : {}),
-    ...(data.closer_id != null ? { closer_id: data.closer_id as string } : {}),
-    ...(data.closer_comissao_percentual != null ? { closer_comissao_percentual: Number(data.closer_comissao_percentual) } : {}),
-    ...(data.closer_comissao_valor != null ? { closer_comissao_valor: Number(data.closer_comissao_valor) } : {}),
-  })
+  // A resposta do PATCH traz a linha como ficou no banco (comissão já com a redação do papel).
+  const NUMERIC_KEYS = ['comissao_percentual', 'comissao_valor', 'comissao_bonus', 'closer_comissao_percentual', 'closer_comissao_valor'] as const
+  const mergeFromServer = (data: Record<string, unknown>): Partial<VendedorProjeto> => {
+    const out: Record<string, unknown> = {}
+    for (const key of NUMERIC_KEYS) if (key in data) out[key] = data[key] == null ? null : Number(data[key])
+    if ('venda_etapa' in data) out.venda_etapa = data.venda_etapa
+    if ('closer_id' in data) out.closer_id = data.closer_id
+    if ('contrato_assinado' in data) out.contrato_assinado = Boolean(data.contrato_assinado)
+    if ('status_contato' in data && data.status_contato != null) out.status_contato = normalizeCrmStatus(data.status_contato as string)
+    return out as Partial<VendedorProjeto>
+  }
 
   async function updateProjeto(id: number, field: 'status_contato' | 'observacoes', value: string) {
     // Venda concluída passa pelo SaleModal (valor, serviço, contrato).
-    if (field === 'status_contato' && isClosedCrmStatus(value)) {
-      const projeto = projetos.find((p) => p.id === id)
+    const projeto = projetos.find((p) => p.id === id)
+    if (field === 'status_contato' && abreModalDeVenda(projeto?.status_contato, value)) {
       setSaleModal({
         projetoId: id,
         tipoVendedor: projeto?.tipo_vendedor || null,
@@ -140,17 +158,8 @@ export default function LeadDetailPage() {
     }
     const data = await patchLead({ id, [field]: value })
     if (!data) return
-    setProjetos((prev) => prev.map((p) => (p.id === id
-      ? {
-          ...p,
-          [field]: field === 'status_contato' ? normalizeCrmStatus((data.status_contato as string) ?? value) : value,
-          ...mergeCommission(data),
-          // Sair de Vendas Concluídas apaga a comissão no servidor.
-          ...(field === 'status_contato' && !isClosedCrmStatus(value)
-            ? { comissao_valor: null, comissao_percentual: null, comissao_bonus: null, closer_comissao_valor: null, closer_comissao_percentual: null, contrato_assinado: false }
-            : {}),
-        }
-      : p)))
+    setProjetos((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value, ...mergeFromServer(data) } : p)))
+    if (field === 'status_contato') bumpHistory()
   }
 
   async function submitFechado(projetoId: number, sale: { valor_venda: number; status_contato?: string; contrato_assinado?: boolean; tipo_servico: string }) {
@@ -162,13 +171,14 @@ export default function LeadDetailPage() {
     setProjetos((prev) => prev.map((p) => (p.id === projetoId
       ? {
           ...p,
-          status_contato: normalizeCrmStatus((data.status_contato as string) ?? finalStatus),
+          status_contato: normalizeCrmStatus(finalStatus),
           valor_venda: sale.valor_venda,
           tipo_servico: sale.tipo_servico as VendedorProjeto['tipo_servico'],
-          ...mergeCommission(data),
+          ...mergeFromServer(data),
         }
       : p)))
     setSaleModal(null)
+    bumpHistory()
     toast.success('Venda registrada.')
   }
 
@@ -178,7 +188,22 @@ export default function LeadDetailPage() {
     if (!data) setProjetos((prev) => prev.map((p) => (p.id === projetoId ? { ...p, contrato_assinado: !value } : p)))
   }
 
-  async function saveContato(campo: 'telefone' | 'email', valor: string): Promise<boolean> {
+  async function saveContato(campo: 'telefone' | 'email', valor: string, contatoId: number | null): Promise<boolean> {
+    if (contatoId != null) {
+      // O valor exibido vem do contato principal: a edição vai para ele, senão some ao recarregar.
+      const res = await fetch(`/api/leads/${encodeURIComponent(apiCnpj)}/contacts`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: contatoId, [campo]: valor }),
+      }).catch(() => null)
+      if (!res?.ok) {
+        toast.error('Não foi possível salvar o contato. Tente de novo.')
+        return false
+      }
+      setContatos((prev) => prev.map((c) => (c.id === contatoId ? { ...c, [campo]: valor } : c)))
+      setContactsBump((n) => n + 1)
+      return true
+    }
     if (!first) return false
     const data = await patchLead({ id: first.id, [campo]: valor })
     if (!data) return false
@@ -196,6 +221,7 @@ export default function LeadDetailPage() {
         body: JSON.stringify({ status_contato: value }),
       })
       if (!res.ok) throw new Error(String(res.status))
+      bumpHistory()
     } catch {
       setProjetos((prev) => prev.map((p, i) => ({ ...p, status_contato_execucao: previous[i] })))
       toast.error('Não foi possível salvar o status de Execução. Tente de novo.')
@@ -218,8 +244,10 @@ export default function LeadDetailPage() {
   const nome = first?.nome || (convenios[0] as ConvenioRow & { nome_proponente?: string | null })?.nome_proponente || 'Sem nome'
   const place = [first?.municipio, first?.uf].filter(Boolean).join(', ')
   const donos = responsaveis(projetos)
-  const telefone = first?.telefone ?? null
-  const email = first?.email ?? null
+  // Mesma regra de /api/leads: primeiro contato (principal antes), senão o do lead.
+  const exibido = contatoExibido(contatos, { telefone: first?.telefone ?? null, email: first?.email ?? null })
+  const telefone = exibido.telefone.valor
+  const email = exibido.email.valor
   const whatsappUrl = whatsappMeUrlFromTelefone(telefone)
   const temReuniao = projetos.some((p) => p.status_contato === 'Reunião Agendada') || normalizeCrmStatus(execStatus) === 'Reunião Agendada'
   const totalEmendas = projetos.reduce((sum, p) => sum + (Number(p.valor_emenda) || 0), 0)
@@ -240,9 +268,10 @@ export default function LeadDetailPage() {
             <span>{donos.length === 0 ? 'Sem dono' : `${donos.length > 1 ? 'Responsáveis' : 'Responsável'}: ${donos.join(', ')}`}</span>
           </p>
           {(first?.is_max_priority || first?.is_existing_client) && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {first?.is_max_priority && <Tag tone="rose" title="Este CNPJ nunca executou um convênio: alta chance de conversão">Máxima prioridade</Tag>}
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+              {first?.is_max_priority && <Tag tone="rose">Máxima prioridade</Tag>}
               {first?.is_existing_client && <Tag tone="violet">Cliente existente</Tag>}
+              {first?.is_max_priority && <span className="text-xs text-ink-3">Nunca executou um convênio: alta chance de conversão.</span>}
             </div>
           )}
         </div>
@@ -264,15 +293,14 @@ export default function LeadDetailPage() {
       </header>
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <LeadTimeline cnpj={apiCnpj} canWriteNotes={canModifyData(role)} refreshKey={timelineKey} />
+        <LeadTimeline cnpj={apiCnpj} canWriteNotes={canModifyData(role)} refreshKey={historyBump} />
 
-        <aside className="min-w-0 space-y-4" aria-label="Detalhes do lead">
+        {/* No celular, status e ações vêm antes da linha do tempo. */}
+        <aside className="order-first min-w-0 space-y-4 lg:order-none" aria-label="Detalhes do lead">
           <Panel title="Reunião" padded={false}>
             <div className="space-y-3 px-4 py-3">
               <p className="text-sm text-ink-2">
-                {temReuniao
-                  ? 'Reunião marcada. O horário aparece aqui quando o Google Meet estiver ligado ao PROJETE.'
-                  : 'Nenhuma reunião marcada.'}
+                {temReuniao ? 'Reunião marcada com este lead.' : 'Nenhuma reunião marcada.'}
               </p>
               <a
                 href={googleCalendarEventUrl({
@@ -320,17 +348,25 @@ export default function LeadDetailPage() {
                 status={execStatus}
                 onStatus={projetos.length > 0 ? (v) => void updateExecStatus(v) : null}
                 canChange={execEditable}
+                options={hasTeamCommercialView(role) || role === 'admin' ? CRM_STATUS_SELECT_OPTIONS : CRM_STATUS_SELECT_OPTIONS.filter((o) => !isClosedCrmStatus(o))}
               />
             </Panel>
           )}
 
           {first && (
             <Panel title="Contato" padded={false}>
-              <ContatoLead telefone={telefone} email={email} endereco={first.endereco ?? null} canModify={canModify} onSave={saveContato} />
+              <ContatoLead
+                telefone={exibido.telefone}
+                email={exibido.email}
+                endereco={first.endereco ?? null}
+                // Contato principal grava pela rota de contatos (canModifyData); o do lead, pela de leads.
+                canEdit={(campo) => (exibido[campo].contatoId != null ? canModifyData(role) : canModify)}
+                onSave={saveContato}
+              />
             </Panel>
           )}
 
-          <LeadContacts cnpj={apiCnpj} canModify={canModify} />
+          <LeadContacts cnpj={apiCnpj} canModify={canModifyData(role)} refreshKey={contactsBump} onChange={() => setContatosReload((n) => n + 1)} />
         </aside>
       </div>
 

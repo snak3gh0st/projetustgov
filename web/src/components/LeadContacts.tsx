@@ -9,6 +9,10 @@ import { buttonClass } from '@/components/ui/Button'
 interface LeadContactsProps {
   cnpj: string
   canModify: boolean
+  /** Muda quando o card grava um contato por fora: recarrega a lista. */
+  refreshKey?: unknown
+  /** Avisa o card depois de criar, editar ou remover um contato. */
+  onChange?: () => void
 }
 
 const TELEFONE_STATUS_CONFIG: Record<TelefoneStatus, { label: string; color: string }> = {
@@ -20,7 +24,7 @@ const TELEFONE_STATUS_CONFIG: Record<TelefoneStatus, { label: string; color: str
 
 const EMPTY_FORM = { nome_pessoa: '', cargo: '', telefone: '', email: '' }
 
-export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
+export default function LeadContacts({ cnpj, canModify, refreshKey, onChange }: LeadContactsProps) {
   const [contacts, setContacts] = useState<LeadContact[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -46,7 +50,12 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
 
   useEffect(() => {
     fetchContacts()
-  }, [cnpj])
+  }, [cnpj, refreshKey])
+
+  function refreshAfterChange() {
+    fetchContacts()
+    onChange?.()
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -62,7 +71,7 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
       if (res.ok) {
         setFormData(EMPTY_FORM)
         setShowForm(false)
-        fetchContacts()
+        refreshAfterChange()
       }
     } catch (err) {
       console.error('Failed to create contact:', err)
@@ -79,7 +88,7 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
         body: JSON.stringify({ id, ...fields }),
       })
       if (res.ok) {
-        fetchContacts()
+        refreshAfterChange()
         if (editingId === id) setEditingId(null)
       }
     } catch (err) {
@@ -96,7 +105,7 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
         body: JSON.stringify({ id }),
       })
       if (res.ok) {
-        fetchContacts()
+        refreshAfterChange()
       }
     } catch (err) {
       console.error('Failed to delete contact:', err)

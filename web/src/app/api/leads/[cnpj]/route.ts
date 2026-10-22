@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query, queryAs } from '@/lib/db'
-import { canEditLeads, canReopenClosedSale, getApiSession } from '@/lib/dal'
+import { canEditLeads, canReopenClosedSale, getApiSession, redactLeadCommission } from '@/lib/dal'
 import { isClosedCrmStatus, isCrmHistoryReasonStatus, isManagementCrmStatus, normalizeCrmStatus, normalizeTipoServico, normalizeTipoVendedor, normalizeVendaEtapa } from '@/lib/crm-catalog'
 
 export const dynamic = 'force-dynamic'
@@ -263,18 +263,12 @@ export async function PATCH(
       `, [projectId])
     }
 
-    // Return updated commission data so frontend can refresh.
-    // comissao_bonus (fundo comercial) and closer_comissao_valor (gestor override) are
-    // management-only figures — mirror the role gating already applied in /api/comissoes.
+    // Devolve a linha atualizada para a tela, com a mesma redação de comissão de GET /api/leads.
     const updated = await query<Record<string, unknown>>(
-      `SELECT comissao_percentual, comissao_valor, comissao_bonus, tipo_vendedor, valor_venda, tipo_servico, status_contato, venda_etapa, closer_id, closer_comissao_percentual, closer_comissao_valor, contrato_assinado FROM vendedor_projetos WHERE id = $1`,
+      `SELECT vendedor_id, comissao_percentual, comissao_valor, comissao_bonus, tipo_vendedor, valor_venda, tipo_servico, status_contato, venda_etapa, closer_id, closer_comissao_percentual, closer_comissao_valor, contrato_assinado FROM vendedor_projetos WHERE id = $1`,
       [projectId]
     )
-    const updatedRow = updated[0] || {}
-    if (session.role !== 'gestor' && session.role !== 'diretoria') {
-      updatedRow.comissao_bonus = 0
-      updatedRow.closer_comissao_valor = 0
-    }
+    const updatedRow = redactLeadCommission(updated[0] || {}, session.role, session.userId)
 
     return NextResponse.json({ success: true, ...updatedRow })
   } catch (error) {
