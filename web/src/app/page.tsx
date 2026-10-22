@@ -7,5 +7,9 @@ export default async function HomePage() {
   if (session.role === 'adm_produto') {
     redirect('/tgov')
   }
+  // O consultor abre o dia em Meu dia; o Pipeline dele fica em /pipeline.
+  if (session.role === 'vendedor') {
+    redirect('/meu-dia')
+  }
   return <HomeClient />
 }

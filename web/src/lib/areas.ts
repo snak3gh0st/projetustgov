@@ -33,7 +33,11 @@ const CSM_VIEW: Role[] = ['csm', 'gestor', 'diretoria', 'admin']
 
 const AREA_NAV: Record<AreaId, Item[]> = {
   comercial: [
-    { href: '/', label: 'Pipeline', icon: 'pipeline', roles: SELLERS },
+    // O consultor abre o dia em Meu dia; o Pipeline dele fica em /pipeline (/ leva ao Meu dia).
+    { href: '/meu-dia', label: 'Meu dia', icon: 'hoje', roles: ['vendedor'] },
+    { href: '/pipeline', label: 'Pipeline', icon: 'pipeline', roles: ['vendedor'] },
+    { href: '/', label: 'Pipeline', icon: 'pipeline', roles: SELLERS.filter((r) => r !== 'vendedor') },
+    { href: '/meu-dia', label: 'Meu dia', icon: 'hoje', roles: ['coordenador'] },
     { href: '/leads', label: 'Leads', icon: 'leads', roles: SELLERS },
     { href: '/operacao', label: 'Operação', icon: 'tgov', roles: ['vendedor', 'coordenador'] },
     { href: '/csm', label: 'CSM Clientes', icon: 'csm', roles: CSM_VIEW },
