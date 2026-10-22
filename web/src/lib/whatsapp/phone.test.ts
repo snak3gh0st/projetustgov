@@ -15,13 +15,24 @@ test('a mobile stored without the 9 matches with and without it', () => {
   assert.equal(canonicalPhone('61 9876-5432'), '5561998765432')
 })
 
+test('the long-distance 0 and carrier code are dropped', () => {
+  // 0 + DDD, e 0 + operadora + DDD, como vem de planilha.
+  for (const raw of ['061 99876-5432', '0 61 9876-5432', '0 15 61 99876-5432', '015 61 9876-5432']) {
+    assert.equal(canonicalPhone(raw), '5561998765432', raw)
+  }
+  assert.deepEqual(phoneVariants('061 99876-5432'), ['61998765432', '6198765432'])
+  assert.equal(canonicalPhone('061 3333-4444'), '556133334444')
+  // DDD 55 (RS) não é confundido com o código do país.
+  assert.equal(canonicalPhone('(55) 99876-5432'), '5555998765432')
+})
+
 test('a landline only matches itself', () => {
   assert.deepEqual(phoneVariants('(61) 3333-4444'), ['6133334444'])
   assert.equal(canonicalPhone('(61) 3333-4444'), '556133334444')
 })
 
 test('invalid numbers give nothing', () => {
-  for (const raw of ['', null, undefined, '9876-5432', '01198765432', 'abc']) {
+  for (const raw of ['', null, undefined, '9876-5432', '0119876543', '0019876543', 'abc']) {
     assert.equal(canonicalPhone(raw), null, String(raw))
     assert.deepEqual(phoneVariants(raw), [], String(raw))
   }

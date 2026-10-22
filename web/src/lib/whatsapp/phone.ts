@@ -3,6 +3,8 @@
 /** Dígitos locais (DDD + número), sem o 55; null se não for um telefone brasileiro completo. */
 function localDigits(raw: string | null | undefined): string | null {
   let d = String(raw ?? '').replace(/\D/g, '')
+  // 0 de longa distância, com ou sem os dois dígitos da operadora ("061…", "0 15 61…").
+  if (d.startsWith('0')) d = d.slice(d.length === 13 || d.length === 14 ? 3 : 1)
   if (d.startsWith('55') && (d.length === 12 || d.length === 13)) d = d.slice(2)
   if ((d.length !== 10 && d.length !== 11) || d.startsWith('0')) return null
   return d
@@ -35,6 +37,6 @@ export function phoneFromJid(jid: string | null | undefined): string | null {
   return canonicalPhone(jid.split('@')[0])
 }
 
-/** SQL: dígitos locais de uma coluna de telefone (tira o 55 de números com 12 ou 13 dígitos). */
+/** SQL: dígitos locais de uma coluna de telefone, com as mesmas regras de localDigits (0 + operadora, 55). */
 export const localPhoneSql = (col: string) =>
-  `REGEXP_REPLACE(REGEXP_REPLACE(COALESCE(${col}, ''), '\\D', '', 'g'), '^55(\\d{10,11})$', '\\1')`
+  `REGEXP_REPLACE(REGEXP_REPLACE(REGEXP_REPLACE(COALESCE(${col}, ''), '\\D', '', 'g'), '^0(\\d{2})?(\\d{10,11})$', '\\2'), '^55(\\d{10,11})$', '\\1')`
