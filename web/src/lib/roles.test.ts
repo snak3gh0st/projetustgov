@@ -20,6 +20,8 @@ import {
   hasTeamCommercialView,
   redactLeadCommission,
   seesAllLeads,
+  canEditLeads,
+  canReopenClosedSale,
 } from './roles'
 
 // Lista que o gestor podia gerenciar antes da separação por áreas.
@@ -110,4 +112,19 @@ test('a seller who is only the closer does not see the owner commission', () => 
   assert.equal(out.comissao_valor, null)
   assert.equal(out.comissao_percentual, null)
   assert.equal(out.valor_venda, 100000)
+})
+
+test('visualizador and csm only look at leads; sellers and managers edit', () => {
+  for (const role of ['gestor', 'diretoria', 'admin', 'vendedor', 'coordenador']) assert.equal(canEditLeads(role), true, role)
+  for (const role of ['visualizador', 'csm', 'gestor_financeiro', 'projetista']) assert.equal(canEditLeads(role), false, role)
+})
+
+test('only gestores and admin undo a closed sale', () => {
+  for (const role of ['gestor', 'diretoria', 'admin']) assert.equal(canReopenClosedSale(role), true, role)
+  for (const role of ['vendedor', 'coordenador', 'visualizador', 'csm']) assert.equal(canReopenClosedSale(role), false, role)
+})
+
+test('csm sees every lead, like the visualizador', () => {
+  assert.equal(seesAllLeads('csm'), true)
+  assert.equal(seesAllLeads('vendedor'), false)
 })

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query, queryAs } from '@/lib/db'
-import { getApiSession } from '@/lib/dal'
+import { canEditLeads, canReopenClosedSale, getApiSession } from '@/lib/dal'
 import { isClosedCrmStatus, isCrmHistoryReasonStatus, isManagementCrmStatus, normalizeCrmStatus, normalizeTipoServico, normalizeTipoVendedor, normalizeVendaEtapa } from '@/lib/crm-catalog'
 
 export const dynamic = 'force-dynamic'
@@ -14,6 +14,10 @@ export async function PATCH(
     const session = await getApiSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!canEditLeads(session.role)) {
+      return NextResponse.json({ error: 'Forbidden: read-only role' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -59,6 +63,11 @@ export async function PATCH(
       ? normalizeVendaEtapa(body.venda_etapa) || normalizeVendaEtapa(rawRequestedStatus) || currentVendaEtapa || 'aprovacao'
       : null
     const canManagePipeline = session.role === 'gestor' || session.role === 'diretoria' || session.role === 'admin'
+
+    // Sair de Vendas Concluídas apaga a comissão da venda: só gestores e admin desfazem.
+    if (requestedStatus !== undefined && currentStatus === 'Fechado' && requestedStatus !== 'Fechado' && !canReopenClosedSale(session.role)) {
+      return NextResponse.json({ error: 'Somente gestores podem desfazer uma venda fechada' }, { status: 403 })
+    }
 
     const updates: string[] = []
     const values: unknown[] = []

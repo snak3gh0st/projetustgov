@@ -59,7 +59,17 @@ export function hasTeamCommercialView(role: string | undefined | null): boolean 
 
 /** Enxerga todos os leads, sem filtro por responsável. */
 export function seesAllLeads(role: string): boolean {
-  return role === 'gestor' || role === 'diretoria' || role === 'visualizador'
+  return role === 'gestor' || role === 'diretoria' || role === 'visualizador' || role === 'csm'
+}
+
+/** Muda status, contato e observações de leads. Visualizador e CSM só olham. */
+export function canEditLeads(role: string): boolean {
+  return role === 'gestor' || role === 'diretoria' || role === 'admin' || role === 'vendedor' || role === 'coordenador'
+}
+
+/** Tira um lead de Vendas Concluídas, o que apaga a comissão da venda. */
+export function canReopenClosedSale(role: string): boolean {
+  return role === 'gestor' || role === 'diretoria' || role === 'admin'
 }
 
 // Helper: build vendedor filter clause for leads queries

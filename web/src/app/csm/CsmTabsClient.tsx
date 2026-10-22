@@ -25,7 +25,7 @@ interface CsmTabsClientProps {
 export default function CsmTabsClient({ userRole, userName, initialTab }: CsmTabsClientProps) {
   const router = useRouter()
   const [fase, setFase] = useState<ExecucaoFase | 'todas'>('todas')
-  const currentTab: Tab = initialTab === 'crm'
+  const currentTab: Tab = initialTab === 'operacao' || initialTab === 'crm'
     ? 'operacao'
     : initialTab === 'comissoes'
       ? 'comissoes'
