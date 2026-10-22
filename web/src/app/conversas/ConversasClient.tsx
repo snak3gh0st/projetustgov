@@ -39,11 +39,12 @@ function formatTelefone(t: string): string {
 
 function quando(iso: string | null): string {
   if (!iso) return ''
+  const tz = { timeZone: 'America/Sao_Paulo' } as const
+  const dia = (d: Date) => d.toLocaleDateString('pt-BR', tz)
   const d = new Date(iso)
-  const hoje = new Date()
-  return d.toDateString() === hoje.toDateString()
-    ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  return dia(d) === dia(new Date())
+    ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', ...tz })
+    : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', ...tz })
 }
 
 function ConversaItem({ c, ativa, onOpen }: { c: Conversa; ativa: boolean; onOpen: () => void }) {
