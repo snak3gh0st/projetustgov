@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { getApiSession } from '@/lib/dal'
+import { getApiSession, redactLeadCommission } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
 
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
       LIMIT $${paramIndex}
     `, params)
 
-    return NextResponse.json(rows)
+    return NextResponse.json(rows.map((row) => redactLeadCommission(row, session.role)))
   } catch (error) {
     console.error('Leads query error:', error)
     return NextResponse.json({ error: 'Failed to fetch leads' }, { status: 500 })
