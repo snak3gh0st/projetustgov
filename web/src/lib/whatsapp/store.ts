@@ -12,10 +12,10 @@ const PREVIA: Record<string, string> = {
 }
 export const previaDe = (ev: Pick<MensagemEvent, 'texto' | 'tipo'>) => (ev.texto ?? PREVIA[ev.tipo] ?? 'Mensagem').slice(0, 160)
 
-/** Liga a conversa ao lead quando o telefone casa com exatamente um CNPJ; 0 ou mais de um fica em aberto. */
-export async function linkConversationToLead(conversaId: number, telefone: string): Promise<string | null> {
+/** CNPJs (só dígitos) com esse telefone num contato ou no próprio lead. */
+export async function cnpjsDoTelefone(telefone: string): Promise<string[]> {
   const variants = phoneVariants(telefone)
-  if (variants.length === 0) return null
+  if (variants.length === 0) return []
   const rows = await query<{ cnpj: string }>(
     `SELECT DISTINCT REGEXP_REPLACE(t.cnpj, '[^0-9]', '', 'g') AS cnpj FROM (
        SELECT lead_cnpj AS cnpj, telefone FROM lead_contacts
@@ -25,9 +25,15 @@ export async function linkConversationToLead(conversaId: number, telefone: strin
      WHERE t.cnpj IS NOT NULL AND ${localPhoneSql('t.telefone')} = ANY($1::text[])`,
     [variants]
   )
-  if (rows.length !== 1) return null
-  await query(`UPDATE whatsapp_conversas SET lead_cnpj = $2 WHERE id = $1 AND lead_cnpj IS NULL`, [conversaId, rows[0].cnpj])
-  return rows[0].cnpj
+  return rows.map((r) => r.cnpj)
+}
+
+/** Liga a conversa ao lead quando o telefone casa com exatamente um CNPJ; 0 ou mais de um fica em aberto. */
+export async function linkConversationToLead(conversaId: number, telefone: string): Promise<string | null> {
+  const cnpjs = await cnpjsDoTelefone(telefone)
+  if (cnpjs.length !== 1) return null
+  await query(`UPDATE whatsapp_conversas SET lead_cnpj = $2 WHERE id = $1 AND lead_cnpj IS NULL`, [conversaId, cnpjs[0]])
+  return cnpjs[0]
 }
 
 /**
