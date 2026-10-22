@@ -61,7 +61,7 @@ const PC_SITUACOES = ['Prestação de Contas em Análise', 'Prestação de Conta
   'Prestação de Contas enviada para Análise', 'Prestação de Contas em Complementação', 'Prestação de Contas Rejeitada']
 
 await client.query('BEGIN')
-await client.query(`TRUNCATE lead_events, contact_notes, lead_contacts, projetos_execucao, existing_clients,
+await client.query(`TRUNCATE whatsapp_mensagens, whatsapp_conversas, lead_events, contact_notes, lead_contacts, projetos_execucao, existing_clients,
   cron_sync_log, vendedor_projetos RESTART IDENTITY CASCADE`)
 await client.query(`DELETE FROM users WHERE email LIKE '%@dev.local'`)
 
