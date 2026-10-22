@@ -406,7 +406,7 @@ export default function ExecucaoClient({
               Não foi possível atualizar a lista agora. Mostrando os dados já carregados.
             </p>
           )}
-          <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+          <div className="relative overflow-x-auto rounded-xl border border-line bg-surface">
             <table className="w-full min-w-[1240px] text-sm">
               <thead className="border-b border-line bg-raised/60">
                 <tr>

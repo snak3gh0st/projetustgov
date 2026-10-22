@@ -471,7 +471,7 @@ export default function LeadsClient() {
         </div>
       ) : (
         <>
-          <div className={`overflow-x-auto rounded-xl border border-line bg-surface transition-opacity duration-fast ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
+          <div className={`relative overflow-x-auto rounded-xl border border-line bg-surface transition-opacity duration-fast ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
             <table className="w-full min-w-[1050px] text-sm">
               <thead className="border-b border-line bg-raised/60">
                 <tr>
