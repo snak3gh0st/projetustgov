@@ -86,6 +86,15 @@ As conversas e mensagens que já estão no PROJETE ficam onde estão. As mensage
 
 Se o telefone não vier, ver a regra do antiobjetivo de duplicidade em "Identidade da conversa".
 
+**Verificado no código do Evolution v2.3.7 e do Baileys 7.0.0-rc.9 (22/10/2026):**
+- O WhatsApp manda o telefone de cada conversa no histórico (`pnJid`), mas o Evolution o descarta. Chats, contatos e eventos `CHATS_SET`/`CONTACTS_UPSERT` saem só com o lid e o nome. As mensagens do histórico também chegam só pelo lid, porque o `remoteJidAlt` existe apenas no tráfego ao vivo.
+  - Conclusão: depois da reconexão, as conversas antigas chegam pelo lid, sem telefone. O telefone aparece quando o contato escreve ou recebe mensagem nova.
+  - A divisão por etiqueta não depende do telefone, porque as etiquetas também usam o lid. O que fica limitado é a ligação ao lead das conversas antigas, até o contato voltar a falar.
+- O banco do Evolution guarda o par nas mensagens ao vivo: `key.remoteJid` (lid) e `key.remoteJidAlt` (telefone). O `/chat/findMessages` filtra por `key.remoteJid` **ou** `key.remoteJidAlt`. Por aí o PROJETE descobre o lid de um telefone, e o telefone de um lid, para todo contato que teve mensagem ao vivo. O webhook que chega ao PROJETE vem com o telefone no lugar do lid.
+- Com `syncFullHistory` ligado, o Evolution passa a não ignorar grupos (`shouldIgnoreJid`). A importação filtra grupos, e o `syncFullHistory` volta para desligado quando a sincronização terminar.
+- Sem Chatwoot, o Evolution não limita a data do histórico. O corte de 365 dias fica na importação do PROJETE.
+- A 2.4.0 do Evolution traz um mapa lid → telefone, mas é pré-lançamento e exige chave de licença. Não usar.
+
 ### 2. Levar o histórico para o PROJETE
 
 Uma importação que lê o histórico gravado no Evolution e grava no PROJETE.
