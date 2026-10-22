@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   description: 'Projete, o hub da PROJETUS para gestão de instrumentos governamentais',
 }
 
-const BELL_ROLES = ['diretoria', 'admin', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao']
+const BELL_ROLES = ['diretoria', 'admin', 'adm_produto', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao']
 
 export default async function RootLayout({
   children,

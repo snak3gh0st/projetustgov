@@ -48,3 +48,9 @@ test('csm cannot write or reach other commercial APIs', () => {
     assert.equal(csmCanReadCommercial(path, 'GET'), false, path)
   }
 })
+
+test('csm, like gestor, stays in the commercial area', () => {
+  for (const path of ['/tgov', '/tgov/pipeline', '/operacao', '/financeiro']) assert.equal(commercialOnlyBlock('csm', path), 'redirect', path)
+  for (const path of ['/api/tgov/notifications', '/api/tgov/comments', '/api/operacao']) assert.equal(commercialOnlyBlock('csm', path), 'forbid', path)
+  for (const path of ['/csm', '/csm/bi', '/api/csm/portfolio', '/api/execucao']) assert.equal(commercialOnlyBlock('csm', path), null, path)
+})

@@ -18,7 +18,7 @@ type Props = {
   currentUserRole: string
 }
 
-const COMMENT_ROLES = ['csm', 'diretoria', 'admin', 'adm_produto', 'coord_aprovacao', 'projetista', 'assistente_aprovacao', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao']
+const COMMENT_ROLES = ['diretoria', 'admin', 'adm_produto', 'coord_aprovacao', 'projetista', 'assistente_aprovacao', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao']
 function canCommentTgovClient(role: string): boolean {
   return COMMENT_ROLES.includes(role)
 }

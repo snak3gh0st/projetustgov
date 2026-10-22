@@ -412,7 +412,7 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        {['adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'].includes(usuario.role) ? (
+                        {['adm_produto', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'].includes(usuario.role) ? (
                           <button
                             onClick={async () => {
                               const newVal = !usuario.email_digest

@@ -128,3 +128,10 @@ test('csm sees every lead, like the visualizador', () => {
   assert.equal(seesAllLeads('csm'), true)
   assert.equal(seesAllLeads('vendedor'), false)
 })
+
+test('csm stays out of TransfereGov and Operação, keeps the CSM area', () => {
+  for (const can of [canReadTgov, canCommentTgov, canReadOperacao, canWriteTgov, canWriteOperacao]) {
+    assert.equal(can('csm'), false, can.name)
+  }
+  assert.equal(canCsm('csm'), true)
+})

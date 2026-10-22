@@ -35,9 +35,10 @@ function reaches(role: Role, href: string): boolean {
 }
 const none = new URLSearchParams()
 
-test('nobody but gestor loses a screen', () => {
+// Gestor e CSM ficaram só no Comercial (o CSM passou para o time do Rooger).
+test('nobody but gestor and csm loses a screen', () => {
   for (const [role, before] of Object.entries(BEFORE)) {
-    if (role === 'gestor') continue
+    if (role === 'gestor' || role === 'csm') continue
     for (const href of before) assert.ok(reaches(role as Role, href), `${role} lost ${href}`)
   }
 })
@@ -118,4 +119,12 @@ test('the three lead lists are one Leads item', () => {
     const leads = getAreaNav(role, 'comercial').filter((i) => i.label.startsWith('Leads'))
     assert.deepEqual(leads.map((i) => i.href), ['/leads'], role)
   }
+})
+
+test('csm sees only commercial, with its CSM screens', () => {
+  assert.deepEqual(getAreasForRole('csm'), ['comercial'])
+  const hrefs = getAreaNav('csm', 'comercial').map((i) => i.href)
+  for (const href of hrefs) assert.ok(!/^\/(tgov|operacao|financeiro|admin)/.test(href), href)
+  for (const href of ['/csm', '/csm/comissoes', '/csm/bi']) assert.ok(hrefs.includes(href), href)
+  assert.deepEqual(getAreaNav('csm', 'operacao'), [])
 })

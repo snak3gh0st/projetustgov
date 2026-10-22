@@ -14,7 +14,6 @@ export default async function TGovPage({
     session.role !== 'diretoria' &&
     session.role !== 'admin' &&
     session.role !== 'adm_produto' &&
-    session.role !== 'csm' &&
     session.role !== 'coord_aprovacao' &&
     session.role !== 'projetista' &&
     session.role !== 'assistente_aprovacao' &&

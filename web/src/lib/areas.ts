@@ -25,7 +25,7 @@ export interface AreaNavItem {
 type Item = AreaNavItem & { roles: Role[] }
 
 const TGOV_TEAM: Role[] = [
-  'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista',
+  'adm_produto', 'coord_aprovacao', 'assistente_aprovacao', 'projetista',
   'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao', 'diretoria', 'admin',
 ]
 export const SELLERS: Role[] = ['vendedor', 'coordenador', 'visualizador', 'gestor', 'diretoria', 'admin']
@@ -79,7 +79,7 @@ const ROLE_AREAS: Record<Role, AreaId[]> = {
   coordenador: ['comercial'],
   visualizador: ['comercial'],
   gestor: ['comercial'],
-  csm: ['comercial', 'operacao'],
+  csm: ['comercial'],
   adm_produto: OPERACAO_ONLY,
   coord_aprovacao: OPERACAO_ONLY,
   assistente_aprovacao: OPERACAO_ONLY,

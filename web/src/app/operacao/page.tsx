@@ -3,7 +3,7 @@ import { verifySession } from '@/lib/dal'
 import OperacaoClient from './OperacaoClient'
 
 const ALLOWED_ROLES = [
-  'diretoria', 'admin', 'adm_produto', 'csm', 'vendedor', 'coordenador', 'visualizador',
+  'diretoria', 'admin', 'adm_produto', 'vendedor', 'coordenador', 'visualizador',
   'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao',
 ]
 
