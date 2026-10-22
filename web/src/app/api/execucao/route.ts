@@ -215,11 +215,16 @@ export async function GET(request: NextRequest) {
         ORDER BY REGEXP_REPLACE(vp_v.cnpj, '[^0-9]', '', 'g'), COUNT(*) DESC
       ),
       last_contact AS (
-        SELECT
-          REGEXP_REPLACE(cn.lead_cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
-          EXTRACT(DAY FROM NOW() - MAX(cn.created_at))::INT AS days_since
-        FROM contact_notes cn
-        GROUP BY REGEXP_REPLACE(cn.lead_cnpj, '[^0-9]', '', 'g')
+        SELECT x.cnpj_clean, EXTRACT(DAY FROM NOW() - MAX(x.at))::INT AS days_since
+        FROM (
+          SELECT REGEXP_REPLACE(cn.lead_cnpj, '[^0-9]', '', 'g') AS cnpj_clean, cn.created_at AS at FROM contact_notes cn
+          UNION ALL
+          -- Mensagem de WhatsApp trocada com o lead também é contato.
+          SELECT wc.lead_cnpj, wm.enviada_em FROM whatsapp_mensagens wm
+          JOIN whatsapp_conversas wc ON wc.id = wm.conversa_id
+          WHERE wc.lead_cnpj IS NOT NULL AND wm.status <> 'falhou'
+        ) x
+        GROUP BY x.cnpj_clean
       ),
       crm_statuses AS (
         SELECT DISTINCT ON (REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'))

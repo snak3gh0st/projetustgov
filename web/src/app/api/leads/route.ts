@@ -110,7 +110,9 @@ export async function GET(request: NextRequest) {
           SELECT EXTRACT(DAY FROM NOW() - GREATEST(
             (SELECT MAX(cn.created_at) FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj ${scopedNoteFilter}),
             (SELECT MAX(vp2.updated_at) FROM vendedor_projetos vp2
-             WHERE vp2.cnpj = vp.cnpj AND vp2.status_contato != 'Não Contatado' ${scopedRowFilter})
+             WHERE vp2.cnpj = vp.cnpj AND vp2.status_contato != 'Não Contatado' ${scopedRowFilter}),
+            -- Mensagem de WhatsApp trocada com o lead também é contato.
+            (SELECT MAX(wm.enviada_em) FROM whatsapp_mensagens wm JOIN whatsapp_conversas wc ON wc.id = wm.conversa_id WHERE wc.lead_cnpj = REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AND wm.status <> 'falhou')
           ))::int
         ) as days_since_last_contact,
         (
