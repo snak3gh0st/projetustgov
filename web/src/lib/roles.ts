@@ -158,12 +158,13 @@ const OWN_COMMISSION_HIDDEN = ['comissao_bonus', 'closer_comissao_valor', 'close
 const ALL_COMMISSION = ['comissao_valor', 'comissao_percentual', ...OWN_COMMISSION_HIDDEN] as const
 
 /**
- * Comissão por perfil numa linha de lead: gestão vê tudo; vendedor e coordenador (a API já
- * filtra para as linhas deles) veem a própria, sem bônus nem a parte do closer; os demais, nada.
+ * Comissão por perfil numa linha de lead: gestão vê tudo; vendedor e coordenador veem a própria
+ * (linhas em que são o dono), sem bônus nem a parte do closer; os demais, nada.
  */
-export function redactLeadCommission<T extends Record<string, unknown>>(row: T, role: string): T {
+export function redactLeadCommission<T extends Record<string, unknown>>(row: T, role: string, userId?: string): T {
   if (hasTeamCommercialView(role) || role === 'admin') return row
-  const hidden = isSeller(role) ? OWN_COMMISSION_HIDDEN : ALL_COMMISSION
+  const ownsRow = isSeller(role) && userId !== undefined && row.vendedor_id === userId
+  const hidden = ownsRow ? OWN_COMMISSION_HIDDEN : ALL_COMMISSION
   const out: Record<string, unknown> = { ...row }
   for (const key of hidden) if (key in out) out[key] = null
   return out as T

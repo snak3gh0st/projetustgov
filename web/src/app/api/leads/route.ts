@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
       LIMIT $${paramIndex}
     `, params)
 
-    return NextResponse.json(rows.map((row) => redactLeadCommission(row, session.role)))
+    return NextResponse.json(rows.map((row) => redactLeadCommission(row, session.role, session.userId)))
   } catch (error) {
     console.error('Leads query error:', error)
     return NextResponse.json({ error: 'Failed to fetch leads' }, { status: 500 })

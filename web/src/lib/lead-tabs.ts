@@ -1,5 +1,5 @@
 // Página Leads: uma aba por funil. Sem ?fase= é Aprovação; Execução e Prestação usam a fase do TransfereGov.
-import { SELLERS, SELLERS_WITH_EXECUCAO } from './areas'
+import { SELLERS } from './areas'
 import type { Role } from './roles'
 
 export type LeadTab = 'aprovacao' | 'execucao' | 'prestacao_contas'
@@ -10,11 +10,9 @@ export const LEAD_TAB_LABEL: Record<LeadTab, string> = {
   prestacao_contas: 'Prestação de Contas',
 }
 
+// Quem tem Leads no menu vê os três funis (o visualizador já abria Execução pelos links da tela inicial).
 export function leadTabsForRole(role: Role): LeadTab[] {
-  const tabs: LeadTab[] = []
-  if (SELLERS.includes(role)) tabs.push('aprovacao')
-  if (SELLERS_WITH_EXECUCAO.includes(role)) tabs.push('execucao', 'prestacao_contas')
-  return tabs
+  return SELLERS.includes(role) ? ['aprovacao', 'execucao', 'prestacao_contas'] : []
 }
 
 export function resolveLeadTab(role: Role, fase: string | null | undefined): LeadTab {

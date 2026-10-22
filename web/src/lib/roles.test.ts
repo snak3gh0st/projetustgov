@@ -73,6 +73,7 @@ test('only diretoria can run the system setup that rewrites users', () => {
 
 const COMMISSION_ROW = {
   id: 1,
+  vendedor_id: 'u1',
   valor_venda: 100000,
   comissao_valor: 5000,
   comissao_percentual: 5,
@@ -89,7 +90,7 @@ test('gestor, diretoria and admin keep every commission field', () => {
 
 test('sellers keep their own commission but not bonus or closer figures', () => {
   for (const role of ['vendedor', 'coordenador']) {
-    assert.deepEqual(redactLeadCommission(COMMISSION_ROW, role), {
+    assert.deepEqual(redactLeadCommission(COMMISSION_ROW, role, 'u1'), {
       ...COMMISSION_ROW, comissao_bonus: null, closer_comissao_valor: null, closer_comissao_percentual: null,
     }, role)
   }
@@ -97,9 +98,16 @@ test('sellers keep their own commission but not bonus or closer figures', () => 
 
 test('visualizador and other roles get no commission at all', () => {
   for (const role of ['visualizador', 'gestor_financeiro', 'csm']) {
-    assert.deepEqual(redactLeadCommission(COMMISSION_ROW, role), {
-      id: 1, valor_venda: 100000, comissao_valor: null, comissao_percentual: null, comissao_bonus: null,
+    assert.deepEqual(redactLeadCommission(COMMISSION_ROW, role, 'u1'), {
+      id: 1, vendedor_id: 'u1', valor_venda: 100000, comissao_valor: null, comissao_percentual: null, comissao_bonus: null,
       closer_comissao_valor: null, closer_comissao_percentual: null,
     }, role)
   }
+})
+
+test('a seller who is only the closer does not see the owner commission', () => {
+  const out = redactLeadCommission(COMMISSION_ROW, 'coordenador', 'u2')
+  assert.equal(out.comissao_valor, null)
+  assert.equal(out.comissao_percentual, null)
+  assert.equal(out.valor_venda, 100000)
 })

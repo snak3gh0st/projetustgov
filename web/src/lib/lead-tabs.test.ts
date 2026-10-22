@@ -3,20 +3,21 @@ import test from 'node:test'
 
 import { leadTabsForRole, leadsHref, legacyExecucaoTarget, resolveLeadTab } from './lead-tabs'
 
-test('sellers and managers get the three lead tabs', () => {
-  for (const role of ['vendedor', 'coordenador', 'gestor', 'diretoria', 'admin'] as const) {
+test('sellers, managers and visualizador get the three lead tabs', () => {
+  for (const role of ['vendedor', 'coordenador', 'gestor', 'diretoria', 'admin', 'visualizador'] as const) {
     assert.deepEqual(leadTabsForRole(role), ['aprovacao', 'execucao', 'prestacao_contas'], role)
   }
 })
 
-test('visualizador gets only aprovação; operação roles get none', () => {
-  assert.deepEqual(leadTabsForRole('visualizador'), ['aprovacao'])
+test('operação roles get no lead tab', () => {
   assert.deepEqual(leadTabsForRole('projetista'), [])
+  assert.deepEqual(leadTabsForRole('gestor_financeiro'), [])
 })
 
 test('the tab falls back to the first allowed one', () => {
   assert.equal(resolveLeadTab('vendedor', 'prestacao_contas'), 'prestacao_contas')
-  assert.equal(resolveLeadTab('visualizador', 'execucao'), 'aprovacao')
+  assert.equal(resolveLeadTab('visualizador', 'execucao'), 'execucao')
+  assert.equal(resolveLeadTab('projetista', 'execucao'), 'aprovacao')
   assert.equal(resolveLeadTab('vendedor', 'lixo'), 'aprovacao')
   assert.equal(resolveLeadTab('vendedor', null), 'aprovacao')
 })

@@ -398,14 +398,14 @@ export default function LeadDetailPage() {
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{first.closer_nome}</p>
                 )}
               </div>
-            ) : (
+            ) : first.comissao_bonus != null ? (
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Fundo Comercial (2%)</p>
                 <p className="text-lg font-semibold text-green-600 mt-1">
                   {formatCurrency(first.comissao_bonus || 0)}
                 </p>
               </div>
-            )}
+            ) : null}
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Valor da Venda</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-1">
