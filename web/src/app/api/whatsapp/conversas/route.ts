@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { aguardandoResposta, seesAllConversations } from '@/lib/whatsapp/access'
 import { CONVERSA_SELECT, scopeWhere, whatsappGuard, type ConversaRow } from '@/lib/whatsapp/api'
+import { connectionStateCached } from '@/lib/whatsapp/evolution'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,12 +44,16 @@ export async function GET(request: NextRequest) {
       OR EXISTS (SELECT 1 FROM vendedor_projetos vp WHERE REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = wc.lead_cnpj AND vp.nome ILIKE $${params.length - 1}))`)
   }
 
-  const rows = await query<ConversaRow>(
-    `${CONVERSA_SELECT} WHERE ${where.join(' AND ')} ORDER BY wc.ultima_mensagem_em DESC NULLS LAST LIMIT 200`,
-    params
-  )
+  const [rows, estado] = await Promise.all([
+    query<ConversaRow>(
+      `${CONVERSA_SELECT} WHERE ${where.join(' AND ')} ORDER BY wc.ultima_mensagem_em DESC NULLS LAST LIMIT 200`,
+      params
+    ),
+    connectionStateCached(),
+  ])
   return NextResponse.json({
     filtro,
+    estado,
     conversas: rows.map((c) => ({ ...c, aguardando: aguardandoResposta(c) })),
   })
 }

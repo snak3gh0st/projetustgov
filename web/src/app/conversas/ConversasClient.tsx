@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { useToast } from '@/components/ui/Toast'
 import { Tag, inputClass, selectClass } from '@/components/leads/list-ui'
 import { formatCNPJ } from '@/lib/format'
+import { AvisoDesconectado } from '@/components/whatsapp/AvisoDesconectado'
 import { MensagemBolha, type MensagemView } from '@/components/whatsapp/MensagemBolha'
 
 interface Conversa {
@@ -165,6 +166,7 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
   const [filtro, setFiltro] = useState<Filtro>((params.get('filtro') as Filtro) || (gestao ? 'todas' : 'minhas'))
   const [busca, setBusca] = useState('')
   const [conversas, setConversas] = useState<Conversa[] | null>(null)
+  const [estado, setEstado] = useState<string | null>(null)
   const [ativaId, setAtivaId] = useState<number | null>(params.get('c') ? Number(params.get('c')) : null)
   const [ativa, setAtiva] = useState<Conversa | null>(null)
   const [mensagens, setMensagens] = useState<MensagemView[] | null>(null)
@@ -177,8 +179,11 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
     const q = new URLSearchParams({ filtro })
     if (busca.trim()) q.set('busca', busca.trim())
     const r = await fetch(`/api/whatsapp/conversas?${q}`, { cache: 'no-store' }).catch(() => null)
-    if (r?.ok) setConversas((await r.json()).conversas)
-    else setConversas((prev) => prev ?? [])
+    if (r?.ok) {
+      const d = await r.json()
+      setConversas(d.conversas)
+      setEstado(d.estado ?? null)
+    } else setConversas((prev) => prev ?? [])
   }, [filtro, busca])
 
   const carregarConversa = useCallback(async (id: number) => {
@@ -264,6 +269,7 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
         <h1 className="font-heading text-2xl font-semibold text-ink">Conversas</h1>
         {gestao && <Link href="/conversas/conexao" className={buttonClass('secondary', 'sm')}>Conexão do WhatsApp</Link>}
       </div>
+      {estado && estado !== 'conectado' && <AvisoDesconectado gestao={gestao} />}
 
       <div className="grid min-h-[70dvh] grid-cols-1 overflow-hidden rounded-xl border border-line bg-surface lg:grid-cols-[320px_minmax(0,1fr)_280px]">
         {/* Lista */}

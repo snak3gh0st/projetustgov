@@ -23,14 +23,14 @@ export function whatsappConfigured(): boolean {
 
 const WEBHOOK_EVENTS = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE', 'QRCODE_UPDATED']
 
-async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<{ status: number; data: T | null }> {
+async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown, timeoutMs = 15_000): Promise<{ status: number; data: T | null }> {
   const cfg = whatsappConfig()
   if (!cfg) throw new Error('WhatsApp não configurado')
   const res = await fetch(`${cfg.url}${path}`, {
     method,
     headers: { apikey: cfg.apiKey, 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(15_000),
+    signal: AbortSignal.timeout(timeoutMs),
     cache: 'no-store',
   })
   const data = (await res.json().catch(() => null)) as T | null
@@ -47,15 +47,27 @@ export async function sendText(phone: string, text: string): Promise<{ waId: str
   return { waId }
 }
 
-export async function connectionState(): Promise<'conectado' | 'conectando' | 'desconectado'> {
+export type EstadoConexao = 'conectado' | 'conectando' | 'desconectado'
+
+export async function connectionState(timeoutMs?: number): Promise<EstadoConexao> {
   try {
-    const { status, data } = await call<{ instance?: { state?: string } }>('GET', `/instance/connectionState/${instancePath()}`)
+    const { status, data } = await call<{ instance?: { state?: string } }>('GET', `/instance/connectionState/${instancePath()}`, undefined, timeoutMs)
     if (status >= 300) return 'desconectado'
     const state = data?.instance?.state
     return state === 'open' ? 'conectado' : state === 'connecting' ? 'conectando' : 'desconectado'
   } catch {
     return 'desconectado'
   }
+}
+
+let estadoCache: { estado: EstadoConexao; at: number } | null = null
+
+/** Estado para as telas que fazem polling (Conversas, card): espera até 3 s e consulta o Evolution no máximo a cada 30 s. */
+export async function connectionStateCached(): Promise<EstadoConexao> {
+  if (estadoCache && Date.now() - estadoCache.at < 30_000) return estadoCache.estado
+  const estado = await connectionState(3_000)
+  estadoCache = { estado, at: Date.now() }
+  return estado
 }
 
 /** Cria a instância (se faltar), aponta o webhook para o PROJETE e devolve o QR enquanto não estiver conectado. */

@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/Toast'
 import { LeadEventLine } from '@/components/LeadEvents'
 import { Tag, TAG_TONE, selectClass } from '@/components/leads/list-ui'
 import { buildTimeline, type TimelineEvent, type TimelineFilter, type TimelineMensagem, type TimelineNote } from '@/lib/lead-timeline'
+import { AvisoDesconectado } from '@/components/whatsapp/AvisoDesconectado'
 import { MensagemBolha } from '@/components/whatsapp/MensagemBolha'
 
 type NoteTipo = TimelineNote['tipo']
@@ -142,6 +143,7 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey, cnpjDigi
   // WhatsApp: null = ainda não sabemos se o canal está ligado para este usuário.
   const [whatsappOn, setWhatsappOn] = useState<boolean | null>(null)
   const [mensagens, setMensagens] = useState<TimelineMensagem[]>([])
+  const [estado, setEstado] = useState<string | null>(null)
   const [modo, setModo] = useState<'nota' | 'whatsapp'>('nota')
   const [telefone, setTelefone] = useState<string>('')
   const [texto, setTexto] = useState('')
@@ -177,7 +179,8 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey, cnpjDigi
     try {
       const r = await fetch(`/api/whatsapp/conversas?filtro=todas&cnpj=${cnpjDigits}`, { cache: 'no-store' })
       if (!r.ok) { setWhatsappOn(false); return }
-      const { conversas } = await r.json() as { conversas: { id: number; telefone: string }[] }
+      const { conversas, estado } = await r.json() as { conversas: { id: number; telefone: string }[]; estado?: string }
+      setEstado(estado ?? null)
       const listas = await Promise.all(conversas.map(async (c) => {
         const d = await fetch(`/api/whatsapp/conversas/${c.id}`, { cache: 'no-store' }).then((x) => (x.ok ? x.json() : { mensagens: [] }))
         return (d.mensagens as Omit<TimelineMensagem, 'telefone'>[]).map((m) => ({ ...m, telefone: c.telefone }))
@@ -371,6 +374,7 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey, cnpjDigi
               tabs={[{ id: 'nota', label: 'Nota' }, { id: 'whatsapp', label: 'WhatsApp' }]}
             />
           )}
+          {modoAtual === 'whatsapp' && estado && estado !== 'conectado' && <AvisoDesconectado />}
           <textarea
             aria-label={modoAtual === 'whatsapp' ? 'Mensagem de WhatsApp' : 'Nova nota'}
             rows={2}
