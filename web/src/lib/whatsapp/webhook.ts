@@ -13,6 +13,7 @@ export type WebhookEvent =
   | { kind: 'status'; instancia: string; waId: string; status: 'enviada' | 'entregue' | 'lida' | 'falhou' }
   | { kind: 'conexao'; instancia: string; estado: 'conectado' | 'conectando' | 'desconectado' }
   | { kind: 'qrcode'; instancia: string; base64: string }
+  | { kind: 'etiqueta'; instancia: string; chatJid: string; labelId: string; tipo: 'add' | 'remove' }
   | { kind: 'ignorado'; motivo: string }
 
 type Obj = Record<string, unknown>
@@ -110,6 +111,12 @@ export function parseWebhook(body: unknown): WebhookEvent[] {
     case 'QRCODE_UPDATED': {
       const base64 = isObj(data) && isObj(data.qrcode) ? str(data.qrcode.base64) : null
       return [base64 ? { kind: 'qrcode', instancia, base64 } : { kind: 'ignorado', motivo: 'qrcode vazio' }]
+    }
+    case 'LABELS_ASSOCIATION': {
+      const chatJid = isObj(data) ? str(data.chatId) : null
+      const labelId = isObj(data) && (typeof data.labelId === 'string' || typeof data.labelId === 'number') ? String(data.labelId) : null
+      const tipo = isObj(data) && (data.type === 'add' || data.type === 'remove') ? data.type : null
+      return [chatJid && labelId && tipo ? { kind: 'etiqueta', instancia, chatJid, labelId, tipo } : { kind: 'ignorado', motivo: 'etiqueta incompleta' }]
     }
     default:
       return [{ kind: 'ignorado', motivo: `evento ${event || 'vazio'}` }]

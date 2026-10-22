@@ -2,7 +2,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { whatsappConfig } from '@/lib/whatsapp/evolution'
 import { parseWebhook } from '@/lib/whatsapp/webhook'
-import { recordMessage, recordStatus } from '@/lib/whatsapp/store'
+import { aplicarEtiqueta, recordMessage, recordStatus } from '@/lib/whatsapp/store'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,6 +32,9 @@ export async function POST(request: NextRequest) {
         gravadas++
       } else if (ev.kind === 'status') {
         await recordStatus(ev)
+      } else if (ev.kind === 'etiqueta') {
+        if (ev.instancia !== cfg.instance) continue
+        await aplicarEtiqueta(ev)
       }
     } catch (error) {
       // Um evento ruim não derruba os outros nem faz o Evolution reenviar em loop.

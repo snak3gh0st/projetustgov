@@ -2,11 +2,12 @@ import 'server-only'
 
 import { getPool, query } from '@/lib/db'
 import { parDoContato } from './evolution'
-import { localPhoneSql, phoneVariants } from './phone'
+import { localPhoneSql, phoneFromJid, phoneVariants } from './phone'
 import type { WebhookEvent } from './webhook'
 
 type MensagemEvent = Extract<WebhookEvent, { kind: 'mensagem' }>
 type StatusEvent = Extract<WebhookEvent, { kind: 'status' }>
+type EtiquetaEvent = Extract<WebhookEvent, { kind: 'etiqueta' }>
 
 const PREVIA: Record<string, string> = {
   imagem: 'Imagem', audio: 'Áudio', video: 'Vídeo', documento: 'Documento', figurinha: 'Figurinha', outro: 'Mensagem',
@@ -210,4 +211,30 @@ export async function recordStatus(ev: StatusEvent): Promise<void> {
        AND ($2 = 'falhou' OR ${RANK.replace('%s', 'status')} < ${RANK.replace('%s', '$2')})`,
     [ev.waId, ev.status]
   )
+}
+
+/**
+ * Etiqueta posta ou tirada no celular. Fica espelhada; se for de vendedor, direciona a conversa para ele (vale a última
+ * mudança) e, ao sair, só limpa o direcionamento que era dela. Conversa que ainda não existe recebe ao nascer.
+ */
+export async function aplicarEtiqueta(ev: EtiquetaEvent): Promise<void> {
+  if (ev.tipo === 'add') {
+    await query(`INSERT INTO whatsapp_chat_etiquetas (instancia, chat_jid, label_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+      [ev.instancia, ev.chatJid, ev.labelId])
+  } else {
+    await query(`DELETE FROM whatsapp_chat_etiquetas WHERE instancia = $1 AND chat_jid = $2 AND label_id = $3`, [ev.instancia, ev.chatJid, ev.labelId])
+  }
+  const [etiqueta] = await query<{ user_id: string | null }>(
+    `SELECT user_id FROM whatsapp_etiquetas WHERE instancia = $1 AND label_id = $2`, [ev.instancia, ev.labelId]
+  )
+  if (!etiqueta?.user_id) return
+  const telefone = phoneFromJid(ev.chatJid)
+  const onde = `instancia = $1 AND (lid = $2 OR telefone = $2 OR telefone = $3)`
+  if (ev.tipo === 'add') {
+    await query(`UPDATE whatsapp_conversas SET atendente_id = $4, arquivada_em = NULL WHERE ${onde}`,
+      [ev.instancia, ev.chatJid, telefone ?? ev.chatJid, etiqueta.user_id])
+  } else {
+    await query(`UPDATE whatsapp_conversas SET atendente_id = NULL WHERE ${onde} AND atendente_id = $4`,
+      [ev.instancia, ev.chatJid, telefone ?? ev.chatJid, etiqueta.user_id])
+  }
 }

@@ -23,7 +23,7 @@ export function whatsappConfigured(): boolean {
   return whatsappConfig() !== null
 }
 
-const WEBHOOK_EVENTS = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE', 'QRCODE_UPDATED']
+const WEBHOOK_EVENTS = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE', 'QRCODE_UPDATED', 'LABELS_ASSOCIATION']
 
 async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown, timeoutMs = 15_000): Promise<{ status: number; data: T | null }> {
   const cfg = whatsappConfig()

@@ -102,3 +102,15 @@ test('parseMensagem reads a findMessages record like the webhook data', () => {
   assert.equal(ev.kind === 'mensagem' && ev.waId, 'H1')
   assert.equal(ev.kind === 'mensagem' && ev.fromMe, true)
 })
+
+test('a label association becomes an etiqueta event', () => {
+  const [ev] = parseWebhook({ event: 'labels.association', instance: 'consultorias', data: { instance: 'consultorias', type: 'add', chatId: '85822355300446@lid', labelId: '4' } })
+  assert.deepEqual(ev, { kind: 'etiqueta', instancia: 'consultorias', chatJid: '85822355300446@lid', labelId: '4', tipo: 'add' })
+  const [rm] = parseWebhook({ event: 'LABELS_ASSOCIATION', instance: 'consultorias', data: { type: 'remove', chatId: '85822355300446@lid', labelId: 5 } })
+  assert.deepEqual(rm, { kind: 'etiqueta', instancia: 'consultorias', chatJid: '85822355300446@lid', labelId: '5', tipo: 'remove' })
+})
+
+test('a label association without chat or with an unknown type is ignored', () => {
+  assert.equal(parseWebhook({ event: 'labels.association', instance: 'consultorias', data: { type: 'edit', chatId: 'x@lid', labelId: '4' } })[0].kind, 'ignorado')
+  assert.equal(parseWebhook({ event: 'labels.association', instance: 'consultorias', data: { type: 'add', labelId: '4' } })[0].kind, 'ignorado')
+})
