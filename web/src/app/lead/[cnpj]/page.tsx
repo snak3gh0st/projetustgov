@@ -17,6 +17,8 @@ import EmendasAprovacao from '@/components/lead-card/EmendasAprovacao'
 import ConveniosExecucao, { type ConvenioRow } from '@/components/lead-card/ConveniosExecucao'
 import ContatoLead from '@/components/lead-card/ContatoLead'
 import { canEditLeads, canModifyData, hasTeamCommercialView } from '@/lib/roles'
+import { canUseWhatsapp } from '@/lib/whatsapp/access'
+import { canonicalPhone } from '@/lib/whatsapp/phone'
 import { CRM_STATUS_SELECT_OPTIONS, isClosedCrmStatus, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 import { abreModalDeVenda, contatoExibido, execucaoStatusDoCnpj, responsaveis } from '@/lib/lead-timeline'
 import type { LeadContact } from '@/lib/types'
@@ -68,6 +70,13 @@ export default function LeadDetailPage() {
   const [historyBump, setHistoryBump] = useState(0)
   const [contactsBump, setContactsBump] = useState(0)
   const [contatosReload, setContatosReload] = useState(0)
+  // WhatsApp ligado para este usuário: o botão do topo abre a conversa no PROJETE.
+  const [whatsappOn, setWhatsappOn] = useState(false)
+  useEffect(() => {
+    fetch(`/api/whatsapp/conversas?filtro=todas&cnpj=${cnpjClean}`, { cache: 'no-store' })
+      .then((r) => setWhatsappOn(r.ok))
+      .catch(() => setWhatsappOn(false))
+  }, [cnpjClean])
 
   useEffect(() => {
     Promise.all([
@@ -248,7 +257,17 @@ export default function LeadDetailPage() {
   const exibido = contatoExibido(contatos, { telefone: first?.telefone ?? null, email: first?.email ?? null })
   const telefone = exibido.telefone.valor
   const email = exibido.email.valor
-  const whatsappUrl = whatsappMeUrlFromTelefone(telefone)
+  // Telefones do lead para o WhatsApp: contatos e o do próprio lead, sem repetir.
+  const telefonesWhatsapp = Array.from(new Map(
+    [...contatos.map((c) => ({ raw: c.telefone, nome: c.nome_pessoa })), { raw: first?.telefone ?? null, nome: null }]
+      .map((t) => ({ valor: canonicalPhone(t.raw), nome: t.nome }))
+      .filter((t): t is { valor: string; nome: string | null } => Boolean(t.valor))
+      .map((t) => [t.valor, { valor: t.valor, label: `${t.nome ? `${t.nome} · ` : ''}(${t.valor.slice(2, 4)}) ${t.valor.slice(4, -4)}-${t.valor.slice(-4)}` }] as const)
+  ).values())
+  const telefonePrincipal = canonicalPhone(telefone)
+  const whatsappUrl = whatsappOn && telefonePrincipal
+    ? `/conversas?telefone=${telefonePrincipal}&cnpj=${cnpjClean}`
+    : whatsappMeUrlFromTelefone(telefone)
   const temReuniao = projetos.some((p) => p.status_contato === 'Reunião Agendada') || normalizeCrmStatus(execStatus) === 'Reunião Agendada'
   const totalEmendas = projetos.reduce((sum, p) => sum + (Number(p.valor_emenda) || 0), 0)
   // Mesma trava da lista de Execução: gestão acompanha, consultor muda.
@@ -293,7 +312,14 @@ export default function LeadDetailPage() {
       </header>
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <LeadTimeline cnpj={apiCnpj} canWriteNotes={canModifyData(role)} refreshKey={historyBump} />
+        <LeadTimeline
+          cnpj={apiCnpj}
+          canWriteNotes={canModifyData(role)}
+          refreshKey={historyBump}
+          cnpjDigits={projetos.length > 0 ? cnpjClean : undefined}
+          telefones={telefonesWhatsapp}
+          canSendWhatsapp={canUseWhatsapp(role) && canModify}
+        />
 
         {/* No celular, status e ações vêm antes da linha do tempo. */}
         <aside className="order-first min-w-0 space-y-4 lg:order-none" aria-label="Detalhes do lead">

@@ -8,7 +8,8 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { useToast } from '@/components/ui/Toast'
 import { LeadEventLine } from '@/components/LeadEvents'
 import { Tag, TAG_TONE, selectClass } from '@/components/leads/list-ui'
-import { buildTimeline, type TimelineEvent, type TimelineFilter, type TimelineNote } from '@/lib/lead-timeline'
+import { buildTimeline, type TimelineEvent, type TimelineFilter, type TimelineMensagem, type TimelineNote } from '@/lib/lead-timeline'
+import { MensagemBolha } from '@/components/whatsapp/MensagemBolha'
 
 type NoteTipo = TimelineNote['tipo']
 
@@ -46,6 +47,12 @@ interface LeadTimelineProps {
   canWriteNotes: boolean
   /** Muda quando status ou dono mudam no card: recarrega as movimentações. */
   refreshKey?: unknown
+  /** CNPJ só com dígitos, para buscar as conversas de WhatsApp do lead. */
+  cnpjDigits?: string
+  /** Telefones válidos do lead (canônicos), para escolher para qual enviar. */
+  telefones?: { valor: string; label: string }[]
+  /** Pode enviar WhatsApp (canUseWhatsapp + canEditLeads). */
+  canSendWhatsapp?: boolean
 }
 
 function NoteItem({
@@ -126,12 +133,17 @@ function NoteItem({
   )
 }
 
-export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey }: LeadTimelineProps) {
+export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey, cnpjDigits, telefones = [], canSendWhatsapp = false }: LeadTimelineProps) {
   const toast = useToast()
   const [notes, setNotes] = useState<TimelineNote[] | null>(null)
   const [events, setEvents] = useState<TimelineEvent[] | null>(null)
   const [filter, setFilter] = useState<TimelineFilter>('tudo')
   const [tipo, setTipo] = useState<NoteTipo>('ligacao')
+  // WhatsApp: null = ainda não sabemos se o canal está ligado para este usuário.
+  const [whatsappOn, setWhatsappOn] = useState<boolean | null>(null)
+  const [mensagens, setMensagens] = useState<TimelineMensagem[]>([])
+  const [modo, setModo] = useState<'nota' | 'whatsapp'>('nota')
+  const [telefone, setTelefone] = useState<string>('')
   const [texto, setTexto] = useState('')
   const [sending, setSending] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -160,9 +172,41 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey }: LeadTi
     return () => { cancelled = true }
   }, [cnpj, refreshKey])
 
+  const loadWhatsapp = useCallback(async () => {
+    if (!cnpjDigits) { setWhatsappOn(false); return }
+    try {
+      const r = await fetch(`/api/whatsapp/conversas?filtro=todas&cnpj=${cnpjDigits}`, { cache: 'no-store' })
+      if (!r.ok) { setWhatsappOn(false); return }
+      const { conversas } = await r.json() as { conversas: { id: number; telefone: string }[] }
+      const listas = await Promise.all(conversas.map(async (c) => {
+        const d = await fetch(`/api/whatsapp/conversas/${c.id}`, { cache: 'no-store' }).then((x) => (x.ok ? x.json() : { mensagens: [] }))
+        return (d.mensagens as Omit<TimelineMensagem, 'telefone'>[]).map((m) => ({ ...m, telefone: c.telefone }))
+      }))
+      setMensagens(listas.flat())
+      setWhatsappOn(true)
+      // Padrão de envio: o número que já tem conversa, senão o primeiro do lead.
+      setTelefone((atual) => atual || conversas[0]?.telefone || '')
+    } catch {
+      setWhatsappOn((prev) => prev ?? false)
+    }
+  }, [cnpjDigits])
+
+  useEffect(() => { void loadWhatsapp() }, [loadWhatsapp, refreshKey])
+  // Mensagens novas chegam pelo webhook: confere a cada 10 s enquanto o card está aberto.
+  useEffect(() => {
+    if (!whatsappOn) return
+    const t = window.setInterval(() => { if (document.visibilityState === 'visible') void loadWhatsapp() }, 10_000)
+    return () => window.clearInterval(t)
+  }, [whatsappOn, loadWhatsapp])
+  useEffect(() => { if (!telefone && telefones[0]) setTelefone(telefones[0].valor) }, [telefone, telefones])
+
   const ready = notes !== null && events !== null
-  const items = useMemo(() => (ready ? buildTimeline(notes, events, filter) : []), [ready, notes, events, filter])
-  const counts = useMemo(() => ({ notas: notes?.length ?? 0, movimentacoes: events?.length ?? 0 }), [notes, events])
+  const items = useMemo(() => (ready ? buildTimeline(notes, events, filter, mensagens) : []), [ready, notes, events, filter, mensagens])
+  const counts = useMemo(() => ({ notas: notes?.length ?? 0, movimentacoes: events?.length ?? 0, whatsapp: mensagens.length }), [notes, events, mensagens])
+  const podeWhatsapp = Boolean(whatsappOn && canSendWhatsapp && (telefones.length > 0 || telefone))
+  const numerosDistintos = new Set(mensagens.map((m) => m.telefone)).size > 1
+  // Sem permissão de nota (ex.: admin), a caixa só envia WhatsApp.
+  const modoAtual: 'nota' | 'whatsapp' = !canWriteNotes ? 'whatsapp' : podeWhatsapp ? modo : 'nota'
 
   // O mais recente fica embaixo, junto da caixa de nota: rola até ele ao abrir, ao trocar o filtro
   // e quando entra item novo (excluir não mexe na posição).
@@ -174,6 +218,26 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey }: LeadTi
     if (el && (!prev || prev.filter !== filter || items.length > prev.count)) el.scrollTop = el.scrollHeight
     lastCount.current = { filter, count: items.length }
   }, [ready, items.length, filter])
+
+  async function sendWhatsapp() {
+    const t = texto.trim()
+    if (!t || sending || !telefone || !cnpjDigits) return
+    setSending(true)
+    try {
+      const r = await fetch('/api/whatsapp/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telefone, cnpj: cnpjDigits, texto: t }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) toast.error(d.error ?? 'Não foi possível enviar pelo WhatsApp.')
+      if (r.ok || r.status === 502) setTexto('')
+      if (filter === 'notas' || filter === 'movimentacoes') setFilter('tudo')
+      await loadWhatsapp()
+    } finally {
+      setSending(false)
+    }
+  }
 
   async function addNote() {
     const observacao = texto.trim()
@@ -233,7 +297,8 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey }: LeadTi
           value={filter}
           onChange={(v) => setFilter(v as TimelineFilter)}
           tabs={[
-            { id: 'tudo', label: 'Tudo', count: ready ? counts.notas + counts.movimentacoes : undefined },
+            { id: 'tudo', label: 'Tudo', count: ready ? counts.notas + counts.movimentacoes + counts.whatsapp : undefined },
+            ...(whatsappOn ? [{ id: 'whatsapp', label: 'WhatsApp', count: counts.whatsapp }] : []),
             { id: 'notas', label: 'Notas', count: ready ? counts.notas : undefined },
             { id: 'movimentacoes', label: 'Movimentações', count: ready ? counts.movimentacoes : undefined },
           ]}
@@ -258,6 +323,7 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey }: LeadTi
           <p className="py-8 text-center text-sm text-ink-3">
             {filter === 'movimentacoes'
               ? 'Nenhuma movimentação registrada.'
+              : filter === 'whatsapp' ? 'Nenhuma mensagem de WhatsApp com este lead ainda.'
               : canWriteNotes ? 'Nenhuma nota ainda. Registre o primeiro contato abaixo.' : 'Nenhuma nota registrada.'}
           </p>
         ) : (
@@ -274,6 +340,11 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey }: LeadTi
                 >
                   {item.kind === 'nota' ? (
                     <NoteItem note={item.note} canWrite={canWriteNotes} onSave={saveNote} onDelete={deleteNote} />
+                  ) : item.kind === 'whatsapp' ? (
+                    <div>
+                      {numerosDistintos && <p className={`mb-0.5 text-[11px] text-ink-3 ${item.mensagem.direcao === 'enviada' ? 'text-right' : ''}`}>{item.mensagem.telefone}</p>}
+                      <MensagemBolha m={item.mensagem} compact onRetry={canSendWhatsapp ? (t) => { setModo('whatsapp'); setTexto(t) } : undefined} />
+                    </div>
                   ) : (
                     <div className="flex gap-2.5 px-1">
                       <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-line-strong" />
@@ -287,26 +358,41 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey }: LeadTi
         )}
       </div>
 
-      {canWriteNotes && (
+      {(canWriteNotes || podeWhatsapp) && (
         <form
           className="space-y-2 border-t border-line bg-raised/40 px-4 py-3"
-          onSubmit={(e) => { e.preventDefault(); void addNote() }}
+          onSubmit={(e) => { e.preventDefault(); void (modoAtual === 'whatsapp' ? sendWhatsapp() : addNote()) }}
         >
+          {podeWhatsapp && canWriteNotes && (
+            <SectionTabs
+              ariaLabel="Tipo de registro"
+              value={modoAtual}
+              onChange={(v) => setModo(v as 'nota' | 'whatsapp')}
+              tabs={[{ id: 'nota', label: 'Nota' }, { id: 'whatsapp', label: 'WhatsApp' }]}
+            />
+          )}
           <textarea
-            aria-label="Nova nota"
+            aria-label={modoAtual === 'whatsapp' ? 'Mensagem de WhatsApp' : 'Nova nota'}
             rows={2}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void addNote() } }}
-            placeholder="Como foi o contato? O que ficou combinado?"
+            onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void (modoAtual === 'whatsapp' ? sendWhatsapp() : addNote()) } }}
+            placeholder={modoAtual === 'whatsapp' ? 'Mensagem para o lead pelo WhatsApp das consultorias' : 'Como foi o contato? O que ficou combinado?'}
             className={textareaClass}
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <select aria-label="Tipo de contato" value={tipo} onChange={(e) => setTipo(e.target.value as NoteTipo)} className={selectClass}>
-              {NOTE_TIPOS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
+            {modoAtual === 'whatsapp' ? (
+              <select aria-label="Telefone do lead" value={telefone} onChange={(e) => setTelefone(e.target.value)} className={selectClass}>
+                {telefones.map((t) => <option key={t.valor} value={t.valor}>{t.label}</option>)}
+                {telefone && !telefones.some((t) => t.valor === telefone) && <option value={telefone}>{telefone}</option>}
+              </select>
+            ) : (
+              <select aria-label="Tipo de contato" value={tipo} onChange={(e) => setTipo(e.target.value as NoteTipo)} className={selectClass}>
+                {NOTE_TIPOS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            )}
             <Button type="submit" size="sm" variant="primary" disabled={!texto.trim() || sending}>
-              {sending ? 'Adicionando...' : 'Adicionar nota'}
+              {modoAtual === 'whatsapp' ? (sending ? 'Enviando...' : 'Enviar WhatsApp') : sending ? 'Adicionando...' : 'Adicionar nota'}
             </Button>
           </div>
         </form>
