@@ -22,7 +22,8 @@ export interface AreaNavItem {
   section?: 'Gestão'
 }
 
-type Item = AreaNavItem & { roles: Role[] }
+/** requires: o item só aparece com o canal ligado. */
+type Item = AreaNavItem & { roles: Role[]; requires?: 'whatsapp' }
 
 const TGOV_TEAM: Role[] = [
   'adm_produto', 'coord_aprovacao', 'assistente_aprovacao', 'projetista',
@@ -39,6 +40,7 @@ const AREA_NAV: Record<AreaId, Item[]> = {
     { href: '/', label: 'Pipeline', icon: 'pipeline', roles: SELLERS.filter((r) => r !== 'vendedor' && r !== 'diretoria') },
     { href: '/meu-dia', label: 'Meu dia', icon: 'hoje', roles: ['coordenador'] },
     { href: '/leads', label: 'Leads', icon: 'leads', roles: SELLERS },
+    { href: '/conversas', label: 'Conversas', icon: 'conversas', roles: ['vendedor', 'coordenador', 'gestor', 'diretoria', 'admin'], requires: 'whatsapp' },
     { href: '/operacao', label: 'Operação', icon: 'tgov', roles: ['vendedor', 'coordenador'] },
     { href: '/csm', label: 'CSM Clientes', icon: 'csm', roles: CSM_VIEW },
     { href: '/csm/comissoes', label: 'Comissões CSM', icon: 'comissoes', roles: CSM_VIEW },
@@ -106,8 +108,10 @@ export function primaryAreaForRole(role: Role): AreaId {
   return getAreasForRole(role)[0]
 }
 
-export function getAreaNav(role: Role, area: AreaId): AreaNavItem[] {
-  return AREA_NAV[area].filter((i) => i.roles.includes(role)).map(({ roles: _roles, ...item }) => item)
+export function getAreaNav(role: Role, area: AreaId, opts: { whatsapp?: boolean } = {}): AreaNavItem[] {
+  return AREA_NAV[area]
+    .filter((i) => i.roles.includes(role) && (!i.requires || (i.requires === 'whatsapp' && opts.whatsapp)))
+    .map(({ roles: _roles, requires: _requires, ...item }) => item)
 }
 
 /** Para onde / leva quem abre o PROJETE em outra tela; null mantém / (Pipeline). */
