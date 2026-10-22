@@ -51,7 +51,8 @@ export async function getApiSession() {
 
 // Helper: verify vendedor has access to a specific lead
 export async function verifyLeadAccess(cnpj: string, userId: string, role: string): Promise<boolean> {
-  if (seesAllLeads(role)) return true
+  // Admin enxerga todos os leads em /api/leads; o card (notas, contatos, histórico) segue a mesma regra.
+  if (seesAllLeads(role) || role === 'admin') return true
 
   // Vendedor and coordenador must have the lead assigned (or be closer)
   const assignments = await query(

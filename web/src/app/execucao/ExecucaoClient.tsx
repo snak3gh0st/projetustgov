@@ -22,7 +22,7 @@ import {
   selectClass,
   thClass,
 } from '@/components/leads/list-ui'
-import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, normalizeCrmStatus } from '@/lib/crm-catalog'
+import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, normalizeCrmStatus } from '@/lib/crm-catalog'
 import type { ExecucaoFase } from '@/lib/execucao-fase'
 
 interface ExecucaoAggRow {
@@ -549,7 +549,8 @@ export default function ExecucaoClient({
                           ariaLabel={`Status de ${row.nome_proponente || formatCNPJ(row.cnpj)}`}
                           status={row.crm_status || 'Não Contatado'}
                           label={formatCrmStatusLabel(row.crm_status || 'Não Contatado')}
-                          options={STATUS_OPTIONS}
+                          // Só a gestão fecha venda: o consultor não recebe as etapas de venda concluída.
+                          options={userRole === 'admin' ? STATUS_OPTIONS : STATUS_OPTIONS.filter((o) => !isClosedCrmStatus(o))}
                           disabled={isGestor || !canEditLeads(userRole)}
                           onChange={value => { void updateStatus(row.cnpj, value) }}
                         />

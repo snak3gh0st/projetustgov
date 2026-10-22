@@ -33,10 +33,10 @@ const CSM_VIEW: Role[] = ['csm', 'gestor', 'diretoria', 'admin']
 
 const AREA_NAV: Record<AreaId, Item[]> = {
   comercial: [
-    // O consultor abre o dia em Meu dia; o Pipeline dele fica em /pipeline (/ leva ao Meu dia).
+    // Consultor abre em Meu dia e diretoria em Visão geral: o Pipeline deles fica em /pipeline.
     { href: '/meu-dia', label: 'Meu dia', icon: 'hoje', roles: ['vendedor'] },
-    { href: '/pipeline', label: 'Pipeline', icon: 'pipeline', roles: ['vendedor'] },
-    { href: '/', label: 'Pipeline', icon: 'pipeline', roles: SELLERS.filter((r) => r !== 'vendedor') },
+    { href: '/pipeline', label: 'Pipeline', icon: 'pipeline', roles: ['vendedor', 'diretoria'] },
+    { href: '/', label: 'Pipeline', icon: 'pipeline', roles: SELLERS.filter((r) => r !== 'vendedor' && r !== 'diretoria') },
     { href: '/meu-dia', label: 'Meu dia', icon: 'hoje', roles: ['coordenador'] },
     { href: '/leads', label: 'Leads', icon: 'leads', roles: SELLERS },
     { href: '/operacao', label: 'Operação', icon: 'tgov', roles: ['vendedor', 'coordenador'] },
@@ -64,6 +64,7 @@ const AREA_NAV: Record<AreaId, Item[]> = {
     { href: '/bi', label: 'BI comercial', icon: 'bi', roles: ['gestor_financeiro'] },
   ],
   gestao: [
+    { href: '/gestao', label: 'Visão geral', icon: 'visao', roles: ['diretoria', 'admin'] },
     { href: '/bi', label: 'BI comercial', icon: 'bi', roles: ['diretoria', 'admin'] },
     { href: '/csm/bi', label: 'BI CSM', icon: 'bi', roles: ['diretoria', 'admin'] },
     { href: '/financeiro', label: 'BI Financeiro', icon: 'financeiro', roles: ['diretoria', 'admin'] },
@@ -107,6 +108,13 @@ export function primaryAreaForRole(role: Role): AreaId {
 
 export function getAreaNav(role: Role, area: AreaId): AreaNavItem[] {
   return AREA_NAV[area].filter((i) => i.roles.includes(role)).map(({ roles: _roles, ...item }) => item)
+}
+
+/** Para onde / leva quem abre o PROJETE em outra tela; null mantém / (Pipeline). */
+export function landingPath(role: Role): string | null {
+  if (role === 'vendedor') return '/meu-dia'
+  if (role === 'diretoria') return '/gestao'
+  return null
 }
 
 export function areaHome(role: Role, area: AreaId): string {

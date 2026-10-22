@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { activeNavHref, areaHome, getAreaNav, getAreasForRole, isNavItemActive, primaryAreaForRole, resolveArea } from './areas'
+import { activeNavHref, areaHome, getAreaNav, getAreasForRole, isNavItemActive, landingPath, primaryAreaForRole, resolveArea } from './areas'
 import { leadTabsForRole } from './lead-tabs'
 import type { Role } from './roles'
 
@@ -29,8 +29,8 @@ const hrefsOf = (role: Role) => new Set(getAreasForRole(role).flatMap((a) => get
 // /execucao?fase=F virou a aba F da página Leads: conta como alcançada se o perfil tem Leads e a aba.
 function reaches(role: Role, href: string): boolean {
   const now = hrefsOf(role)
-  // O Pipeline do vendedor mudou para /pipeline: / abre o Meu dia dele.
-  if (href === '/' && role === 'vendedor') return now.has('/pipeline')
+  // O Pipeline de quem abre em outra tela (Meu dia, Visão geral) mudou para /pipeline.
+  if (href === '/' && (role === 'vendedor' || role === 'diretoria')) return now.has('/pipeline')
   const legacy = href.match(/^\/execucao\?fase=(.+)$/)
   if (legacy) return now.has('/leads') && leadTabsForRole(role).includes(legacy[1] as never)
   return now.has(href)
@@ -148,5 +148,30 @@ test('coordenador keeps the team Pipeline first and has Meu dia in the menu', ()
 test('only consultores get Meu dia', () => {
   for (const role of ['gestor', 'diretoria', 'admin', 'visualizador', 'csm'] as const) {
     assert.ok(!hrefsOf(role).has('/meu-dia'), role)
+  }
+})
+
+test('diretoria opens in Visão geral and keeps the commercial Pipeline at /pipeline', () => {
+  assert.equal(areaHome('diretoria', 'gestao'), '/gestao')
+  assert.equal(getAreaNav('diretoria', 'gestao')[0].label, 'Visão geral')
+  const comercial = getAreaNav('diretoria', 'comercial').map((i) => i.href)
+  assert.ok(comercial.includes('/pipeline'))
+  assert.ok(!comercial.includes('/'))
+})
+
+test('admin has Visão geral in Gestão but keeps / as the Pipeline', () => {
+  assert.equal(getAreaNav('admin', 'gestao')[0].href, '/gestao')
+  assert.ok(getAreaNav('admin', 'comercial').some((i) => i.href === '/'))
+})
+
+test('landing path: consultor in Meu dia, diretoria in Visão geral, others stay on /', () => {
+  assert.equal(landingPath('vendedor'), '/meu-dia')
+  assert.equal(landingPath('diretoria'), '/gestao')
+  for (const role of ['gestor', 'coordenador', 'admin', 'visualizador'] as const) assert.equal(landingPath(role), null, role)
+})
+
+test('landingPath agrees with the home of the main area where it redirects', () => {
+  for (const role of ['vendedor', 'diretoria'] as const) {
+    assert.equal(landingPath(role), areaHome(role, primaryAreaForRole(role)), role)
   }
 })

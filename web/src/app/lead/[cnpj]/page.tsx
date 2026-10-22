@@ -1,637 +1,387 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
-import Link from 'next/link'
-import { formatCNPJ, formatCurrency } from '@/lib/format'
+import { useEffect, useMemo, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { formatCNPJ, formatCurrency, googleCalendarEventUrl, whatsappMeUrlFromTelefone } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
-import ContactNotesTimeline from '@/components/ContactNotesTimeline'
-import { LeadHistory } from '@/components/LeadEvents'
 import LeadContacts from '@/components/LeadContacts'
-import WhatsAppAction from '@/components/WhatsAppAction'
 import SaleModal from '@/components/SaleModal'
-import { canEditLeads, canReopenClosedSale } from '@/lib/roles'
-import { CRM_STATUS_BADGE_COLORS, CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, isManagementCrmStatus, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
+import Panel from '@/components/ui/Panel'
+import EmptyState from '@/components/ui/EmptyState'
+import { buttonClass } from '@/components/ui/Button'
+import { Skeleton } from '@/components/ui/Skeleton'
+import { useToast } from '@/components/ui/Toast'
+import { Tag } from '@/components/leads/list-ui'
+import LeadTimeline from '@/components/lead-card/LeadTimeline'
+import EmendasAprovacao from '@/components/lead-card/EmendasAprovacao'
+import ConveniosExecucao, { type ConvenioRow } from '@/components/lead-card/ConveniosExecucao'
+import ContatoLead from '@/components/lead-card/ContatoLead'
+import { canEditLeads, canModifyData, hasTeamCommercialView } from '@/lib/roles'
+import { CRM_STATUS_SELECT_OPTIONS, isClosedCrmStatus, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
+import { abreModalDeVenda, contatoExibido, execucaoStatusDoCnpj, responsaveis } from '@/lib/lead-timeline'
+import type { LeadContact } from '@/lib/types'
 
-const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
-const STATUS_COLORS = CRM_STATUS_BADGE_COLORS
+type SaleModalState = { projetoId: number; tipoVendedor: string | null; isExclusivo: boolean; contratoAssinado: boolean }
+
+function BackButton() {
+  const router = useRouter()
+  return (
+    <button
+      type="button"
+      onClick={() => (window.history.length > 1 ? router.back() : router.push('/leads'))}
+      className="inline-flex items-center gap-1 text-sm text-ink-3 transition-colors duration-fast hover:text-ink focus:outline-none focus-visible:text-ink focus-visible:underline"
+    >
+      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+      </svg>
+      Voltar
+    </button>
+  )
+}
+
+function CardSkeleton() {
+  return (
+    <div className="space-y-5" aria-busy="true" aria-label="Carregando lead">
+      <Skeleton className="h-4 w-16" />
+      <div className="space-y-2"><Skeleton className="h-7 w-2/3" /><Skeleton className="h-4 w-1/3" /></div>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <Skeleton className="h-96 w-full" />
+        <div className="space-y-4"><Skeleton className="h-28 w-full" /><Skeleton className="h-48 w-full" /></div>
+      </div>
+    </div>
+  )
+}
 
 export default function LeadDetailPage() {
   const params = useParams()
+  const toast = useToast()
   const cnpj = decodeURIComponent(params.cnpj as string)
   const cnpjClean = cnpj.replace(/\D/g, '')
 
   const [projetos, setProjetos] = useState<VendedorProjeto[]>([])
+  const [convenios, setConvenios] = useState<ConvenioRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [isPriority, setIsPriority] = useState(false)
-  const [isExistingClient, setIsExistingClient] = useState(false)
-  const [canModify, setCanModify] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
-  const [editingField, setEditingField] = useState<'telefone' | 'email' | null>(null)
-  const [editValue, setEditValue] = useState('')
-  const [saleModal, setSaleModal] = useState<{
-    projetoId: number
-    tipoVendedor: string | null
-    isExclusivo: boolean
-    contratoAssinado: boolean
-  } | null>(null)
-  const [execucaoFallback, setExecucaoFallback] = useState<{
-    nome_proponente: string | null
-    nr_convenio: string
-    objeto: string | null
-    situacao: string | null
-    valor_global: string | null
-    pct_execucao: string | null
-  }[] | null>(null)
+  const [saleModal, setSaleModal] = useState<SaleModalState | null>(null)
+  const [contatos, setContatos] = useState<LeadContact[]>([])
+  // Sobem depois de uma gravação confirmada: recarregam histórico e lista de contatos.
+  const [historyBump, setHistoryBump] = useState(0)
+  const [contactsBump, setContactsBump] = useState(0)
+  const [contatosReload, setContatosReload] = useState(0)
 
   useEffect(() => {
-    // Fetch both sources in parallel — vendedor_projetos AND projetos_execucao
     Promise.all([
-      fetch(`/api/leads?search=${encodeURIComponent(cnpj)}&limit=100`)
-        .then(r => r.ok ? r.json() : [])
-        .catch(() => []),
-      fetch(`/api/execucao/${encodeURIComponent(cnpjClean)}`)
-        .then(r => r.ok ? r.json() : [])
-        .catch(() => []),
+      fetch(`/api/leads?search=${encodeURIComponent(cnpj)}&limit=100`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch(`/api/execucao/${encodeURIComponent(cnpjClean)}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
     ]).then(([leadsData, execData]) => {
-        const filtered = (Array.isArray(leadsData) ? leadsData : []).filter(
-          (p: VendedorProjeto) => p.cnpj?.replace(/\D/g, '') === cnpjClean
-        ).map((p: VendedorProjeto) => ({
+      const rows = (Array.isArray(leadsData) ? leadsData : [])
+        .filter((p: VendedorProjeto) => p.cnpj?.replace(/\D/g, '') === cnpjClean)
+        .map((p: VendedorProjeto) => ({
           ...p,
           status_contato: normalizeCrmStatus(p.status_contato),
           tipo_vendedor: normalizeTipoVendedor(p.tipo_vendedor),
         }))
-        setProjetos(filtered)
-        if (filtered.length > 0) {
-          setIsPriority(filtered[0].is_max_priority || false)
-          setIsExistingClient(filtered[0].is_existing_client || false)
-        }
-        // Always set execucao data if available (shown alongside CRM data)
-        if (Array.isArray(execData) && execData.length > 0) {
-          setExecucaoFallback(execData)
-        }
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
+      setProjetos(rows)
+      setConvenios(Array.isArray(execData) ? execData : [])
+      setLoading(false)
+    })
 
-    // Fetch session to determine if user can modify
     fetch('/api/auth/session')
-      .then(r => r.json())
-      .then(session => {
-        if (session?.user?.role) {
-          setCanModify(canEditLeads(session.user.role))
-          setUserRole(session.user.role)
-        }
-      })
+      .then((r) => r.json())
+      .then((session) => { if (session?.user?.role) setUserRole(session.user.role) })
       .catch(() => {})
   }, [cnpj, cnpjClean])
 
-  async function updateProjeto(id: number, field: string, value: string) {
+  const role = userRole ?? ''
+  const canModify = canEditLeads(role)
+  const first = projetos[0]
+  // As rotas do lead comparam o CNPJ exato gravado em vendedor_projetos.
+  const apiCnpj = first?.cnpj ?? cnpjClean
+  const execStatus = useMemo(
+    () => execucaoStatusDoCnpj(projetos.map((p) => ({ status: p.status_contato_execucao, updated_at: p.updated_at }))),
+    [projetos]
+  )
+  const bumpHistory = () => setHistoryBump((n) => n + 1)
+
+  useEffect(() => {
+    if (loading) return
+    let cancelled = false
+    fetch(`/api/leads/${encodeURIComponent(apiCnpj)}/contacts`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => { if (!cancelled) setContatos(Array.isArray(d) ? d : []) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [apiCnpj, loading, contactsBump, contatosReload])
+
+  async function patchLead(body: Record<string, unknown>): Promise<Record<string, unknown> | null> {
     try {
-      // If status is changing to the closed stage, open SaleModal to collect valor_venda
-      // "Em Aprovação" does NOT open SaleModal — it goes directly to PATCH API
-      if (field === 'status_contato' && isClosedCrmStatus(value)) {
-        const projeto = projetos.find(p => p.id === id)
-        setSaleModal({
-          projetoId: id,
-          tipoVendedor: projeto?.tipo_vendedor || null,
-          isExclusivo: projeto?.tipo_vendedor === 'In-Sites Sells' || projeto?.tipo_vendedor === 'Exclusivo',
-          contratoAssinado: !!projeto?.contrato_assinado,
-        })
-        return
-      }
-
-      const body: Record<string, unknown> = { id, [field]: value }
-
-      const res = await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
+      const res = await fetch(`/api/leads/${encodeURIComponent(apiCnpj)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}))
-        alert(`Erro ao atualizar: ${errData.error || 'Falha no servidor'}`)
-        return
+        const err = await res.json().catch(() => ({}))
+        toast.error(err.error ? `Não foi possível salvar: ${err.error}` : 'Não foi possível salvar. Tente de novo.')
+        return null
       }
-      const data = await res.json().catch(() => ({}))
-      setProjetos(prev => prev.map(p =>
-        p.id === id ? {
-          ...p,
-          [field]: data.status_contato ?? value,
-          ...(data.venda_etapa != null ? { venda_etapa: data.venda_etapa } : {}),
-          ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
-          ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
-          ...(data.comissao_bonus != null ? { comissao_bonus: Number(data.comissao_bonus) } : {}),
-        } : p
-      ))
-    } catch (err) {
-      console.error('Update error:', err)
-      alert('Erro de conexão ao salvar. Recarregue a página e tente novamente.')
+      return await res.json().catch(() => ({}))
+    } catch {
+      toast.error('Sem conexão. Recarregue a página e tente de novo.')
+      return null
     }
   }
 
-    async function submitFechado(projetoId: number, saleData: { valor_venda: number; status_contato?: string; contrato_assinado?: boolean; tipo_servico: string }) {
-    try {
-      const finalStatus = saleData.status_contato || 'Vendas Aprovação'
-      const body: Record<string, unknown> = {
-        id: projetoId,
-        status_contato: finalStatus,
-        valor_venda: saleData.valor_venda,
-        tipo_servico: saleData.tipo_servico,
-      }
-      if (saleData.contrato_assinado !== undefined) {
-        body.contrato_assinado = saleData.contrato_assinado
-      }
-      const res = await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+  // A resposta do PATCH traz a linha como ficou no banco (comissão já com a redação do papel).
+  const NUMERIC_KEYS = ['comissao_percentual', 'comissao_valor', 'comissao_bonus', 'closer_comissao_percentual', 'closer_comissao_valor'] as const
+  const mergeFromServer = (data: Record<string, unknown>): Partial<VendedorProjeto> => {
+    const out: Record<string, unknown> = {}
+    for (const key of NUMERIC_KEYS) if (key in data) out[key] = data[key] == null ? null : Number(data[key])
+    if ('venda_etapa' in data) out.venda_etapa = data.venda_etapa
+    if ('closer_id' in data) out.closer_id = data.closer_id
+    if ('contrato_assinado' in data) out.contrato_assinado = Boolean(data.contrato_assinado)
+    if ('status_contato' in data && data.status_contato != null) out.status_contato = normalizeCrmStatus(data.status_contato as string)
+    return out as Partial<VendedorProjeto>
+  }
+
+  async function updateProjeto(id: number, field: 'status_contato' | 'observacoes', value: string) {
+    // Venda concluída passa pelo SaleModal (valor, serviço, contrato).
+    const projeto = projetos.find((p) => p.id === id)
+    if (field === 'status_contato' && abreModalDeVenda(projeto?.status_contato, value)) {
+      setSaleModal({
+        projetoId: id,
+        tipoVendedor: projeto?.tipo_vendedor || null,
+        isExclusivo: projeto?.tipo_vendedor === 'In-Sites Sells' || projeto?.tipo_vendedor === 'Exclusivo',
+        contratoAssinado: !!projeto?.contrato_assinado,
       })
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}))
-        alert(`Erro ao registrar venda: ${errData.error || 'Falha no servidor'}`)
-        return
-      }
-      const data = await res.json().catch(() => ({}))
-      setProjetos(prev => prev.map(p =>
-        p.id === projetoId ? {
-          ...p,
-          status_contato: data.status_contato ?? normalizeCrmStatus(finalStatus),
-          ...(data.venda_etapa != null ? { venda_etapa: data.venda_etapa } : {}),
-          valor_venda: saleData.valor_venda,
-          tipo_servico: saleData.tipo_servico as VendedorProjeto['tipo_servico'],
-          ...(data.comissao_percentual != null ? { comissao_percentual: Number(data.comissao_percentual) } : {}),
-          ...(data.comissao_valor != null ? { comissao_valor: Number(data.comissao_valor) } : {}),
-          ...(data.comissao_bonus != null ? { comissao_bonus: Number(data.comissao_bonus) } : {}),
-          ...(data.closer_id != null ? { closer_id: data.closer_id } : {}),
-          ...(data.closer_comissao_percentual != null ? { closer_comissao_percentual: Number(data.closer_comissao_percentual) } : {}),
-          ...(data.closer_comissao_valor != null ? { closer_comissao_valor: Number(data.closer_comissao_valor) } : {}),
-        } : p
-      ))
-      setSaleModal(null)
-    } catch (err) {
-      console.error('Failed to submit fechado:', err)
+      return
     }
+    const data = await patchLead({ id, [field]: value })
+    if (!data) return
+    setProjetos((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value, ...mergeFromServer(data) } : p)))
+    if (field === 'status_contato') bumpHistory()
+  }
+
+  async function submitFechado(projetoId: number, sale: { valor_venda: number; status_contato?: string; contrato_assinado?: boolean; tipo_servico: string }) {
+    const finalStatus = sale.status_contato || 'Vendas Aprovação'
+    const body: Record<string, unknown> = { id: projetoId, status_contato: finalStatus, valor_venda: sale.valor_venda, tipo_servico: sale.tipo_servico }
+    if (sale.contrato_assinado !== undefined) body.contrato_assinado = sale.contrato_assinado
+    const data = await patchLead(body)
+    if (!data) return
+    setProjetos((prev) => prev.map((p) => (p.id === projetoId
+      ? {
+          ...p,
+          status_contato: normalizeCrmStatus(finalStatus),
+          valor_venda: sale.valor_venda,
+          tipo_servico: sale.tipo_servico as VendedorProjeto['tipo_servico'],
+          ...mergeFromServer(data),
+        }
+      : p)))
+    setSaleModal(null)
+    bumpHistory()
+    toast.success('Venda registrada.')
   }
 
   async function setContratoAssinado(projetoId: number, value: boolean) {
-    setProjetos(prev => prev.map(p => p.id === projetoId ? { ...p, contrato_assinado: value } : p))
-    try {
-      const res = await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
+    setProjetos((prev) => prev.map((p) => (p.id === projetoId ? { ...p, contrato_assinado: value } : p)))
+    const data = await patchLead({ id: projetoId, contrato_assinado: value })
+    if (!data) setProjetos((prev) => prev.map((p) => (p.id === projetoId ? { ...p, contrato_assinado: !value } : p)))
+  }
+
+  async function saveContato(campo: 'telefone' | 'email', valor: string, contatoId: number | null): Promise<boolean> {
+    if (contatoId != null) {
+      // O valor exibido vem do contato principal: a edição vai para ele, senão some ao recarregar.
+      const res = await fetch(`/api/leads/${encodeURIComponent(apiCnpj)}/contacts`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: projetoId, contrato_assinado: value }),
-      })
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}))
-        setProjetos(prev => prev.map(p => p.id === projetoId ? { ...p, contrato_assinado: !value } : p))
-        alert(`Erro ao salvar confirmação de contrato: ${errData.error || 'Falha no servidor'}`)
+        body: JSON.stringify({ id: contatoId, [campo]: valor }),
+      }).catch(() => null)
+      if (!res?.ok) {
+        toast.error('Não foi possível salvar o contato. Tente de novo.')
+        return false
       }
-    } catch (err) {
-      console.error('Failed to update contrato_assinado:', err)
-      setProjetos(prev => prev.map(p => p.id === projetoId ? { ...p, contrato_assinado: !value } : p))
-      alert('Erro de conexão ao salvar confirmação de contrato. Tente novamente.')
+      setContatos((prev) => prev.map((c) => (c.id === contatoId ? { ...c, [campo]: valor } : c)))
+      setContactsBump((n) => n + 1)
+      return true
     }
+    if (!first) return false
+    const data = await patchLead({ id: first.id, [campo]: valor })
+    if (!data) return false
+    setProjetos((prev) => prev.map((p) => (p.id === first.id ? { ...p, [campo]: valor } : p)))
+    return true
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-gray-500 animate-pulse">Carregando...</div>
-      </div>
-    )
-  }
-
-  if (projetos.length === 0) {
-    if (execucaoFallback && execucaoFallback.length > 0) {
-      const nomeInst = execucaoFallback[0].nome_proponente || 'Instituição'
-      return (
-        <div className="space-y-6 max-w-5xl">
-          <Link href="/leads?fase=execucao" className="text-gray-500 hover:text-gray-900 transition-colors text-sm">
-            &#8592; Voltar para Leads de Execução
-          </Link>
-          <div>
-            <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">{nomeInst}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">CNPJ: {formatCNPJ(cnpj)}</p>
-            <span className="inline-block mt-2 text-xs bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-500/20">
-              Projeto em Execução — não está em prospecção no CRM
-            </span>
-          </div>
-          <div className="space-y-3">
-            {execucaoFallback.map((conv) => (
-              <div key={conv.nr_convenio} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-white dark:bg-gray-900 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-mono text-gray-400 dark:text-gray-500">{conv.nr_convenio}</span>
-                  {conv.situacao && (
-                    <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">{conv.situacao}</span>
-                  )}
-                </div>
-                {conv.objeto && <p className="text-sm text-gray-700 dark:text-gray-300">{conv.objeto}</p>}
-                <div className="flex gap-4 text-sm">
-                  {conv.valor_global && (
-                    <span className="text-gray-600 dark:text-gray-300">Valor global: <strong>{formatCurrency(Number(conv.valor_global))}</strong></span>
-                  )}
-                  {conv.pct_execucao && (
-                    <span className="text-gray-600 dark:text-gray-300">Execução: <strong>{Number(conv.pct_execucao).toFixed(1)}%</strong></span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )
-    }
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="text-red-500">Nenhum projeto encontrado para este CNPJ</div>
-        <Link href="/leads" className="text-sigma-neon hover:underline text-sm">Voltar</Link>
-      </div>
-    )
-  }
-
-  const first = projetos[0]
-
-  async function updateContact(field: 'telefone' | 'email', value: string) {
+  async function updateExecStatus(value: string) {
+    const previous = projetos.map((p) => p.status_contato_execucao)
+    setProjetos((prev) => prev.map((p) => ({ ...p, status_contato_execucao: value })))
     try {
-      await fetch(`/api/leads/${encodeURIComponent(cnpj)}`, {
+      const res = await fetch(`/api/execucao/${encodeURIComponent(cnpjClean)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: first.id, [field]: value })
+        body: JSON.stringify({ status_contato: value }),
       })
-      setProjetos(prev => prev.map(p => p.cnpj === cnpj ? {...p, [field]: value} : p))
-      setEditingField(null)
-    } catch (err) {
-      console.error('Update contact error:', err)
+      if (!res.ok) throw new Error(String(res.status))
+      bumpHistory()
+    } catch {
+      setProjetos((prev) => prev.map((p, i) => ({ ...p, status_contato_execucao: previous[i] })))
+      toast.error('Não foi possível salvar o status de Execução. Tente de novo.')
     }
   }
+
+  if (loading) return <CardSkeleton />
+
+  if (projetos.length === 0 && convenios.length === 0) {
+    return (
+      <div className="space-y-5">
+        <BackButton />
+        <Panel>
+          <EmptyState title="Lead não encontrado" description="Este CNPJ não tem emendas nem convênios que você possa ver." />
+        </Panel>
+      </div>
+    )
+  }
+
+  const nome = first?.nome || (convenios[0] as ConvenioRow & { nome_proponente?: string | null })?.nome_proponente || 'Sem nome'
+  const place = [first?.municipio, first?.uf].filter(Boolean).join(', ')
+  const donos = responsaveis(projetos)
+  // Mesma regra de /api/leads: primeiro contato (principal antes), senão o do lead.
+  const exibido = contatoExibido(contatos, { telefone: first?.telefone ?? null, email: first?.email ?? null })
+  const telefone = exibido.telefone.valor
+  const email = exibido.email.valor
+  const whatsappUrl = whatsappMeUrlFromTelefone(telefone)
+  const temReuniao = projetos.some((p) => p.status_contato === 'Reunião Agendada') || normalizeCrmStatus(execStatus) === 'Reunião Agendada'
   const totalEmendas = projetos.reduce((sum, p) => sum + (Number(p.valor_emenda) || 0), 0)
+  // Mesma trava da lista de Execução: gestão acompanha, consultor muda.
+  const execEditable = canModify && role !== 'gestor' && role !== 'diretoria' && role !== 'coordenador'
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      <Link href="/leads" className="text-gray-500 hover:text-gray-900 transition-colors text-sm">
-        &#8592; Voltar para leads
-      </Link>
+    <div className="space-y-5">
+      <BackButton />
 
-      <div>
-        <div className="flex items-center gap-3">
-          <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">{first.nome || 'Sem nome'}</h1>
-          {isPriority && (
-            <span className="text-xs bg-red-500/20 text-red-500 px-3 py-1 rounded-full border border-red-500/30 font-medium">
-              MÁXIMA PRIORIDADE
-            </span>
-          )}
-          {isExistingClient && (
-            <span className="text-xs bg-purple-500/20 text-purple-600 px-3 py-1 rounded-full border border-purple-500/30 font-medium">
-              CLIENTE EXISTENTE
-            </span>
-          )}
-        </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mt-1">{formatCNPJ(cnpj)}</p>
-        {isPriority && (
-          <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
-            Este CNPJ nunca executou um convênio — alta probabilidade de conversão
+      <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <h1 className="font-heading text-2xl font-semibold text-ink [overflow-wrap:anywhere] [text-wrap:balance]">{nome}</h1>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-2">
+            <span className="font-mono text-ink-3">{formatCNPJ(cnpjClean)}</span>
+            {place && <><span aria-hidden className="text-ink-3">·</span><span>{place}</span></>}
+            <span aria-hidden className="text-ink-3">·</span>
+            <span>{donos.length === 0 ? 'Sem dono' : `${donos.length > 1 ? 'Responsáveis' : 'Responsável'}: ${donos.join(', ')}`}</span>
           </p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{projetos.length > 1 ? 'Total Emendas' : 'Valor Emenda'}</p>
-          <p className="text-xl font-heading font-bold text-sigma-neon mt-1">
-            {formatCurrency(totalEmendas)}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Projetos</p>
-          <p className="text-xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-1">{projetos.length}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">UF</p>
-          <p className="text-xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-1">{first.uf || '-'}</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500">{first.municipio || ''}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Vendedor</p>
-          <p className="text-xl font-heading font-bold text-gray-900 dark:text-gray-100 mt-1">{first.vendedor_nome || '-'}</p>
-        </div>
-      </div>
-
-      {/* Em Aprovação banner */}
-      {normalizeCrmStatus(first.status_contato) === 'Em Aprovação' && (
-        <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 rounded-xl p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-purple-700">{formatCrmStatusLabel(first.status_contato, first.venda_etapa)}</p>
-              <p className="text-xs text-purple-500 mt-1">
-                Este lead foi enviado para conferência do gestor antes da conclusão
-              </p>
+          {(first?.is_max_priority || first?.is_existing_client) && (
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+              {first?.is_max_priority && <Tag tone="rose">Máxima prioridade</Tag>}
+              {first?.is_existing_client && <Tag tone="violet">Cliente existente</Tag>}
+              {first?.is_max_priority && <span className="text-xs text-ink-3">Nunca executou um convênio: alta chance de conversão.</span>}
             </div>
-            {(userRole === 'gestor' || userRole === 'diretoria') && canModify && (
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 text-sm text-purple-700 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={!!first.contrato_assinado}
-                    onChange={(e) => setContratoAssinado(first.id, e.target.checked)}
-                    className="w-4 h-4 rounded border-purple-300"
-                  />
-                  Contrato assinado
-                </label>
-                <button
-                  disabled={!first.contrato_assinado}
-                  onClick={() => {
-                  setSaleModal({
-                    projetoId: first.id,
-                    tipoVendedor: first.tipo_vendedor || null,
-                    isExclusivo: false,
-                    contratoAssinado: !!first.contrato_assinado,
-                  })
-                  }}
-                  title={!first.contrato_assinado ? 'Confirme o contrato assinado antes de autorizar' : undefined}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-600 hover:bg-green-500 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                >
-                  Autorizar Fechamento
-                </button>
-                <button
-                  onClick={() => updateProjeto(first.id, 'status_contato', 'Proposta Enviada')}
-                  className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
+          )}
+        </div>
+        {(whatsappUrl || email) && (
+          <div className="flex flex-wrap gap-2">
+            {whatsappUrl && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonClass('secondary', 'sm')}
+              >
+                WhatsApp
+              </a>
             )}
+            {email && <a href={`mailto:${email}`} className={buttonClass('secondary', 'sm')}>Email</a>}
           </div>
-          {first.valor_venda && first.valor_venda > 0 && (
-            <p className="text-sm text-purple-600 mt-2">
-              Valor estimado: {formatCurrency(first.valor_venda)}
-              {first.tipo_servico ? ` · ${first.tipo_servico}` : ''}
-            </p>
-          )}
-        </div>
-      )}
+        )}
+      </header>
 
-      {/* Commission Info */}
-      {first.vendedor_id && first.comissao_valor && first.comissao_valor > 0 && (
-        <div className="bg-sigma-neon/10 border border-sigma-neon/30 rounded-xl p-5">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Categoria</p>
-              <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-1">Consultor</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">
-                Comissão Consultor ({Number(first.comissao_percentual || 0).toFixed(1)}%)
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <LeadTimeline cnpj={apiCnpj} canWriteNotes={canModifyData(role)} refreshKey={historyBump} />
+
+        {/* No celular, status e ações vêm antes da linha do tempo. */}
+        <aside className="order-first min-w-0 space-y-4 lg:order-none" aria-label="Detalhes do lead">
+          <Panel title="Reunião" padded={false}>
+            <div className="space-y-3 px-4 py-3">
+              <p className="text-sm text-ink-2">
+                {temReuniao ? 'Reunião marcada com este lead.' : 'Nenhuma reunião marcada.'}
               </p>
-              <p className="text-2xl font-heading font-bold text-sigma-neon mt-1">
-                {formatCurrency(first.comissao_valor)}
-              </p>
-              {first.vendedor_nome && (
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{first.vendedor_nome}</p>
-              )}
+              <a
+                href={googleCalendarEventUrl({
+                  title: `Reunião PROJETUS: ${nome}`,
+                  details: [
+                    `Instituição: ${nome}`,
+                    telefone ? `Telefone: ${telefone}` : null,
+                    email ? `Email: ${email}` : null,
+                    `CNPJ: ${formatCNPJ(cnpjClean)}`,
+                    'Local: Google Meet',
+                  ].filter(Boolean).join('\n'),
+                  guestEmail: email,
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonClass('secondary', 'sm', 'w-full')}
+              >
+                Agendar no Google Agenda
+              </a>
             </div>
-            {first.closer_id && first.closer_comissao_valor && first.closer_comissao_valor > 0 ? (
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Gestor ({Number(first.closer_comissao_percentual || 0).toFixed(1)}%)</p>
-                <p className="text-2xl font-heading font-bold text-purple-600 mt-1">
-                  {formatCurrency(first.closer_comissao_valor)}
-                </p>
-                {first.closer_nome && (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{first.closer_nome}</p>
-                )}
-              </div>
-            ) : first.comissao_bonus != null ? (
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Fundo Comercial (2%)</p>
-                <p className="text-lg font-semibold text-green-600 mt-1">
-                  {formatCurrency(first.comissao_bonus || 0)}
-                </p>
-              </div>
-            ) : null}
-            <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Valor da Venda</p>
-              <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-1">
-                {formatCurrency(first.valor_venda || 0)}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+          </Panel>
 
-      {/* Contact info */}
-      {(first.telefone || first.email || first.endereco || canModify) && (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4 flex flex-wrap gap-6">
-          {first.endereco && (
-            <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase mb-1">Endereco</p>
-              <p className="text-sm text-gray-600 dark:text-gray-300">{first.endereco}</p>
-              {first.municipio && first.uf && (
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{first.municipio} - {first.uf}</p>
-              )}
-            </div>
+          {projetos.length > 0 && (
+            <Panel
+              title={`Emendas em Aprovação (${projetos.length})`}
+              description={projetos.length > 1 ? `Total ${formatCurrency(totalEmendas)}` : undefined}
+              padded={false}
+            >
+              <EmendasAprovacao
+                projetos={projetos}
+                userRole={userRole}
+                canModify={canModify}
+                onStatus={(id, value) => void updateProjeto(id, 'status_contato', value)}
+                onObservacao={(id, value) => void updateProjeto(id, 'observacoes', value)}
+                onContrato={(id, value) => void setContratoAssinado(id, value)}
+                onAutorizar={(p) => setSaleModal({ projetoId: p.id, tipoVendedor: p.tipo_vendedor || null, isExclusivo: false, contratoAssinado: !!p.contrato_assinado })}
+              />
+            </Panel>
           )}
-          {(first.telefone || canModify) && (
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Telefone</p>
-                {canModify && editingField !== 'telefone' && (
-                  <button
-                    onClick={() => {
-                      setEditingField('telefone')
-                      setEditValue(first.telefone || '')
-                    }}
-                    className="text-gray-400 hover:text-sigma-neon transition-colors"
-                    title="Editar telefone"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11.5 2.5a1.5 1.5 0 012 2L5 13l-4 1 1-4L11.5 2.5z"/>
-                    </svg>
-                  </button>
-                )}
-              </div>
-              {editingField === 'telefone' ? (
-                <input
-                  type="text"
-                  value={editValue}
-                  onChange={e => setEditValue(e.target.value)}
-                  onBlur={() => {
-                    if (editValue !== (first.telefone || '')) {
-                      updateContact('telefone', editValue)
-                    } else {
-                      setEditingField(null)
-                    }
-                  }}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      if (editValue !== (first.telefone || '')) {
-                        updateContact('telefone', editValue)
-                      } else {
-                        setEditingField(null)
-                      }
-                    } else if (e.key === 'Escape') {
-                      setEditingField(null)
-                    }
-                  }}
-                  autoFocus
-                  className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md px-2 py-1 focus:outline-none focus:border-sigma-neon/50"
-                />
-              ) : first.telefone ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-800 dark:text-gray-200">{first.telefone}</span>
-                  <WhatsAppAction telefone={first.telefone} compact label="WhatsApp" />
-                </div>
-              ) : (
-                <span className="text-sm text-gray-600 dark:text-gray-400">Sem telefone</span>
-              )}
-            </div>
-          )}
-          {(first.email || canModify) && (
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Email</p>
-                {canModify && editingField !== 'email' && (
-                  <button
-                    onClick={() => {
-                      setEditingField('email')
-                      setEditValue(first.email || '')
-                    }}
-                    className="text-gray-400 hover:text-sigma-neon transition-colors"
-                    title="Editar email"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11.5 2.5a1.5 1.5 0 012 2L5 13l-4 1 1-4L11.5 2.5z"/>
-                    </svg>
-                  </button>
-                )}
-              </div>
-              {editingField === 'email' ? (
-                <input
-                  type="email"
-                  value={editValue}
-                  onChange={e => setEditValue(e.target.value)}
-                  onBlur={() => {
-                    if (editValue !== (first.email || '')) {
-                      updateContact('email', editValue)
-                    } else {
-                      setEditingField(null)
-                    }
-                  }}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      if (editValue !== (first.email || '')) {
-                        updateContact('email', editValue)
-                      } else {
-                        setEditingField(null)
-                      }
-                    } else if (e.key === 'Escape') {
-                      setEditingField(null)
-                    }
-                  }}
-                  autoFocus
-                  className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md px-2 py-1 focus:outline-none focus:border-sigma-neon/50"
-                />
-              ) : first.email ? (
-                <a href={`mailto:${first.email}`} className="text-sm text-[#0072F7] hover:text-blue-700 block">
-                  {first.email}
-                </a>
-              ) : (
-                <span className="text-sm text-gray-600 dark:text-gray-400">Sem email</span>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* Lead contacts (multi-contact per CNPJ) */}
-      <LeadContacts cnpj={cnpj} canModify={canModify} />
+          {convenios.length > 0 && (
+            <Panel title={`Convênios em Execução e Prestação (${convenios.length})`} padded={false}>
+              <ConveniosExecucao
+                convenios={convenios}
+                status={execStatus}
+                onStatus={projetos.length > 0 ? (v) => void updateExecStatus(v) : null}
+                canChange={execEditable}
+                options={hasTeamCommercialView(role) || role === 'admin' ? CRM_STATUS_SELECT_OPTIONS : CRM_STATUS_SELECT_OPTIONS.filter((o) => !isClosedCrmStatus(o))}
+              />
+            </Panel>
+          )}
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100">Emendas ({projetos.length})</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Parlamentar</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Orgao</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Valor Emenda</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Obs</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Link</th>
-              </tr>
-            </thead>
-            <tbody>
-              {projetos.map(p => (
-                <tr key={p.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                  <td className="px-4 py-3 text-gray-900 dark:text-gray-100 text-xs max-w-[220px] whitespace-normal break-words">{p.parlamentar || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600 dark:text-gray-300 text-xs max-w-[200px] whitespace-normal break-words">{p.orgao_concedente || '-'}</td>
-                  <td className="px-4 py-3 text-sigma-neon text-xs">{formatCurrency(Number(p.valor_emenda) || 0)}</td>
-                  <td className="px-4 py-3">
-                    <select
-                      value={formatCrmStatusLabel(p.status_contato || 'Não Contatado', p.venda_etapa)}
-                      onChange={e => updateProjeto(p.id, 'status_contato', e.target.value)}
-                      disabled={!canModify || (normalizeCrmStatus(p.status_contato) === 'Fechado' && !canReopenClosedSale(userRole ?? ''))}
-                      className={`text-xs rounded px-2 py-1 border-0 cursor-pointer disabled:cursor-default disabled:opacity-80 ${STATUS_COLORS[normalizeCrmStatus(p.status_contato)] || STATUS_COLORS['Não Contatado']}`}
-                    >
-                      {(userRole === 'vendedor' || userRole === 'coordenador'
-                        ? STATUS_OPTIONS.filter(s => !isManagementCrmStatus(s))
-                        : STATUS_OPTIONS).map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-4 py-3">
-                    <input
-                      type="text"
-                      defaultValue={p.observacoes || ''}
-                      placeholder="..."
-                      readOnly={!canModify}
-                      onBlur={e => {
-                        if (e.target.value !== (p.observacoes || '')) {
-                          updateProjeto(p.id, 'observacoes', e.target.value)
-                        }
-                      }}
-                      className="bg-transparent border-b border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 w-24 focus:outline-none focus:border-sigma-neon/50 placeholder-gray-400"
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    {p.link_externo ? (
-                      <a href={p.link_externo} target="_blank" rel="noopener" className="text-[#0072F7] hover:text-blue-700 text-xs">
-                        Abrir
-                      </a>
-                    ) : '-'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          {first && (
+            <Panel title="Contato" padded={false}>
+              <ContatoLead
+                telefone={exibido.telefone}
+                email={exibido.email}
+                endereco={first.endereco ?? null}
+                // Contato principal grava pela rota de contatos (canModifyData); o do lead, pela de leads.
+                canEdit={(campo) => (exibido[campo].contatoId != null ? canModifyData(role) : canModify)}
+                onSave={saveContato}
+              />
+            </Panel>
+          )}
+
+          <LeadContacts cnpj={apiCnpj} canModify={canModifyData(role)} refreshKey={contactsBump} onChange={() => setContatosReload((n) => n + 1)} />
+        </aside>
       </div>
 
-      {/* Histórico de movimentação (status e atribuição) */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
-        <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100 mb-3">Histórico de Movimentação</h2>
-        <LeadHistory
-          cnpj={cnpj}
-          refreshKey={projetos.map(p => `${p.status_contato}|${p.vendedor_id}`).join(',')}
+      {first && (
+        <SaleModal
+          open={!!saleModal}
+          leadNome={nome}
+          currentTipoVendedor={saleModal?.tipoVendedor}
+          userRole={userRole}
+          isExclusivo={saleModal?.isExclusivo}
+          leadContratoAssinado={saleModal?.contratoAssinado}
+          onCancel={() => setSaleModal(null)}
+          onConfirm={(data) => { if (saleModal) void submitFechado(saleModal.projetoId, data) }}
         />
-      </div>
-
-      {/* Contact notes timeline */}
-      <ContactNotesTimeline cnpj={cnpj} canModify={canModify} />
-
-      <SaleModal
-        open={!!saleModal}
-        leadNome={first.nome || 'Sem nome'}
-        currentTipoVendedor={saleModal?.tipoVendedor}
-        userRole={userRole}
-        isExclusivo={saleModal?.isExclusivo}
-        leadContratoAssinado={saleModal?.contratoAssinado}
-        onCancel={() => setSaleModal(null)}
-        onConfirm={(data) => {
-          if (saleModal) {
-            submitFechado(saleModal.projetoId, data)
-          }
-        }}
-      />
+      )}
     </div>
   )
 }
