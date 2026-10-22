@@ -2,16 +2,41 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { formatCNPJ, formatCompactCurrency, formatCurrency } from '@/lib/format'
+import { formatCNPJ, formatCompactCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
 import SaleModal from '@/components/SaleModal'
 import WhatsAppAction from '@/components/WhatsAppAction'
-import { CRM_STATUS_BADGE_COLORS, CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, isManagementCrmStatus, normalizeCrmStatus } from '@/lib/crm-catalog'
+import Button from '@/components/ui/Button'
+import EmptyState from '@/components/ui/EmptyState'
+import { SkeletonRows } from '@/components/ui/Skeleton'
+import { useToast } from '@/components/ui/Toast'
+import {
+  FilterChip,
+  LastContactBadge,
+  OpenCardLink,
+  PhoneStatusDot,
+  SortHeader,
+  StatusSelect,
+  TAG_TONE,
+  Tag,
+  inputClass,
+  selectClass,
+  thClass,
+} from '@/components/leads/list-ui'
+import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, isManagementCrmStatus, normalizeCrmStatus } from '@/lib/crm-catalog'
+import { hasTeamCommercialView } from '@/lib/roles'
 
 const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
-const STATUS_COLORS = CRM_STATUS_BADGE_COLORS
+
+const TAG_KEYS: { key: string; label: string; tone: keyof typeof TAG_TONE }[] = [
+  { key: 'em_execucao', label: 'Em execução', tone: 'emerald' },
+  { key: 'multi_emenda', label: 'Várias emendas', tone: 'sky' },
+  { key: 'alto_valor', label: 'Alto valor', tone: 'violet' },
+  { key: 'novo', label: 'Novo', tone: 'amber' },
+  { key: 'cliente_existente', label: 'Cliente', tone: 'rose' },
+]
 
 interface Vendedor {
   id: string
@@ -25,7 +50,9 @@ interface SessionUser {
   id: string
 }
 
+// Aba Aprovação da página Leads: emendas agrupadas por CNPJ.
 export default function LeadsClient() {
+  const toast = useToast()
   const searchParams = useSearchParams()
   const [leads, setLeads] = useState<VendedorProjeto[]>([])
   const [selectedLead, setSelectedLead] = useState<VendedorProjeto | null>(null)
@@ -103,23 +130,16 @@ export default function LeadsClient() {
       setLeads(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('Failed to fetch leads:', err)
+      toast.error('Não foi possível carregar os leads. Tente de novo.')
     } finally {
       setLoading(false)
     }
-  }, [search, statusFilter, vendedorFilter])
+  }, [search, statusFilter, vendedorFilter, toast])
 
   useEffect(() => {
     const timer = setTimeout(fetchLeads, 300)
     return () => clearTimeout(timer)
   }, [fetchLeads])
-
-  const TAG_KEYS: { key: string; label: string; bg: string; text: string; border: string }[] = [
-    { key: 'em_execucao', label: 'Em Execução', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-    { key: 'multi_emenda', label: 'Multi-Emenda', bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
-    { key: 'alto_valor', label: 'Alto Valor', bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
-    { key: 'novo', label: 'Novo', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-    { key: 'cliente_existente', label: 'Cliente Existente', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
-  ]
 
   function toggleTag(key: string) {
     setActiveTags(prev => {
@@ -227,11 +247,6 @@ export default function LeadsClient() {
     }
   }
 
-  function SortIcon({ col }: { col: string }) {
-    if (sortCol !== col) return <span className="ml-1 text-gray-300 dark:text-gray-600">↕</span>
-    return <span className="ml-1">{sortDir === 'asc' ? '▲' : '▼'}</span>
-  }
-
   function toggleExpand(cnpj: string) {
     setExpandedCnpjs(prev => {
       const next = new Set(prev)
@@ -274,7 +289,7 @@ export default function LeadsClient() {
       })
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}))
-        alert(`Erro ao atualizar: ${errData.error || 'Falha no servidor'}`)
+        toast.error(`Não foi possível atualizar: ${errData.error || 'falha no servidor'}.`)
         return
       }
       const data = await res.json().catch(() => ({}))
@@ -290,7 +305,7 @@ export default function LeadsClient() {
       ))
     } catch (err) {
       console.error('Failed to update lead:', err)
-      alert('Erro de conexão ao salvar. Recarregue a página e tente novamente.')
+      toast.error('Sem conexão para salvar. Recarregue a página e tente de novo.')
     }
   }
 
@@ -317,7 +332,7 @@ export default function LeadsClient() {
       })
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}))
-        alert(`Erro ao registrar venda: ${errData.error || 'Falha no servidor'}`)
+        toast.error(`Não foi possível registrar a venda: ${errData.error || 'falha no servidor'}.`)
         return
       }
       const data = await res.json().catch(() => ({}))
@@ -335,13 +350,28 @@ export default function LeadsClient() {
       setSaleModal(null)
     } catch (err) {
       console.error('Failed to submit fechado:', err)
+      toast.error('Sem conexão para registrar a venda. Tente de novo.')
     }
   }
 
-  const isCoordinator = sessionUser?.role === 'coordenador'
-  const canExportCSV = sessionUser?.role === 'gestor' || sessionUser?.role === 'diretoria' || sessionUser?.role === 'admin' || isCoordinator
+  const role = sessionUser?.role
+  const isCoordinator = role === 'coordenador'
+  const showsOwner = hasTeamCommercialView(role) || isCoordinator
+  const canAssign = hasTeamCommercialView(role)
+  const statusOptions = role === 'vendedor' || isCoordinator ? STATUS_OPTIONS.filter(s => !isManagementCrmStatus(s)) : STATUS_OPTIONS
+  const canExportCSV = hasTeamCommercialView(role) || role === 'admin' || isCoordinator
   const coordinatorHasCommercialFilter = vendedorFilter !== '' && vendedorFilter !== 'unassigned'
   const exportDisabled = isCoordinator && !coordinatorHasCommercialFilter
+  const hasFilters = !!(search || statusFilter || vendedorFilter || clientFilter || activeTags.size > 0)
+  const sortProps = { sortCol, sortDir, onSort: handleSort }
+
+  function clearFilters() {
+    setSearch('')
+    setStatusFilter('')
+    setVendedorFilter('')
+    setClientFilter('')
+    setActiveTags(new Set())
+  }
 
   function buildExportHref(kind?: 'pendentes') {
     const params = new URLSearchParams()
@@ -351,374 +381,252 @@ export default function LeadsClient() {
     return query ? `/api/leads/export-pendentes?${query}` : '/api/leads/export-pendentes'
   }
 
-  function exportCSV() {
+  function download(kind?: 'pendentes') {
     if (exportDisabled) {
-      alert('Selecione um comercial para exportar.')
+      toast.show('Escolha um comercial no filtro para exportar.')
       return
     }
     const a = document.createElement('a')
-    a.href = buildExportHref()
-    a.click()
-  }
-
-  function exportPendentesCSV() {
-    if (exportDisabled) {
-      alert('Selecione um comercial para exportar pendentes.')
-      return
-    }
-    const a = document.createElement('a')
-    a.href = buildExportHref('pendentes')
+    a.href = buildExportHref(kind)
     a.click()
   }
 
   return (
-    <div className="space-y-6 w-full max-w-[1800px] mx-auto">
-      <div>
-        <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">Lista de Leads</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {sessionUser?.role === 'vendedor'
-            ? 'Seus leads atribuídos'
-            : 'Todos os projetos dos vendedores'}
-        </p>
-      </div>
-
-      <input
-        type="text"
-        placeholder="Buscar por CNPJ ou nome..."
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-[#0072F7] transition-colors"
-      />
-
-      <div className="flex flex-wrap gap-3">
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-[#0072F7]">
-          <option value="">Todos Status</option>
+    <div className="space-y-4">
+      {/* Filtros */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:min-w-[240px] sm:flex-1">
+          <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3">
+            <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.45 4.39l3.08 3.08a.75.75 0 11-1.06 1.06l-3.08-3.08A7 7 0 012 9z" clipRule="evenodd" />
+          </svg>
+          <input
+            type="search"
+            aria-label="Buscar por CNPJ ou nome"
+            placeholder="Buscar por CNPJ ou nome"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className={`${inputClass} pl-9`}
+          />
+        </div>
+        <select aria-label="Status" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={selectClass}>
+          <option value="">Todos os status</option>
           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-        {(sessionUser?.role === 'gestor' || sessionUser?.role === 'diretoria' || sessionUser?.role === 'coordenador') && (
+        {showsOwner && (
           <>
-            <select value={vendedorFilter} onChange={e => setVendedorFilter(e.target.value)} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-[#0072F7]">
-              <option value="">Todos Vendedores</option>
-              <option value="unassigned">Não atribuídos</option>
+            <select aria-label="Vendedor" value={vendedorFilter} onChange={e => setVendedorFilter(e.target.value)} className={selectClass}>
+              <option value="">Todos os vendedores</option>
+              <option value="unassigned">Sem dono</option>
               {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome} ({v.lead_count})</option>)}
             </select>
-            <select value={clientFilter} onChange={e => setClientFilter(e.target.value)} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-600 dark:text-gray-300 focus:outline-none focus:border-[#0072F7]">
-              <option value="">Todos Clientes</option>
-              <option value="existing">Clientes Existentes</option>
-              <option value="new">Novos Clientes</option>
+            <select aria-label="Tipo de cliente" value={clientFilter} onChange={e => setClientFilter(e.target.value)} className={selectClass}>
+              <option value="">Clientes e novos</option>
+              <option value="existing">Só clientes</option>
+              <option value="new">Só novos</option>
             </select>
           </>
         )}
       </div>
 
-      {/* Tag filters */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium mr-1">Tags:</span>
-        {TAG_KEYS.map(tag => {
-          const active = activeTags.has(tag.key)
-          return (
-            <button
-              key={tag.key}
-              onClick={() => toggleTag(tag.key)}
-              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
-                active
-                  ? `${tag.bg} ${tag.text} ${tag.border} ring-2 ring-offset-1 ring-current`
-                  : 'bg-gray-50 dark:bg-gray-500/15 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              {tag.label}
-              {active && (
-                <span className="ml-1 text-[10px]">&times;</span>
-              )}
-            </button>
-          )
-        })}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="mr-0.5 text-xs text-ink-3">Tags</span>
+        {TAG_KEYS.map(tag => (
+          <FilterChip
+            key={tag.key}
+            label={tag.label}
+            active={activeTags.has(tag.key)}
+            activeClass={TAG_TONE[tag.tone]}
+            onClick={() => toggleTag(tag.key)}
+          />
+        ))}
         {activeTags.size > 0 && (
-          <button
-            onClick={() => setActiveTags(new Set())}
-            className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 underline ml-1"
-          >
-            Limpar
+          <button type="button" onClick={() => setActiveTags(new Set())} className="text-xs text-ink-3 underline-offset-2 hover:text-ink hover:underline">
+            Limpar tags
           </button>
+        )}
+        {/* mirrors canExportContacts() in dal.ts */}
+        {canExportCSV && (
+          <div className="ml-auto flex flex-wrap gap-2">
+            <Button size="sm" variant="ghost" onClick={() => download('pendentes')} disabled={exportDisabled} title={exportDisabled ? 'Escolha um comercial no filtro para exportar.' : undefined}>
+              Exportar pendentes
+            </Button>
+            <Button size="sm" onClick={() => download()} disabled={exportDisabled} title={exportDisabled ? 'Escolha um comercial no filtro para exportar.' : undefined}>
+              Exportar CSV
+            </Button>
+          </div>
         )}
       </div>
 
-      {/* mirrors canExportContacts() in dal.ts */}
-      {canExportCSV && (
-        <div className="flex flex-wrap gap-2 justify-start sm:justify-end">
-          <button
-            onClick={exportPendentesCSV}
-            disabled={exportDisabled}
-            title={exportDisabled ? 'Selecione um comercial para exportar.' : undefined}
-            className="px-3 py-1.5 rounded-lg border border-orange-200 dark:border-orange-500/30 text-orange-600 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-500/15 transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Exportar Pendentes CSV
-          </button>
-          <button
-            onClick={exportCSV}
-            disabled={exportDisabled}
-            title={exportDisabled ? 'Selecione um comercial para exportar.' : undefined}
-            className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Exportar CSV
-          </button>
+      {loading && leads.length === 0 ? (
+        <div className="overflow-hidden rounded-xl border border-line bg-surface">
+          <SkeletonRows rows={8} />
         </div>
-      )}
-
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-pulse text-gray-400 dark:text-gray-500">Carregando leads...</div>
+      ) : displayLeads.length === 0 ? (
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState
+            title={hasFilters ? 'Nenhum lead com esses filtros' : role === 'vendedor' ? 'Você ainda não tem leads' : 'Nenhum lead no funil de aprovação'}
+            description={hasFilters ? 'Tire algum filtro para ver mais resultados.' : role === 'vendedor' ? 'Quando o gestor distribuir leads para você, eles aparecem aqui.' : 'Os leads chegam pela sincronização diária das emendas.'}
+            action={hasFilters ? <Button size="sm" onClick={clearFilters}>Limpar filtros</Button> : undefined}
+          />
         </div>
       ) : (
-        <div>
-          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-            <table className="min-w-[1050px] w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                  <th onClick={() => handleSort('nome')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Instituição<SortIcon col="nome" /></th>
-                  <th onClick={() => handleSort('valor')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Valor<SortIcon col="valor" /></th>
-                  <th onClick={() => handleSort('orgao')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Ministério<SortIcon col="orgao" /></th>
-                  <th onClick={() => handleSort('local')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Local<SortIcon col="local" /></th>
-                  <th className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">Contato</th>
-                  <th onClick={() => handleSort('dias')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Ult. Contato<SortIcon col="dias" /></th>
-                  <th onClick={() => handleSort('status')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">Status<SortIcon col="status" /></th>
-                  {(sessionUser?.role === 'gestor' || sessionUser?.role === 'diretoria' || sessionUser?.role === 'coordenador') && (
-                    <th onClick={() => handleSort('vendedor')} className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                      Responsável
-                      <SortIcon col="vendedor" />
-                    </th>
-                  )}
+        <>
+          <div className={`relative overflow-x-auto rounded-xl border border-line bg-surface transition-opacity duration-fast ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
+            <table className="w-full min-w-[1050px] text-sm">
+              <thead className="border-b border-line bg-raised/60">
+                <tr>
+                  <SortHeader col="nome" label="Instituição" {...sortProps} />
+                  <SortHeader col="valor" label="Valor" {...sortProps} />
+                  <SortHeader col="orgao" label="Ministério" {...sortProps} />
+                  <SortHeader col="local" label="Local" {...sortProps} />
+                  <th className={thClass}>Contato</th>
+                  <SortHeader col="dias" label="Último contato" {...sortProps} />
+                  <SortHeader col="status" label="Status" {...sortProps} />
+                  {showsOwner && <SortHeader col="vendedor" label="Responsável" {...sortProps} />}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-line">
                 {displayLeads.map(lead => {
                   const hasContact = lead.telefone || lead.email
                   const isExpanded = expandedCnpjs.has(lead.cnpj)
                   const hasMultipleEmendas = lead.emenda_count > 1
-                  const totalComissao = (lead as any).totalComissao || 0
-                  const allFechadoLocked = (lead as any).allFechadoLocked || false
+                  const totalComissao = lead.totalComissao || 0
+                  const allFechadoLocked = lead.allFechadoLocked || false
+                  const showCloser = !!lead.closer_id && normalizeCrmStatus(lead.status_contato) === 'Em Aprovação'
                   return (
                   <React.Fragment key={lead.cnpj}>
                   <tr
                     onClick={() => handleOpenLead(lead)}
-                    className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
-                      lead.is_max_priority ? 'bg-red-50 dark:bg-red-500/10' :
-                      !hasContact ? 'bg-red-50/50 dark:bg-red-500/5' : ''
+                    className={`cursor-pointer align-top transition-colors duration-fast hover:bg-raised ${
+                      lead.is_max_priority ? 'bg-red-50/70 dark:bg-red-500/[0.08]' :
+                      !hasContact ? 'bg-red-50/40 dark:bg-red-500/[0.05]' : ''
                     }`}
                   >
-                    <td className="px-3 py-2.5 max-w-[280px]">
+                    <td className="max-w-[300px] px-3 py-2.5">
                       <div className="flex items-start gap-1.5">
                         {hasMultipleEmendas && (
                           <button
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); toggleExpand(lead.cnpj) }}
-                            className="mt-0.5 text-gray-400 dark:text-gray-500 hover:text-[#0072F7] transition-colors text-xs flex-shrink-0"
-                            title={`${lead.emenda_count} emendas`}
+                            aria-expanded={isExpanded}
+                            aria-label={`${isExpanded ? 'Esconder' : 'Mostrar'} as ${lead.emenda_count} emendas`}
+                            className="mt-0.5 shrink-0 rounded p-0.5 text-ink-3 transition-colors duration-fast hover:bg-line/60 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
                           >
-                            {isExpanded ? '▼' : '▶'}
+                            <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className={`h-3.5 w-3.5 transition-transform duration-base ease-out-quart ${isExpanded ? 'rotate-90' : ''}`}>
+                              <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                            </svg>
                           </button>
                         )}
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-gray-900 dark:text-gray-100 font-medium text-sm leading-tight whitespace-normal break-words">
-                              {lead.nome || '-'}
-                            </span>
-                            <a
-                              href={`/lead/${encodeURIComponent(lead.cnpj)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={e => e.stopPropagation()}
-                              className="flex-shrink-0 text-gray-300 dark:text-gray-600 hover:text-[#0072F7] transition-colors"
-                              title="Abrir em nova aba"
-                            >
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
-                            </a>
-                            {lead.is_existing_client && (
-                              <span className="text-[10px] bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-500/30">
-                                CLIENTE
-                              </span>
-                            )}
-                            {isNewLead(lead.created_at) && (
-                              <span className="text-[10px] bg-green-50 dark:bg-green-500/15 text-green-600 dark:text-green-300 px-1.5 py-0.5 rounded border border-green-200 dark:border-green-500/30 font-semibold">
-                                NOVO
-                              </span>
-                            )}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-sm font-medium leading-snug text-ink">{lead.nome || 'Sem nome'}</span>
+                            <OpenCardLink cnpj={lead.cnpj} />
+                            {lead.is_existing_client && <Tag tone="rose">Cliente</Tag>}
+                            {isNewLead(lead.created_at) && <Tag tone="amber">Novo</Tag>}
                           </div>
-                          <span className="font-mono text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 block">{formatCNPJ(lead.cnpj)}</span>
+                          <span className="mt-0.5 block font-mono text-[11px] text-ink-3">{formatCNPJ(lead.cnpj)}</span>
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">
+                    <td className="whitespace-nowrap px-3 py-2.5">
                       {totalComissao > 0 ? (
                         <div>
-                          <span className="text-green-600 font-semibold text-sm">
-                            {formatCompactCurrency(totalComissao)}
-                          </span>
-                          {allFechadoLocked && (
-                            <span className="inline-block ml-1 text-green-500 align-middle" title="Comissão confirmada">
-                              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a4 4 0 0 0-4 4v2H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-1V5a4 4 0 0 0-4-4zm-2 4a2 2 0 1 1 4 0v2H6V5z"/></svg>
-                            </span>
-                          )}
-                          <span className="block text-[10px] text-gray-400 dark:text-gray-500">
-                            comissao{allFechadoLocked ? <span className="ml-1 text-green-500">Confirmada</span> : null}
+                          <span className="font-semibold tabular text-emerald-700 dark:text-emerald-300">{formatCompactCurrency(totalComissao)}</span>
+                          <span className="block text-[11px] text-ink-3">
+                            Comissão{allFechadoLocked ? ' confirmada' : ''}
                           </span>
                         </div>
                       ) : (
                         <div>
-                          <span className="text-sigma-neon font-semibold text-sm">
-                            {formatCompactCurrency((lead as any).totalValor || Number(lead.valor_emenda) || 0)}
-                          </span>
-                          {hasMultipleEmendas && (
-                            <span className="ml-1 text-gray-400 dark:text-gray-500 text-xs">({lead.emenda_count})</span>
-                          )}
+                          <span className="font-semibold tabular text-ink">{formatCompactCurrency(lead.totalValor || Number(lead.valor_emenda) || 0)}</span>
+                          {hasMultipleEmendas && <span className="ml-1 text-xs text-ink-3">({lead.emenda_count})</span>}
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 max-w-[220px]">
-                      <div className="text-gray-600 dark:text-gray-300 text-xs leading-tight whitespace-normal break-words">{lead.orgao_concedente || '-'}</div>
+                    <td className="max-w-[220px] px-3 py-2.5 text-xs leading-snug text-ink-2">{lead.orgao_concedente || '-'}</td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-xs text-ink-2">
+                      {lead.uf && lead.municipio ? `${lead.municipio}, ${lead.uf}` : lead.uf || lead.municipio || '-'}
                     </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">
-                      <span className="text-gray-600 dark:text-gray-300 text-xs">
-                        {lead.uf && lead.municipio ? `${lead.municipio}, ${lead.uf}` : lead.uf || lead.municipio || '-'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5 max-w-[200px]">
+                    <td className="max-w-[210px] px-3 py-2.5">
                       {hasContact ? (
                         <div className="space-y-0.5">
                           {lead.telefone && (
-                            <div className="flex items-center text-xs text-gray-600 dark:text-gray-300 truncate">
-                              {lead.principal_telefone_status === 'valido' && (
-                                <span className="w-2 h-2 rounded-full bg-green-500 inline-block mr-1 flex-shrink-0" title="Telefone valido" />
-                              )}
-                              {lead.principal_telefone_status === 'invalido' && (
-                                <span className="w-2 h-2 rounded-full bg-red-500 inline-block mr-1 flex-shrink-0" title="Telefone invalido" />
-                              )}
-                              {lead.principal_telefone_status === 'nao_atende' && (
-                                <span className="w-2 h-2 rounded-full bg-amber-500 inline-block mr-1 flex-shrink-0" title="Nao atende" />
-                              )}
+                            <div className="flex items-center gap-1 truncate text-xs text-ink-2">
+                              <PhoneStatusDot status={lead.principal_telefone_status} />
                               <span className="truncate">{lead.telefone}</span>
-                              {lead.telefone && (
-                                <WhatsAppAction
-                                  telefone={lead.telefone}
-                                  compact
-                                  label="WA"
-                                  onClick={e => e.stopPropagation()}
-                                />
-                              )}
+                              <WhatsAppAction telefone={lead.telefone} compact label="WA" onClick={e => e.stopPropagation()} />
                             </div>
                           )}
-                          {lead.email && (
-                            <div className="text-xs text-gray-400 dark:text-gray-500 truncate">{lead.email}</div>
-                          )}
+                          {lead.email && <div className="truncate text-xs text-ink-3">{lead.email}</div>}
                         </div>
                       ) : (
-                        <span className="text-xs text-red-500/70">Sem contato</span>
+                        <span className="text-xs font-medium text-red-700 dark:text-red-300">Sem contato</span>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">
-                      {lead.days_since_last_contact == null ? (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">Nunca</span>
-                      ) : lead.days_since_last_contact <= 2 ? (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">{lead.days_since_last_contact}d</span>
-                      ) : lead.days_since_last_contact <= 7 ? (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">{lead.days_since_last_contact}d</span>
-                      ) : (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300">{lead.days_since_last_contact}d</span>
-                      )}
-                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5"><LastContactBadge days={lead.days_since_last_contact} /></td>
                     <td className="px-3 py-2.5">
-                      <select
-                        value={formatCrmStatusLabel(lead.status_contato, lead.venda_etapa)}
-                        onClick={e => e.stopPropagation()}
-                        onChange={e => updateLead(lead.id, 'status_contato', e.target.value)}
-                        className={`text-xs font-medium rounded-full px-3 py-1 border-0 cursor-pointer ${STATUS_COLORS[normalizeCrmStatus(lead.status_contato)] || STATUS_COLORS['Não Contatado']}`}
-                      >
-                        {(sessionUser?.role === 'vendedor' || sessionUser?.role === 'coordenador'
-                          ? STATUS_OPTIONS.filter(s => !isManagementCrmStatus(s))
-                          : STATUS_OPTIONS).map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
+                      <StatusSelect
+                        ariaLabel={`Status de ${lead.nome || formatCNPJ(lead.cnpj)}`}
+                        status={normalizeCrmStatus(lead.status_contato)}
+                        label={formatCrmStatusLabel(lead.status_contato, lead.venda_etapa)}
+                        options={statusOptions}
+                        onChange={value => updateLead(lead.id, 'status_contato', value)}
+                      />
                     </td>
-                    {(sessionUser?.role === 'gestor' || sessionUser?.role === 'diretoria' || sessionUser?.role === 'coordenador') && (
+                    {showsOwner && (
                       <td className="px-3 py-2.5">
-                        {sessionUser?.role === 'gestor' || sessionUser?.role === 'diretoria' ? (
-                          <div className="flex flex-col gap-0.5">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500 dark:text-gray-400">{lead.vendedor_nome || '-'}</span>
+                        <div className="flex flex-col items-start gap-1">
+                          <div className="flex items-center gap-1.5 whitespace-nowrap text-xs text-ink-2">
+                            {lead.vendedor_nome || <span className="text-ink-3">Sem dono</span>}
+                            {canAssign && (
                               <button
+                                type="button"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  setAssignmentModal({
-                                    cnpj: lead.cnpj,
-                                    nome: lead.nome,
-                                    currentVendedor: lead.vendedor_nome || null
-                                  })
+                                  setAssignmentModal({ cnpj: lead.cnpj, nome: lead.nome, currentVendedor: lead.vendedor_nome || null })
                                 }}
-                                className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-blue-50 hover:text-[#0072F7] transition-colors"
+                                className="rounded px-1 text-xs font-medium text-accent-ink opacity-70 transition-opacity duration-fast hover:opacity-100 focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/50"
                               >
-                                {lead.vendedor_nome ? '↻' : '+'}
+                                {lead.vendedor_nome ? 'Trocar' : 'Atribuir'}
                               </button>
-                            </div>
-                            {lead.closer_id && normalizeCrmStatus(lead.status_contato) === 'Em Aprovação' && (
-                              <div className="flex items-center gap-1">
-                                <span className="text-[10px] bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-500/30 font-semibold">
-                                  CLOSER: {lead.closer_nome || 'Paulo'}
-                                </span>
-                              </div>
                             )}
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-gray-500 dark:text-gray-400">{lead.vendedor_nome || '-'}</span>
-                            {lead.closer_id && normalizeCrmStatus(lead.status_contato) === 'Em Aprovação' && (
-                              <span className="text-[10px] bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-500/30 font-semibold">
-                                CLOSER
-                              </span>
-                            )}
-                          </div>
-                        )}
+                          {showCloser && <Tag tone="violet">{canAssign ? `Closer: ${lead.closer_nome || 'Paulo'}` : 'Closer'}</Tag>}
+                        </div>
                       </td>
                     )}
                   </tr>
-                  {/* Cascade sub-rows for multiple emendas */}
+                  {/* Emendas do mesmo CNPJ */}
                   {isExpanded && lead.subLeads.map(sub => (
                     <tr
                       key={sub.id}
                       onClick={() => handleOpenLead(sub)}
-                      className="border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                      className="cursor-pointer bg-raised/40 transition-colors duration-fast hover:bg-raised"
                     >
-                      <td className="px-4 py-2 pl-10">
+                      <td className="px-3 py-2 pl-10">
                         <div className="text-xs">
-                          <span className="text-gray-400 dark:text-gray-500 mr-1">↳</span>
-                          <span className="text-amber-600 font-medium">{sub.parlamentar || '-'}</span>
-                          {sub.nr_emenda && (
-                            <span className="text-gray-400 dark:text-gray-500 ml-1.5 text-[10px]">#{sub.nr_emenda}</span>
-                          )}
+                          <span className="font-medium text-ink">{sub.parlamentar || 'Sem parlamentar'}</span>
+                          {sub.nr_emenda && <span className="ml-1.5 text-[11px] text-ink-3">#{sub.nr_emenda}</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
+                      <td className="whitespace-nowrap px-3 py-2 text-xs tabular">
                         {normalizeCrmStatus(sub.status_contato) === 'Fechado' && (Number(sub.comissao_valor) || 0) > 0 ? (
-                          <span className="text-green-600 font-medium text-xs">
+                          <span className="font-medium text-emerald-700 dark:text-emerald-300">
                             {formatCompactCurrency((Number(sub.comissao_valor) || 0) + (Number(sub.comissao_bonus) || 0))}
                           </span>
                         ) : (
-                          <span className="text-sigma-neon/70 font-medium text-xs">
-                            {formatCompactCurrency(Number(sub.valor_emenda) || 0)}
-                          </span>
+                          <span className="font-medium text-ink-2">{formatCompactCurrency(Number(sub.valor_emenda) || 0)}</span>
                         )}
                       </td>
-                      <td className="px-4 py-2">
-                        <div className="text-gray-400 dark:text-gray-500 text-xs">{sub.orgao_concedente || '-'}</div>
-                      </td>
-                      <td className="px-4 py-2" colSpan={sessionUser?.role === 'gestor' || sessionUser?.role === 'diretoria' || sessionUser?.role === 'coordenador' ? 5 : 4}>
-                        <select
-                          value={formatCrmStatusLabel(sub.status_contato, sub.venda_etapa)}
-                          onClick={e => e.stopPropagation()}
-                          onChange={e => updateLead(sub.id, 'status_contato', e.target.value)}
-                          className={`text-xs font-medium rounded-full px-2 py-0.5 border-0 cursor-pointer ${STATUS_COLORS[normalizeCrmStatus(sub.status_contato)] || STATUS_COLORS['Não Contatado']}`}
-                        >
-                          {(sessionUser?.role === 'vendedor' || sessionUser?.role === 'coordenador'
-                            ? STATUS_OPTIONS.filter(s => !isManagementCrmStatus(s))
-                            : STATUS_OPTIONS).map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                      <td className="px-3 py-2 text-xs text-ink-3">{sub.orgao_concedente || '-'}</td>
+                      <td className="px-3 py-2" colSpan={showsOwner ? 5 : 4}>
+                        <StatusSelect
+                          ariaLabel={`Status da emenda ${sub.nr_emenda || sub.id}`}
+                          status={normalizeCrmStatus(sub.status_contato)}
+                          label={formatCrmStatusLabel(sub.status_contato, sub.venda_etapa)}
+                          options={statusOptions}
+                            onChange={value => updateLead(sub.id, 'status_contato', value)}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -729,10 +637,10 @@ export default function LeadsClient() {
             </table>
           </div>
 
-          <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-            <span>{displayLeads.length} CNPJs ({leads.length} emendas)</span>
-          </div>
-        </div>
+          <p className="text-sm text-ink-3">
+            {displayLeads.length.toLocaleString('pt-BR')} CNPJs ({leads.length.toLocaleString('pt-BR')} emendas)
+          </p>
+        </>
       )}
 
       <LeadSlideOver
@@ -767,7 +675,7 @@ export default function LeadsClient() {
         open={!!saleModal}
         leadNome={saleModal?.leadNome || ''}
         currentTipoVendedor={saleModal?.tipoVendedor}
-        userRole={sessionUser?.role || null}
+        userRole={role || null}
         isExclusivo={saleModal?.tipoVendedor === 'In-Sites Sells' || saleModal?.tipoVendedor === 'Exclusivo'}
         leadContratoAssinado={saleModal?.contratoAssinado}
         onCancel={() => setSaleModal(null)}

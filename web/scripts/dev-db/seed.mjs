@@ -35,6 +35,7 @@ const USERS = [
   ['Diretoria Teste', 'diretoria@dev.local', 'diretoria'],
   ['Carla CSM', 'csm@dev.local', 'csm'],
   ['Paula Projetista', 'projetista@dev.local', 'projetista'],
+  ['Vera Visualizadora', 'visualizador@dev.local', 'visualizador'],
 ]
 
 const ORGS = [

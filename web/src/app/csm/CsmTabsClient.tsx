@@ -2,11 +2,19 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import CsmDashboardClient from './CsmDashboardClient'
 import ExecucaoClient from '@/app/execucao/ExecucaoClient'
 import SectionTabs from '@/components/SectionTabs'
+import type { ExecucaoFase } from '@/lib/execucao-fase'
 
 type Tab = 'clientes' | 'operacao' | 'comissoes'
+
+const FASES: { id: ExecucaoFase | 'todas'; label: string }[] = [
+  { id: 'todas', label: 'Todas' },
+  { id: 'execucao', label: 'Execução' },
+  { id: 'prestacao_contas', label: 'Prestação de Contas' },
+]
 
 interface CsmTabsClientProps {
   userRole: string
@@ -16,6 +24,7 @@ interface CsmTabsClientProps {
 
 export default function CsmTabsClient({ userRole, userName, initialTab }: CsmTabsClientProps) {
   const router = useRouter()
+  const [fase, setFase] = useState<ExecucaoFase | 'todas'>('todas')
   const currentTab: Tab = initialTab === 'crm'
     ? 'operacao'
     : initialTab === 'comissoes'
@@ -38,7 +47,17 @@ export default function CsmTabsClient({ userRole, userName, initialTab }: CsmTab
       />
 
       {currentTab === 'clientes' && <CsmDashboardClient userRole={userRole} userName={userName} />}
-      {currentTab === 'operacao' && <ExecucaoClient userRole={userRole} />}
+      {currentTab === 'operacao' && (
+        <div className="space-y-4">
+          <SectionTabs
+            ariaLabel="Fase no TransfereGov"
+            value={fase}
+            onChange={value => setFase(value as ExecucaoFase | 'todas')}
+            tabs={FASES}
+          />
+          <ExecucaoClient key={fase} userRole={userRole} fase={fase === 'todas' ? null : fase} />
+        </div>
+      )}
       {currentTab === 'comissoes' && (
         <div className="py-8 text-center text-gray-500 dark:text-gray-400">
           <Link href="/csm/comissoes" className="inline-flex min-h-10 items-center rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50">

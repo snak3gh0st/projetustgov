@@ -7,20 +7,11 @@ import type { VendedorProjeto } from '@/lib/types'
 import { formatCrmStatusLabel, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 import WhatsAppAction from '@/components/WhatsAppAction'
 import { LeadHistory } from '@/components/LeadEvents'
-
-const STATUS_COLORS: Record<string, string> = {
-  'Não Contatado': 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-500/20',
-  'Sem Interesse': 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-300',
-  'Em Atendimento': 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
-  'Contatado': 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-500/20',
-  'Reunião Agendada': 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/20',
-  'Proposta Enviada': 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border-blue-200 dark:border-blue-500/20',
-  'Em Aprovação': 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-500/20',
-  'Fechado': 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20',
-  'Impedimento Técnico': 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/20',
-  'Cancelado': 'bg-slate-100 dark:bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-500/20',
-  'Telefone Invalido': 'bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600',
-}
+import SlideOver, { Field, SlideOverSection } from '@/components/ui/SlideOver'
+import StatusPill from '@/components/ui/StatusPill'
+import { buttonClass } from '@/components/ui/Button'
+import { useToast } from '@/components/ui/Toast'
+import { Tag } from '@/components/leads/list-ui'
 
 interface LeadSlideOverProps {
   lead: VendedorProjeto | null
@@ -29,427 +20,117 @@ interface LeadSlideOverProps {
   canModify?: boolean
 }
 
+const fieldInputClass =
+  'min-w-0 flex-1 rounded-md border border-line bg-surface px-2 py-1 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30'
+
 export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = false }: LeadSlideOverProps) {
   const router = useRouter()
+  const toast = useToast()
   const [editingField, setEditingField] = useState<'telefone' | 'email' | null>(null)
   const [editValue, setEditValue] = useState('')
   const [localLead, setLocalLead] = useState<VendedorProjeto | null>(lead)
+  const [emendas, setEmendas] = useState<VendedorProjeto[] | undefined>(allEmendas)
 
-  // Update local lead when prop changes
+  // O último lead aberto continua no painel enquanto ele fecha (animação de saída).
   useEffect(() => {
-    setLocalLead(lead)
-  }, [lead])
+    if (lead) {
+      setLocalLead(lead)
+      setEmendas(allEmendas)
+    }
+  }, [lead, allEmendas])
 
+  useEffect(() => {
+    setEditingField(null)
+  }, [lead?.id])
+
+  // Esc cancela a edição em curso; sem edição, fecha o painel.
   useEffect(() => {
     if (!lead) return
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (editingField) {
-          setEditingField(null)
-        } else {
-          onClose()
-        }
-      }
+      if (e.key !== 'Escape') return
+      if (editingField) setEditingField(null)
+      else onClose()
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [lead, onClose, editingField])
 
-  async function updateContact(field: 'telefone' | 'email', value: string) {
-    if (!localLead) return
+  async function patchLead(body: Record<string, unknown>): Promise<boolean> {
+    if (!localLead) return false
     try {
-      await fetch(`/api/leads/${encodeURIComponent(localLead.cnpj)}`, {
+      const res = await fetch(`/api/leads/${encodeURIComponent(localLead.cnpj)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: localLead.id, [field]: value })
+        body: JSON.stringify({ id: localLead.id, ...body }),
       })
-      // Optimistic update on client
-      setLocalLead(prev => prev ? {...prev, [field]: value} : null)
-      setEditingField(null)
+      if (!res.ok) throw new Error('patch failed')
+      return true
     } catch (err) {
-      console.error('Update contact error:', err)
+      console.error('Lead update error:', err)
+      toast.error('Não foi possível salvar. Tente de novo.')
+      return false
     }
   }
 
-  if (!lead || !localLead) return null
+  async function updateContact(field: 'telefone' | 'email', value: string) {
+    if (await patchLead({ [field]: value })) {
+      setLocalLead(prev => prev ? { ...prev, [field]: value } : null)
+      toast.success(field === 'telefone' ? 'Telefone salvo.' : 'Email salvo.')
+    }
+    setEditingField(null)
+  }
+
+  function finishEdit(field: 'telefone' | 'email') {
+    if (!localLead) return
+    if (editValue !== (localLead[field] || '')) void updateContact(field, editValue)
+    else setEditingField(null)
+  }
+
+  const shown = localLead
+  const tipo = shown ? normalizeTipoVendedor(shown.tipo_vendedor) : null
+  const status = shown ? normalizeCrmStatus(shown.status_contato) : null
 
   return (
-    <div className="fixed inset-0 z-50">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Panel */}
-      <div className="absolute right-0 top-0 h-full w-[420px] max-w-[90vw] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col animate-slide-in-right">
-        {/* Top accent line */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0072F7] to-blue-400 pointer-events-none" />
-
-        {/* Header */}
-        <div className="relative p-6 pb-4">
+    <SlideOver
+      open={!!lead}
+      onClose={onClose}
+      closeOnEscape={false}
+      title={shown?.nome || 'Sem nome'}
+      subtitle={shown ? formatCNPJ(shown.cnpj) : undefined}
+      headerExtra={shown && (
+        <>
+          {shown.status_contato && <StatusPill status={status} label={formatCrmStatusLabel(shown.status_contato, shown.venda_etapa)} />}
+          {tipo && <Tag tone={tipo === 'Closer' ? 'violet' : 'sky'}>{tipo === 'Closer' ? 'Gestor (3%)' : 'Consultor (5%)'}</Tag>}
+        </>
+      )}
+      footer={shown && (
+        <div className="grid grid-cols-2 gap-2">
+          <WhatsAppAction telefone={shown.telefone} label="WhatsApp" className="min-h-10 w-full" />
           <button
-            onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-gray-100 transition-colors"
+            type="button"
+            disabled={!shown.email}
+            onClick={() => window.open(`mailto:${shown.email}`, '_blank')}
+            className={buttonClass('secondary', 'md', 'w-full')}
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M4 4l8 8M12 4l-8 8" />
-            </svg>
-          </button>
-
-          <div className="flex items-start gap-3">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 pr-8 whitespace-normal break-words">{lead.nome || 'Sem nome'}</h2>
-              <p className="font-mono text-sm text-gray-400 dark:text-gray-500 mt-1">{formatCNPJ(lead.cnpj)}</p>
-            </div>
-          </div>
-
-          {lead.status_contato && (
-            <span className={`inline-block mt-3 text-xs font-medium rounded-full px-3 py-1 border ${STATUS_COLORS[normalizeCrmStatus(lead.status_contato)] || STATUS_COLORS['Não Contatado']}`}>
-              {formatCrmStatusLabel(lead.status_contato, lead.venda_etapa)}
-            </span>
-          )}
-
-          {localLead.tipo_vendedor && (
-            <span className={`inline-block mt-2 text-xs font-medium rounded-full px-3 py-1 border ${
-              normalizeTipoVendedor(localLead.tipo_vendedor) === 'SDR'
-                ? 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border-blue-200 dark:border-blue-500/20'
-                : normalizeTipoVendedor(localLead.tipo_vendedor) === 'In-Sites Sells'
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-500/20'
-            }`}>
-              {normalizeTipoVendedor(localLead.tipo_vendedor) === 'Closer' ? 'Gestor' : 'Consultor'} ({normalizeTipoVendedor(localLead.tipo_vendedor) === 'Closer' ? '3%' : '5%'})
-            </span>
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-4">
-          {/* Common info */}
-          <div className="grid grid-cols-2 gap-3">
-            <InfoCard label="UF / Municipio" value={[lead.uf, lead.municipio].filter(Boolean).join(' / ') || '-'} />
-            <InfoCard label="Natureza Juridica" value={lead.natureza_juridica || '-'} />
-            <InfoCard label="Vendedor" value={lead.vendedor_nome || '-'} />
-            {(!allEmendas || allEmendas.length <= 1) && (
-              <InfoCard label="Valor Emenda" value={formatCurrency(lead.valor_emenda || lead.valor_global || 0)} highlight />
-            )}
-          </div>
-
-          {/* Emendas list (cascade) */}
-          {allEmendas && allEmendas.length > 1 ? (
-            <div className="space-y-2">
-              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Emendas ({allEmendas.length})
-              </h3>
-              {allEmendas.map((emenda, idx) => (
-                <div key={emenda.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[#0072F7] font-bold text-sm">
-                      {formatCurrency(Number(emenda.valor_emenda) || 0)}
-                    </span>
-                    <span className={`text-[10px] font-medium rounded-full px-2 py-0.5 border ${STATUS_COLORS[normalizeCrmStatus(emenda.status_contato)] || STATUS_COLORS['Não Contatado']}`}>
-                      {formatCrmStatusLabel(emenda.status_contato, emenda.venda_etapa)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {emenda.parlamentar && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">{emenda.parlamentar}</p>
-                    )}
-                    {emenda.nr_emenda && (
-                      <span className="text-[10px] text-gray-600 dark:text-gray-300">#{emenda.nr_emenda}</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-normal break-words">{emenda.orgao_concedente || '-'}</p>
-                  {emenda.link_externo && (
-                    <a
-                      href={emenda.link_externo}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-[#0072F7] hover:text-blue-700"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      TransferGov &rarr;
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <InfoCard label="Ministerio" value={lead.orgao_concedente || '-'} />
-                <InfoCard label="Parlamentar" value={lead.parlamentar || '-'} />
-              </div>
-              {lead.link_externo && (
-                <a
-                  href={lead.link_externo}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full text-center px-4 py-2.5 rounded-xl text-sm font-medium text-[#0072F7] border border-blue-200 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 transition-colors"
-                >
-                  Abrir no TransferGov &rarr;
-                </a>
-              )}
-            </>
-          )}
-
-          {/* Sale Value & Commission Info */}
-          {(normalizeCrmStatus(localLead.status_contato) === 'Fechado' || normalizeCrmStatus(localLead.status_contato) === 'Em Aprovação') && localLead.valor_venda && (
-            <div className="bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 rounded-lg p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400 dark:text-gray-500">Valor da Venda</span>
-                <span className="text-sm font-semibold text-green-600 dark:text-green-400">
-                  {formatCurrency(localLead.valor_venda)}
-                </span>
-              </div>
-              {localLead.tipo_servico && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-400 dark:text-gray-500">Tipo de Serviço</span>
-                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-50 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300">
-                    {localLead.tipo_servico}
-                  </span>
-                </div>
-              )}
-              {localLead.comissao_valor != null && localLead.comissao_valor > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-400 dark:text-gray-500">
-                    Comissão ({Number(localLead.comissao_percentual || 0).toFixed(1)}%)
-                  </span>
-                  <span className="text-sm font-semibold text-[#0072F7]">
-                    {formatCurrency(localLead.comissao_valor)}
-                  </span>
-                </div>
-              )}
-              {localLead.comissao_bonus != null && localLead.comissao_bonus > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-400 dark:text-gray-500">Fundo Comercial</span>
-                  <span className="text-sm font-semibold text-green-600 dark:text-green-400">
-                    {formatCurrency(localLead.comissao_bonus)}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-              {!localLead.valor_venda && localLead.comissao_valor != null && localLead.comissao_valor > 0 && (
-            <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400 dark:text-gray-500">
-                Comissão ({normalizeTipoVendedor(localLead.tipo_vendedor) || 'SDR'} - {Number(localLead.comissao_percentual || 0).toFixed(1)}%)
-                </span>
-                <span className="text-sm font-semibold text-[#0072F7]">
-                  {formatCurrency(localLead.comissao_valor)}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Address */}
-          {localLead.endereco && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Endereco</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300">{localLead.endereco}</p>
-              {localLead.municipio && localLead.uf && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">{localLead.municipio} - {localLead.uf}</p>
-              )}
-            </div>
-          )}
-
-          {/* Contact */}
-          {(localLead.telefone || localLead.email || canModify) && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contato</h3>
-              {(localLead.telefone || canModify) && (
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 3c0-1.1.9-2 2-2h2.5a1 1 0 01.98.8l.5 3a1 1 0 01-.27.9L5.1 7.3a10 10 0 004.6 4.6l1.6-1.6a1 1 0 01.9-.27l3 .5a1 1 0 01.8.98V14a2 2 0 01-2 2A13 13 0 011 3z"/>
-                  </svg>
-                  {editingField === 'telefone' ? (
-                    <input
-                      type="text"
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onBlur={() => {
-                        if (editValue !== (localLead.telefone || '')) {
-                          updateContact('telefone', editValue)
-                        } else {
-                          setEditingField(null)
-                        }
-                      }}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          if (editValue !== (localLead.telefone || '')) {
-                            updateContact('telefone', editValue)
-                          } else {
-                            setEditingField(null)
-                          }
-                        } else if (e.key === 'Escape') {
-                          setEditingField(null)
-                        }
-                      }}
-                      autoFocus
-                      className="flex-1 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 focus:outline-none focus:border-[#0072F7] dark:placeholder:text-gray-500"
-                    />
-                  ) : (
-                    <>
-                      <span className="flex-1 flex items-center gap-2 min-w-0">
-                        {localLead.telefone ? (
-                          <>
-                            <span className="truncate">{localLead.telefone}</span>
-                            <WhatsAppAction telefone={localLead.telefone} compact label="Abrir" />
-                          </>
-                        ) : (
-                          <span className="text-gray-600 dark:text-gray-300">Sem telefone</span>
-                        )}
-                      </span>
-                      {canModify && (
-                        <button
-                          onClick={() => {
-                            setEditingField('telefone')
-                            setEditValue(localLead.telefone || '')
-                          }}
-                          className="text-gray-500 dark:text-gray-400 hover:text-[#0072F7] transition-colors"
-                          title="Editar telefone"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M11.5 2.5a1.5 1.5 0 012 2L5 13l-4 1 1-4L11.5 2.5z"/>
-                          </svg>
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-              {(localLead.email || canModify) && (
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="1" y="3" width="14" height="10" rx="1.5"/>
-                    <path d="M1 4l7 5 7-5"/>
-                  </svg>
-                  {editingField === 'email' ? (
-                    <input
-                      type="email"
-                      value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
-                      onBlur={() => {
-                        if (editValue !== (localLead.email || '')) {
-                          updateContact('email', editValue)
-                        } else {
-                          setEditingField(null)
-                        }
-                      }}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          if (editValue !== (localLead.email || '')) {
-                            updateContact('email', editValue)
-                          } else {
-                            setEditingField(null)
-                          }
-                        } else if (e.key === 'Escape') {
-                          setEditingField(null)
-                        }
-                      }}
-                      autoFocus
-                      className="flex-1 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 focus:outline-none focus:border-[#0072F7] dark:placeholder:text-gray-500"
-                    />
-                  ) : (
-                    <>
-                      <span className="flex-1">{localLead.email || <span className="text-gray-600 dark:text-gray-300">Sem email</span>}</span>
-                      {canModify && (
-                        <button
-                          onClick={() => {
-                            setEditingField('email')
-                            setEditValue(localLead.email || '')
-                          }}
-                          className="text-gray-500 dark:text-gray-400 hover:text-[#0072F7] transition-colors"
-                          title="Editar email"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M11.5 2.5a1.5 1.5 0 012 2L5 13l-4 1 1-4L11.5 2.5z"/>
-                          </svg>
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Observacoes/Detalhes */}
-          {(lead.observacoes || canModify) && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Detalhes</h3>
-              {canModify ? (
-                <textarea
-                  defaultValue={localLead.observacoes || ''}
-                  placeholder="Adicione observações sobre este lead..."
-                  onBlur={async (e) => {
-                    const newValue = e.target.value
-                    if (newValue !== (localLead.observacoes || '')) {
-                      try {
-                        await fetch(`/api/leads/${encodeURIComponent(localLead.cnpj)}`, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ id: localLead.id, observacoes: newValue })
-                        })
-                        setLocalLead(prev => prev ? {...prev, observacoes: newValue} : null)
-                      } catch (err) {
-                        console.error('Failed to update observacoes:', err)
-                      }
-                    }
-                  }}
-                  rows={4}
-                  className="w-full bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 placeholder-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-[#0072F7] resize-none"
-                />
-              ) : (
-                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700">
-                  <p className="text-sm text-gray-400 dark:text-gray-500 italic">{lead.observacoes || 'Sem observações'}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Histórico de movimentação */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Histórico</h3>
-            <LeadHistory cnpj={lead.cnpj} refreshKey={localLead?.status_contato} />
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-3">
-          <WhatsAppAction
-            telefone={localLead.telefone}
-            label="WhatsApp"
-            className="w-full min-h-[42px]"
-          />
-          <button
-            disabled={!lead.email}
-            onClick={() => window.open(`mailto:${lead.email}`, '_blank')}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:border-gray-200 disabled:text-gray-400 transition-colors"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="1" y="3" width="14" height="10" rx="1.5"/>
-              <path d="M1 4l7 5 7-5"/>
-            </svg>
+            <MailIcon />
             Email
           </button>
           <a
             href={googleCalendarEventUrl({
-              title: `Reunião PROJETUS — ${localLead.nome || localLead.cnpj}`,
+              title: `Reunião PROJETUS: ${shown.nome || shown.cnpj}`,
               details: [
-                localLead.nome ? `Instituição: ${localLead.nome}` : null,
-                localLead.telefone ? `Telefone: ${localLead.telefone}` : null,
-                localLead.email ? `Email: ${localLead.email}` : null,
-                `CNPJ: ${localLead.cnpj}`,
+                shown.nome ? `Instituição: ${shown.nome}` : null,
+                shown.telefone ? `Telefone: ${shown.telefone}` : null,
+                shown.email ? `Email: ${shown.email}` : null,
+                `CNPJ: ${shown.cnpj}`,
                 'Local: Google Meet',
               ].filter(Boolean).join('\n'),
-              guestEmail: localLead.email,
+              guestEmail: shown.email,
             })}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
-            title="Abrir Google Calendar / Meet"
+            className={buttonClass('secondary', 'md', 'w-full')}
+            title="Abrir Google Calendar com o Meet"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
               <rect x="2" y="3" width="12" height="11" rx="1.5" />
@@ -458,25 +139,222 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
             Agendar
           </a>
           <button
-            onClick={() => router.push(`/lead/${encodeURIComponent(lead.cnpj)}`)}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#0072F7] hover:bg-[#0058C4] transition-all"
+            type="button"
+            onClick={() => router.push(`/lead/${encodeURIComponent(shown.cnpj)}`)}
+            className={buttonClass('primary', 'md', 'w-full')}
           >
-            Ver Detalhes
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 3l5 5-5 5"/>
+            Abrir card
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M6 3l5 5-5 5" />
             </svg>
           </button>
         </div>
-      </div>
+      )}
+    >
+      {shown && (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="UF e município" value={[shown.uf, shown.municipio].filter(Boolean).join(' / ') || '-'} />
+            <Field label="Natureza jurídica" value={shown.natureza_juridica || '-'} />
+            <Field label="Responsável" value={shown.vendedor_nome || 'Sem dono'} />
+            {(!emendas || emendas.length <= 1) && (
+              <Field label="Valor da emenda" value={formatCurrency(shown.valor_emenda || shown.valor_global || 0)} emphasis />
+            )}
+          </div>
+
+          {emendas && emendas.length > 1 ? (
+            <SlideOverSection title={`Emendas (${emendas.length})`}>
+              <ul className="space-y-2">
+                {emendas.map(emenda => (
+                  <li key={emenda.id} className="space-y-1.5 rounded-lg border border-line p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold tabular text-ink">{formatCurrency(Number(emenda.valor_emenda) || 0)}</span>
+                      <StatusPill status={normalizeCrmStatus(emenda.status_contato)} label={formatCrmStatusLabel(emenda.status_contato, emenda.venda_etapa)} />
+                    </div>
+                    {(emenda.parlamentar || emenda.nr_emenda) && (
+                      <p className="text-xs text-ink-2">
+                        {emenda.parlamentar && <span className="font-medium">{emenda.parlamentar}</span>}
+                        {emenda.nr_emenda && <span className="ml-1.5 text-ink-3">#{emenda.nr_emenda}</span>}
+                      </p>
+                    )}
+                    <p className="text-xs text-ink-3 [overflow-wrap:anywhere]">{emenda.orgao_concedente || '-'}</p>
+                    {emenda.link_externo && (
+                      <a href={emenda.link_externo} target="_blank" rel="noopener noreferrer" className="inline-block text-xs font-medium text-accent-ink hover:underline">
+                        Ver no TransfereGov
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </SlideOverSection>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Ministério" value={shown.orgao_concedente || '-'} />
+                <Field label="Parlamentar" value={shown.parlamentar || '-'} />
+              </div>
+              {shown.link_externo && (
+                <a href={shown.link_externo} target="_blank" rel="noopener noreferrer" className={buttonClass('secondary', 'md', 'w-full')}>
+                  Ver no TransfereGov
+                </a>
+              )}
+            </>
+          )}
+
+          {/* Venda e comissão: a API só manda a comissão para quem pode vê-la */}
+          {(status === 'Fechado' || status === 'Em Aprovação') && shown.valor_venda ? (
+            <dl className="space-y-2 rounded-lg bg-emerald-50/70 p-3 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-500/10 dark:ring-emerald-500/25">
+              <Row label="Valor da venda" value={formatCurrency(shown.valor_venda)} tone="won" />
+              {shown.tipo_servico && <Row label="Tipo de serviço" value={<Tag tone="violet">{shown.tipo_servico}</Tag>} />}
+              {shown.comissao_valor != null && shown.comissao_valor > 0 && (
+                <Row label={`Comissão (${Number(shown.comissao_percentual || 0).toFixed(1)}%)`} value={formatCurrency(shown.comissao_valor)} />
+              )}
+              {shown.comissao_bonus != null && shown.comissao_bonus > 0 && (
+                <Row label="Fundo comercial" value={formatCurrency(shown.comissao_bonus)} tone="won" />
+              )}
+            </dl>
+          ) : null}
+          {!shown.valor_venda && shown.comissao_valor != null && shown.comissao_valor > 0 && (
+            <dl className="rounded-lg bg-raised/70 p-3">
+              <Row label={`Comissão (${tipo || 'SDR'}, ${Number(shown.comissao_percentual || 0).toFixed(1)}%)`} value={formatCurrency(shown.comissao_valor)} />
+            </dl>
+          )}
+
+          {shown.endereco && (
+            <SlideOverSection title="Endereço">
+              <p className="text-sm text-ink-2">{shown.endereco}</p>
+              {shown.municipio && shown.uf && <p className="text-xs text-ink-3">{shown.municipio}, {shown.uf}</p>}
+            </SlideOverSection>
+          )}
+
+          {(shown.telefone || shown.email || canModify) && (
+            <SlideOverSection title="Contato">
+              {(shown.telefone || canModify) && (
+                <div className="flex items-center gap-2 text-sm text-ink-2">
+                  <PhoneIcon />
+                  {editingField === 'telefone' ? (
+                    <input
+                      type="tel"
+                      aria-label="Telefone"
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      onBlur={() => finishEdit('telefone')}
+                      onKeyDown={e => { if (e.key === 'Enter') finishEdit('telefone') }}
+                      autoFocus
+                      className={fieldInputClass}
+                    />
+                  ) : (
+                    <>
+                      <span className="flex min-w-0 flex-1 items-center gap-2">
+                        {shown.telefone ? (
+                          <>
+                            <span className="truncate">{shown.telefone}</span>
+                            <WhatsAppAction telefone={shown.telefone} compact label="Abrir" />
+                          </>
+                        ) : (
+                          <span className="text-ink-3">Sem telefone</span>
+                        )}
+                      </span>
+                      {canModify && <EditButton label="Editar telefone" onClick={() => { setEditingField('telefone'); setEditValue(shown.telefone || '') }} />}
+                    </>
+                  )}
+                </div>
+              )}
+              {(shown.email || canModify) && (
+                <div className="flex items-center gap-2 text-sm text-ink-2">
+                  <MailIcon />
+                  {editingField === 'email' ? (
+                    <input
+                      type="email"
+                      aria-label="Email"
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      onBlur={() => finishEdit('email')}
+                      onKeyDown={e => { if (e.key === 'Enter') finishEdit('email') }}
+                      autoFocus
+                      className={fieldInputClass}
+                    />
+                  ) : (
+                    <>
+                      <span className="min-w-0 flex-1 truncate">{shown.email || <span className="text-ink-3">Sem email</span>}</span>
+                      {canModify && <EditButton label="Editar email" onClick={() => { setEditingField('email'); setEditValue(shown.email || '') }} />}
+                    </>
+                  )}
+                </div>
+              )}
+            </SlideOverSection>
+          )}
+
+          {(shown.observacoes || canModify) && (
+            <SlideOverSection title="Observações">
+              {canModify ? (
+                <textarea
+                  key={shown.id}
+                  aria-label="Observações sobre o lead"
+                  defaultValue={shown.observacoes || ''}
+                  placeholder="Anote o que importa sobre este lead"
+                  onBlur={async (e) => {
+                    const newValue = e.target.value
+                    if (newValue !== (shown.observacoes || '') && await patchLead({ observacoes: newValue })) {
+                      setLocalLead(prev => prev ? { ...prev, observacoes: newValue } : null)
+                    }
+                  }}
+                  rows={4}
+                  className="w-full resize-none rounded-lg border border-line bg-surface p-3 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+                />
+              ) : (
+                <p className="rounded-lg bg-raised/70 p-3 text-sm text-ink-2">{shown.observacoes || 'Sem observações'}</p>
+              )}
+            </SlideOverSection>
+          )}
+
+          <SlideOverSection title="Histórico">
+            <LeadHistory cnpj={shown.cnpj} refreshKey={shown.status_contato} />
+          </SlideOverSection>
+        </>
+      )}
+    </SlideOver>
+  )
+}
+
+function Row({ label, value, tone }: { label: string; value: React.ReactNode; tone?: 'won' }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <dt className="text-xs text-ink-2">{label}</dt>
+      <dd className={`text-sm font-semibold tabular ${tone === 'won' ? 'text-emerald-700 dark:text-emerald-300' : 'text-ink'}`}>{value}</dd>
     </div>
   )
 }
 
-function InfoCard({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function EditButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700">
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</p>
-      <p className={`text-sm font-medium whitespace-normal break-words ${highlight ? 'text-[#0072F7] font-bold' : 'text-gray-800 dark:text-gray-200'}`}>{value}</p>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="rounded p-1 text-ink-3 transition-colors duration-fast hover:bg-raised hover:text-accent-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+    >
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M11.5 2.5a1.5 1.5 0 012 2L5 13l-4 1 1-4L11.5 2.5z" />
+      </svg>
+    </button>
+  )
+}
+
+function PhoneIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-ink-3" aria-hidden>
+      <path d="M1 3c0-1.1.9-2 2-2h2.5a1 1 0 01.98.8l.5 3a1 1 0 01-.27.9L5.1 7.3a10 10 0 004.6 4.6l1.6-1.6a1 1 0 01.9-.27l3 .5a1 1 0 01.8.98V14a2 2 0 01-2 2A13 13 0 011 3z" />
+    </svg>
+  )
+}
+
+function MailIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
+      <rect x="1" y="3" width="14" height="10" rx="1.5" />
+      <path d="M1 4l7 5 7-5" />
+    </svg>
   )
 }

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { activeNavHref, areaHome, getAreaNav, getAreasForRole, isNavItemActive, primaryAreaForRole, resolveArea } from './areas'
+import { leadTabsForRole } from './lead-tabs'
 import type { Role } from './roles'
 
 // Telas que cada perfil acessava no menu antes da separação por áreas (menu plano por papel).
@@ -24,19 +25,25 @@ const BEFORE: Record<Exclude<Role, 'diretoria'>, string[]> = {
 }
 
 const hrefsOf = (role: Role) => new Set(getAreasForRole(role).flatMap((a) => getAreaNav(role, a).map((i) => i.href)))
+
+// /execucao?fase=F virou a aba F da página Leads: conta como alcançada se o perfil tem Leads e a aba.
+function reaches(role: Role, href: string): boolean {
+  const now = hrefsOf(role)
+  const legacy = href.match(/^\/execucao\?fase=(.+)$/)
+  if (legacy) return now.has('/leads') && leadTabsForRole(role).includes(legacy[1] as never)
+  return now.has(href)
+}
 const none = new URLSearchParams()
 
 test('nobody but gestor loses a screen', () => {
   for (const [role, before] of Object.entries(BEFORE)) {
     if (role === 'gestor') continue
-    const now = hrefsOf(role as Role)
-    for (const href of before) assert.ok(now.has(href), `${role} lost ${href}`)
+    for (const href of before) assert.ok(reaches(role as Role, href), `${role} lost ${href}`)
   }
 })
 
 test('diretoria reaches every screen gestor had', () => {
-  const now = hrefsOf('diretoria')
-  for (const href of BEFORE.gestor) assert.ok(now.has(href), href)
+  for (const href of BEFORE.gestor) assert.ok(reaches('diretoria', href), href)
 })
 
 test('gestor sees only commercial', () => {
@@ -96,8 +103,6 @@ test('query-aware active item', () => {
   assert.equal(isNavItemActive('/tgov', '/tgov', dash), false)
   assert.equal(isNavItemActive('/tgov?view=dashboard', '/tgov', dash), true)
   assert.equal(isNavItemActive('/tgov', '/tgov', none), true)
-  assert.equal(isNavItemActive('/execucao?fase=execucao', '/execucao', none), true)
-  assert.equal(isNavItemActive('/execucao?fase=prestacao_contas', '/execucao', none), false)
   assert.equal(isNavItemActive('/', '/leads', none), false)
   assert.equal(isNavItemActive('/csmx', '/csm', none), false)
 })
@@ -106,4 +111,11 @@ test('only the most specific item is active', () => {
   assert.equal(activeNavHref(['/csm', '/csm/comissoes', '/csm/bi'], '/csm/bi', none), '/csm/bi')
   assert.equal(activeNavHref(['/csm', '/csm/bi'], '/csm/client/123', none), '/csm')
   assert.equal(activeNavHref(['/', '/leads'], '/lead/123', none), null)
+})
+
+test('the three lead lists are one Leads item', () => {
+  for (const role of ['vendedor', 'gestor', 'visualizador'] as const) {
+    const leads = getAreaNav(role, 'comercial').filter((i) => i.label.startsWith('Leads'))
+    assert.deepEqual(leads.map((i) => i.href), ['/leads'], role)
+  }
 })

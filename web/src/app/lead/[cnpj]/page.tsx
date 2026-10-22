@@ -206,8 +206,8 @@ export default function LeadDetailPage() {
       const nomeInst = execucaoFallback[0].nome_proponente || 'Instituição'
       return (
         <div className="space-y-6 max-w-5xl">
-          <Link href="/execucao" className="text-gray-500 hover:text-gray-900 transition-colors text-sm">
-            &#8592; Voltar para execução
+          <Link href="/leads?fase=execucao" className="text-gray-500 hover:text-gray-900 transition-colors text-sm">
+            &#8592; Voltar para Leads de Execução
           </Link>
           <div>
             <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">{nomeInst}</h1>
@@ -398,14 +398,14 @@ export default function LeadDetailPage() {
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{first.closer_nome}</p>
                 )}
               </div>
-            ) : (
+            ) : first.comissao_bonus != null ? (
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Fundo Comercial (2%)</p>
                 <p className="text-lg font-semibold text-green-600 mt-1">
                   {formatCurrency(first.comissao_bonus || 0)}
                 </p>
               </div>
-            )}
+            ) : null}
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Valor da Venda</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-1">
