@@ -7,7 +7,7 @@ export default async function TGovPipelinePage() {
 
   // Same roles as /tgov — all TGov roles (aprovação + execução + prestação)
   const ALLOWED_ROLES = [
-    'diretoria', 'admin', 'adm_produto', 'csm',
+    'diretoria', 'admin', 'adm_produto',
     'coord_aprovacao', 'assistente_aprovacao', 'projetista',
     'coord_execucao', 'assistente_execucao',
     'coord_prestacao', 'assistente_prestacao',

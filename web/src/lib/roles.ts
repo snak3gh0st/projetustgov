@@ -92,7 +92,7 @@ export function canModifyData(role: string): boolean {
 
 /** TGov reads (aprovação, execução, busca-cnpj, whitelist GET, interaction GET, comments GET). */
 export function canReadTgov(role: string | undefined): boolean {
-  return role === 'diretoria' || role === 'admin' || role === 'adm_produto' || role === 'csm'
+  return role === 'diretoria' || role === 'admin' || role === 'adm_produto'
       || role === 'coord_aprovacao' || role === 'assistente_aprovacao' || role === 'projetista'
       || role === 'coord_execucao' || role === 'assistente_execucao'
       || role === 'coord_prestacao' || role === 'assistente_prestacao'
@@ -100,7 +100,7 @@ export function canReadTgov(role: string | undefined): boolean {
 
 /** Operação v1: leitura da fila comum de execução e prestação. */
 export function canReadOperacao(role: string | undefined): boolean {
-  return role === 'diretoria' || role === 'admin' || role === 'adm_produto' || role === 'csm'
+  return role === 'diretoria' || role === 'admin' || role === 'adm_produto'
       || role === 'vendedor' || role === 'coordenador' || role === 'visualizador'
       || role === 'coord_execucao' || role === 'assistente_execucao'
       || role === 'coord_prestacao' || role === 'assistente_prestacao'
@@ -123,7 +123,7 @@ export function canWriteTgov(role: string | undefined): boolean {
 
 /** Quem pode escrever comentários TGov (inclui CSM, coord_aprovacao, projetista). */
 export function canCommentTgov(role: string | undefined): boolean {
-  return role === 'diretoria' || role === 'admin' || role === 'adm_produto' || role === 'csm'
+  return role === 'diretoria' || role === 'admin' || role === 'adm_produto'
       || role === 'coord_aprovacao' || role === 'assistente_aprovacao' || role === 'projetista'
       || role === 'coord_execucao' || role === 'assistente_execucao'
       || role === 'coord_prestacao' || role === 'assistente_prestacao'

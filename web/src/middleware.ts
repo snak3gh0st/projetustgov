@@ -83,7 +83,7 @@ export default auth((req) => {
     if (isCsmPath) {
       return
     }
-    // CSM is otherwise TGov-read + CSM-area only — CRM pages and CRM APIs are blocked.
+    // Telas de vendas levam o CSM de volta para a área dele (TGov e Operação já foram barrados acima).
     if (isCrmPage || isCrmHome) {
       return Response.redirect(new URL('/csm', req.url))
     }
@@ -93,14 +93,6 @@ export default auth((req) => {
     }
     if (isCrmApi) {
       return Response.json({ error: 'Forbidden' }, { status: 403 })
-    }
-    // Mutation gate: CSM só pode escrever em /api/tgov/comments. Tudo mais bloqueado em TGov.
-    const isTgovPrivilegedMutation =
-      pathname.startsWith('/api/tgov/whitelist') ||
-      pathname.startsWith('/api/tgov/interaction') ||
-      pathname.startsWith('/api/tgov/tecnico')
-    if (isTgovPrivilegedMutation && req.method !== 'GET') {
-      return Response.json({ error: 'Forbidden: CSM is read-only on this resource' }, { status: 403 })
     }
   }
 

@@ -18,7 +18,7 @@ const FROM = process.env.DIGEST_FROM_EMAIL || 'Projetus <noreply@projetus.org>'
 const COMMERCIAL_HEAD_EMAIL = process.env.PRIMARY_LEAD_MANAGER_EMAIL || 'rooger@projetus.org'
 
 const TGOV_ROLES = [
-  'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao',
+  'adm_produto', 'coord_aprovacao', 'assistente_aprovacao',
   'projetista', 'coord_execucao', 'assistente_execucao',
   'coord_prestacao', 'assistente_prestacao',
   'diretoria', 'admin', // diretoria/admin see both worlds

@@ -6,6 +6,12 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.9',
+    items: [
+      'CSM passa a fazer parte da área Comercial e sai da Operação TransfereGov',
+    ],
+  },
+  {
     version: 'v1.8',
     items: [
       'Visualizador consulta os leads sem alterar status, contatos ou observações',
