@@ -58,7 +58,7 @@ export async function PATCH(
     const requestedVendaEtapa = requestedStatus === 'Fechado'
       ? normalizeVendaEtapa(body.venda_etapa) || normalizeVendaEtapa(rawRequestedStatus) || currentVendaEtapa || 'aprovacao'
       : null
-    const canManagePipeline = session.role === 'gestor' || session.role === 'admin'
+    const canManagePipeline = session.role === 'gestor' || session.role === 'diretoria' || session.role === 'admin'
 
     const updates: string[] = []
     const values: unknown[] = []
@@ -262,7 +262,7 @@ export async function PATCH(
       [projectId]
     )
     const updatedRow = updated[0] || {}
-    if (session.role !== 'gestor') {
+    if (session.role !== 'gestor' && session.role !== 'diretoria') {
       updatedRow.comissao_bonus = 0
       updatedRow.closer_comissao_valor = 0
     }

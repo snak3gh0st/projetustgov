@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export async function POST() {
   try {
     const session = await getApiSession()
-    if (!session || session.role !== 'gestor') {
+    if (!session || (session.role !== 'gestor' && session.role !== 'diretoria')) {
       return NextResponse.json({ error: 'Forbidden: gestor only' }, { status: 403 })
     }
     if (!AUTO_DISTRIBUTION_ENABLED) {

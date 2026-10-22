@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'gestor_financeiro')) {
+    if (!session || (session.role !== 'gestor' && session.role !== 'diretoria' && session.role !== 'gestor_financeiro')) {
       return NextResponse.json({ error: 'Forbidden: financeiro only' }, { status: 403 })
     }
 
@@ -41,7 +41,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'gestor_financeiro')) {
+    if (!session || (session.role !== 'gestor' && session.role !== 'diretoria' && session.role !== 'gestor_financeiro')) {
       return NextResponse.json({ error: 'Forbidden: financeiro only' }, { status: 403 })
     }
 

@@ -5,7 +5,7 @@ import { query } from '@/lib/db'
 export const dynamic = 'force-dynamic'
 
 function canAccess(role: string | undefined) {
-  return role === 'gestor' || role === 'admin' || role === 'adm_produto'
+  return role === 'gestor' || role === 'diretoria' || role === 'admin' || role === 'adm_produto'
 }
 
 function addParam(params: unknown[], value: unknown) {

@@ -21,12 +21,12 @@ const TGOV_ROLES = [
   'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao',
   'projetista', 'coord_execucao', 'assistente_execucao',
   'coord_prestacao', 'assistente_prestacao',
-  'gestor', 'admin', // gestor/admin see both worlds
+  'diretoria', 'admin', // diretoria/admin see both worlds
 ]
 
 const CRM_ROLES = [
   'vendedor', 'coordenador', 'visualizador', 'gestor_vendedor',
-  'gestor', 'admin',
+  'gestor', 'diretoria', 'admin',
 ]
 
 function appUrl(): string {

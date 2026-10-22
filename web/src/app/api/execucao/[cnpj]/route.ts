@@ -62,7 +62,7 @@ export async function PATCH(
 
     // Mesmo gate do pipeline de vendas: só gestor fecha, e só a partir de "Em Aprovação".
     if (body.status_contato !== undefined && isClosedCrmStatus(normalizeCrmStatus(body.status_contato))) {
-      if (session.role !== 'gestor') {
+      if (session.role !== 'gestor' && session.role !== 'diretoria') {
         return NextResponse.json({ error: 'Only gestores can move a lead to Vendas Concluídas' }, { status: 403 })
       }
       const currentRow = await query<{ status_contato_execucao: string | null }>(

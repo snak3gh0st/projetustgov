@@ -11,7 +11,7 @@ export default async function TGovPage({
 
   // Role guard: all TGov roles (aprovação + execução + prestação) may access /tgov
   if (
-    session.role !== 'gestor' &&
+    session.role !== 'diretoria' &&
     session.role !== 'admin' &&
     session.role !== 'adm_produto' &&
     session.role !== 'csm' &&

@@ -12,7 +12,7 @@ export const maxDuration = 60 // Vercel hobby limit
 export async function GET() {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'coordenador')) {
+    if (!session || (session.role !== 'gestor' && session.role !== 'diretoria' && session.role !== 'coordenador')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -82,7 +82,7 @@ export async function GET() {
 export async function POST() {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'coordenador')) {
+    if (!session || (session.role !== 'gestor' && session.role !== 'diretoria' && session.role !== 'coordenador')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

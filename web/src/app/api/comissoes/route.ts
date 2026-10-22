@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { getApiSession } from '@/lib/dal'
+import { getApiSession, hasTeamCommercialView } from '@/lib/dal'
 import { normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
 export const dynamic = 'force-dynamic'
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     // Show the current lead manager's 3-type breakdown for gestores and the manager themself.
     const managerEmail = process.env.PRIMARY_LEAD_MANAGER_EMAIL || 'rooger@projetus.org'
-    const isManagerBreakdownView = session.role === 'gestor' || session.email === managerEmail
+    const isManagerBreakdownView = hasTeamCommercialView(session.role) || session.email === managerEmail
 
     // Run all queries in parallel
     const showPerVendedor = (session.role !== 'vendedor') && !vendedorId
@@ -263,7 +263,7 @@ export async function GET(request: NextRequest) {
           tipo_vendedor: tipoVendedor,
           comissao_percentual: Number(lead.comissao_percentual) || 0,
           comissao_valor: Number(lead.comissao_valor) || 0,
-          comissao_bonus: session.role === 'gestor' ? (Number(lead.comissao_bonus) || 0) : 0,
+          comissao_bonus: hasTeamCommercialView(session.role) ? (Number(lead.comissao_bonus) || 0) : 0,
           comissao_locked: Boolean(lead.comissao_locked),
           status_contato: statusContato,
           vendedor_nome: lead.vendedor_nome,
@@ -271,7 +271,7 @@ export async function GET(request: NextRequest) {
           closer_id: lead.closer_id || null,
         closer_nome: lead.closer_nome || null,
         closer_comissao_percentual: Number(lead.closer_comissao_percentual) || 0,
-        closer_comissao_valor: session.role === 'gestor' ? (Number(lead.closer_comissao_valor) || 0) : 0,
+        closer_comissao_valor: hasTeamCommercialView(session.role) ? (Number(lead.closer_comissao_valor) || 0) : 0,
         updated_at: lead.updated_at,
         has_override: Boolean(lead.has_override),
         override_motivo: lead.override_motivo,

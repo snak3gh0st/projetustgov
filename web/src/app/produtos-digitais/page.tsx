@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function ProdutosDigitaisPage() {
   const session = await verifySession()
-  if (session.role !== 'gestor' && session.role !== 'admin' && session.role !== 'adm_produto') {
+  if (session.role !== 'gestor' && session.role !== 'diretoria' && session.role !== 'admin' && session.role !== 'adm_produto') {
     redirect('/sem-permissao')
   }
 

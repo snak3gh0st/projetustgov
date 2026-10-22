@@ -1,7 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { AnimatePresence, m } from 'motion/react'
 import { formatCNPJ, formatCurrency } from '@/lib/format'
+import StatusPill from '@/components/ui/StatusPill'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 // Mesmo formato de LeadEvent em lib/lead-events.ts (server-only).
 export interface LeadEventView {
@@ -35,13 +39,11 @@ function autorLabel(e: LeadEventView): string {
   return e.origem === 'sincronizacao' ? 'Sincronização' : 'Sistema'
 }
 
-function Pill({ children, strong }: { children: React.ReactNode; strong?: boolean }) {
+function NameChip({ children, strong }: { children: React.ReactNode; strong?: boolean }) {
   return (
     <span
-      className={`px-2 py-0.5 rounded border text-xs font-medium ${
-        strong
-          ? 'bg-blue-50 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300'
-          : 'bg-gray-50 dark:bg-gray-700/40 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300'
+      className={`rounded-md px-1.5 py-0.5 text-xs font-medium ${
+        strong ? 'bg-accent-soft text-accent-ink' : 'bg-raised text-ink-2'
       }`}
     >
       {children}
@@ -51,63 +53,73 @@ function Pill({ children, strong }: { children: React.ReactNode; strong?: boolea
 
 export function LeadEventLine({ event: e, showLead }: { event: LeadEventView; showLead?: boolean }) {
   const lead = showLead && (
-    <a href={`/lead/${encodeURIComponent(e.cnpj)}`} className="text-gray-700 dark:text-gray-300 hover:underline">
+    <Link href={`/lead/${encodeURIComponent(e.cnpj)}`} className="font-medium text-ink hover:text-accent-ink hover:underline">
       {e.nome || formatCNPJ(e.cnpj)}
-    </a>
+    </Link>
   )
 
   return (
-    <div className="flex items-center gap-2 flex-wrap text-sm">
-      <span className="text-gray-900 dark:text-gray-100 font-medium">{autorLabel(e)}</span>
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+      <span className="font-medium text-ink">{autorLabel(e)}</span>
       {e.tipo === 'atribuicao' ? (
         <>
-          <span className="text-gray-400 dark:text-gray-500">{e.para ? 'atribuiu' : 'desatribuiu'}</span>
+          <span className="text-ink-3">{e.para ? 'atribuiu' : 'desatribuiu'}</span>
           {lead}
           {e.de && (
             <>
-              <span className="text-gray-400 dark:text-gray-500">de</span>
-              <Pill>{e.de}</Pill>
+              <span className="text-ink-3">de</span>
+              <NameChip>{e.de}</NameChip>
             </>
           )}
           {e.para && (
             <>
-              <span className="text-gray-400 dark:text-gray-500">para</span>
-              <Pill strong>{e.para}</Pill>
+              <span className="text-ink-3">para</span>
+              <NameChip strong>{e.para}</NameChip>
             </>
           )}
           {e.comissao_valor != null && e.comissao_valor > 0 && (
-            <span className="text-xs text-green-600 dark:text-green-400">
+            <span className="text-xs text-emerald-700 dark:text-emerald-300">
               comissão {formatCurrency(e.comissao_valor)} {e.para ? 'transferida' : 'sem dono'}
             </span>
           )}
         </>
       ) : (
         <>
-          <span className="text-gray-400 dark:text-gray-500">
+          <span className="text-ink-3">
             {e.tipo === 'status_execucao' ? 'moveu (execução)' : 'moveu'}
           </span>
           {lead}
-          <Pill>{e.de}</Pill>
-          <span className="text-gray-400 dark:text-gray-500">→</span>
-          <Pill strong>{e.para}</Pill>
+          <StatusPill status={e.de} label={e.de ?? undefined} />
+          <span aria-hidden className="text-ink-3">→</span>
+          <span className="sr-only">para</span>
+          <StatusPill status={e.para} label={e.para ?? undefined} />
         </>
       )}
-      <span className="text-gray-400 dark:text-gray-500 text-xs ml-auto whitespace-nowrap">{formatDateTime(e.created_at)}</span>
+      <time dateTime={e.created_at} className="ml-auto whitespace-nowrap text-xs text-ink-3 tabular">{formatDateTime(e.created_at)}</time>
     </div>
   )
 }
 
-// Atividade Recente da tela inicial: atualiza a cada minuto.
+const eventKey = (e: LeadEventView) => `${e.cnpj}|${e.tipo}|${e.de}|${e.para}|${e.created_at}`
+
+// Atividade Recente da tela inicial: atualiza a cada minuto; novidades entram deslizando.
 export function RecentActivityFeed() {
-  const [events, setEvents] = useState<LeadEventView[]>([])
+  const [events, setEvents] = useState<LeadEventView[] | null>(null)
+  const [fresh, setFresh] = useState<Set<string>>(new Set())
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
+  const seen = useRef<Set<string> | null>(null)
 
   const load = useCallback(() => {
     fetch('/api/atividade-recente')
       .then(r => (r.ok ? r.json() : null))
       .then(d => {
         if (!d?.events) return
-        setEvents(d.events)
+        const list: LeadEventView[] = d.events
+        const keys = list.map(eventKey)
+        // Só destaca o que chegou depois da primeira carga
+        setFresh(seen.current ? new Set(keys.filter(k => !seen.current!.has(k))) : new Set())
+        seen.current = new Set(keys)
+        setEvents(list)
         setUpdatedAt(new Date())
       })
       .catch(() => {})
@@ -122,30 +134,58 @@ export function RecentActivityFeed() {
   }, [load])
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl overflow-hidden">
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-end justify-between gap-3">
+    <section aria-label="Atividade recente" className="rounded-xl border border-line bg-surface">
+      <div className="flex items-end justify-between gap-3 border-b border-line px-5 py-3.5">
         <div>
-          <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100">Atividade Recente</h2>
-          <p className="text-xs text-gray-400 dark:text-gray-500">Movimentações de leads, atualizadas a cada minuto</p>
+          <h2 className="font-body text-base font-semibold tracking-normal text-ink">Atividade recente</h2>
+          <p className="mt-0.5 text-sm text-ink-2">Movimentações de leads, atualizadas a cada minuto.</p>
         </div>
         {updatedAt && (
-          <span className="text-[11px] text-gray-400 dark:text-gray-500">
+          <span className="flex items-center gap-1.5 text-xs text-ink-3">
+            <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
             Atualizado às {updatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
           </span>
         )}
       </div>
-      {events.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-gray-400 dark:text-gray-500">Nenhuma movimentação registrada ainda.</p>
-      ) : (
-        <div className="divide-y divide-gray-200 dark:divide-gray-700">
-          {events.map((e, i) => (
-            <div key={`${e.cnpj}-${e.created_at}-${i}`} className={`px-4 py-3 ${i % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800/50' : ''}`}>
-              <LeadEventLine event={e} showLead />
-            </div>
-          ))}
+      {events === null ? (
+        <div className="space-y-3 px-5 py-4" role="status" aria-label="Carregando atividade">
+          {[0, 1, 2].map(i => <Skeleton key={i} className="h-5 w-full max-w-xl" />)}
         </div>
+      ) : events.length === 0 ? (
+        <p className="px-5 py-6 text-sm text-ink-2">
+          Nenhuma movimentação registrada ainda. Mudanças de status e atribuições aparecem aqui assim que acontecem.
+        </p>
+      ) : (
+        <ul className="divide-y divide-line">
+          <AnimatePresence initial={false}>
+            {events.map(e => (
+              <m.li
+                key={eventKey(e)}
+                layout
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="relative px-5 py-3"
+              >
+                {fresh.has(eventKey(e)) && (
+                  <m.span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 bg-accent/10"
+                    initial={{ opacity: 1 }}
+                    animate={{ opacity: 0 }}
+                    transition={{ duration: 1.8, ease: 'easeOut' }}
+                  />
+                )}
+                <div className="relative">
+                  <LeadEventLine event={e} showLead />
+                </div>
+              </m.li>
+            ))}
+          </AnimatePresence>
+        </ul>
       )}
-    </div>
+    </section>
   )
 }
 
@@ -163,18 +203,19 @@ export function LeadHistory({ cnpj, refreshKey }: { cnpj: string; refreshKey?: u
   }, [cnpj, refreshKey])
 
   if (events === null) {
-    return <div className="h-10 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+    return <Skeleton className="h-10 w-full" />
   }
   if (events.length === 0) {
-    return <p className="text-sm text-gray-400 dark:text-gray-500">Nenhuma movimentação registrada.</p>
+    return <p className="text-sm text-ink-3">Nenhuma movimentação registrada.</p>
   }
   return (
-    <div className="space-y-2">
+    <ol className="relative space-y-3 border-l border-line pl-4">
       {events.map((e, i) => (
-        <div key={`${e.created_at}-${i}`} className="pb-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
+        <li key={`${e.created_at}-${i}`} className="relative">
+          <span aria-hidden className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-surface bg-line-strong" />
           <LeadEventLine event={e} />
-        </div>
+        </li>
       ))}
-    </div>
+    </ol>
   )
 }

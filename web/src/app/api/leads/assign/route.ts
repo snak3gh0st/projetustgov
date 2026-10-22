@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Only gestor can assign leads
-    if (session.role !== 'gestor') {
+    if (session.role !== 'gestor' && session.role !== 'diretoria') {
       return NextResponse.json({ error: 'Forbidden: gestor only' }, { status: 403 })
     }
 

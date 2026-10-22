@@ -78,7 +78,7 @@ export async function createVendedor(
     // Verify session and check if user is gestor
     const session = await auth()
 
-    if (!session?.user || !('role' in session.user) || session.user.role !== 'gestor') {
+    if (!session?.user || !('role' in session.user) || (session.user.role !== 'gestor' && session.user.role !== 'diretoria')) {
       return { error: 'Apenas gestores podem criar vendedores' }
     }
 

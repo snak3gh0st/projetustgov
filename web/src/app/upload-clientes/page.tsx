@@ -25,7 +25,7 @@ export default function UploadClientesPage() {
     fetch('/api/auth/session')
       .then(r => r.json())
       .then(data => {
-        setIsGestor(data?.user?.role === 'gestor')
+        setIsGestor(data?.user?.role === 'gestor' || data?.user?.role === 'diretoria')
       })
       .catch(() => setIsGestor(false))
   }, [])

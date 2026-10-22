@@ -8,7 +8,7 @@ interface Usuario {
   id: string
   nome: string
   email: string
-  role: 'gestor' | 'coordenador' | 'visualizador' | 'vendedor' | 'adm_produto' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao' | 'gestor_financeiro' | 'csm' | 'admin'
+  role: 'gestor' | 'coordenador' | 'visualizador' | 'vendedor' | 'adm_produto' | 'coord_aprovacao' | 'assistente_aprovacao' | 'projetista' | 'coord_execucao' | 'assistente_execucao' | 'coord_prestacao' | 'assistente_prestacao' | 'gestor_financeiro' | 'csm' | 'admin' | 'diretoria'
   active: boolean
   email_digest?: boolean
   created_at: string
@@ -17,7 +17,8 @@ interface Usuario {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  gestor: 'Gestor',
+  gestor: 'Gestor comercial',
+  diretoria: 'Diretoria',
   coordenador: 'Coordenador',
   visualizador: 'Visualizador',
   vendedor: 'Vendedor',
@@ -36,6 +37,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 const ROLE_BADGE_CLASSES: Record<string, string> = {
   gestor: 'bg-blue-50 text-blue-600',
+  diretoria: 'bg-slate-100 text-slate-700',
   coordenador: 'bg-indigo-50 text-indigo-600',
   visualizador: 'bg-purple-50 text-purple-600',
   vendedor: 'bg-green-50 text-green-600',
@@ -54,6 +56,7 @@ const ROLE_BADGE_CLASSES: Record<string, string> = {
 
 const ROLE_SELECT_BG: Record<string, string> = {
   gestor: 'bg-blue-50 text-blue-700 border-blue-200',
+  diretoria: 'bg-slate-100 text-slate-800 border-slate-300',
   coordenador: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   visualizador: 'bg-purple-50 text-purple-700 border-purple-200',
   vendedor: 'bg-green-50 text-green-700 border-green-200',
@@ -71,6 +74,7 @@ const ROLE_SELECT_BG: Record<string, string> = {
 }
 
 const ROLE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'gestor', label: 'Gestor comercial' },
   { value: 'vendedor', label: 'Vendedor' },
   { value: 'visualizador', label: 'Visualizador' },
   { value: 'coordenador', label: 'Coordenador' },
@@ -368,7 +372,8 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
               </thead>
               <tbody>
                 {usuarios.map((usuario) => {
-                  const isGestor = usuario.role === 'gestor'
+                  // Gestor comercial só a diretoria gerencia; diretoria ninguém gerencia por aqui.
+                  const isGestor = usuario.role === 'diretoria' || (usuario.role === 'gestor' && userRole !== 'diretoria')
                   const isSelf = usuario.is_self
 
                   return (
@@ -435,7 +440,7 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex gap-2 items-center">
-                          {(userRole === 'admin' || userRole === 'gestor') && !isSelf && (
+                          {(userRole === 'admin' || userRole === 'gestor' || userRole === 'diretoria') && !isSelf && (
                             <button
                               type="button"
                               onClick={() => setResetTarget({ id: usuario.id, nome: usuario.nome, email: usuario.email })}
@@ -452,7 +457,7 @@ export default function CadastroVendedorClient({ userRole, creatableRoles }: { u
                               Excluir
                             </button>
                           ) : (
-                            (!((userRole === 'admin' || userRole === 'gestor') && !isSelf)) && (
+                            (!((userRole === 'admin' || userRole === 'gestor' || userRole === 'diretoria') && !isSelf)) && (
                               <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                             )
                           )}

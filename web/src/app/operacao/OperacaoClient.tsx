@@ -110,7 +110,7 @@ function DetailPanel({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingKey, setSavingKey] = useState<string | null>(null)
-  const canWrite = ['gestor', 'admin', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'].includes(userRole)
+  const canWrite = ['diretoria', 'admin', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'].includes(userRole)
 
   const load = useCallback(async () => {
     setLoading(true)

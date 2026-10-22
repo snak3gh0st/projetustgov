@@ -1,4 +1,5 @@
 import { auth } from '@/auth.config'
+import { commercialOnlyBlock } from '@/lib/area-access'
 
 export default auth((req) => {
   const { pathname } = req.nextUrl
@@ -37,6 +38,10 @@ export default auth((req) => {
   // adm_produto = TGov-only (cannot access CRM areas)
   // vendedor / coordenador / visualizador = CRM-only (cannot access TGov)
   const role = (req.auth?.user as { role?: string } | undefined)?.role
+
+  const commercialBlock = commercialOnlyBlock(role, pathname)
+  if (commercialBlock === 'forbid') return Response.json({ error: 'Forbidden' }, { status: 403 })
+  if (commercialBlock === 'redirect') return Response.redirect(new URL('/sem-permissao', req.url))
 
   // TGov-only paths (page + API)
   const TGOV_PATHS = ['/tgov', '/api/tgov']
