@@ -6,6 +6,13 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.12',
+    items: [
+      'Visão geral da diretoria: Comercial, Operação TransfereGov, Financeiro e CSM numa tela só',
+      'Cada área com os números principais e o atalho para o BI dela',
+    ],
+  },
+  {
     version: 'v1.11',
     items: [
       'Card do lead novo: notas e movimentações numa linha do tempo só, com a caixa de nota embaixo',

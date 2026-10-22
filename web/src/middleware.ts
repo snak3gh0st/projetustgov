@@ -48,7 +48,7 @@ export default auth((req) => {
   const isTGovPath = TGOV_PATHS.some(p => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?'))
 
   // CRM page paths that adm_produto must not access
-  const CRM_PAGE_PATHS = ['/leads', '/comissoes', '/bi', '/distribuir', '/monitoramento', '/monitorar', '/execucao', '/pipeline', '/meu-dia']
+  const CRM_PAGE_PATHS = ['/leads', '/comissoes', '/bi', '/distribuir', '/monitoramento', '/monitorar', '/execucao', '/pipeline', '/meu-dia', '/gestao']
   const isCrmPage = CRM_PAGE_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
   const isCrmHome = pathname === '/'
 
