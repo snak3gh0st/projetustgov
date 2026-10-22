@@ -6,6 +6,15 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.13',
+    items: [
+      'WhatsApp das consultorias no PROJETE: a página Conversas recebe e responde as mensagens do número das consultorias',
+      'No card do lead, as mensagens aparecem na linha do tempo e a caixa embaixo envia nota ou WhatsApp',
+      'Meu dia mostra quem está esperando sua resposta, e mensagem no WhatsApp conta como contato',
+      'A gestão direciona conversas, liga cada uma ao lead certo e conecta o número pela página Conexão do WhatsApp',
+    ],
+  },
+  {
     version: 'v1.12',
     items: [
       'Para a diretoria: Visão geral com Comercial, Operação TransfereGov, Financeiro e CSM numa tela só',
