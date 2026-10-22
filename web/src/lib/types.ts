@@ -41,6 +41,8 @@ export interface VendedorProjeto {
   contrato_assinado?: boolean
   valor_venda: number | null
   tipo_servico?: 'Aprovação' | 'Execução' | 'Prestação de Contas' | null
+  /** Status comercial em Execução/Prestação (por CNPJ; vem de vp.* em /api/leads). */
+  status_contato_execucao?: string | null
   venda_etapa?: 'aprovacao' | 'execucao_prestacao' | null
   observacoes: string | null
   // Metadata
