@@ -8,7 +8,7 @@ const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
     version: 'v1.12',
     items: [
-      'Visão geral da diretoria: Comercial, Operação TransfereGov, Financeiro e CSM numa tela só',
+      'Para a diretoria: Visão geral com Comercial, Operação TransfereGov, Financeiro e CSM numa tela só',
       'Cada área com os números principais e o atalho para o BI dela',
     ],
   },

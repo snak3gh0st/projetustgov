@@ -26,7 +26,6 @@ function useApi<T>(url: string): Load<T> {
 
 interface CrmDashboard {
   global: { total_leads: number; total_unassigned: number; total_valor_emenda: number; by_status: Record<string, number> }
-  execucao_pipeline: { total_cnpjs: number; total_alertas: number }
 }
 interface TgovPipeline { byStatus: { status: string; count: number }[] }
 interface FinanceOverview {
@@ -37,7 +36,12 @@ interface FinanceOverview {
 }
 interface CsmBi { totals: { total_projetos: number; total_saldo_conta: number; total_a_liberar: number; total_rendimento: number } }
 
-const currency = (n: number) => formatCompactCurrency(n)
+// formatCompactCurrency não encurta negativos: aplica o sinal por fora.
+const currency = (n: number) => (n < 0 ? `-${formatCompactCurrency(-n)}` : formatCompactCurrency(n))
+
+// Sem sincronização do Conta Azul a API responde zeros, não erro.
+const semDadosFinanceiros = (o: FinanceOverview) =>
+  o.saldo.total == null && !o.receber.aberto && !o.resultado.mtd.atual && !o.pagar.atrasados.total
 
 function AreaBlock({
   title,
@@ -55,10 +59,10 @@ function AreaBlock({
   emptyText: string
 }) {
   return (
-    <section aria-labelledby={`area-${href}`} className="flex flex-col overflow-hidden rounded-xl border border-line bg-surface">
+    <section aria-labelledby={`area-${href}`} aria-busy={load.state === 'loading'} className="flex flex-col overflow-hidden rounded-xl border border-line bg-surface">
       <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
         <h2 id={`area-${href}`} className="text-sm font-semibold text-ink">{title}</h2>
-        <Link href={href} className="inline-flex items-center gap-1 text-xs font-medium text-accent-ink hover:underline focus:outline-none focus-visible:underline">
+        <Link href={href} className="inline-flex items-center gap-1 rounded text-xs font-medium text-accent-ink hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60">
           {linkLabel}
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -73,7 +77,7 @@ function AreaBlock({
             <Skeleton className="h-4 w-3/4" />
           </div>
         ) : load.state === 'error' ? (
-          <p className="text-sm text-ink-3">{emptyText}</p>
+          <p role="status" className="text-sm text-ink-3">{emptyText}</p>
         ) : (
           children
         )}
@@ -82,23 +86,28 @@ function AreaBlock({
   )
 }
 
-function Stat({ label, value, format, tone = 'ink' }: { label: string; value: number; format?: (n: number) => string; tone?: 'ink' | 'warn' }) {
+function Stat({ label, value, format, tone = 'ink' }: { label: string; value: number | null; format?: (n: number) => string; tone?: 'ink' | 'warn' | 'signed' }) {
+  const color = value == null ? 'text-ink-3'
+    : tone === 'warn' && value > 0 ? 'text-amber-700 dark:text-amber-300'
+      : tone === 'signed' && value < 0 ? 'text-red-700 dark:text-red-300'
+        : 'text-ink'
   return (
     <div>
       <dt className="text-xs text-ink-3">{label}</dt>
-      <dd className={`mt-0.5 text-lg font-semibold tabular-nums ${tone === 'warn' && value > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-ink'}`}>
-        <AnimatedNumber value={value} format={format} />
+      <dd className={`mt-0.5 text-lg font-semibold tabular-nums ${color}`}>
+        {value == null ? <span title="Sem dado">—</span> : <AnimatedNumber value={value} format={format} />}
       </dd>
     </div>
   )
 }
 
-// Barra empilhada do funil comercial: proporção de cada fase sobre o total de leads.
+// Barra empilhada do funil de aprovação: proporção entre as fases (cada CNPJ conta uma vez por status).
 function FunnelBar({ parts }: { parts: { label: string; value: number; className: string }[] }) {
   const total = parts.reduce((s, p) => s + p.value, 0)
   if (total === 0) return null
   return (
     <div className="mt-4 space-y-2">
+      <p className="text-xs text-ink-3">Funil de aprovação</p>
       <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-raised" role="img" aria-label={parts.map((p) => `${p.label}: ${p.value}`).join(', ')}>
         {parts.map((p) => (p.value > 0 ? <span key={p.label} className={p.className} style={{ width: `${(p.value / total) * 100}%` }} /> : null))}
       </div>
@@ -144,21 +153,43 @@ function ComercialBlock() {
   )
 }
 
-function SituacaoList({ title, rows }: { title: string; rows: { status: string; count: number }[] }) {
+const SITUACOES_VISIVEIS = 3
+
+// Uma aba do pipeline de instrumentos (mesmos números da tela de análises), com carga e erro próprios.
+function SituacaoList({ title, tab }: { title: string; tab: 'aprovacao' | 'execucao' | 'prestacao_contas' }) {
+  const load = useApi<TgovPipeline>(`/api/tgov/pipeline?tab=${tab}`)
+  if (load.state === 'loading') {
+    return <div className="space-y-2" aria-hidden><Skeleton className="h-6 w-1/2" /><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-3/4" /></div>
+  }
+  if (load.state === 'error') {
+    return (
+      <div>
+        <p className="text-xs text-ink-3">{title}</p>
+        <p role="status" className="mt-1 text-xs text-ink-3">Não foi possível carregar.</p>
+      </div>
+    )
+  }
+  const rows = load.data.byStatus
   const total = rows.reduce((s, r) => s + r.count, 0)
+  const restantes = rows.slice(SITUACOES_VISIVEIS)
   return (
     <div>
-      <p className="flex items-baseline justify-between text-xs text-ink-3">
+      <p className="flex items-baseline justify-between gap-2 text-xs text-ink-3">
         {title}
         <span className="text-lg font-semibold tabular-nums text-ink"><AnimatedNumber value={total} /></span>
       </p>
       <ul className="mt-2 space-y-1">
-        {rows.slice(0, 3).map((r) => (
+        {rows.slice(0, SITUACOES_VISIVEIS).map((r) => (
           <li key={r.status} className="flex items-center justify-between gap-3 text-xs">
             <span className="min-w-0 truncate text-ink-2" title={r.status}>{r.status}</span>
             <span className="tabular-nums text-ink">{formatNumber(r.count)}</span>
           </li>
         ))}
+        {restantes.length > 0 && (
+          <li className="text-xs text-ink-3">
+            +{restantes.length} {restantes.length === 1 ? 'outra situação' : 'outras situações'} ({formatNumber(restantes.reduce((s, r) => s + r.count, 0))})
+          </li>
+        )}
         {rows.length === 0 && <li className="text-xs text-ink-3">Nenhum instrumento.</li>}
       </ul>
     </div>
@@ -166,17 +197,12 @@ function SituacaoList({ title, rows }: { title: string; rows: { status: string; 
 }
 
 function OperacaoBlock() {
-  const aprovacao = useApi<TgovPipeline>('/api/tgov/pipeline?tab=aprovacao')
-  const execucao = useApi<TgovPipeline>('/api/tgov/pipeline?tab=execucao')
-  const load: Load<unknown> =
-    aprovacao.state === 'loading' || execucao.state === 'loading' ? { state: 'loading' }
-      : aprovacao.state === 'error' && execucao.state === 'error' ? { state: 'error' }
-        : { state: 'ok', data: null }
   return (
-    <AreaBlock title="Operação TransfereGov" href="/tgov" linkLabel="Abrir análises" load={load} emptyText="Não foi possível carregar os instrumentos.">
-      <div className="grid gap-5 sm:grid-cols-2">
-        <SituacaoList title="Em aprovação" rows={aprovacao.state === 'ok' ? aprovacao.data.byStatus : []} />
-        <SituacaoList title="Em execução" rows={execucao.state === 'ok' ? execucao.data.byStatus : []} />
+    <AreaBlock title="Operação TransfereGov" href="/tgov" linkLabel="Abrir análises" load={{ state: 'ok', data: null }} emptyText="">
+      <div className="grid gap-5 sm:grid-cols-3">
+        <SituacaoList title="Aprovação" tab="aprovacao" />
+        <SituacaoList title="Execução" tab="execucao" />
+        <SituacaoList title="Prestação de Contas" tab="prestacao_contas" />
       </div>
     </AreaBlock>
   )
@@ -185,15 +211,17 @@ function OperacaoBlock() {
 function FinanceiroBlock() {
   const load = useApi<FinanceOverview>('/api/financeiro/overview')
   return (
-    <AreaBlock title="Financeiro" href="/financeiro" linkLabel="Abrir BI financeiro" load={load} emptyText="Sem dados do Conta Azul. Confira a conexão em Conta Azul.">
-      {load.state === 'ok' && (
+    <AreaBlock title="Financeiro" href="/financeiro" linkLabel="Abrir BI financeiro" load={load} emptyText="Não foi possível carregar o financeiro.">
+      {load.state === 'ok' && (semDadosFinanceiros(load.data) ? (
+        <p role="status" className="text-sm text-ink-3">Ainda não há dados do Conta Azul. A sincronização aparece em Conta Azul, na área Financeiro.</p>
+      ) : (
         <dl className="grid grid-cols-2 gap-4">
-          <Stat label="Saldo em conta" value={load.data.saldo.total ?? 0} format={currency} />
+          <Stat label="Saldo em conta" value={load.data.saldo.total} format={currency} tone="signed" />
           <Stat label="Receita no mês" value={load.data.resultado.mtd.atual} format={currency} />
           <Stat label="A receber em aberto" value={load.data.receber.aberto} format={currency} />
           <Stat label="Contas a pagar atrasadas" value={load.data.pagar.atrasados.total} format={currency} tone="warn" />
         </dl>
-      )}
+      ))}
     </AreaBlock>
   )
 }

@@ -169,3 +169,9 @@ test('landing path: consultor in Meu dia, diretoria in Visão geral, others stay
   assert.equal(landingPath('diretoria'), '/gestao')
   for (const role of ['gestor', 'coordenador', 'admin', 'visualizador'] as const) assert.equal(landingPath(role), null, role)
 })
+
+test('landingPath agrees with the home of the main area where it redirects', () => {
+  for (const role of ['vendedor', 'diretoria'] as const) {
+    assert.equal(landingPath(role), areaHome(role, primaryAreaForRole(role)), role)
+  }
+})
