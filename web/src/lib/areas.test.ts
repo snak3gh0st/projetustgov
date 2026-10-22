@@ -29,6 +29,8 @@ const hrefsOf = (role: Role) => new Set(getAreasForRole(role).flatMap((a) => get
 // /execucao?fase=F virou a aba F da página Leads: conta como alcançada se o perfil tem Leads e a aba.
 function reaches(role: Role, href: string): boolean {
   const now = hrefsOf(role)
+  // O Pipeline do vendedor mudou para /pipeline: / abre o Meu dia dele.
+  if (href === '/' && role === 'vendedor') return now.has('/pipeline')
   const legacy = href.match(/^\/execucao\?fase=(.+)$/)
   if (legacy) return now.has('/leads') && leadTabsForRole(role).includes(legacy[1] as never)
   return now.has(href)
@@ -127,4 +129,24 @@ test('csm sees only commercial, with its CSM screens', () => {
   for (const href of hrefs) assert.ok(!/^\/(tgov|operacao|financeiro|admin)/.test(href), href)
   for (const href of ['/csm', '/csm/comissoes', '/csm/bi']) assert.ok(hrefs.includes(href), href)
   assert.deepEqual(getAreaNav('csm', 'operacao'), [])
+})
+
+test('vendedor opens in Meu dia, with the Pipeline right after', () => {
+  const hrefs = getAreaNav('vendedor', 'comercial').map((i) => i.href)
+  assert.deepEqual(hrefs.slice(0, 2), ['/meu-dia', '/pipeline'])
+  assert.ok(!hrefs.includes('/'))
+  assert.equal(areaHome('vendedor', 'comercial'), '/meu-dia')
+})
+
+test('coordenador keeps the team Pipeline first and has Meu dia in the menu', () => {
+  const hrefs = getAreaNav('coordenador', 'comercial').map((i) => i.href)
+  assert.equal(hrefs[0], '/')
+  assert.ok(hrefs.includes('/meu-dia'))
+  assert.equal(areaHome('coordenador', 'comercial'), '/')
+})
+
+test('only consultores get Meu dia', () => {
+  for (const role of ['gestor', 'diretoria', 'admin', 'visualizador', 'csm'] as const) {
+    assert.ok(!hrefsOf(role).has('/meu-dia'), role)
+  }
 })

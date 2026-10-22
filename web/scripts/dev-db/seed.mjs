@@ -155,6 +155,18 @@ for (const [from, to] of moves) {
   await client.query('COMMIT')
 }
 
+// Leads novos para a vendedora (atribuídos agora pelo gestor; aparecem no Meu dia dela)
+await client.query('BEGIN')
+await client.query(`SELECT set_config('app.user_id', $1, true), set_config('app.origem', 'manual', true)`, [gestor])
+await client.query(
+  `UPDATE vendedor_projetos SET vendedor_id = $1, updated_at = NOW()
+   WHERE cnpj IN (SELECT cnpj FROM vendedor_projetos
+                  WHERE status_contato = 'Não Contatado' AND vendedor_id IS DISTINCT FROM $1
+                  GROUP BY cnpj ORDER BY cnpj LIMIT 3)`,
+  [userIds['vendedora@dev.local']]
+)
+await client.query('COMMIT')
+
 const { rows: [counts] } = await client.query(
   `SELECT (SELECT COUNT(DISTINCT cnpj) FROM vendedor_projetos) leads, (SELECT COUNT(*) FROM projetos_execucao) convenios,
           (SELECT COUNT(*) FROM lead_events) eventos`
