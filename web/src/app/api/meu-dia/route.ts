@@ -4,6 +4,7 @@ import { getApiSession, isSeller } from '@/lib/dal'
 import { execucaoFaseSql } from '@/lib/execucao-fase'
 import { normalizedStatusOrderSql, normalizedStatusSql } from '@/lib/execucao-status'
 import { classifyMeuDia, meuDiaStatus, type MeuDiaAguardando, type MeuDiaCandidate } from '@/lib/meu-dia'
+import { whatsappContatosSql } from '@/lib/whatsapp/contato'
 import { whatsappConfig } from '@/lib/whatsapp/evolution'
 
 export const dynamic = 'force-dynamic'
@@ -21,7 +22,7 @@ interface CandidateRow {
 
 // Aprovação: uma linha por emenda (o status é por linha, como na aba Leads), com o escopo de /api/leads
 // (dono ou closer) e a mesma conta de "dias sem contato" por CNPJ.
-const APROVACAO_SQL = `
+const aprovacaoSql = () => `
   WITH mine AS (
     SELECT id, cnpj, nome, municipio, uf, status_contato, created_at, updated_at
     FROM vendedor_projetos
@@ -46,10 +47,7 @@ const APROVACAO_SQL = `
     GROUP BY lead_id
   ),
   whatsapp AS (
-    SELECT wc.lead_cnpj AS cnpj_clean, MAX(wm.enviada_em) AS at
-    FROM whatsapp_mensagens wm JOIN whatsapp_conversas wc ON wc.id = wm.conversa_id
-    WHERE wc.lead_cnpj IS NOT NULL AND wm.status <> 'falhou'
-    GROUP BY wc.lead_cnpj
+    SELECT w.cnpj_clean, MAX(w.at) AS at FROM (${whatsappContatosSql()}) w GROUP BY w.cnpj_clean
   )
   SELECT
     m.cnpj, m.nome, m.municipio, m.uf,
@@ -65,7 +63,7 @@ const APROVACAO_SQL = `
 
 // Execução e Prestação: um item por CNPJ com convênio numa das duas fases e dono = consultor,
 // com o status e o "último contato" de /api/execucao. Cada tabela é agrupada uma vez.
-const EXECUCAO_SQL = `
+const execucaoSql = () => `
   WITH owned AS (
     SELECT REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') AS cnpj_clean, MAX(created_at) AS created_at
     FROM vendedor_projetos
@@ -100,9 +98,7 @@ const EXECUCAO_SQL = `
       SELECT REGEXP_REPLACE(lead_cnpj, '[^0-9]', '', 'g') AS cnpj_clean, created_at AS at FROM contact_notes
       UNION ALL
       -- Mensagem de WhatsApp trocada com o lead também é contato.
-      SELECT wc.lead_cnpj, wm.enviada_em FROM whatsapp_mensagens wm
-      JOIN whatsapp_conversas wc ON wc.id = wm.conversa_id
-      WHERE wc.lead_cnpj IS NOT NULL AND wm.status <> 'falhou'
+      ${whatsappContatosSql()}
     ) x
     GROUP BY x.cnpj_clean
   ),
@@ -153,8 +149,8 @@ export async function GET() {
     }
 
     const [aprovacao, execucao] = await Promise.all([
-      query<CandidateRow>(APROVACAO_SQL, [session.userId]),
-      query<CandidateRow>(EXECUCAO_SQL, [session.userId]),
+      query<CandidateRow>(aprovacaoSql(), [session.userId]),
+      query<CandidateRow>(execucaoSql(), [session.userId]),
     ])
 
     const toCandidate = (row: CandidateRow, funil: MeuDiaCandidate['funil']): MeuDiaCandidate => ({

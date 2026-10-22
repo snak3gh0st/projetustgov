@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession, redactLeadCommission } from '@/lib/dal'
+import { whatsappContatosSql } from '@/lib/whatsapp/contato'
 
 export const dynamic = 'force-dynamic'
 
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest) {
             (SELECT MAX(vp2.updated_at) FROM vendedor_projetos vp2
              WHERE vp2.cnpj = vp.cnpj AND vp2.status_contato != 'Não Contatado' ${scopedRowFilter}),
             -- Mensagem de WhatsApp trocada com o lead também é contato.
-            (SELECT MAX(wm.enviada_em) FROM whatsapp_mensagens wm JOIN whatsapp_conversas wc ON wc.id = wm.conversa_id WHERE wc.lead_cnpj = REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AND wm.status <> 'falhou')
+            (SELECT MAX(w.at) FROM (${whatsappContatosSql()}) w WHERE w.cnpj_clean = REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'))
           ))::int
         ) as days_since_last_contact,
         (

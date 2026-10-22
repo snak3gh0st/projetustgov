@@ -4,6 +4,7 @@ import { getApiSession } from '@/lib/dal'
 import { normalizeCrmStatus } from '@/lib/crm-catalog'
 import { execucaoFaseSql, parseExecucaoFase } from '@/lib/execucao-fase'
 import { normalizedStatusOrderSql, normalizedStatusSql } from '@/lib/execucao-status'
+import { whatsappContatosSql } from '@/lib/whatsapp/contato'
 
 export const dynamic = 'force-dynamic'
 
@@ -220,9 +221,7 @@ export async function GET(request: NextRequest) {
           SELECT REGEXP_REPLACE(cn.lead_cnpj, '[^0-9]', '', 'g') AS cnpj_clean, cn.created_at AS at FROM contact_notes cn
           UNION ALL
           -- Mensagem de WhatsApp trocada com o lead também é contato.
-          SELECT wc.lead_cnpj, wm.enviada_em FROM whatsapp_mensagens wm
-          JOIN whatsapp_conversas wc ON wc.id = wm.conversa_id
-          WHERE wc.lead_cnpj IS NOT NULL AND wm.status <> 'falhou'
+          ${whatsappContatosSql()}
         ) x
         GROUP BY x.cnpj_clean
       ),

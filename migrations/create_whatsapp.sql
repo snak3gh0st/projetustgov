@@ -3,8 +3,9 @@
 -- Uma conversa por número de contato em cada instância (número do WhatsApp ligado).
 -- lead_cnpj liga a conversa ao lead pelo telefone; atendente_id é o direcionamento do gestor.
 --
--- Aplicar como dono das tabelas (sigma_app):
---   sudo -u postgres psql -d projetus_hub -c 'SET ROLE sigma_app' -f create_whatsapp.sql
+-- Aplicar ANTES do deploy (Leads, Execução e Meu dia leem estas tabelas quando o canal está configurado):
+--   sudo -u postgres psql -d projetus_hub -f create_whatsapp.sql
+-- O fim do arquivo passa as tabelas (e as sequências) para sigma_app, o usuário do app.
 
 CREATE TABLE IF NOT EXISTS whatsapp_conversas (
   id BIGSERIAL PRIMARY KEY,
@@ -47,3 +48,6 @@ CREATE TABLE IF NOT EXISTS whatsapp_mensagens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_whatsapp_mensagens_conversa ON whatsapp_mensagens (conversa_id, enviada_em);
+
+ALTER TABLE whatsapp_conversas OWNER TO sigma_app;
+ALTER TABLE whatsapp_mensagens OWNER TO sigma_app;
