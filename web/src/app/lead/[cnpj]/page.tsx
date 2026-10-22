@@ -299,8 +299,8 @@ export default function LeadDetailPage() {
             {whatsappUrl && (
               <a
                 href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+                // Conversas é tela do próprio app; só o wa.me abre em outra aba.
+                {...(whatsappUrl.startsWith('/') ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
                 className={buttonClass('secondary', 'sm')}
               >
                 WhatsApp
