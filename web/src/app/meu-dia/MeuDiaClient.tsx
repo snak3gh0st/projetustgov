@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { m } from 'motion/react'
 import PageHeader from '@/components/ui/PageHeader'
@@ -10,6 +10,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import StatusPill from '@/components/ui/StatusPill'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useToast } from '@/components/ui/Toast'
+import SectionTabs from '@/components/SectionTabs'
 import { Tag, TAG_TONE } from '@/components/leads/list-ui'
 import { formatCNPJ } from '@/lib/format'
 import { LEAD_TAB_LABEL } from '@/lib/lead-tabs'
@@ -17,29 +18,34 @@ import type { MeuDia, MeuDiaFunil, MeuDiaItem } from '@/lib/meu-dia'
 
 const REFRESH_MS = 60_000
 
+type Filtro = 'todos' | MeuDiaFunil
+
+const FUNIS: MeuDiaFunil[] = ['aprovacao', 'execucao', 'prestacao_contas']
+
 const FUNIL_TONE: Record<MeuDiaFunil, keyof typeof TAG_TONE> = {
   aprovacao: 'sky',
   execucao: 'teal',
   prestacao_contas: 'violet',
 }
 
-const SECTIONS: { key: keyof MeuDia; title: string; description: string; empty: string }[] = [
+// Ordem de prioridade do dia: quem acabou de chegar, quem está esfriando, quem já tem reunião.
+const COLUMNS: { key: keyof MeuDia; title: string; hint: string; empty: string }[] = [
   {
     key: 'novos',
-    title: 'Novos leads para você',
-    description: 'Atribuídos nos últimos 7 dias e ainda sem contato.',
+    title: 'Novos para você',
+    hint: 'Atribuídos nos últimos 7 dias, sem contato ainda',
     empty: 'Nenhum lead novo esperando o primeiro contato.',
   },
   {
     key: 'parados',
-    title: 'Leads parados',
-    description: 'Mais de 7 dias sem contato.',
+    title: 'Parados',
+    hint: 'Mais de 7 dias sem contato',
     empty: 'Nenhum lead parado. Todos tiveram contato na última semana.',
   },
   {
     key: 'reunioes',
     title: 'Reunião agendada',
-    description: 'Leads com reunião marcada.',
+    hint: 'Leads com reunião marcada',
     empty: 'Nenhuma reunião marcada.',
   },
 ]
@@ -53,11 +59,11 @@ function daysLabel(days: number): string {
 function motivoLabel(item: MeuDiaItem): string {
   if (item.motivo === 'novo' && item.atribuido_em) {
     const days = Math.floor((Date.now() - new Date(item.atribuido_em).getTime()) / 86_400_000)
-    return `Atribuído ${daysLabel(days)}`
+    return `Chegou ${daysLabel(days)}`
   }
-  if (item.motivo === 'parado') return `${item.dias_sem_contato} dias sem contato`
-  if (item.dias_sem_contato != null) return `Último contato ${daysLabel(item.dias_sem_contato)}`
-  return 'Reunião marcada'
+  if (item.motivo === 'parado') return `${item.dias_sem_contato} dias`
+  if (item.dias_sem_contato != null) return `Contato ${daysLabel(item.dias_sem_contato)}`
+  return ''
 }
 
 const todayLabel = () => {
@@ -67,44 +73,45 @@ const todayLabel = () => {
 
 function ItemRow({ item, index }: { item: MeuDiaItem; index: number }) {
   const place = [item.municipio, item.uf].filter(Boolean).join(', ')
-  const motivoTone = item.motivo === 'parado' ? 'font-medium text-amber-700 dark:text-amber-300' : 'text-ink-2'
+  const nome = item.nome || formatCNPJ(item.cnpj)
+  const motivo = motivoLabel(item)
   return (
     <m.li
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.22, delay: Math.min(index, 8) * 0.03, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.2, delay: Math.min(index, 8) * 0.025, ease: [0.16, 1, 0.3, 1] }}
     >
       <Link
         href={`/lead/${encodeURIComponent(item.cnpj)}`}
-        className="group flex items-center gap-3 px-5 py-3 transition-colors duration-fast hover:bg-raised focus:outline-none focus-visible:bg-raised focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/50"
+        title={`Abrir card de ${nome}`}
+        className="block px-4 py-2.5 transition-colors duration-fast hover:bg-raised focus:outline-none focus-visible:bg-raised focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/50"
       >
-        <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-sm font-medium text-ink sm:truncate">{item.nome || formatCNPJ(item.cnpj)}</p>
-          <p className={`mt-0.5 text-xs sm:hidden ${motivoTone}`}>{motivoLabel(item)}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            <Tag tone={FUNIL_TONE[item.funil]}>{LEAD_TAB_LABEL[item.funil]}</Tag>
-            <StatusPill status={item.status} />
-            {place && <span className="truncate text-xs text-ink-3">{place}</span>}
-          </div>
+        <div className="flex items-baseline gap-3">
+          <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{nome}</p>
+          {motivo && (
+            <span className={`shrink-0 text-xs tabular-nums ${item.motivo === 'parado' ? 'font-medium text-amber-700 dark:text-amber-300' : 'text-ink-3'}`}>
+              {motivo}
+            </span>
+          )}
         </div>
-        <span className={`hidden shrink-0 text-right text-xs sm:block ${motivoTone}`}>
-          {motivoLabel(item)}
-        </span>
-        <svg className="h-4 w-4 shrink-0 text-ink-3 transition-transform duration-fast group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-        </svg>
+        <div className="mt-1 flex min-w-0 items-center gap-1.5">
+          <Tag tone={FUNIL_TONE[item.funil]}>{LEAD_TAB_LABEL[item.funil]}</Tag>
+          {/* Em Novos e Reunião o status é o próprio motivo da coluna; só Parados varia. */}
+          {item.motivo === 'parado' && <StatusPill status={item.status} />}
+          {place && <span className="min-w-0 truncate text-xs text-ink-3">{place}</span>}
+        </div>
       </Link>
     </m.li>
   )
 }
 
-function SectionSkeleton() {
+function ColumnSkeleton() {
   return (
-    <div className="space-y-3 px-5 py-4" aria-hidden>
+    <div className="space-y-4 px-4 py-3" aria-hidden>
       {[0, 1, 2].map((i) => (
         <div key={i} className="space-y-1.5">
-          <Skeleton className="h-4 w-2/3" />
-          <Skeleton className="h-3 w-1/3" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-1/2" />
         </div>
       ))}
     </div>
@@ -115,6 +122,7 @@ export default function MeuDiaClient() {
   const toast = useToast()
   const [data, setData] = useState<MeuDia | null>(null)
   const [failed, setFailed] = useState(false)
+  const [filtro, setFiltro] = useState<Filtro>('todos')
   const loadingRef = useRef(false)
 
   const load = useCallback(async (silent: boolean) => {
@@ -147,22 +155,35 @@ export default function MeuDiaClient() {
     }
   }, [load])
 
-  const total = data ? data.novos.length + data.parados.length + data.reunioes.length : 0
+  const all = useMemo(() => (data ? [...data.novos, ...data.parados, ...data.reunioes] : []), [data])
+  const total = all.length
+
+  const filterTabs = useMemo(() => [
+    { id: 'todos', label: 'Todos', count: total },
+    ...FUNIS.map((f) => ({ id: f, label: LEAD_TAB_LABEL[f], count: all.filter((i) => i.funil === f).length })),
+  ], [all, total])
+
+  const visible = (key: keyof MeuDia) => {
+    const items = data?.[key] ?? []
+    return filtro === 'todos' ? items : items.filter((i) => i.funil === filtro)
+  }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader title="Meu dia" description={todayLabel()} />
+    <div className="space-y-5">
+      <PageHeader
+        title="Meu dia"
+        description={todayLabel()}
+        actions={data && total > 0 ? (
+          <SectionTabs ariaLabel="Funil" value={filtro} onChange={(v) => setFiltro(v as Filtro)} tabs={filterTabs} />
+        ) : undefined}
+      />
 
       {failed && !data ? (
         <Panel>
           <EmptyState
             title="Não deu para carregar o seu dia"
             description="Confira a conexão e tente de novo."
-            action={
-              <Button size="sm" variant="primary" onClick={() => void load(false)}>
-                Carregar de novo
-              </Button>
-            }
+            action={<Button size="sm" variant="primary" onClick={() => void load(false)}>Carregar de novo</Button>}
           />
         </Panel>
       ) : data && total === 0 ? (
@@ -178,34 +199,38 @@ export default function MeuDiaClient() {
           />
         </Panel>
       ) : (
-        SECTIONS.map((section) => {
-          const items = data?.[section.key] ?? []
-          return (
-            <Panel
-              key={section.key}
-              padded={false}
-              title={
-                <span className="flex items-center gap-2">
-                  {section.title}
-                  {data && <span className="rounded-full bg-raised px-2 py-0.5 text-xs font-medium tabular-nums text-ink-2">{items.length}</span>}
-                </span>
-              }
-              description={section.description}
-            >
-              {!data ? (
-                <SectionSkeleton />
-              ) : items.length === 0 ? (
-                <p className="px-5 py-4 text-sm text-ink-3">{section.empty}</p>
-              ) : (
-                <ul className="divide-y divide-line">
-                  {items.map((item, index) => (
-                    <ItemRow key={`${item.funil}-${item.cnpj}`} item={item} index={index} />
-                  ))}
-                </ul>
-              )}
-            </Panel>
-          )
-        })
+        <div className="grid items-start gap-4 lg:grid-cols-3">
+          {COLUMNS.map((column) => {
+            const items = visible(column.key)
+            const headingId = `meu-dia-${column.key}`
+            return (
+              <section key={column.key} aria-labelledby={headingId} className="overflow-hidden rounded-xl border border-line bg-surface">
+                <header className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+                  <div className="min-w-0">
+                    <h2 id={headingId} className="text-sm font-semibold text-ink">{column.title}</h2>
+                    <p className="mt-0.5 text-xs text-ink-3">{column.hint}</p>
+                  </div>
+                  {data && (
+                    <span className="shrink-0 rounded-full bg-raised px-2 py-0.5 text-xs font-semibold tabular-nums text-ink-2">
+                      {items.length}
+                    </span>
+                  )}
+                </header>
+                {!data ? (
+                  <ColumnSkeleton />
+                ) : items.length === 0 ? (
+                  <p className="px-4 py-6 text-center text-sm text-ink-3">{column.empty}</p>
+                ) : (
+                  <ul className="divide-y divide-line lg:max-h-[calc(100dvh-15rem)] lg:overflow-y-auto">
+                    {items.map((item, index) => (
+                      <ItemRow key={`${item.funil}-${item.cnpj}`} item={item} index={index} />
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )
+          })}
+        </div>
       )}
     </div>
   )
