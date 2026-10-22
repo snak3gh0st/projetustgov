@@ -88,8 +88,7 @@ export async function PATCH(
     const result = await query(`
       UPDATE contact_notes
       SET tipo = COALESCE($2, tipo),
-          observacao = COALESCE($3, observacao),
-          updated_at = NOW()
+          observacao = COALESCE($3, observacao)
       WHERE id = $1
       RETURNING *
     `, [note_id, tipo || null, observacao !== undefined ? observacao : null])

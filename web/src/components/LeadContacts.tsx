@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import type { LeadContact, TelefoneStatus } from '@/lib/types'
 import { googleCalendarEventUrl } from '@/lib/format'
 import WhatsAppAction from '@/components/WhatsAppAction'
+import { buttonClass } from '@/components/ui/Button'
 
 interface LeadContactsProps {
   cnpj: string
@@ -24,6 +25,7 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [confirmingId, setConfirmingId] = useState<number | null>(null)
   const [formData, setFormData] = useState(EMPTY_FORM)
   const [editData, setEditData] = useState(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
@@ -86,7 +88,7 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm('Remover este contato?')) return
+    setConfirmingId(null)
     try {
       const res = await fetch(apiBase, {
         method: 'DELETE',
@@ -116,23 +118,23 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
   }
 
   if (loading) {
-    return <div className="text-gray-500 dark:text-gray-400 text-sm">Carregando contatos...</div>
+    return <div className="rounded-xl border border-line bg-surface px-5 py-4 text-sm text-ink-3">Carregando contatos...</div>
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl overflow-hidden">
+    <div className="overflow-hidden rounded-xl border border-line bg-surface">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
         <div>
-          <h2 className="text-lg font-heading font-semibold text-gray-900 dark:text-gray-100">Contatos</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{contacts.length} contato{contacts.length !== 1 ? 's' : ''} cadastrado{contacts.length !== 1 ? 's' : ''}</p>
+          <h2 className="text-base font-semibold text-ink">Contatos</h2>
+          <p className="text-xs text-ink-3">{contacts.length} contato{contacts.length !== 1 ? 's' : ''} cadastrado{contacts.length !== 1 ? 's' : ''}</p>
         </div>
         {canModify && (
           <button
             onClick={() => setShowForm(!showForm)}
-            className="px-3 py-1.5 rounded-lg bg-[#0072F7] text-white text-sm font-medium hover:bg-[#0058C4] transition-all"
+            className={buttonClass('secondary', 'sm')}
           >
-            + Novo Contato
+            Adicionar contato
           </button>
         )}
       </div>
@@ -209,7 +211,7 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
           </div>
         ) : (
           contacts.map((contact) => (
-            <div key={contact.id} className={`p-4 transition-colors ${contact.principal ? 'bg-blue-50/50 dark:bg-blue-500/5 border-l-2 border-l-[#0072F7]' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+            <div key={contact.id} className={`p-4 transition-colors ${contact.principal ? 'bg-accent-soft/40' : 'hover:bg-raised'}`}>
               {editingId === contact.id ? (
                 /* Edit mode */
                 <div>
@@ -372,16 +374,25 @@ export default function LeadContacts({ cnpj, canModify }: LeadContactsProps) {
                             <path d="M11.5 2.5a1.5 1.5 0 012 2L5 13l-4 1 1-4L11.5 2.5z"/>
                           </svg>
                         </button>
+                        {confirmingId === contact.id ? (
+                          <span className="flex items-center gap-1 text-xs">
+                            <span className="text-ink-2">Remover?</span>
+                            <button type="button" onClick={() => setConfirmingId(null)} className={buttonClass('ghost', 'sm')}>Manter</button>
+                            <button type="button" onClick={() => handleDelete(contact.id)} className={buttonClass('danger', 'sm')}>Remover contato</button>
+                          </span>
+                        ) : (
                         <button
-                          onClick={() => handleDelete(contact.id)}
+                          onClick={() => setConfirmingId(contact.id)}
                           className="text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
                           title="Remover contato"
+                          aria-label="Remover contato"
                         >
                           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="4" y1="4" x2="12" y2="12"/>
                             <line x1="12" y1="4" x2="4" y2="12"/>
                           </svg>
                         </button>
+                        )}
                       </>
                     )}
                   </div>

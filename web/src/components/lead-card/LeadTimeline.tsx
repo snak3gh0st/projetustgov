@@ -209,7 +209,7 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey }: LeadTi
   }
 
   return (
-    <section aria-labelledby="linha-do-tempo" className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-surface">
+    <section aria-labelledby="linha-do-tempo" className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-surface">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
         <h2 id="linha-do-tempo" className="text-sm font-semibold text-ink">Linha do tempo</h2>
         <SectionTabs

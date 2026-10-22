@@ -263,10 +263,10 @@ export default function LeadDetailPage() {
         )}
       </header>
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <LeadTimeline cnpj={apiCnpj} canWriteNotes={canModifyData(role)} refreshKey={timelineKey} />
 
-        <aside className="space-y-4" aria-label="Detalhes do lead">
+        <aside className="min-w-0 space-y-4" aria-label="Detalhes do lead">
           <Panel title="Reunião" padded={false}>
             <div className="space-y-3 px-4 py-3">
               <p className="text-sm text-ink-2">
