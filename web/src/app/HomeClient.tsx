@@ -126,7 +126,7 @@ interface SyncLog {
 }
 
 const STATUS_ORDER = CRM_STATUS_FUNNEL_ORDER
-// Execução/PC: etapas canônicas, as mesmas da lista /execucao (normalizeCrmStatus).
+// Execução/PC: etapas canônicas, as mesmas das abas Execução e Prestação de Leads (normalizeCrmStatus).
 const EXECUCAO_STATUS_ORDER = CRM_STATUS_CANONICAL
 
 const PC_STATUS_ORDER = [
@@ -437,7 +437,7 @@ function ExecucaoAlerts({ alerts }: { alerts: ExecucaoAlert[] }) {
     <section aria-label="CNPJs com alerta">
       <SectionHeading
         hint={
-          <Link href="/execucao?alert_only=true" className="font-medium text-accent-ink hover:underline">
+          <Link href="/leads?fase=execucao&alert_only=true" className="font-medium text-accent-ink hover:underline">
             Ver todos os alertas
           </Link>
         }
@@ -447,7 +447,7 @@ function ExecucaoAlerts({ alerts }: { alerts: ExecucaoAlert[] }) {
       <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
         {alerts.map(a => (
           <li key={a.cnpj}>
-            <Link href="/execucao?alert_only=true" className="flex items-center gap-4 px-5 py-3 transition-colors duration-fast hover:bg-raised">
+            <Link href="/leads?fase=execucao&alert_only=true" className="flex items-center gap-4 px-5 py-3 transition-colors duration-fast hover:bg-raised">
               <span className="inline-flex shrink-0 items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-200 tabular dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/25">
                 {a.alert_count}/{a.total_convenios}
               </span>
@@ -634,13 +634,13 @@ function ExecucaoView({ data, isVendedor }: { data: DashboardData; isVendedor: b
   return (
     <>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
-        <StatTile label="CNPJs em execução" value={ex.total_cnpjs} href="/execucao?fase=execucao" />
-        <StatTile label="Valor dos convênios" value={ex.total_valor_global} format={formatMoney} href="/execucao?fase=execucao" hint={formatCurrency(ex.total_valor_global)} />
-        <StatTile label="Saldo em conta" value={ex.total_saldo} format={formatMoney} href="/execucao?fase=execucao" hint={formatCurrency(ex.total_saldo)} />
+        <StatTile label="CNPJs em execução" value={ex.total_cnpjs} href="/leads?fase=execucao" />
+        <StatTile label="Valor dos convênios" value={ex.total_valor_global} format={formatMoney} href="/leads?fase=execucao" hint={formatCurrency(ex.total_valor_global)} />
+        <StatTile label="Saldo em conta" value={ex.total_saldo} format={formatMoney} href="/leads?fase=execucao" hint={formatCurrency(ex.total_saldo)} />
         <StatTile
           label="Alertas ativos"
           value={ex.total_alertas}
-          href="/execucao?alert_only=true"
+          href="/leads?fase=execucao&alert_only=true"
           tone={ex.total_alertas > 0 ? 'warn' : 'default'}
           hint={ex.total_cnpjs > 0 ? `${Math.round((ex.total_alertas / ex.total_cnpjs) * 100)}% dos CNPJs` : undefined}
         />
@@ -651,7 +651,7 @@ function ExecucaoView({ data, isVendedor }: { data: DashboardData; isVendedor: b
         description="CNPJs com convênios em execução no TransfereGov."
         total={ex.total_cnpjs}
         totalLabel="CNPJs"
-        stages={stagesFor(EXECUCAO_STATUS_ORDER, ex.by_status, status => `/execucao?fase=execucao&status=${encodeURIComponent(status)}`)}
+        stages={stagesFor(EXECUCAO_STATUS_ORDER, ex.by_status, status => `/leads?fase=execucao&status=${encodeURIComponent(status)}`)}
       />
 
       {data.execucao_alerts && data.execucao_alerts.length > 0 && <ExecucaoAlerts alerts={data.execucao_alerts} />}
@@ -669,7 +669,7 @@ function PrestacaoView({ data }: { data: DashboardData }) {
   const situacoes = PC_STATUS_ORDER
     .filter(s => (pc.by_status[s] || 0) > 0)
     .map(s => ({ label: s.replace('Prestação de Contas', 'PC'), count: pc.by_status[s] || 0 }))
-  const pcHref = '/execucao?fase=prestacao_contas'
+  const pcHref = '/leads?fase=prestacao_contas'
   return (
     <>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">

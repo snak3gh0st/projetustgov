@@ -35,9 +35,7 @@ const CSM_VIEW: Role[] = ['csm', 'gestor', 'diretoria', 'admin']
 const AREA_NAV: Record<AreaId, Item[]> = {
   comercial: [
     { href: '/', label: 'Pipeline', icon: 'pipeline', roles: SELLERS },
-    { href: '/leads', label: 'Leads de aprovação', icon: 'leads', roles: SELLERS },
-    { href: '/execucao?fase=execucao', label: 'Leads de execução', icon: 'execucao', roles: SELLERS_WITH_EXECUCAO },
-    { href: '/execucao?fase=prestacao_contas', label: 'Leads de prestação de contas', icon: 'execucao', roles: SELLERS_WITH_EXECUCAO },
+    { href: '/leads', label: 'Leads', icon: 'leads', roles: SELLERS },
     { href: '/operacao', label: 'Operação', icon: 'tgov', roles: ['vendedor', 'coordenador'] },
     { href: '/csm', label: 'CSM Clientes', icon: 'csm', roles: CSM_VIEW },
     { href: '/csm/comissoes', label: 'Comissões CSM', icon: 'comissoes', roles: CSM_VIEW },
@@ -112,13 +110,12 @@ export function areaHome(role: Role, area: AreaId): string {
   return getAreaNav(role, area)[0]?.href ?? '/'
 }
 
-// Em /tgov compara ?view= e em /execucao compara ?fase= (sem fase = execução).
+// Em /tgov compara ?view=.
 export function isNavItemActive(href: string, pathname: string, search: URLSearchParams): boolean {
   const [hrefPath, hrefQuery] = href.split('?')
   const hrefParams = new URLSearchParams(hrefQuery ?? '')
   if (hrefPath === '/') return pathname === '/'
   if (hrefPath === '/tgov') return pathname === '/tgov' && (search.get('view') ?? null) === (hrefParams.get('view') ?? null)
-  if (hrefPath === '/execucao') return pathname === '/execucao' && (search.get('fase') ?? 'execucao') === hrefParams.get('fase')
   return pathname === hrefPath || pathname.startsWith(hrefPath + '/')
 }
 

@@ -206,8 +206,8 @@ export default function LeadDetailPage() {
       const nomeInst = execucaoFallback[0].nome_proponente || 'Instituição'
       return (
         <div className="space-y-6 max-w-5xl">
-          <Link href="/execucao" className="text-gray-500 hover:text-gray-900 transition-colors text-sm">
-            &#8592; Voltar para execução
+          <Link href="/leads?fase=execucao" className="text-gray-500 hover:text-gray-900 transition-colors text-sm">
+            &#8592; Voltar para Leads de Execução
           </Link>
           <div>
             <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">{nomeInst}</h1>

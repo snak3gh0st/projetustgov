@@ -1,11 +1,27 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { formatCNPJ, formatCompactCurrency, formatCurrency, formatDate, whatsappMeUrlFromTelefone } from '@/lib/format'
-import KPIRow from '@/components/KPIRow'
+import { formatCNPJ, formatCompactCurrency, formatDate, whatsappMeUrlFromTelefone } from '@/lib/format'
 import ExecucaoSlideOver from '@/components/ExecucaoSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
-import { CRM_STATUS_BADGE_COLORS, CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, normalizeCrmStatus } from '@/lib/crm-catalog'
+import Button from '@/components/ui/Button'
+import EmptyState from '@/components/ui/EmptyState'
+import { SkeletonRows } from '@/components/ui/Skeleton'
+import { useToast } from '@/components/ui/Toast'
+import {
+  FilterChip,
+  LastContactBadge,
+  OpenCardLink,
+  PhoneStatusDot,
+  SortHeader,
+  StatusSelect,
+  TAG_TONE,
+  Tag,
+  inputClass,
+  selectClass,
+  thClass,
+} from '@/components/leads/list-ui'
+import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, normalizeCrmStatus } from '@/lib/crm-catalog'
 import type { ExecucaoFase } from '@/lib/execucao-fase'
 
 interface ExecucaoAggRow {
@@ -51,38 +67,31 @@ const UF_OPTIONS = [
 ]
 
 const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
-const STATUS_COLORS = CRM_STATUS_BADGE_COLORS
 
-const FASE_OPTIONS: { value: ExecucaoFase | ''; label: string }[] = [
-  { value: 'execucao', label: 'Execução' },
-  { value: 'prestacao_contas', label: 'Prestação de Contas' },
-  { value: '', label: 'Todas' },
+const TAG_KEYS: { key: string; field: keyof ExecucaoAggRow; label: string; tone: keyof typeof TAG_TONE }[] = [
+  { key: 'autossuficiente', field: 'tag_autossuficiente', label: 'Autossuficiente', tone: 'rose' },
+  { key: 'iniciante', field: 'tag_iniciante', label: 'Iniciante', tone: 'sky' },
+  { key: 'desembolso', field: 'tag_desembolso', label: 'Desembolso', tone: 'emerald' },
+  { key: 'lobby', field: 'tag_lobby', label: 'Lobby', tone: 'violet' },
+  { key: 'rendimento', field: 'tag_rendimento', label: 'Rendimento', tone: 'teal' },
 ]
 
-const FASE_HEADER: Record<ExecucaoFase | '', { title: string; subtitle: string }> = {
-  execucao: {
-    title: 'Leads de Execução',
-    subtitle: 'Proponentes com convênios em execução — dados TransfereGov',
-  },
-  prestacao_contas: {
-    title: 'Leads de Prestação de Contas',
-    subtitle: 'Proponentes com convênios em prestação de contas — dados TransfereGov. Mesmo status comercial da Execução: os serviços são vendidos juntos.',
-  },
-  '': {
-    title: 'Projetos em Execução e Prestação de Contas',
-    subtitle: 'Convênios por proponente — dados TransfereGov',
-  },
-}
+const PAGE_SIZE = 50
 
+// Lista de convênios por proponente numa fase do TransfereGov. Quem a usa (página Leads, aba Operação do CSM) cuida do título e das abas.
 export default function ExecucaoClient({
   userRole,
-  initialFase = null,
+  fase,
   initialStatus = '',
+  initialAlertOnly = false,
 }: {
   userRole: string
-  initialFase?: ExecucaoFase | null
+  /** null = as duas fases juntas (aba Operação do CSM). */
+  fase: ExecucaoFase | null
   initialStatus?: string
+  initialAlertOnly?: boolean
 }) {
+  const toast = useToast()
   const isGestor = userRole === 'gestor' || userRole === 'diretoria' || userRole === 'coordenador'
   const [rows, setRows] = useState<ExecucaoAggRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -92,8 +101,7 @@ export default function ExecucaoClient({
   const [search, setSearch] = useState('')
   const [uf, setUf] = useState('')
   const [statusFilter, setStatusFilter] = useState(initialStatus ? normalizeCrmStatus(initialStatus) : '')
-  const [fase, setFase] = useState<ExecucaoFase | ''>(initialFase ?? '')
-  const [alertOnly, setAlertOnly] = useState(false)
+  const [alertOnly, setAlertOnly] = useState(initialAlertOnly)
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
   const [selectedCnpj, setSelectedCnpj] = useState<string | null>(null)
   const [vendedorFilter, setVendedorFilter] = useState('')
@@ -101,6 +109,7 @@ export default function ExecucaoClient({
   const [assignModal, setAssignModal] = useState<{ cnpj: string; nome: string | null; vendedor: string | null } | null>(null)
   const [sortCol, setSortCol] = useState<string>('execucao')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const hasLoadedRef = useRef(false)
   const fetchAbortRef = useRef<AbortController | null>(null)
 
@@ -163,14 +172,6 @@ export default function ExecucaoClient({
     return () => fetchAbortRef.current?.abort()
   }, [])
 
-  // Mantém a fase na URL para links e menu (/execucao?fase=prestacao_contas)
-  useEffect(() => {
-    const url = new URL(window.location.href)
-    url.searchParams.set('fase', fase || 'todas')
-    url.searchParams.delete('status')
-    window.history.replaceState(null, '', url)
-  }, [fase])
-
   // Fetch vendedores list for filter (gestor only)
   useEffect(() => {
     if (!isGestor) return
@@ -181,18 +182,20 @@ export default function ExecucaoClient({
   }, [isGestor])
 
   const updateStatus = useCallback(async (cnpj: string, newStatus: string) => {
+    const previous = rows.find(r => r.cnpj === cnpj)?.crm_status
     setRows(prev => prev.map(r => r.cnpj === cnpj ? { ...r, crm_status: newStatus } : r))
     try {
-      await fetch(`/api/execucao/${encodeURIComponent(cnpj)}`, {
+      const res = await fetch(`/api/execucao/${encodeURIComponent(cnpj)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status_contato: newStatus }),
       })
+      if (!res.ok) throw new Error('patch failed')
     } catch {
-      // Revert on failure
-      void fetchData({ background: true })
+      setRows(prev => prev.map(r => r.cnpj === cnpj && previous !== undefined ? { ...r, crm_status: previous } : r))
+      toast.error('Não foi possível salvar o status. Tente de novo.')
     }
-  }, [fetchData])
+  }, [rows, toast])
 
   const toggleTag = (tag: string) => {
     setActiveTags(prev => {
@@ -223,14 +226,6 @@ export default function ExecucaoClient({
     ))
   }, [])
 
-  const TAG_KEYS: { key: string; field: keyof ExecucaoAggRow; label: string; bg: string; text: string; border: string }[] = [
-    { key: 'autossuficiente', field: 'tag_autossuficiente', label: 'Autossuficiente', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
-    { key: 'iniciante', field: 'tag_iniciante', label: 'Iniciante', bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
-    { key: 'desembolso', field: 'tag_desembolso', label: 'Desembolso', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-    { key: 'lobby', field: 'tag_lobby', label: 'Lobby', bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
-    { key: 'rendimento', field: 'tag_rendimento', label: 'Rendimento', bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' },
-  ]
-
   const filteredRows = useMemo(() => {
     let result = rows
     if (statusFilter) {
@@ -244,45 +239,20 @@ export default function ExecucaoClient({
         return def ? r[def.field] : false
       })
     )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, activeTags, statusFilter])
 
-  const kpis = useMemo(() => [
-    {
-      title: 'Clientes Qualificados',
-      value: String(filteredRows.length),
-      icon: '\u{1F3E2}',
-    },
-    {
-      title: 'Total Fomentos',
-      value: String(filteredRows.reduce((s, r) => s + r.total_projetos, 0)),
-      icon: '\u{1F4CB}',
-    },
-    {
-      title: 'Valor Total Convenios',
-      value: formatCompactCurrency(filteredRows.reduce((s, r) => s + Number(r.total_valor_global), 0)),
-      icon: '\u{1F4B0}',
-    },
-    {
-      title: 'Saldo em Conta',
-      value: formatCompactCurrency(filteredRows.reduce((s, r) => s + Number(r.total_saldo), 0)),
-      icon: '\u{1F4B3}',
-    },
-    {
-      title: 'Valor a Desembolsar',
-      value: formatCompactCurrency(filteredRows.reduce((s, r) => s + Math.max(0, Number(r.total_repasse) - Number(r.total_desembolsado)), 0)),
-      icon: '\u{1F4E5}',
-    },
-    {
-      title: 'Alertas Ativos',
-      value: String(filteredRows.filter(r => r.tem_alerta).length),
-      icon: '\u26A0',
-    },
+  const stats = useMemo(() => [
+    { label: 'Proponentes', value: filteredRows.length.toLocaleString('pt-BR') },
+    { label: 'Convênios', value: filteredRows.reduce((s, r) => s + r.total_projetos, 0).toLocaleString('pt-BR') },
+    { label: 'Valor dos convênios', value: formatCompactCurrency(filteredRows.reduce((s, r) => s + Number(r.total_valor_global), 0)) },
+    { label: 'Saldo em conta', value: formatCompactCurrency(filteredRows.reduce((s, r) => s + Number(r.total_saldo), 0)) },
+    { label: 'A desembolsar', value: formatCompactCurrency(filteredRows.reduce((s, r) => s + Math.max(0, Number(r.total_repasse) - Number(r.total_desembolsado)), 0)) },
+    { label: 'Com alerta', value: filteredRows.filter(r => r.tem_alerta).length.toLocaleString('pt-BR') },
   ], [filteredRows])
 
   const sortedRows = useMemo(() => {
     if (!sortCol) return filteredRows
-    const sorted = [...filteredRows].sort((a, b) => {
+    return [...filteredRows].sort((a, b) => {
       let va: string | number | boolean | null = null
       let vb: string | number | boolean | null = null
       switch (sortCol) {
@@ -295,7 +265,6 @@ export default function ExecucaoClient({
         case 'execucao': va = a.pct_execucao_ponderado != null ? Number(a.pct_execucao_ponderado) : null; vb = b.pct_execucao_ponderado != null ? Number(b.pct_execucao_ponderado) : null; break
         case 'vigencia': va = a.data_fim_vigencia_mais_proxima ?? ''; vb = b.data_fim_vigencia_mais_proxima ?? ''; break
         case 'alerta': va = a.tem_alerta ? 1 : 0; vb = b.tem_alerta ? 1 : 0; break
-        case 'contato': va = a.contact_telefone ?? ''; vb = b.contact_telefone ?? ''; break
         case 'ult_contato': va = a.days_since_last_contact ?? 9999; vb = b.days_since_last_contact ?? 9999; break
         case 'status': va = a.crm_status; vb = b.crm_status; break
         case 'vendedor': va = (a.vendedor_nome ?? '').toLowerCase(); vb = (b.vendedor_nome ?? '').toLowerCase(); break
@@ -307,87 +276,63 @@ export default function ExecucaoClient({
       if (va > vb) return sortDir === 'asc' ? 1 : -1
       return 0
     })
-    return sorted
   }, [filteredRows, sortCol, sortDir])
-
-  const SortIcon = ({ col }: { col: string }) => (
-    <span className="inline-flex ml-1 text-gray-400">
-      {sortCol === col ? (sortDir === 'asc' ? '\u2191' : '\u2193') : '\u2195'}
-    </span>
-  )
-
-  const PAGE_SIZE = 50
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   // Reset visible count when data or filters change
   useEffect(() => { setVisibleCount(PAGE_SIZE) }, [sortedRows.length, sortCol, sortDir])
 
   const visibleRows = useMemo(() => sortedRows.slice(0, visibleCount), [sortedRows, visibleCount])
 
+  const hasFilters = !!(search || uf || statusFilter || alertOnly || vendedorFilter || activeTags.size > 0)
+  function clearFilters() {
+    setSearch('')
+    setUf('')
+    setStatusFilter('')
+    setAlertOnly(false)
+    setVendedorFilter('')
+    setActiveTags(new Set())
+  }
+
   const showBlockingLoad = loading && rows.length === 0
   const showBlockingError = error && rows.length === 0
+  const sortProps = { sortCol, sortDir, onSort: toggleSort }
+  const faseLabel = fase === 'prestacao_contas' ? 'em prestação de contas' : fase === 'execucao' ? 'em execução' : 'em execução ou prestação de contas'
 
   return (
-    <div className="space-y-6 w-full max-w-[1800px] mx-auto">
-      {/* Header */}
-      <div>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="font-heading text-2xl font-bold text-gray-900 dark:text-gray-100">{FASE_HEADER[fase].title}</h1>
-          {refreshing && (
-            <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-[#0072F7]">
-              Atualizando lista...
-            </span>
-          )}
+    <div className="space-y-4">
+      {/* Resumo da fase */}
+      {!showBlockingLoad && !showBlockingError && (
+        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-3 xl:grid-cols-6">
+          {stats.map((s) => (
+            <div key={s.label} className="bg-surface px-4 py-3">
+              <dt className="text-xs text-ink-3">{s.label}</dt>
+              <dd className="mt-0.5 font-heading text-lg font-semibold tabular text-ink">{s.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {/* Filtros */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:min-w-[240px] sm:flex-1">
+          <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3">
+            <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.45 4.39l3.08 3.08a.75.75 0 11-1.06 1.06l-3.08-3.08A7 7 0 012 9z" clipRule="evenodd" />
+          </svg>
+          <input
+            type="search"
+            aria-label="Buscar por CNPJ ou nome"
+            placeholder="Buscar por CNPJ ou nome"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className={`${inputClass} pl-9`}
+          />
         </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{FASE_HEADER[fase].subtitle}</p>
-        {lastSynced && (
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Dados atualizados em {formatDate(lastSynced)}</p>
-        )}
-      </div>
-
-      {/* KPI Row */}
-      {!showBlockingLoad && !showBlockingError && <KPIRow items={kpis} />}
-
-      {/* Fase no TransfereGov: abas comerciais de Execução e Prestação de Contas */}
-      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit">
-        {FASE_OPTIONS.map(opt => (
-          <button
-            key={opt.value || 'todas'}
-            onClick={() => setFase(opt.value)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-              fase === opt.value
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Filter bar */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <input
-          type="text"
-          placeholder="Buscar por CNPJ ou nome..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full sm:flex-1 sm:min-w-[200px] bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0072F7] transition-colors"
-        />
-        <select
-          value={uf}
-          onChange={e => setUf(e.target.value)}
-          className="bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
-        >
-          <option value="">UF</option>
+        <select aria-label="UF" value={uf} onChange={e => setUf(e.target.value)} className={selectClass}>
+          <option value="">Todas as UFs</option>
           {UF_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-          className="bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
-        >
-          <option value="">Todos Status</option>
+        <select aria-label="Status" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={selectClass}>
+          <option value="">Todos os status</option>
           {/* Etapa vinda do funil da tela inicial que não está entre as opções */}
           {statusFilter && !(STATUS_OPTIONS as readonly string[]).includes(statusFilter) && (
             <option value={statusFilter}>{formatCrmStatusLabel(statusFilter)}</option>
@@ -395,408 +340,276 @@ export default function ExecucaoClient({
           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         {isGestor && (
-          <select
-            value={vendedorFilter}
-            onChange={e => setVendedorFilter(e.target.value)}
-            className="bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none focus:border-[#0072F7]"
-          >
-            <option value="">Todos Vendedores</option>
-            <option value="unassigned">Não atribuídos</option>
+          <select aria-label="Vendedor" value={vendedorFilter} onChange={e => setVendedorFilter(e.target.value)} className={selectClass}>
+            <option value="">Todos os vendedores</option>
+            <option value="unassigned">Sem dono</option>
             {vendedoresList.map(v => <option key={v.id} value={v.id}>{v.nome} ({v.lead_count})</option>)}
           </select>
         )}
-        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
+        <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg px-2 text-sm text-ink-2 hover:text-ink">
           <input
             type="checkbox"
             checked={alertOnly}
             onChange={e => setAlertOnly(e.target.checked)}
-            className="rounded border-gray-300 text-[#0072F7] focus:ring-[#0072F7]"
+            className="h-4 w-4 rounded border-line-strong text-accent focus:ring-accent/40"
           />
-          Apenas alertas
+          Só com alerta
         </label>
       </div>
 
-      {/* Tag filters */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium mr-1">Tags:</span>
-        {TAG_KEYS.map(tag => {
-          const active = activeTags.has(tag.key)
-          return (
-            <button
-              key={tag.key}
-              onClick={() => toggleTag(tag.key)}
-              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
-                active
-                  ? `${tag.bg} ${tag.text} ${tag.border} ring-2 ring-offset-1 ring-current`
-                  : 'bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              {tag.label}
-              {active && (
-                <span className="ml-1 text-[10px]">&times;</span>
-              )}
-            </button>
-          )
-        })}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="mr-0.5 text-xs text-ink-3">Tags</span>
+        {TAG_KEYS.map(tag => (
+          <FilterChip
+            key={tag.key}
+            label={tag.label}
+            active={activeTags.has(tag.key)}
+            activeClass={TAG_TONE[tag.tone]}
+            onClick={() => toggleTag(tag.key)}
+          />
+        ))}
         {activeTags.size > 0 && (
-          <button
-            onClick={() => setActiveTags(new Set())}
-            className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 underline ml-1"
-          >
-            Limpar
+          <button type="button" onClick={() => setActiveTags(new Set())} className="text-xs text-ink-3 underline-offset-2 hover:text-ink hover:underline">
+            Limpar tags
           </button>
         )}
+        <p className="ml-auto text-xs text-ink-3" aria-live="polite">
+          {refreshing ? 'Atualizando lista…' : lastSynced ? `Dados do TransfereGov de ${formatDate(lastSynced)}` : null}
+        </p>
       </div>
 
-      {/* Loading state */}
-      {showBlockingLoad && (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-pulse text-gray-400">Carregando projetos...</div>
+      {/* Lista */}
+      {showBlockingLoad ? (
+        <div className="overflow-hidden rounded-xl border border-line bg-surface">
+          <SkeletonRows rows={8} />
         </div>
-      )}
-
-      {/* Error state */}
-      {showBlockingError && (
-        <div className="flex items-center justify-center py-20">
-          <p className="text-sm text-red-500">Erro ao carregar dados. Verifique sua conexao e tente novamente.</p>
+      ) : showBlockingError ? (
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState
+            title="Não foi possível carregar a lista"
+            description="Verifique a conexão e tente de novo."
+            action={<Button size="sm" onClick={() => { void fetchData() }}>Tentar de novo</Button>}
+          />
         </div>
-      )}
-
-      {/* Non-blocking refresh error */}
-      {error && rows.length > 0 && (
-        <div className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-          Nao foi possivel atualizar a lista agora. Mantendo os projetos ja carregados.
+      ) : sortedRows.length === 0 ? (
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState
+            title={hasFilters ? 'Nenhum proponente com esses filtros' : `Nenhum proponente ${faseLabel}`}
+            description={hasFilters ? 'Tire algum filtro para ver mais resultados.' : 'A lista é atualizada pela sincronização diária do TransfereGov.'}
+            action={hasFilters ? <Button size="sm" onClick={clearFilters}>Limpar filtros</Button> : undefined}
+          />
         </div>
-      )}
+      ) : (
+        <>
+          {error && (
+            <p role="status" className="rounded-lg bg-amber-50 px-4 py-2.5 text-sm text-amber-800 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/25">
+              Não foi possível atualizar a lista agora. Mostrando os dados já carregados.
+            </p>
+          )}
+          <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+            <table className="w-full min-w-[1240px] text-sm">
+              <thead className="border-b border-line bg-raised/60">
+                <tr>
+                  <SortHeader col="nome" label="Instituição" {...sortProps} />
+                  {isGestor && <SortHeader col="vendedor" label="Vendedor" {...sortProps} />}
+                  <SortHeader col="valor" label="Convênios" {...sortProps} />
+                  <SortHeader col="venda" label="Venda" {...sortProps} />
+                  <th className={thClass}>Serviço</th>
+                  <SortHeader col="local" label="Local" {...sortProps} />
+                  <th className={thClass}>Contato</th>
+                  <SortHeader col="ult_contato" label="Último contato" {...sortProps} />
+                  <SortHeader col="desembolsado" label="Desembolsado" {...sortProps} />
+                  <SortHeader col="saldo" label="Saldo" {...sortProps} />
+                  <SortHeader col="execucao" label="Execução" {...sortProps} />
+                  <SortHeader col="vigencia" label="Vigência" {...sortProps} />
+                  <SortHeader col="alerta" label="Alerta" {...sortProps} />
+                  <SortHeader col="status" label="Status" {...sortProps} />
+                  <th className={`${thClass} min-w-[180px]`}>Tags</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {visibleRows.map(row => {
+                  const hasContact = row.contact_telefone || row.contact_email
+                  const waUrl = row.contact_telefone ? whatsappMeUrlFromTelefone(row.contact_telefone) : null
+                  const pct = row.pct_execucao_ponderado != null ? Number(row.pct_execucao_ponderado) : null
 
-      {/* Empty state */}
-      {!showBlockingLoad && !error && rows.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 gap-2">
-          <h2 className="text-lg font-medium text-gray-700 dark:text-gray-300">Nenhum projeto encontrado</h2>
-          <p className="text-sm text-gray-400 dark:text-gray-500">Nao foram encontrados projetos em execucao. Verifique os filtros ou aguarde o proximo sync.</p>
-        </div>
-      )}
-
-      {/* Table */}
-      {!showBlockingLoad && rows.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-          <table className="min-w-[1200px] text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                <th onClick={() => toggleSort('nome')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                  Instituição<SortIcon col="nome" />
-                </th>
-                {isGestor && (
-                  <th onClick={() => toggleSort('vendedor')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                    Vendedor<SortIcon col="vendedor" />
-                  </th>
-                )}
-                <th onClick={() => toggleSort('valor')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                  Convênio<SortIcon col="valor" />
-                </th>
-                <th onClick={() => toggleSort('venda')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                  Venda<SortIcon col="venda" />
-                </th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">
-                  Serviço
-                </th>
-                <th onClick={() => toggleSort('local')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                  Local<SortIcon col="local" />
-                </th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">
-                  Contato
-                </th>
-                <th onClick={() => toggleSort('ult_contato')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                  Ult.<SortIcon col="ult_contato" />
-                </th>
-                <th onClick={() => toggleSort('desembolsado')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                  Desemb.<SortIcon col="desembolsado" />
-                </th>
-                <th onClick={() => toggleSort('saldo')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                  Saldo<SortIcon col="saldo" />
-                </th>
-                <th onClick={() => toggleSort('execucao')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                  % Exec.<SortIcon col="execucao" />
-                </th>
-                <th onClick={() => toggleSort('vigencia')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                  Vigência<SortIcon col="vigencia" />
-                </th>
-                <th onClick={() => toggleSort('alerta')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                  Alerta<SortIcon col="alerta" />
-                </th>
-                <th onClick={() => toggleSort('status')} className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap cursor-pointer hover:text-[#0072F7] select-none">
-                  Status<SortIcon col="status" />
-                </th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap min-w-[180px]">
-                  Tags
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRows.map(row => {
-                const hasContact = row.contact_telefone || row.contact_email
-                const execContatoWaUrl = row.contact_telefone ? whatsappMeUrlFromTelefone(row.contact_telefone) : null
-                const pct = row.pct_execucao_ponderado != null ? Number(row.pct_execucao_ponderado) : null
-
-                return (
-                  <tr
-                    key={row.cnpj}
-                    onClick={() => setSelectedCnpj(row.cnpj)}
-                    className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors ${
-                      !hasContact ? 'bg-red-50/30 border-l-2 border-l-red-300' :
-                      row.tem_alerta ? 'border-l-2 border-l-amber-400' : ''
-                    }`}
-                  >
-                    {/* INSTITUIÇÃO */}
-                    <td className="px-2 py-2 max-w-[240px]">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1">
-                          <span className="text-gray-900 dark:text-gray-100 font-medium text-sm leading-tight whitespace-normal break-words">
-                            {row.nome_proponente || '-'}
-                          </span>
-                          <a
-                            href={`/lead/${encodeURIComponent(row.cnpj)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={e => e.stopPropagation()}
-                            className="flex-shrink-0 text-gray-300 dark:text-gray-600 hover:text-[#0072F7] transition-colors"
-                            title="Abrir em nova aba"
-                          >
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
-                          </a>
-                        </div>
-                        <span className="font-mono text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 block">{formatCNPJ(row.cnpj)}</span>
-                      </div>
-                    </td>
-
-                    {/* VENDEDOR */}
-                    {isGestor && (
-                      <td className="px-2 py-2 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                        <div className="flex items-center gap-1">
-                          {row.vendedor_nome || <span className="text-gray-300 dark:text-gray-600">Sem dono</span>}
+                  return (
+                    <tr
+                      key={row.cnpj}
+                      onClick={() => setSelectedCnpj(row.cnpj)}
+                      className={`cursor-pointer align-top transition-colors duration-fast hover:bg-raised ${!hasContact ? 'bg-red-50/50 dark:bg-red-500/[0.06]' : ''}`}
+                    >
+                      <td className="max-w-[260px] px-3 py-2.5">
+                        <div className="flex items-start gap-1">
                           <button
-                            onClick={e => { e.stopPropagation(); setAssignModal({ cnpj: row.cnpj, nome: row.nome_proponente, vendedor: row.vendedor_nome }) }}
-                            className="text-gray-300 dark:text-gray-600 hover:text-[#0072F7] transition-colors flex-shrink-0"
-                            title={row.vendedor_nome ? 'Reatribuir' : 'Atribuir vendedor'}
+                            type="button"
+                            onClick={e => { e.stopPropagation(); setSelectedCnpj(row.cnpj) }}
+                            className="text-left text-sm font-medium leading-snug text-ink hover:text-accent-ink focus:outline-none focus-visible:underline"
                           >
-                            {row.vendedor_nome ? '\u21BB' : '+'}
+                            {row.nome_proponente || 'Sem nome'}
                           </button>
+                          <OpenCardLink cnpj={row.cnpj} />
+                        </div>
+                        <span className="mt-0.5 block font-mono text-[11px] text-ink-3">{formatCNPJ(row.cnpj)}</span>
+                      </td>
+
+                      {isGestor && (
+                        <td className="whitespace-nowrap px-3 py-2.5 text-sm text-ink-2">
+                          <div className="flex items-center gap-1.5">
+                            {row.vendedor_nome || <span className="text-ink-3">Sem dono</span>}
+                            <button
+                              type="button"
+                              onClick={e => { e.stopPropagation(); setAssignModal({ cnpj: row.cnpj, nome: row.nome_proponente, vendedor: row.vendedor_nome }) }}
+                              className="rounded px-1 text-xs font-medium text-accent-ink opacity-70 transition-opacity duration-fast hover:opacity-100 focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/50"
+                            >
+                              {row.vendedor_nome ? 'Trocar' : 'Atribuir'}
+                            </button>
+                          </div>
+                        </td>
+                      )}
+
+                      <td className="whitespace-nowrap px-3 py-2.5 font-semibold tabular text-ink">
+                        {formatCompactCurrency(Number(row.total_valor_global))}
+                        {row.total_projetos > 1 && <span className="ml-1 text-xs font-normal text-ink-3">({row.total_projetos})</span>}
+                      </td>
+
+                      <td className="whitespace-nowrap px-3 py-2.5 tabular">
+                        {row.valor_venda_fechado != null && Number(row.valor_venda_fechado) > 0 ? (
+                          <span className="font-semibold text-emerald-700 dark:text-emerald-300">{formatCompactCurrency(Number(row.valor_venda_fechado))}</span>
+                        ) : (
+                          <span className="text-ink-3" aria-label="Sem venda">·</span>
+                        )}
+                      </td>
+
+                      <td className="whitespace-nowrap px-3 py-2.5">
+                        {row.tipo_servico ? <Tag tone="violet">{row.tipo_servico}</Tag> : <span className="text-ink-3" aria-label="Sem serviço">·</span>}
+                      </td>
+
+                      <td className="whitespace-nowrap px-3 py-2.5 text-xs text-ink-2">
+                        {row.municipio && row.uf ? `${row.municipio}, ${row.uf}` : row.uf || row.municipio || '-'}
+                      </td>
+
+                      <td className="max-w-[170px] px-3 py-2.5">
+                        {hasContact ? (
+                          <div className="space-y-0.5">
+                            {row.contact_telefone && (
+                              <div className="flex items-center truncate text-xs text-ink-2">
+                                <PhoneStatusDot status={row.contact_telefone_status} />
+                                {waUrl ? (
+                                  <a
+                                    href={waUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={e => e.stopPropagation()}
+                                    className="truncate text-emerald-700 hover:underline dark:text-emerald-300"
+                                    title="Conversar no WhatsApp"
+                                  >
+                                    {row.contact_telefone}
+                                  </a>
+                                ) : (
+                                  <span className="truncate">{row.contact_telefone}</span>
+                                )}
+                              </div>
+                            )}
+                            {row.contact_email && <div className="truncate text-xs text-ink-3">{row.contact_email}</div>}
+                          </div>
+                        ) : (
+                          <span className="text-xs font-medium text-red-700 dark:text-red-300">Sem contato</span>
+                        )}
+                      </td>
+
+                      <td className="whitespace-nowrap px-3 py-2.5"><LastContactBadge days={row.days_since_last_contact} /></td>
+
+                      <td className="whitespace-nowrap px-3 py-2.5 tabular text-ink-2">{formatCompactCurrency(Number(row.total_desembolsado))}</td>
+
+                      <td className="whitespace-nowrap px-3 py-2.5 font-semibold tabular text-accent-ink">{formatCompactCurrency(Number(row.total_saldo))}</td>
+
+                      <td className="whitespace-nowrap px-3 py-2.5">
+                        {pct != null ? (
+                          <Tag tone={pct >= 80 ? 'emerald' : pct >= 50 ? 'amber' : 'rose'}>{pct.toFixed(1)}%</Tag>
+                        ) : (
+                          <Tag tone="neutral">Sem dado</Tag>
+                        )}
+                      </td>
+
+                      <td className="whitespace-nowrap px-3 py-2.5 text-xs tabular text-ink-2">{formatDate(row.data_fim_vigencia_mais_proxima)}</td>
+
+                      <td className="px-3 py-2.5">
+                        {row.tem_alerta && (
+                          <Tag tone="amber" title={`${row.qtd_alertas} de ${row.total_projetos} convênio(s) sem nenhum valor desembolsado`}>
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                            {row.qtd_alertas}/{row.total_projetos}
+                          </Tag>
+                        )}
+                      </td>
+
+                      <td className="px-3 py-2.5">
+                        <StatusSelect
+                          ariaLabel={`Status de ${row.nome_proponente || formatCNPJ(row.cnpj)}`}
+                          status={row.crm_status || 'Não Contatado'}
+                          label={formatCrmStatusLabel(row.crm_status || 'Não Contatado')}
+                          options={STATUS_OPTIONS}
+                          disabled={isGestor}
+                          onChange={value => { void updateStatus(row.cnpj, value) }}
+                        />
+                      </td>
+
+                      <td className="min-w-[180px] px-3 py-2.5">
+                        <div className="flex flex-wrap gap-1">
+                          {row.aprovacao_status && row.aprovacao_status !== 'Não Contatado' && (
+                            <a
+                              href={`/lead/${encodeURIComponent(row.cnpj)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={e => e.stopPropagation()}
+                              title={`Status em Aprovação: ${row.aprovacao_status}. Abre o card do lead.`}
+                              className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+                            >
+                              <Tag tone="indigo">Contatado na Aprovação</Tag>
+                            </a>
+                          )}
+                          {TAG_KEYS.filter(t => row[t.field]).map(t => <Tag key={t.key} tone={t.tone}>{t.label}</Tag>)}
                         </div>
                       </td>
-                    )}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
 
-                    {/* CONVÊNIO */}
-                    <td className="px-2 py-2 whitespace-nowrap">
-                      <span className="text-sigma-neon font-semibold text-sm">
-                        {formatCompactCurrency(Number(row.total_valor_global))}
-                      </span>
-                    </td>
-
-                    {/* VENDA FECHADA */}
-                    <td className="px-2 py-2 whitespace-nowrap">
-                      {row.valor_venda_fechado != null && Number(row.valor_venda_fechado) > 0 ? (
-                        <span className="text-green-600 dark:text-green-400 font-semibold text-sm">
-                          {formatCompactCurrency(Number(row.valor_venda_fechado))}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
-                      )}
-                    </td>
-
-                    {/* TIPO SERVIÇO */}
-                    <td className="px-2 py-2 whitespace-nowrap">
-                      {row.tipo_servico ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-50 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30">
-                          {row.tipo_servico}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
-                      )}
-                    </td>
-
-                    {/* LOCAL */}
-                    <td className="px-2 py-2 whitespace-nowrap">
-                      <span className="text-gray-600 dark:text-gray-400 text-xs">
-                        {row.municipio && row.uf ? `${row.municipio}, ${row.uf}` : row.uf || row.municipio || '-'}
-                      </span>
-                    </td>
-
-                    {/* CONTATO */}
-                    <td className="px-2 py-2 max-w-[160px]">
-                      {hasContact ? (
-                        <div className="space-y-0.5">
-                          {row.contact_telefone && (
-                            <div className="flex items-center text-xs text-gray-600 dark:text-gray-400 truncate">
-                              {row.contact_telefone_status === 'valido' && (
-                                <span className="w-2 h-2 rounded-full bg-green-500 inline-block mr-1 flex-shrink-0" />
-                              )}
-                              {row.contact_telefone_status === 'invalido' && (
-                                <span className="w-2 h-2 rounded-full bg-red-500 inline-block mr-1 flex-shrink-0" />
-                              )}
-                              {row.contact_telefone_status === 'nao_atende' && (
-                                <span className="w-2 h-2 rounded-full bg-amber-500 inline-block mr-1 flex-shrink-0" />
-                              )}
-                              {execContatoWaUrl ? (
-                                <a
-                                  href={execContatoWaUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={e => e.stopPropagation()}
-                                  className="text-green-600 hover:text-green-700 truncate"
-                                  title="Conversar no WhatsApp"
-                                >
-                                  {row.contact_telefone}
-                                </a>
-                              ) : (
-                                <span className="truncate">{row.contact_telefone}</span>
-                              )}
-                            </div>
-                          )}
-                          {row.contact_email && (
-                            <div className="text-xs text-gray-400 dark:text-gray-500 truncate">{row.contact_email}</div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-red-500/70">Sem contato</span>
-                      )}
-                    </td>
-
-                    {/* ULT. CONTATO */}
-                    <td className="px-2 py-2 whitespace-nowrap">
-                      {row.days_since_last_contact == null ? (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">Nunca</span>
-                      ) : row.days_since_last_contact <= 2 ? (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400">{row.days_since_last_contact}d</span>
-                      ) : row.days_since_last_contact <= 7 ? (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400">{row.days_since_last_contact}d</span>
-                      ) : (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400">{row.days_since_last_contact}d</span>
-                      )}
-                    </td>
-
-                    {/* DESEMBOLSADO */}
-                    <td className="px-2 py-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                      {formatCompactCurrency(Number(row.total_desembolsado))}
-                    </td>
-
-                    {/* SALDO */}
-                    <td className="px-2 py-2 text-[#0072F7] font-bold text-sm whitespace-nowrap">
-                      {formatCompactCurrency(Number(row.total_saldo))}
-                    </td>
-
-                    {/* % EXECUÇÃO */}
-                    <td className="px-2 py-2 whitespace-nowrap">
-                      {pct != null ? (
-                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                          pct >= 80 ? 'bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400' :
-                          pct >= 50 ? 'bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400' :
-                          'bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400'
-                        }`}>
-                          {pct.toFixed(1)}%
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">--</span>
-                      )}
-                    </td>
-
-                    {/* VIGÊNCIA */}
-                    <td className="px-2 py-2 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDate(row.data_fim_vigencia_mais_proxima)}</td>
-
-                    {/* ALERTA */}
-                    <td className="px-2 py-2">
-                      {row.tem_alerta && (
-                        <span
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30 cursor-help"
-                          title={`${row.qtd_alertas} de ${row.total_projetos} convenio(s) com valor desembolsado = R$ 0,00`}
-                        >
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-                          {row.qtd_alertas}/{row.total_projetos}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* STATUS */}
-                    <td className="px-2 py-2">
-                      <select
-                        value={formatCrmStatusLabel(row.crm_status || 'Não Contatado')}
-                        onClick={e => e.stopPropagation()}
-                        onChange={e => { void updateStatus(row.cnpj, e.target.value) }}
-                        disabled={isGestor}
-                        className={`text-xs font-medium rounded-full px-2 py-0.5 border-0 ${isGestor ? 'cursor-default opacity-75' : 'cursor-pointer'} ${STATUS_COLORS[row.crm_status] || STATUS_COLORS['Não Contatado']}`}
-                      >
-                        {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </td>
-
-                    {/* TAGS */}
-                    <td className="px-2 py-2 min-w-[180px]">
-                      <div className="flex flex-wrap gap-1">
-                        {row.aprovacao_status && row.aprovacao_status !== 'Não Contatado' && (
-                          <a
-                            href={`/lead/${encodeURIComponent(row.cnpj)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={e => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors cursor-pointer"
-                            title={`Status em Aprovação: ${row.aprovacao_status} — clique para ver detalhes`}
-                          >
-                            <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
-                            Contatado (Aprovação)
-                          </a>
-                        )}
-                        {row.tag_autossuficiente && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30">Autossuficiente</span>}
-                        {row.tag_iniciante && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-500/30">Iniciante</span>}
-                        {row.tag_desembolso && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">Desembolso</span>}
-                        {row.tag_lobby && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-400 border border-violet-200 dark:border-violet-500/30">Lobby</span>}
-                        {row.tag_rendimento && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 border border-teal-200 dark:border-teal-500/30">Rendimento</span>}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-ink-3">
+              {activeTags.size > 0 || statusFilter
+                ? `Mostrando ${visibleRows.length} de ${sortedRows.length} proponentes (${rows.length} no total)`
+                : `Mostrando ${visibleRows.length} de ${rows.length} proponentes (${rows.reduce((s, r) => s + r.total_projetos, 0)} convênios)`}
+            </p>
+            <div className="flex items-center gap-2">
+              {/* mirrors canExportContacts() in dal.ts — admin-tier only */}
+              {(userRole === 'gestor' || userRole === 'diretoria' || userRole === 'admin') && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const params = new URLSearchParams()
+                    if (statusFilter) params.set('status', statusFilter)
+                    if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
+                    if (fase) params.set('fase', fase)
+                    window.open(`/api/execucao/export?${params}`, '_blank')
+                  }}
+                >
+                  Exportar CSV
+                </Button>
+              )}
+              {visibleCount < sortedRows.length && (
+                <Button size="sm" variant="primary" onClick={() => setVisibleCount(c => Math.min(c + PAGE_SIZE, sortedRows.length))}>
+                  Mostrar mais {Math.min(PAGE_SIZE, sortedRows.length - visibleCount)}
+                </Button>
+              )}
+            </div>
+          </div>
+        </>
       )}
 
-      {/* Load more + Row count + Export */}
-      {!showBlockingLoad && rows.length > 0 && (
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            {activeTags.size > 0 || statusFilter
-              ? `Mostrando ${visibleRows.length} de ${sortedRows.length} CNPJs (${rows.length} total)`
-              : `Mostrando ${visibleRows.length} de ${rows.length} CNPJs (${rows.reduce((s, r) => s + r.total_projetos, 0)} fomentos)`
-            }
-          </div>
-          <div className="flex items-center gap-2">
-            {/* mirrors canExportContacts() in dal.ts — admin-tier only */}
-            {(userRole === 'gestor' || userRole === 'diretoria' || userRole === 'admin') && (
-              <button
-                onClick={() => {
-                  const params = new URLSearchParams()
-                  if (statusFilter) params.set('status', statusFilter)
-                  if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
-                  if (fase) params.set('fase', fase)
-                  window.open(`/api/execucao/export?${params}`, '_blank')
-                }}
-                className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              >
-                Exportar CSV
-              </button>
-            )}
-            {visibleCount < sortedRows.length && (
-              <button
-                onClick={() => setVisibleCount(c => Math.min(c + PAGE_SIZE, sortedRows.length))}
-                className="px-4 py-2 text-sm font-medium text-[#0072F7] bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-              >
-                Carregar mais {Math.min(PAGE_SIZE, sortedRows.length - visibleCount)}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Assignment modal */}
       {assignModal && (
         <LeadAssignmentModal
           cnpj={assignModal.cnpj}
@@ -807,7 +620,6 @@ export default function ExecucaoClient({
         />
       )}
 
-      {/* Slide-over for CNPJ detail */}
       {(() => {
         const selectedRow = rows.find(r => r.cnpj === selectedCnpj)
         return (
