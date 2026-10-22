@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { classifyMeuDia, type MeuDiaCandidate } from './meu-dia'
+import { calendarDaysBetween, classifyMeuDia, meuDiaStatus, type MeuDiaCandidate } from './meu-dia'
 
 const NOW = new Date('2026-10-22T12:00:00Z')
 const daysAgo = (n: number) => new Date(NOW.getTime() - n * 86_400_000).toISOString()
@@ -71,4 +71,37 @@ test('the same CNPJ in two funnels stays as two items', () => {
 
 test('no candidates, empty lists', () => {
   assert.deepEqual(classifyMeuDia([], NOW), { novos: [], parados: [], reunioes: [] })
+})
+
+test('one item per CNPJ and funnel: a meeting on any emenda wins over a closed one', () => {
+  const r = classifyMeuDia([
+    lead({ cnpj: 'x', status: 'Reunião Agendada' }),
+    lead({ cnpj: 'x', status: 'Fechado', dias_sem_contato: 30 }),
+  ], NOW)
+  assert.deepEqual(r.reunioes.map((i) => i.cnpj), ['x'])
+  assert.equal(r.parados.length, 0)
+})
+
+test('a newly assigned emenda makes the CNPJ new even if another emenda was contacted', () => {
+  const r = classifyMeuDia([
+    lead({ cnpj: 'y', status: 'Não Contatado', atribuido_em: daysAgo(2), dias_sem_contato: 9 }),
+    lead({ cnpj: 'y', status: 'Contatado', dias_sem_contato: 9 }),
+  ], NOW)
+  assert.deepEqual(r.novos.map((i) => i.cnpj), ['y'])
+  assert.equal(r.parados.length, 0)
+})
+
+test('legacy cancelled and blocked statuses keep their meaning and never show as stale', () => {
+  assert.equal(meuDiaStatus('Cancelado'), 'Cancelado')
+  assert.equal(meuDiaStatus('Impedimento Técnico'), 'Impedimento Técnico')
+  assert.equal(meuDiaStatus(null), 'Não Contatado')
+  const r = classifyMeuDia(['Cancelado', 'Impedimento Técnico'].map((raw, i) =>
+    lead({ cnpj: String(i), status: meuDiaStatus(raw), dias_sem_contato: 30 })), NOW)
+  assert.equal(r.parados.length, 0)
+})
+
+test('days are counted by calendar date, not by 24-hour periods', () => {
+  assert.equal(calendarDaysBetween(new Date(2026, 9, 21, 17, 0), new Date(2026, 9, 22, 9, 0)), 1)
+  assert.equal(calendarDaysBetween(new Date(2026, 9, 22, 8, 0), new Date(2026, 9, 22, 20, 0)), 0)
+  assert.equal(calendarDaysBetween(new Date(2026, 9, 15, 23, 0), new Date(2026, 9, 22, 1, 0)), 7)
 })

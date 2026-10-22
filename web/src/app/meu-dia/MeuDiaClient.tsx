@@ -14,7 +14,7 @@ import SectionTabs from '@/components/SectionTabs'
 import { Tag, TAG_TONE } from '@/components/leads/list-ui'
 import { formatCNPJ } from '@/lib/format'
 import { LEAD_TAB_LABEL } from '@/lib/lead-tabs'
-import type { MeuDia, MeuDiaFunil, MeuDiaItem } from '@/lib/meu-dia'
+import { calendarDaysBetween, type MeuDia, type MeuDiaFunil, type MeuDiaItem } from '@/lib/meu-dia'
 
 const REFRESH_MS = 60_000
 
@@ -58,8 +58,7 @@ function daysLabel(days: number): string {
 
 function motivoLabel(item: MeuDiaItem): string {
   if (item.motivo === 'novo' && item.atribuido_em) {
-    const days = Math.floor((Date.now() - new Date(item.atribuido_em).getTime()) / 86_400_000)
-    return `Chegou ${daysLabel(days)}`
+    return `Chegou ${daysLabel(calendarDaysBetween(new Date(item.atribuido_em), new Date()))}`
   }
   if (item.motivo === 'parado') return `${item.dias_sem_contato} dias`
   if (item.dias_sem_contato != null) return `Contato ${daysLabel(item.dias_sem_contato)}`
@@ -67,7 +66,8 @@ function motivoLabel(item: MeuDiaItem): string {
 }
 
 const todayLabel = () => {
-  const text = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())
+  // Fuso fixo: o servidor (UTC) e o navegador mostram a mesma data, inclusive à noite.
+  const text = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' }).format(new Date())
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 

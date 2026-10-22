@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession, isSeller } from '@/lib/dal'
-import { normalizeCrmStatus } from '@/lib/crm-catalog'
 import { execucaoFaseSql } from '@/lib/execucao-fase'
 import { normalizedStatusOrderSql, normalizedStatusSql } from '@/lib/execucao-status'
-import { classifyMeuDia, type MeuDiaCandidate } from '@/lib/meu-dia'
+import { classifyMeuDia, meuDiaStatus, type MeuDiaCandidate } from '@/lib/meu-dia'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,39 +18,51 @@ interface CandidateRow {
   em_execucao?: boolean
 }
 
-// Aprovação: mesmo escopo e mesma conta de "dias sem contato" de /api/leads (dono ou closer).
+// Aprovação: uma linha por emenda (o status é por linha, como na aba Leads), com o escopo de /api/leads
+// (dono ou closer) e a mesma conta de "dias sem contato" por CNPJ.
 const APROVACAO_SQL = `
   WITH mine AS (
-    SELECT * FROM vendedor_projetos vp WHERE vp.vendedor_id = $1 OR vp.closer_id = $1
+    SELECT id, cnpj, nome, municipio, uf, status_contato, created_at, updated_at
+    FROM vendedor_projetos
+    WHERE vendedor_id = $1 OR closer_id = $1
   ),
-  by_cnpj AS (
-    SELECT DISTINCT ON (vp.cnpj)
-      vp.cnpj, vp.nome, vp.municipio, vp.uf,
-      ${normalizedStatusSql('vp.status_contato')} AS status
-    FROM mine vp
-    ORDER BY vp.cnpj, ${normalizedStatusOrderSql(normalizedStatusSql('vp.status_contato'))} ASC, vp.updated_at DESC NULLS LAST
+  notes AS (
+    SELECT lead_cnpj AS cnpj, MAX(created_at) AS at
+    FROM contact_notes
+    WHERE vendedor_id = $1
+    GROUP BY lead_cnpj
+  ),
+  touched AS (
+    SELECT cnpj, MAX(updated_at) AS at
+    FROM mine
+    WHERE status_contato != 'Não Contatado'
+    GROUP BY cnpj
+  ),
+  assigned AS (
+    SELECT lead_id, MAX(created_at) AS at
+    FROM lead_events
+    WHERE tipo = 'atribuicao' AND vendedor_novo_id = $1
+    GROUP BY lead_id
   )
   SELECT
-    b.cnpj, b.nome, b.municipio, b.uf, b.status,
-    COALESCE(
-      (SELECT MAX(le.created_at) FROM lead_events le
-        WHERE le.tipo = 'atribuicao' AND le.vendedor_novo_id = $1 AND le.cnpj = b.cnpj),
-      (SELECT MAX(m.created_at) FROM mine m WHERE m.cnpj = b.cnpj)
-    ) AS atribuido_em,
-    EXTRACT(DAY FROM NOW() - GREATEST(
-      (SELECT MAX(cn.created_at) FROM contact_notes cn WHERE cn.lead_cnpj = b.cnpj AND cn.vendedor_id = $1),
-      (SELECT MAX(m.updated_at) FROM mine m WHERE m.cnpj = b.cnpj AND m.status_contato != 'Não Contatado')
-    ))::int AS dias_sem_contato
-  FROM by_cnpj b
+    m.cnpj, m.nome, m.municipio, m.uf,
+    ${normalizedStatusSql('m.status_contato')} AS status,
+    COALESCE(a.at, m.created_at) AS atribuido_em,
+    EXTRACT(DAY FROM NOW() - GREATEST(n.at, t.at))::int AS dias_sem_contato
+  FROM mine m
+  LEFT JOIN notes n ON n.cnpj = m.cnpj
+  LEFT JOIN touched t ON t.cnpj = m.cnpj
+  LEFT JOIN assigned a ON a.lead_id = m.id
 `
 
-// Execução e Prestação: CNPJs com convênio numa das duas fases e dono = consultor,
-// com o status e o "último contato" de /api/execucao.
+// Execução e Prestação: um item por CNPJ com convênio numa das duas fases e dono = consultor,
+// com o status e o "último contato" de /api/execucao. Cada tabela é agrupada uma vez.
 const EXECUCAO_SQL = `
   WITH owned AS (
-    SELECT DISTINCT REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') AS cnpj_clean
-    FROM vendedor_projetos vp
-    WHERE vp.vendedor_id = $1
+    SELECT REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') AS cnpj_clean, MAX(created_at) AS created_at
+    FROM vendedor_projetos
+    WHERE vendedor_id = $1
+    GROUP BY 1
   ),
   pe_mine AS (
     SELECT
@@ -75,21 +86,28 @@ const EXECUCAO_SQL = `
       REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'),
       ${normalizedStatusOrderSql(normalizedStatusSql('vp.status_contato_execucao'))} ASC,
       vp.updated_at DESC NULLS LAST
+  ),
+  last_contact AS (
+    SELECT REGEXP_REPLACE(lead_cnpj, '[^0-9]', '', 'g') AS cnpj_clean, MAX(created_at) AS at
+    FROM contact_notes
+    GROUP BY 1
+  ),
+  assigned AS (
+    SELECT REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') AS cnpj_clean, MAX(created_at) AS at
+    FROM lead_events
+    WHERE tipo = 'atribuicao' AND vendedor_novo_id = $1
+    GROUP BY 1
   )
   SELECT
     p.cnpj, p.nome, p.municipio, p.uf, p.em_execucao,
     COALESCE(cs.crm_status, 'Não Contatado') AS status,
-    COALESCE(
-      (SELECT MAX(le.created_at) FROM lead_events le
-        WHERE le.tipo = 'atribuicao' AND le.vendedor_novo_id = $1
-          AND REGEXP_REPLACE(le.cnpj, '[^0-9]', '', 'g') = p.cnpj),
-      (SELECT MAX(vp.created_at) FROM vendedor_projetos vp
-        WHERE vp.vendedor_id = $1 AND REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = p.cnpj)
-    ) AS atribuido_em,
-    (SELECT EXTRACT(DAY FROM NOW() - MAX(cn.created_at))::int FROM contact_notes cn
-      WHERE REGEXP_REPLACE(cn.lead_cnpj, '[^0-9]', '', 'g') = p.cnpj) AS dias_sem_contato
+    COALESCE(a.at, o.created_at) AS atribuido_em,
+    EXTRACT(DAY FROM NOW() - lc.at)::int AS dias_sem_contato
   FROM pe_mine p
+  JOIN owned o ON o.cnpj_clean = p.cnpj
   LEFT JOIN crm_statuses cs ON cs.cnpj_clean = p.cnpj
+  LEFT JOIN last_contact lc ON lc.cnpj_clean = p.cnpj
+  LEFT JOIN assigned a ON a.cnpj_clean = p.cnpj
 `
 
 const toIso = (v: Date | string | null) => (v == null ? null : new Date(v).toISOString())
@@ -116,7 +134,7 @@ export async function GET() {
       municipio: row.municipio,
       uf: row.uf,
       funil,
-      status: normalizeCrmStatus(row.status),
+      status: meuDiaStatus(row.status),
       atribuido_em: toIso(row.atribuido_em),
       dias_sem_contato: row.dias_sem_contato == null ? null : Number(row.dias_sem_contato),
     })
