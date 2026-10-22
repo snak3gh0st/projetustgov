@@ -86,9 +86,14 @@ http.createServer(async (req, res) => {
   if (url === '/mock/registros' && req.method === 'DELETE') { registros = []; return send(200, { total: 0 }) }
   if (url.startsWith('/chat/findMessages/')) return send(200, findMessages(body.where, Number(body.page) || 1, Number(body.offset) || 50))
   if (url.startsWith('/chat/findChats/')) {
-    const jids = [...new Set(registros.map((r) => r.key.remoteJid))].sort()
+    // Como o Evolution: um chat por remoteJid, com o pushName da última mensagem ("Você" se for nossa).
+    const ultimas = new Map()
+    for (const r of [...registros].sort((a, b) => b.messageTimestamp - a.messageTimestamp)) {
+      if (!ultimas.has(r.key.remoteJid)) ultimas.set(r.key.remoteJid, r.key.fromMe ? 'Você' : r.pushName || null)
+    }
+    const chats = [...ultimas].map(([remoteJid, pushName]) => ({ remoteJid, pushName }))
     const skip = Number(body.skip) || 0
-    return send(200, jids.slice(skip, body.take ? skip + Number(body.take) : undefined).map((remoteJid) => ({ remoteJid })))
+    return send(200, chats.slice(skip, body.take ? skip + Number(body.take) : undefined))
   }
   if (url.startsWith('/chat/getBase64FromMediaMessage/')) return send(200, { base64: Buffer.from('arquivo de teste').toString('base64'), mimetype: 'text/plain' })
   send(404, { error: 'rota do mock não existe' })

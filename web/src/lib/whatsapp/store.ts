@@ -102,7 +102,8 @@ export async function unirConversas(ficaId: number, saiId: number): Promise<void
  */
 export async function conversaDoContato(
   c: { instancia: string; telefone: string | null; lid: string | null; jid: string; nome: string | null },
-  opts: { consultarEvolution?: boolean } = {}
+  // historico: a importação já resolveu o par uma vez por chat e lê as mensagens da mais nova para a mais antiga.
+  opts: { historico?: boolean } = {}
 ): Promise<{ id: number; lead_cnpj: string | null; telefone: string | null; criada: boolean }> {
   let { telefone, lid } = c
   const buscar = async () => ({
@@ -118,7 +119,7 @@ export async function conversaDoContato(
 
   const faltaLid = !lid && !porTelefone?.lid
   const faltaTelefone = !telefone && !temTelefone(porLid)
-  if ((faltaLid || faltaTelefone) && opts.consultarEvolution !== false) {
+  if ((faltaLid || faltaTelefone) && !opts.historico) {
     const par = await parDoContato(lid ?? c.jid)
     const novoLid = lid ?? par.lid
     const novoTelefone = telefone ?? par.telefone
@@ -141,10 +142,12 @@ export async function conversaDoContato(
          lid = COALESCE(lid, $2),
          telefone = CASE WHEN $3::text IS NOT NULL AND telefone LIKE '%@%' THEN $3 ELSE telefone END,
          jid = CASE WHEN $3::text IS NOT NULL OR jid NOT LIKE '%@s.whatsapp.net' THEN $4 ELSE jid END,
-         nome_contato = COALESCE($5, nome_contato),
-         atendente_id = COALESCE(atendente_id, $6)
+         -- No histórico o primeiro nome lido é o mais recente.
+         nome_contato = CASE WHEN $7 THEN COALESCE(nome_contato, $5) ELSE COALESCE($5, nome_contato) END,
+         -- A etiqueta direciona só quando o lid chega; depois vale o que a gestão ou a etiqueta mudarem.
+         atendente_id = CASE WHEN lid IS NULL THEN COALESCE(atendente_id, $6) ELSE atendente_id END
        WHERE id = $1 RETURNING id, lead_cnpj`,
-      [existente.id, lid, telefone, jid, c.nome, atendente]
+      [existente.id, lid, telefone, jid, c.nome, atendente, !!opts.historico]
     )
     return { id: row.id, lead_cnpj: row.lead_cnpj, telefone, criada: false }
   }
@@ -165,15 +168,27 @@ export async function conversaDoContato(
  * Grava uma mensagem (idempotente pelo id do WhatsApp) e atualiza o resumo da conversa.
  * origem 'projete' marca uma mensagem enviada pela tela, mesmo que o webhook tenha chegado antes.
  */
-export async function recordMessage(
-  ev: MensagemEvent,
-  // historico: mensagem antiga importada; não soma não lidas, não tira do arquivo e não conta como esperando resposta.
-  opts: { origem?: 'projete'; autorId?: string; status?: 'enviada' | 'falhou'; historico?: true } = {}
-): Promise<{ conversaId: number; mensagemId: number; nova: boolean; conversaCriada: boolean }> {
+export async function recordMessage(ev: MensagemEvent, opts: GravarOpts = {}): Promise<Gravada> {
+  // Duas mensagens do mesmo contato novo ao mesmo tempo (uma pelo lid, outra pelo telefone) disputam os índices únicos
+  // ou a união; quem perde procura de novo e acha a conversa que a outra criou.
+  for (let tentativa = 1; ; tentativa++) {
+    try {
+      return await gravarMensagem(ev, opts)
+    } catch (error) {
+      const code = (error as { code?: string }).code
+      if (tentativa >= 3 || (code !== '23505' && code !== '23503')) throw error
+    }
+  }
+}
+
+// historico: mensagem antiga importada; não soma não lidas, não tira do arquivo e não conta como esperando resposta.
+type GravarOpts = { origem?: 'projete'; autorId?: string; status?: 'enviada' | 'falhou'; historico?: true }
+type Gravada = { conversaId: number; mensagemId: number; nova: boolean; conversaCriada: boolean; telefone: string | null; leadCnpj: string | null }
+
+async function gravarMensagem(ev: MensagemEvent, opts: GravarOpts): Promise<Gravada> {
   const conversa = await conversaDoContato(
     { instancia: ev.instancia, telefone: ev.telefone, lid: ev.lid, jid: ev.jid, nome: ev.nome },
-    // A importação já resolveu o par lid/telefone uma vez por chat.
-    { consultarEvolution: !opts.historico }
+    { historico: !!opts.historico }
   )
 
   const direcao = ev.fromMe ? 'enviada' : 'recebida'
@@ -205,8 +220,12 @@ export async function recordMessage(
     )
   }
 
-  if (!conversa.lead_cnpj && conversa.telefone) await linkConversationToLead(conversa.id, conversa.telefone)
-  return { conversaId: conversa.id, mensagemId: msg.id, nova: msg.nova, conversaCriada: conversa.criada }
+  // Na importação a ligação ao lead é feita uma vez por chat, no fim.
+  if (!opts.historico && !conversa.lead_cnpj && conversa.telefone) await linkConversationToLead(conversa.id, conversa.telefone)
+  return {
+    conversaId: conversa.id, mensagemId: msg.id, nova: msg.nova, conversaCriada: conversa.criada,
+    telefone: conversa.telefone, leadCnpj: conversa.lead_cnpj,
+  }
 }
 
 const RANK = `CASE %s WHEN 'enviando' THEN 0 WHEN 'enviada' THEN 1 WHEN 'entregue' THEN 2 WHEN 'lida' THEN 3 ELSE 4 END`
@@ -248,31 +267,37 @@ export async function aplicarEtiqueta(ev: EtiquetaEvent): Promise<void> {
 }
 
 /**
- * Importa o histórico de um chat guardado no Evolution, desde `desde`. Idempotente: mensagem já gravada não entra de
- * novo. Conversa criada aqui sem etiqueta de vendedor fica arquivada (não enche "Em aberto").
+ * Importa o histórico de um chat guardado no Evolution, entre `desde` e `ate` (o momento da reconexão: o que chegou
+ * depois entra pelo webhook, como mensagem nova). Idempotente. Conversa só com histórico e sem vendedor fica arquivada,
+ * para não encher "Em aberto"; vale também quando uma importação anterior parou no meio.
  */
-export async function importarChat(instancia: string, jid: string, desde: Date): Promise<{ mensagens: number; novas: number }> {
-  const par = await parDoContato(jid)
+export async function importarChat(
+  instancia: string, chat: { jid: string; nome: string | null }, desde: Date, ate: Date
+): Promise<{ mensagens: number; novas: number }> {
+  const par = await parDoContato(chat.jid, { estrito: true })
   let mensagens = 0
   let novas = 0
-  let criada: number | null = null
+  let ultima: Gravada | null = null
   for (let pagina = 1; pagina <= 500; pagina++) {
-    const { registros, paginas } = await mensagensDoChat(jid, desde, pagina)
+    const { registros, paginas } = await mensagensDoChat(chat.jid, desde, ate, pagina)
     for (const r of registros) {
       const ev = parseMensagem(instancia, r)
       if (ev.kind !== 'mensagem') continue
-      const g = await recordMessage(
-        { ...ev, lid: ev.lid ?? par.lid, telefone: ev.telefone ?? par.telefone },
-        { historico: true }
-      )
+      ultima = await recordMessage({ ...ev, lid: ev.lid ?? par.lid, telefone: ev.telefone ?? par.telefone }, { historico: true })
       mensagens++
-      if (g.nova) novas++
-      if (g.conversaCriada) criada = g.conversaId
+      if (ultima.nova) novas++
     }
     if (pagina >= paginas) break
   }
-  if (criada) {
-    await query(`UPDATE whatsapp_conversas SET arquivada_em = NOW() WHERE id = $1 AND atendente_id IS NULL AND arquivada_em IS NULL`, [criada])
-  }
+  if (!ultima) return { mensagens, novas }
+  await query(
+    `UPDATE whatsapp_conversas SET
+       nome_contato = COALESCE(nome_contato, $2),
+       arquivada_em = CASE WHEN atendente_id IS NULL AND arquivada_em IS NULL AND historico_ate IS NOT NULL
+                            AND ultima_mensagem_em <= historico_ate THEN NOW() ELSE arquivada_em END
+     WHERE id = $1`,
+    [ultima.conversaId, chat.nome]
+  )
+  if (!ultima.leadCnpj && ultima.telefone) await linkConversationToLead(ultima.conversaId, ultima.telefone)
   return { mensagens, novas }
 }

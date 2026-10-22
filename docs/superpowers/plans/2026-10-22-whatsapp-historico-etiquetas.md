@@ -229,6 +229,7 @@ Não é tarefa de subagente. Registrar cada passo no ledger `.superpowers/sdd/20
   - as 3 conversas de hoje intactas;
   - os 4 filtros de Conversas com 200;
   - `webhook/set` com `LABELS_ASSOCIATION`. A reconexão do P5 chama o `webhook/set`.
+- [ ] **P3b Lid nas conversas que já existem:** antes do logout, preencher `whatsapp_conversas.lid` das conversas sem lid. O par vem das mensagens ao vivo no banco do Evolution: `key.remoteJid` (lid) e `key.remoteJidAlt` (telefone). Assim elas se unem ao histórico mesmo que o Evolution perca essas mensagens no logout.
 - [ ] **P4 Histórico ligado no Evolution:**
   - `DATABASE_SAVE_DATA_HISTORIC=true` no compose do serviço `projete-evolution` e reinício;
   - `POST /settings/set/consultorias` com a configuração atual e `syncFullHistory: true`.
@@ -238,7 +239,9 @@ Não é tarefa de subagente. Registrar cada passo no ledger `.superpowers/sdd/20
   - acompanhar no log do Evolution as linhas `recv … chats … msgs (is latest: …, progress: …%)` até `is latest: true` ou parar de chegar lote.
 
   Avisar o Paulo antes: as conversas antigas chegam sem telefone e só se ligam ao lead quando o contato voltar a falar.
-- [ ] **P6 Importação:** de dentro do container do app, chamar `POST http://localhost:3000/api/whatsapp/importar` com o segredo, de `pagina=0` até `proxima: null`. Conferir:
+- [ ] **P6 Importação:** de dentro do container do app, chamar `POST http://localhost:3000/api/whatsapp/importar` com o segredo e `{ pagina, ate }`, de `pagina=0` até `proxima: null`.
+  - `ate` é o momento em que o número reconectou (log `CONNECTED TO WHATSAPP`). O que chegou depois disso já entrou pelo webhook.
+  - Chats em `falhas`: rodar a importação de novo. Conferir:
   - totais por vendedor em Minhas (Ana ≈ 188, Elisson ≈ 132, mais as do histórico);
   - Arquivadas;
   - "Em aberto" sem explosão;
