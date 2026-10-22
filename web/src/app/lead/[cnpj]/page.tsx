@@ -10,6 +10,7 @@ import { LeadHistory } from '@/components/LeadEvents'
 import LeadContacts from '@/components/LeadContacts'
 import WhatsAppAction from '@/components/WhatsAppAction'
 import SaleModal from '@/components/SaleModal'
+import { canEditLeads, canReopenClosedSale } from '@/lib/roles'
 import { CRM_STATUS_BADGE_COLORS, CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, isManagementCrmStatus, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 
 const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
@@ -78,7 +79,7 @@ export default function LeadDetailPage() {
       .then(r => r.json())
       .then(session => {
         if (session?.user?.role) {
-          setCanModify(session.user.role !== 'visualizador')
+          setCanModify(canEditLeads(session.user.role))
           setUserRole(session.user.role)
         }
       })
@@ -569,7 +570,8 @@ export default function LeadDetailPage() {
                     <select
                       value={formatCrmStatusLabel(p.status_contato || 'Não Contatado', p.venda_etapa)}
                       onChange={e => updateProjeto(p.id, 'status_contato', e.target.value)}
-                      className={`text-xs rounded px-2 py-1 border-0 cursor-pointer ${STATUS_COLORS[normalizeCrmStatus(p.status_contato)] || STATUS_COLORS['Não Contatado']}`}
+                      disabled={!canModify || (normalizeCrmStatus(p.status_contato) === 'Fechado' && !canReopenClosedSale(userRole ?? ''))}
+                      className={`text-xs rounded px-2 py-1 border-0 cursor-pointer disabled:cursor-default disabled:opacity-80 ${STATUS_COLORS[normalizeCrmStatus(p.status_contato)] || STATUS_COLORS['Não Contatado']}`}
                     >
                       {(userRole === 'vendedor' || userRole === 'coordenador'
                         ? STATUS_OPTIONS.filter(s => !isManagementCrmStatus(s))
@@ -581,6 +583,7 @@ export default function LeadDetailPage() {
                       type="text"
                       defaultValue={p.observacoes || ''}
                       placeholder="..."
+                      readOnly={!canModify}
                       onBlur={e => {
                         if (e.target.value !== (p.observacoes || '')) {
                           updateProjeto(p.id, 'observacoes', e.target.value)

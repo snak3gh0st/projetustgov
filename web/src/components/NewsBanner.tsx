@@ -6,6 +6,14 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.8',
+    items: [
+      'Visualizador consulta os leads sem alterar status, contatos ou observações',
+      'Só a gestão desfaz uma venda fechada',
+      'Aba Operação da área CSM voltou a carregar, em modo consulta',
+    ],
+  },
+  {
     version: 'v1.7',
     items: [
       'Leads numa página só, com abas Aprovação, Execução e Prestação de Contas',

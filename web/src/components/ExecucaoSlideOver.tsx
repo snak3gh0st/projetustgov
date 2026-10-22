@@ -11,6 +11,7 @@ import { buttonClass } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useToast } from '@/components/ui/Toast'
 import { Tag } from '@/components/leads/list-ui'
+import { canEditLeads } from '@/lib/roles'
 
 interface ContactRow {
   id: number
@@ -109,7 +110,7 @@ export default function ExecucaoSlideOver({
   const [crmStatus, setCrmStatus] = useState<string | null>(null)
   const [crmObservacoes, setCrmObservacoes] = useState<string | null>(null)
   const [obsExecucao, setObsExecucao] = useState(initialObs ?? '')
-  const canModify = userRole !== 'visualizador'
+  const canModify = canEditLeads(userRole ?? '')
   const detailCacheRef = useRef<Record<string, ExecucaoDetailRow[]>>({})
   const contactsCacheRef = useRef<Record<string, ContactRow[]>>({})
   const crmCacheRef = useRef<Record<string, { status: string | null; observacoes: string | null }>>({})

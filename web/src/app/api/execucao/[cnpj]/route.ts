@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query, queryAs } from '@/lib/db'
-import { getApiSession } from '@/lib/dal'
+import { canEditLeads, getApiSession } from '@/lib/dal'
 import { isClosedCrmStatus, normalizeCrmStatus } from '@/lib/crm-catalog'
 
 export const dynamic = 'force-dynamic'
@@ -38,6 +38,9 @@ export async function PATCH(
   try {
     const session = await getApiSession()
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!canEditLeads(session.role)) {
+      return NextResponse.json({ error: 'Forbidden: read-only role' }, { status: 403 })
+    }
 
     const cnpj = decodeURIComponent(params.cnpj)
     const cnpjClean = cnpj.replace(/\D/g, '')

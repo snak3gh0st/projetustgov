@@ -1,5 +1,5 @@
 import { auth } from '@/auth.config'
-import { commercialOnlyBlock } from '@/lib/area-access'
+import { commercialOnlyBlock, csmCanReadCommercial } from '@/lib/area-access'
 
 export default auth((req) => {
   const { pathname } = req.nextUrl
@@ -86,6 +86,10 @@ export default auth((req) => {
     // CSM is otherwise TGov-read + CSM-area only — CRM pages and CRM APIs are blocked.
     if (isCrmPage || isCrmHome) {
       return Response.redirect(new URL('/csm', req.url))
+    }
+    // Aba Operação do CSM: leitura da carteira em Execução e Prestação.
+    if (csmCanReadCommercial(pathname, req.method)) {
+      return
     }
     if (isCrmApi) {
       return Response.json({ error: 'Forbidden' }, { status: 403 })

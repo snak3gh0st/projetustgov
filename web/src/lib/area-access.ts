@@ -12,3 +12,15 @@ export function commercialOnlyBlock(role: string | undefined, pathname: string):
   if (!blocked) return null
   return pathname.startsWith('/api/') ? 'forbid' : 'redirect'
 }
+
+// O CSM acompanha a carteira em Execução e Prestação: lê a lista, o detalhe, contatos, notas e histórico, sem gravar.
+const CSM_COMMERCIAL_READS = [
+  /^\/api\/execucao$/,
+  /^\/api\/execucao\/(?!distribute$|export$)[^/]+$/,
+  /^\/api\/leads$/,
+  /^\/api\/leads\/[^/]+\/(contacts|notes|historico)$/,
+]
+
+export function csmCanReadCommercial(pathname: string, method: string): boolean {
+  return method === 'GET' && CSM_COMMERCIAL_READS.some((re) => re.test(pathname))
+}

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { formatCNPJ, formatCompactCurrency, formatDate, whatsappMeUrlFromTelefone } from '@/lib/format'
 import ExecucaoSlideOver from '@/components/ExecucaoSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
+import { canEditLeads } from '@/lib/roles'
 import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
 import { SkeletonRows } from '@/components/ui/Skeleton'
@@ -549,7 +550,7 @@ export default function ExecucaoClient({
                           status={row.crm_status || 'Não Contatado'}
                           label={formatCrmStatusLabel(row.crm_status || 'Não Contatado')}
                           options={STATUS_OPTIONS}
-                          disabled={isGestor}
+                          disabled={isGestor || !canEditLeads(userRole)}
                           onChange={value => { void updateStatus(row.cnpj, value) }}
                         />
                       </td>

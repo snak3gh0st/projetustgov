@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { commercialOnlyBlock } from './area-access'
+import { commercialOnlyBlock, csmCanReadCommercial } from './area-access'
 
 test('gestor is redirected away from other areas pages', () => {
   for (const path of ['/tgov', '/tgov/pipeline', '/operacao', '/financeiro', '/financeiro/resultado', '/admin/conta-azul', '/admin/system-health']) {
@@ -32,4 +32,19 @@ test('diretoria, admin and others are never blocked here', () => {
 test('prefix match respects path boundaries', () => {
   assert.equal(commercialOnlyBlock('gestor', '/tgovx'), null)
   assert.equal(commercialOnlyBlock('gestor', '/operacaox'), null)
+})
+
+test('csm reads the execução list, its detail, contacts, notes and history', () => {
+  for (const path of ['/api/execucao', '/api/execucao/12345678000199', '/api/leads', '/api/leads/12345678000199/contacts', '/api/leads/12345678000199/notes', '/api/leads/12345678000199/historico']) {
+    assert.equal(csmCanReadCommercial(path, 'GET'), true, path)
+  }
+})
+
+test('csm cannot write or reach other commercial APIs', () => {
+  assert.equal(csmCanReadCommercial('/api/execucao/12345678000199', 'PATCH'), false)
+  assert.equal(csmCanReadCommercial('/api/leads/12345678000199/contacts', 'POST'), false)
+  assert.equal(csmCanReadCommercial('/api/leads/12345678000199/notes', 'POST'), false)
+  for (const path of ['/api/execucao/distribute', '/api/execucao/export', '/api/leads/assign', '/api/leads/12345678000199', '/api/comissoes', '/api/leads/export-pendentes']) {
+    assert.equal(csmCanReadCommercial(path, 'GET'), false, path)
+  }
 })

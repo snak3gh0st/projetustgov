@@ -26,7 +26,7 @@ import {
   thClass,
 } from '@/components/leads/list-ui'
 import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel, isClosedCrmStatus, isManagementCrmStatus, normalizeCrmStatus } from '@/lib/crm-catalog'
-import { hasTeamCommercialView } from '@/lib/roles'
+import { canEditLeads, canReopenClosedSale, hasTeamCommercialView } from '@/lib/roles'
 
 const STATUS_OPTIONS = CRM_STATUS_SELECT_OPTIONS
 
@@ -358,6 +358,10 @@ export default function LeadsClient() {
   const isCoordinator = role === 'coordenador'
   const showsOwner = hasTeamCommercialView(role) || isCoordinator
   const canAssign = hasTeamCommercialView(role)
+  const canEdit = canEditLeads(role ?? '')
+  // Venda fechada só volta atrás pela gestão; os demais veem o status travado.
+  const statusLocked = (status: string | null | undefined) =>
+    !canEdit || (normalizeCrmStatus(status) === 'Fechado' && !canReopenClosedSale(role ?? ''))
   const statusOptions = role === 'vendedor' || isCoordinator ? STATUS_OPTIONS.filter(s => !isManagementCrmStatus(s)) : STATUS_OPTIONS
   const canExportCSV = hasTeamCommercialView(role) || role === 'admin' || isCoordinator
   const coordinatorHasCommercialFilter = vendedorFilter !== '' && vendedorFilter !== 'unassigned'
@@ -570,6 +574,7 @@ export default function LeadsClient() {
                         status={normalizeCrmStatus(lead.status_contato)}
                         label={formatCrmStatusLabel(lead.status_contato, lead.venda_etapa)}
                         options={statusOptions}
+                        disabled={statusLocked(lead.status_contato)}
                         onChange={value => updateLead(lead.id, 'status_contato', value)}
                       />
                     </td>
@@ -625,7 +630,8 @@ export default function LeadsClient() {
                           status={normalizeCrmStatus(sub.status_contato)}
                           label={formatCrmStatusLabel(sub.status_contato, sub.venda_etapa)}
                           options={statusOptions}
-                            onChange={value => updateLead(sub.id, 'status_contato', value)}
+                          disabled={statusLocked(sub.status_contato)}
+                          onChange={value => updateLead(sub.id, 'status_contato', value)}
                         />
                       </td>
                     </tr>
@@ -657,7 +663,7 @@ export default function LeadsClient() {
             })
           })
         }}
-        canModify={sessionUser?.role !== 'visualizador'}
+        canModify={canEdit}
       />
 
       <LeadAssignmentModal
