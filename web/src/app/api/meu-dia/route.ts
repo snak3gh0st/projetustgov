@@ -5,6 +5,7 @@ import { execucaoFaseSql } from '@/lib/execucao-fase'
 import { normalizedStatusOrderSql, normalizedStatusSql } from '@/lib/execucao-status'
 import { classifyMeuDia, meuDiaStatus, type MeuDiaAguardando, type MeuDiaCandidate } from '@/lib/meu-dia'
 import { whatsappContatosSql } from '@/lib/whatsapp/contato'
+import { aguardandoSql } from '@/lib/whatsapp/access'
 import { whatsappConfig } from '@/lib/whatsapp/evolution'
 
 export const dynamic = 'force-dynamic'
@@ -129,8 +130,7 @@ const AGUARDANDO_SQL = `
                   wc.nome_contato, wc.telefone) AS nome,
          wc.telefone, wc.lead_cnpj AS cnpj, wc.ultima_previa AS previa, wc.ultima_recebida_em AS desde
   FROM whatsapp_conversas wc
-  WHERE wc.instancia = $2 AND wc.arquivada_em IS NULL AND wc.ultima_recebida_em IS NOT NULL
-    AND (wc.ultima_enviada_em IS NULL OR wc.ultima_recebida_em > wc.ultima_enviada_em)
+  WHERE wc.instancia = $2 AND wc.arquivada_em IS NULL AND ${aguardandoSql('wc')}
     AND (wc.atendente_id = $1 OR (wc.atendente_id IS NULL AND wc.lead_cnpj IN (
       SELECT REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') FROM vendedor_projetos vp WHERE vp.vendedor_id = $1)))
   ORDER BY wc.ultima_recebida_em ASC

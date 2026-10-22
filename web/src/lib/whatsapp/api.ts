@@ -30,6 +30,7 @@ export interface ConversaRow {
   donos: string[] | null
   donos_nomes: string | null
   arquivada_em: string | null
+  historico_ate: string | null
   ultima_recebida_em: string | null
   ultima_enviada_em: string | null
   ultima_mensagem_em: string | null
@@ -41,7 +42,7 @@ const LEAD_DO_CNPJ = `REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = wc.lead_cnpj`
 
 /** SELECT de conversas com nome do lead, donos e atendente. $1 = instância, $2 = usuário (escopo). */
 export const CONVERSA_SELECT = `
-  SELECT wc.id, wc.telefone, wc.jid, wc.nome_contato, wc.lead_cnpj, wc.atendente_id, wc.arquivada_em,
+  SELECT wc.id, wc.telefone, wc.jid, wc.nome_contato, wc.lead_cnpj, wc.atendente_id, wc.arquivada_em, wc.historico_ate,
          wc.ultima_recebida_em, wc.ultima_enviada_em, wc.ultima_mensagem_em, wc.ultima_previa, wc.nao_lidas,
          (SELECT MAX(vp.nome) FROM vendedor_projetos vp WHERE ${LEAD_DO_CNPJ}) AS lead_nome,
          (SELECT ARRAY_AGG(DISTINCT vp.vendedor_id::text) FROM vendedor_projetos vp WHERE ${LEAD_DO_CNPJ} AND vp.vendedor_id IS NOT NULL) AS donos,

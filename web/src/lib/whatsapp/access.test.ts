@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { SendLimiter, aguardandoResposta, canManageConversations, canUseWhatsapp, conversationScopeSql, responsavelDaConversa, seesAllConversations } from './access'
+import { SendLimiter, aguardandoResposta, aguardandoSql, canManageConversations, canUseWhatsapp, conversationScopeSql, responsavelDaConversa, seesAllConversations } from './access'
 
 test('gestão sees and manages every conversation; sellers use their own; others none', () => {
   for (const r of ['gestor', 'diretoria', 'admin']) {
@@ -45,4 +45,18 @@ test('the limiter allows 20 sends a minute per user', () => {
   assert.equal(lim.allow('u1', 2_000), false)
   assert.equal(lim.allow('u2', 2_000), true)
   assert.equal(lim.allow('u1', 61_500), true)
+})
+
+test('history before the import never counts as waiting', () => {
+  assert.equal(aguardandoResposta({ ultima_recebida_em: '2026-09-01T10:00:00Z', ultima_enviada_em: null, historico_ate: '2026-10-23T12:00:00Z' }), false)
+  assert.equal(aguardandoResposta({ ultima_recebida_em: '2026-10-23T12:00:00Z', ultima_enviada_em: null, historico_ate: '2026-10-23T12:00:00Z' }), false)
+})
+
+test('a message after the import waits again', () => {
+  assert.equal(aguardandoResposta({ ultima_recebida_em: '2026-10-24T09:00:00Z', ultima_enviada_em: '2026-09-01T10:00:00Z', historico_ate: '2026-10-23T12:00:00Z' }), true)
+})
+
+test('aguardandoSql keeps the historico_ate cut', () => {
+  assert.match(aguardandoSql('wc'), /wc\.historico_ate/)
+  assert.match(aguardandoSql('wc'), /wc\.ultima_recebida_em > wc\.ultima_enviada_em/)
 })

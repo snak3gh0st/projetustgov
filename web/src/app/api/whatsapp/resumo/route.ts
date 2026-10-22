@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { seesAllConversations } from '@/lib/whatsapp/access'
+import { aguardandoSql, seesAllConversations } from '@/lib/whatsapp/access'
 import { whatsappGuard } from '@/lib/whatsapp/api'
 
 export const dynamic = 'force-dynamic'
@@ -16,8 +16,7 @@ export async function GET() {
     `WITH pendentes AS (
        SELECT wc.id, wc.ultima_recebida_em, wc.atendente_id, wc.lead_cnpj
        FROM whatsapp_conversas wc
-       WHERE wc.instancia = $1 AND wc.arquivada_em IS NULL AND wc.ultima_recebida_em IS NOT NULL
-         AND (wc.ultima_enviada_em IS NULL OR wc.ultima_recebida_em > wc.ultima_enviada_em)
+       WHERE wc.instancia = $1 AND wc.arquivada_em IS NULL AND ${aguardandoSql('wc')}
      ),
      responsaveis AS (
        SELECT p.id, p.ultima_recebida_em, p.atendente_id AS user_id FROM pendentes p WHERE p.atendente_id IS NOT NULL
