@@ -1,9 +1,9 @@
 import 'server-only'
 
 import { getPool, query } from '@/lib/db'
-import { parDoContato } from './evolution'
+import { mensagensDoChat, parDoContato } from './evolution'
 import { localPhoneSql, phoneFromJid, phoneVariants } from './phone'
-import type { WebhookEvent } from './webhook'
+import { parseMensagem, type WebhookEvent } from './webhook'
 
 type MensagemEvent = Extract<WebhookEvent, { kind: 'mensagem' }>
 type StatusEvent = Extract<WebhookEvent, { kind: 'status' }>
@@ -100,8 +100,10 @@ export async function unirConversas(ficaId: number, saiId: number): Promise<void
  * A conversa do contato, achada pelo telefone ou pelo lid (o histórico e as etiquetas só têm o lid; a mensagem ao vivo
  * chega com o telefone). Falta metade do par: pergunta ao Evolution. Achou duas: une. Nenhuma: cria.
  */
-export async function conversaDoContato(c: { instancia: string; telefone: string | null; lid: string | null; jid: string; nome: string | null }):
-  Promise<{ id: number; lead_cnpj: string | null; telefone: string | null; criada: boolean }> {
+export async function conversaDoContato(
+  c: { instancia: string; telefone: string | null; lid: string | null; jid: string; nome: string | null },
+  opts: { consultarEvolution?: boolean } = {}
+): Promise<{ id: number; lead_cnpj: string | null; telefone: string | null; criada: boolean }> {
   let { telefone, lid } = c
   const buscar = async () => ({
     porTelefone: telefone
@@ -116,7 +118,7 @@ export async function conversaDoContato(c: { instancia: string; telefone: string
 
   const faltaLid = !lid && !porTelefone?.lid
   const faltaTelefone = !telefone && !temTelefone(porLid)
-  if (faltaLid || faltaTelefone) {
+  if ((faltaLid || faltaTelefone) && opts.consultarEvolution !== false) {
     const par = await parDoContato(lid ?? c.jid)
     const novoLid = lid ?? par.lid
     const novoTelefone = telefone ?? par.telefone
@@ -165,9 +167,14 @@ export async function conversaDoContato(c: { instancia: string; telefone: string
  */
 export async function recordMessage(
   ev: MensagemEvent,
-  opts: { origem?: 'projete'; autorId?: string; status?: 'enviada' | 'falhou' } = {}
-): Promise<{ conversaId: number; mensagemId: number; nova: boolean }> {
-  const conversa = await conversaDoContato({ instancia: ev.instancia, telefone: ev.telefone, lid: ev.lid, jid: ev.jid, nome: ev.nome })
+  // historico: mensagem antiga importada; não soma não lidas, não tira do arquivo e não conta como esperando resposta.
+  opts: { origem?: 'projete'; autorId?: string; status?: 'enviada' | 'falhou'; historico?: true } = {}
+): Promise<{ conversaId: number; mensagemId: number; nova: boolean; conversaCriada: boolean }> {
+  const conversa = await conversaDoContato(
+    { instancia: ev.instancia, telefone: ev.telefone, lid: ev.lid, jid: ev.jid, nome: ev.nome },
+    // A importação já resolveu o par lid/telefone uma vez por chat.
+    { consultarEvolution: !opts.historico }
+  )
 
   const direcao = ev.fromMe ? 'enviada' : 'recebida'
   const origem = opts.origem ?? (ev.fromMe ? 'celular' : 'contato')
@@ -187,18 +194,19 @@ export async function recordMessage(
       `UPDATE whatsapp_conversas SET
          ultima_recebida_em = CASE WHEN $2 = 'recebida' THEN GREATEST(ultima_recebida_em, $3::timestamptz) ELSE ultima_recebida_em END,
          ultima_enviada_em = CASE WHEN $2 = 'enviada' THEN GREATEST(ultima_enviada_em, $3::timestamptz) ELSE ultima_enviada_em END,
-         nao_lidas = CASE WHEN $2 = 'recebida' THEN nao_lidas + 1 ELSE 0 END,
+         nao_lidas = CASE WHEN $5 THEN nao_lidas WHEN $2 = 'recebida' THEN nao_lidas + 1 ELSE 0 END,
          -- Quem escreve de novo volta para a fila.
-         arquivada_em = CASE WHEN $2 = 'recebida' THEN NULL ELSE arquivada_em END,
+         arquivada_em = CASE WHEN NOT $5 AND $2 = 'recebida' THEN NULL ELSE arquivada_em END,
+         historico_ate = CASE WHEN $5 THEN GREATEST(historico_ate, $3::timestamptz) ELSE historico_ate END,
          ultima_previa = CASE WHEN ultima_mensagem_em IS NULL OR $3::timestamptz >= ultima_mensagem_em THEN $4 ELSE ultima_previa END,
          ultima_mensagem_em = GREATEST(ultima_mensagem_em, $3::timestamptz)
        WHERE id = $1`,
-      [conversa.id, direcao, ev.enviadaEm, previaDe(ev)]
+      [conversa.id, direcao, ev.enviadaEm, previaDe(ev), !!opts.historico]
     )
   }
 
   if (!conversa.lead_cnpj && conversa.telefone) await linkConversationToLead(conversa.id, conversa.telefone)
-  return { conversaId: conversa.id, mensagemId: msg.id, nova: msg.nova }
+  return { conversaId: conversa.id, mensagemId: msg.id, nova: msg.nova, conversaCriada: conversa.criada }
 }
 
 const RANK = `CASE %s WHEN 'enviando' THEN 0 WHEN 'enviada' THEN 1 WHEN 'entregue' THEN 2 WHEN 'lida' THEN 3 ELSE 4 END`
@@ -237,4 +245,34 @@ export async function aplicarEtiqueta(ev: EtiquetaEvent): Promise<void> {
     await query(`UPDATE whatsapp_conversas SET atendente_id = NULL WHERE ${onde} AND atendente_id = $4`,
       [ev.instancia, ev.chatJid, telefone ?? ev.chatJid, etiqueta.user_id])
   }
+}
+
+/**
+ * Importa o histórico de um chat guardado no Evolution, desde `desde`. Idempotente: mensagem já gravada não entra de
+ * novo. Conversa criada aqui sem etiqueta de vendedor fica arquivada (não enche "Em aberto").
+ */
+export async function importarChat(instancia: string, jid: string, desde: Date): Promise<{ mensagens: number; novas: number }> {
+  const par = await parDoContato(jid)
+  let mensagens = 0
+  let novas = 0
+  let criada: number | null = null
+  for (let pagina = 1; pagina <= 500; pagina++) {
+    const { registros, paginas } = await mensagensDoChat(jid, desde, pagina)
+    for (const r of registros) {
+      const ev = parseMensagem(instancia, r)
+      if (ev.kind !== 'mensagem') continue
+      const g = await recordMessage(
+        { ...ev, lid: ev.lid ?? par.lid, telefone: ev.telefone ?? par.telefone },
+        { historico: true }
+      )
+      mensagens++
+      if (g.nova) novas++
+      if (g.conversaCriada) criada = g.conversaId
+    }
+    if (pagina >= paginas) break
+  }
+  if (criada) {
+    await query(`UPDATE whatsapp_conversas SET arquivada_em = NOW() WHERE id = $1 AND atendente_id IS NULL AND arquivada_em IS NULL`, [criada])
+  }
+  return { mensagens, novas }
 }

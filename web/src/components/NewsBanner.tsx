@@ -6,6 +6,13 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.14',
+    items: [
+      'Conversas: as conversas do último ano do WhatsApp das consultorias aparecem no PROJETE, já com o vendedor de cada etiqueta',
+      'Trocar a etiqueta da conversa no celular muda quem atende no PROJETE',
+    ],
+  },
+  {
     version: 'v1.13',
     items: [
       'WhatsApp das consultorias no PROJETE: a página Conversas recebe e responde as mensagens do número das consultorias',

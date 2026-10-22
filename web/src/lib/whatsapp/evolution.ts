@@ -112,6 +112,33 @@ export async function parDoContato(jid: string): Promise<{ lid: string | null; t
   return par
 }
 
+/**
+ * JIDs de todos os chats com mensagens guardadas no Evolution, ordenados pelo JID. O Evolution ordena pela última
+ * mensagem, que muda durante a importação; a ordem própria deixa as páginas estáveis.
+ */
+export async function listarChats(): Promise<string[]> {
+  const { status, data } = await call<{ remoteJid?: string }[]>('POST', `/chat/findChats/${instancePath()}`, {}, 60_000)
+  if (status >= 300 || !Array.isArray(data)) throw new Error(`Evolution findChats falhou (${status})`)
+  return Array.from(new Set(data.map((c) => c.remoteJid).filter((j): j is string => !!j))).sort()
+}
+
+/** Uma página (100) das mensagens de um chat desde `desde`, mais recentes primeiro. */
+export async function mensagensDoChat(jid: string, desde: Date, pagina: number): Promise<{ registros: unknown[]; paginas: number }> {
+  const { status, data } = await call<{ messages?: { pages?: number; records?: { key?: { remoteJid?: string; remoteJidAlt?: string } }[] } }>(
+    'POST', `/chat/findMessages/${instancePath()}`,
+    {
+      // Os dois campos: com só um, o filtro OR do Evolution devolve as mensagens de todos os chats.
+      where: { key: { remoteJid: jid, remoteJidAlt: jid }, messageTimestamp: { gte: desde.toISOString(), lte: new Date().toISOString() } },
+      offset: 100,
+      page: pagina,
+    },
+    30_000
+  )
+  if (status >= 300) throw new Error(`Evolution findMessages falhou (${status})`)
+  const registros = (data?.messages?.records ?? []).filter((r) => r.key?.remoteJid === jid || r.key?.remoteJidAlt === jid)
+  return { registros, paginas: data?.messages?.pages ?? 0 }
+}
+
 export async function mediaBase64(waId: string): Promise<{ base64: string; mimetype: string }> {
   const { status, data } = await call<{ base64?: string; mimetype?: string }>('POST', `/chat/getBase64FromMediaMessage/${instancePath()}`, {
     message: { key: { id: waId } },
