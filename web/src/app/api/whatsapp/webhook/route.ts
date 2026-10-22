@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
   for (const ev of parseWebhook(body)) {
     try {
       if (ev.kind === 'mensagem') {
-        if (ev.instancia && ev.instancia !== cfg.instance) continue
+        // Só a instância configurada; evento sem instância não teria onde aparecer.
+        if (ev.instancia !== cfg.instance) continue
         await recordMessage(ev)
         gravadas++
       } else if (ev.kind === 'status') {

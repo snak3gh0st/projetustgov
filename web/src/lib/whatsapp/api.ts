@@ -56,6 +56,7 @@ export const scopeWhere = (role: string) => `(${conversationScopeSql(role, '$2')
 
 /** Uma conversa visível para o usuário, ou null. */
 export async function conversaVisivel(id: number, session: Session, cfg: WhatsappConfig): Promise<ConversaRow | null> {
+  if (!Number.isSafeInteger(id) || id <= 0) return null
   const rows = await query<ConversaRow>(
     `${CONVERSA_SELECT} WHERE wc.instancia = $1 AND wc.id = $3 AND ${scopeWhere(session.role)}`,
     [cfg.instance, session.userId, id]

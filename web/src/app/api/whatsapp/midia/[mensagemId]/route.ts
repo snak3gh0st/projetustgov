@@ -11,9 +11,11 @@ const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', '
 export async function GET(_request: Request, { params }: { params: { mensagemId: string } }) {
   const guard = await whatsappGuard()
   if (guard instanceof NextResponse) return guard
+  const id = Number(params.mensagemId)
+  if (!Number.isSafeInteger(id) || id <= 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const [msg] = await query<{ conversa_id: number; wa_id: string; tipo: string; midia: { fileName?: string } | null }>(
     `SELECT conversa_id, wa_id, tipo, midia FROM whatsapp_mensagens WHERE id = $1`,
-    [Number(params.mensagemId)]
+    [id]
   )
   if (!msg || !(await conversaVisivel(msg.conversa_id, guard.session, guard.cfg))) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -23,7 +25,13 @@ export async function GET(_request: Request, { params }: { params: { mensagemId:
     const base = mimetype.split(';')[0]
     const nome = msg.midia?.fileName || `whatsapp-${msg.tipo}.${EXT[base] ?? (base.startsWith('audio/') ? 'ogg' : 'bin')}`
     return new NextResponse(Buffer.from(base64.replace(/^data:[^,]+,/, ''), 'base64'), {
-      headers: { 'Content-Type': base, 'Content-Disposition': `attachment; filename="${nome.replace(/"/g, '')}"`, 'Cache-Control': 'private, no-store' },
+      headers: {
+        'Content-Type': base,
+        // filename em ASCII para navegadores antigos; filename* leva o nome com acentos.
+        'Content-Disposition': `attachment; filename="${nome.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '')}"; filename*=UTF-8''${encodeURIComponent(nome)}`,
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'private, no-store',
+      },
     })
   } catch (error) {
     console.error('[api/whatsapp/midia] falhou:', error)

@@ -15,6 +15,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   if (!conversa) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const antes = new URL(request.url).searchParams.get('antes')
+  if (antes && Number.isNaN(Date.parse(antes))) return NextResponse.json({ error: 'Data inválida' }, { status: 400 })
   const rows = await query<Record<string, unknown>>(
     `SELECT m.id, m.wa_id, m.direcao, m.origem, m.texto, m.tipo, m.midia, m.status, m.enviada_em, u.nome AS autor_nome
      FROM whatsapp_mensagens m LEFT JOIN users u ON u.id = m.autor_id
@@ -44,6 +45,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
   if (body.atendente_id !== undefined) {
     if (body.atendente_id !== null) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(body.atendente_id))) {
+        return NextResponse.json({ error: 'Atendente inválido' }, { status: 400 })
+      }
       const ok = await query(`SELECT 1 FROM users WHERE id = $1 AND active AND role IN ('vendedor', 'coordenador', 'gestor')`, [body.atendente_id])
       if (ok.length === 0) return NextResponse.json({ error: 'Atendente inválido' }, { status: 400 })
     }
