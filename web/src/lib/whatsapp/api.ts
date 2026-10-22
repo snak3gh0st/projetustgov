@@ -51,8 +51,11 @@ export const CONVERSA_SELECT = `
   LEFT JOIN users ua ON ua.id = wc.atendente_id
 `
 
-/** Escopo com $2 = usuário; o parâmetro é sempre referenciado (para a gestão o escopo é TRUE e o $2 sobraria). */
-export const scopeWhere = (role: string) => `(${conversationScopeSql(role, '$2')} AND $2::text IS NOT NULL)`
+/**
+ * Escopo com $2 = usuário; o parâmetro é sempre referenciado (para a gestão o escopo é TRUE e o $2 sobraria).
+ * uuid, não text: o filtro "Minhas" compara o mesmo $2 com atendente_id.
+ */
+export const scopeWhere = (role: string) => `(${conversationScopeSql(role, '$2')} AND $2::uuid IS NOT NULL)`
 
 /** Uma conversa visível para o usuário, ou null. */
 export async function conversaVisivel(idBruto: number | string, session: Session, cfg: WhatsappConfig): Promise<ConversaRow | null> {
