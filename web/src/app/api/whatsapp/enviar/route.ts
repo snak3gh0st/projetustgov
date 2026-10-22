@@ -43,19 +43,22 @@ export async function POST(request: NextRequest) {
     if (!stored[0] || !(await verifyLeadAccess(stored[0].cnpj, session.userId, session.role))) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
-    // O telefone tem de ser deste lead, e uma conversa que já existe segue o escopo de quem a vê.
-    const cnpjs = await cnpjsDoTelefone(destino)
-    if (!cnpjs.includes(cnpj)) return NextResponse.json({ error: 'Esse telefone não é deste lead.' }, { status: 403 })
+    // Conversa que já existe segue o escopo de quem a vê (inclusive a ligada à mão pela gestão).
     const [existente] = await query<{ id: number }>(`SELECT id FROM whatsapp_conversas WHERE instancia = $1 AND telefone = $2`, [cfg.instance, destino])
     if (existente) {
       if (!(await conversaVisivel(existente.id, session, cfg))) {
         return NextResponse.json({ error: 'Essa conversa está com outra pessoa da equipe. Fale com a gestão.' }, { status: 403 })
       }
-    } else if (cnpjs.length > 1) {
-      if (!canManageConversations(session.role)) {
-        return NextResponse.json({ error: 'Esse telefone está em mais de um lead. Peça à gestão para ligar a conversa ao lead certo.' }, { status: 409 })
+    } else {
+      // Conversa nova: o telefone tem de ser deste lead; telefone de mais de um lead fica com a gestão.
+      const cnpjs = await cnpjsDoTelefone(destino)
+      if (!cnpjs.includes(cnpj)) return NextResponse.json({ error: 'Esse telefone não é deste lead.' }, { status: 403 })
+      if (cnpjs.length > 1) {
+        if (!canManageConversations(session.role)) {
+          return NextResponse.json({ error: 'Esse telefone está em mais de um lead. Peça à gestão para ligar a conversa ao lead certo.' }, { status: 409 })
+        }
+        ligarA = cnpj
       }
-      ligarA = cnpj
     }
   }
 

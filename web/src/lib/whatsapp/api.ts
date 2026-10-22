@@ -55,7 +55,9 @@ export const CONVERSA_SELECT = `
 export const scopeWhere = (role: string) => `(${conversationScopeSql(role, '$2')} AND $2::text IS NOT NULL)`
 
 /** Uma conversa visível para o usuário, ou null. */
-export async function conversaVisivel(id: number, session: Session, cfg: WhatsappConfig): Promise<ConversaRow | null> {
+export async function conversaVisivel(idBruto: number | string, session: Session, cfg: WhatsappConfig): Promise<ConversaRow | null> {
+  // BIGSERIAL chega do banco como texto ("20"); da URL pode vir qualquer coisa.
+  const id = Number(idBruto)
   if (!Number.isSafeInteger(id) || id <= 0) return null
   const rows = await query<ConversaRow>(
     `${CONVERSA_SELECT} WHERE wc.instancia = $1 AND wc.id = $3 AND ${scopeWhere(session.role)}`,
