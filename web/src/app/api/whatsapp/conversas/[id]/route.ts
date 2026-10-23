@@ -7,21 +7,26 @@ export const dynamic = 'force-dynamic'
 
 const PAGE = 50
 
-// GET /api/whatsapp/conversas/[id]?antes=<iso> - conversa e mensagens (50 por página, da mais antiga para a mais nova)
+// GET /api/whatsapp/conversas/[id]?antes=<iso>&antes_id=<id> - conversa e mensagens (50 por página, da mais antiga para a
+// mais nova). antes_id desempata mensagens do mesmo segundo (comum no histórico importado).
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const guard = await whatsappGuard()
   if (guard instanceof NextResponse) return guard
   const conversa = await conversaVisivel(Number(params.id), guard.session, guard.cfg)
   if (!conversa) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const antes = new URL(request.url).searchParams.get('antes')
+  const sp = new URL(request.url).searchParams
+  const antes = sp.get('antes')
+  const antesId = sp.get('antes_id')
   if (antes && Number.isNaN(Date.parse(antes))) return NextResponse.json({ error: 'Data inválida' }, { status: 400 })
+  if (antesId && !/^\d{1,18}$/.test(antesId)) return NextResponse.json({ error: 'Mensagem inválida' }, { status: 400 })
+  const cursor = !antes ? '' : antesId ? 'AND (m.enviada_em, m.id) < ($2::timestamptz, $3::bigint)' : 'AND m.enviada_em < $2'
   const rows = await query<Record<string, unknown>>(
     `SELECT m.id, m.wa_id, m.direcao, m.origem, m.texto, m.tipo, m.midia, m.status, m.enviada_em, u.nome AS autor_nome
      FROM whatsapp_mensagens m LEFT JOIN users u ON u.id = m.autor_id
-     WHERE m.conversa_id = $1 ${antes ? 'AND m.enviada_em < $2' : ''}
+     WHERE m.conversa_id = $1 ${cursor}
      ORDER BY m.enviada_em DESC, m.id DESC LIMIT ${PAGE + 1}`,
-    antes ? [conversa.id, antes] : [conversa.id]
+    !antes ? [conversa.id] : antesId ? [conversa.id, antes, antesId] : [conversa.id, antes]
   )
   const mais = rows.length > PAGE
   return NextResponse.json({

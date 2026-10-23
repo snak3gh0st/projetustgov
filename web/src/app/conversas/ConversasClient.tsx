@@ -11,6 +11,7 @@ import { Tag, inputClass, selectClass } from '@/components/leads/list-ui'
 import { formatCNPJ } from '@/lib/format'
 import { AvisoDesconectado } from '@/components/whatsapp/AvisoDesconectado'
 import { MensagemBolha, type MensagemView } from '@/components/whatsapp/MensagemBolha'
+import { juntarMensagens, rotuloDia } from '@/lib/whatsapp/janela'
 
 interface Conversa {
   id: number
@@ -170,8 +171,16 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
   const [ativaId, setAtivaId] = useState<number | null>(params.get('c') ? Number(params.get('c')) : null)
   const [ativa, setAtiva] = useState<Conversa | null>(null)
   const [mensagens, setMensagens] = useState<MensagemView[] | null>(null)
+  // Há mensagens mais antigas no servidor (rolar até o topo carrega mais 50).
+  const [mais, setMais] = useState(false)
+  const [carregandoAntigas, setCarregandoAntigas] = useState(false)
   const [atendentes, setAtendentes] = useState<{ id: string; nome: string }[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
+  // Conversa aberta agora: respostas atrasadas de outra conversa são descartadas.
+  const abertaRef = useRef<number | null>(null)
+  // O que fazer com a rolagem depois da próxima mudança nas mensagens.
+  const rolagemRef = useRef<{ modo: 'fim' } | { modo: 'manter'; altura: number; topo: number } | null>(null)
+  const noFimRef = useRef(true)
   const novoTelefone = params.get('telefone')
   const novoCnpj = params.get('cnpj')
 
@@ -186,13 +195,46 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
     } else setConversas((prev) => prev ?? [])
   }, [filtro, busca])
 
-  const carregarConversa = useCallback(async (id: number) => {
+  // Página mais recente. Ao abrir, substitui; na atualização, junta às já carregadas (as antigas continuam).
+  const carregarConversa = useCallback(async (id: number, abrir = false) => {
     const r = await fetch(`/api/whatsapp/conversas/${id}`, { cache: 'no-store' }).catch(() => null)
-    if (!r?.ok) return
-    const d = await r.json()
+    if (!r?.ok || abertaRef.current !== id) return
+    const d = await r.json() as { conversa: Conversa; mensagens: MensagemView[]; mais: boolean }
     setAtiva(d.conversa)
-    setMensagens(d.mensagens)
+    if (abrir) {
+      rolagemRef.current = { modo: 'fim' }
+      setMensagens(d.mensagens)
+      setMais(d.mais)
+    } else {
+      // Desce para a mensagem nova só se a pessoa já estava no fim (lendo as antigas, a tela fica parada).
+      if (noFimRef.current) rolagemRef.current = { modo: 'fim' }
+      setMensagens((prev) => juntarMensagens(prev ?? [], d.mensagens))
+    }
   }, [])
+
+  const carregarAntigas = useCallback(async () => {
+    const id = abertaRef.current
+    const primeira = mensagens?.[0]
+    if (!id || !primeira || !mais || carregandoAntigas) return
+    setCarregandoAntigas(true)
+    const q = new URLSearchParams({ antes: primeira.enviada_em, antes_id: String(primeira.id) })
+    const r = await fetch(`/api/whatsapp/conversas/${id}?${q}`, { cache: 'no-store' }).catch(() => null)
+    setCarregandoAntigas(false)
+    if (!r?.ok || abertaRef.current !== id) return
+    const d = await r.json() as { mensagens: MensagemView[]; mais: boolean }
+    const el = scrollRef.current
+    // Mantém na tela a mensagem que a pessoa estava vendo: o conteúdo novo entra acima dela.
+    if (el) rolagemRef.current = { modo: 'manter', altura: el.scrollHeight, topo: el.scrollTop }
+    setMensagens((prev) => juntarMensagens(prev ?? [], d.mensagens))
+    setMais(d.mais)
+  }, [mensagens, mais, carregandoAntigas])
+
+  function aoRolar() {
+    const el = scrollRef.current
+    if (!el) return
+    noFimRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    if (el.scrollTop < 120) void carregarAntigas()
+  }
 
   useEffect(() => { void carregarLista() }, [carregarLista])
 
@@ -206,9 +248,12 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
   }, [novoTelefone, ativaId])
 
   useEffect(() => {
+    abertaRef.current = ativaId
     if (!ativaId) return
     setMensagens(null)
-    void carregarConversa(ativaId)
+    setMais(false)
+    noFimRef.current = true
+    void carregarConversa(ativaId, true)
     void fetch(`/api/whatsapp/conversas/${ativaId}/lida`, { method: 'POST' }).then(() => carregarLista()).catch(() => {})
   }, [ativaId, carregarConversa, carregarLista])
 
@@ -231,19 +276,41 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
     }).catch(() => {})
   }, [gestao])
 
-  const ultimaQtd = useRef(0)
   useLayoutEffect(() => {
     const el = scrollRef.current
-    if (el && mensagens && mensagens.length !== ultimaQtd.current) el.scrollTop = el.scrollHeight
-    ultimaQtd.current = mensagens?.length ?? 0
+    const r = rolagemRef.current
+    if (!el || !r || !mensagens) return
+    rolagemRef.current = null
+    if (r.modo === 'fim') el.scrollTop = el.scrollHeight
+    else el.scrollTop = r.topo + (el.scrollHeight - r.altura)
   }, [mensagens])
+
+  // A janela ocupa a altura que sobra na tela; cada painel rola sozinho e a página não rola.
+  const gradeRef = useRef<HTMLDivElement>(null)
+  const [altura, setAltura] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    const medir = () => {
+      const el = gradeRef.current
+      if (!el) return
+      const topo = el.getBoundingClientRect().top + window.scrollY
+      // Espaço de baixo do <main>: pb-24 no celular (botão do menu), md:pb-8.
+      const baixo = window.innerWidth >= 768 ? 32 : 96
+      setAltura(Math.max(440, Math.round(window.innerHeight - topo - baixo)))
+    }
+    medir()
+    window.addEventListener('resize', medir)
+    // Fechar as novidades ou o aviso de desconectado muda o topo da janela.
+    const obs = new ResizeObserver(medir)
+    obs.observe(document.body)
+    return () => { window.removeEventListener('resize', medir); obs.disconnect() }
+  }, [])
 
   async function enviar(texto: string): Promise<boolean> {
     const body = ativa ? { conversa_id: ativa.id, texto } : { telefone: novoTelefone, cnpj: novoCnpj, texto }
     const r = await fetch('/api/whatsapp/enviar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null)
     const d = r ? await r.json().catch(() => ({})) : {}
-    if (d?.conversa_id && !ativaId) setAtivaId(d.conversa_id)
-    else if (ativaId) await carregarConversa(ativaId)
+    if (d?.conversa_id && !ativaId) setAtivaId(Number(d.conversa_id))
+    else if (ativaId) { noFimRef.current = true; await carregarConversa(ativaId) }
     void carregarLista()
     if (!r?.ok) { toast.error(d?.error ?? 'Não foi possível enviar pelo WhatsApp.'); return r?.status === 502 }
     return true
@@ -263,6 +330,8 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
     : [{ id: 'minhas', label: 'Minhas' }, { id: 'todas', label: 'Todas' }]), [gestao])
 
   const mostrarConversa = ativaId !== null || Boolean(novoTelefone)
+  // "Hoje" e "Ontem" mudam à meia-noite; a atualização de 10 em 10 s refaz a tela.
+  const agora = new Date()
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -271,14 +340,19 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
       </div>
       {estado && estado !== 'conectado' && <AvisoDesconectado gestao={gestao} />}
 
-      <div className="grid min-h-[70dvh] grid-cols-1 overflow-hidden rounded-xl border border-line bg-surface lg:grid-cols-[320px_minmax(0,1fr)_280px]">
+      <div
+        ref={gradeRef}
+        style={altura ? { height: altura } : undefined}
+        className="grid h-[70dvh] grid-cols-1 grid-rows-[minmax(0,1fr)] overflow-hidden rounded-xl border border-line bg-surface lg:grid-cols-[340px_minmax(0,1fr)_280px]"
+      >
         {/* Lista */}
-        <aside className={`min-w-0 flex-col border-line lg:flex lg:border-r ${mostrarConversa ? 'hidden' : 'flex'}`} aria-label="Lista de conversas">
+        <aside className={`min-h-0 min-w-0 flex-col border-line lg:flex lg:border-r ${mostrarConversa ? 'hidden' : 'flex'}`} aria-label="Lista de conversas">
           <div className="space-y-2 border-b border-line p-3">
-            <SectionTabs ariaLabel="Filtrar conversas" value={filtro} onChange={(v) => setFiltro(v as Filtro)} tabs={tabs} />
+            {/* As quatro abas cabem inteiras na coluna. */}
+            <SectionTabs ariaLabel="Filtrar conversas" value={filtro} onChange={(v) => setFiltro(v as Filtro)} tabs={tabs} className="flex w-full [&>button]:flex-1 [&>button]:whitespace-nowrap [&>button]:px-1 [&>button]:text-[13px]" />
             <input aria-label="Buscar conversa" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou telefone" className={`${inputClass} w-full`} />
           </div>
-          <div className="max-h-[70dvh] flex-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {conversas === null ? (
               <div className="space-y-3 p-4" aria-hidden><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
             ) : conversas.length === 0 ? (
@@ -292,7 +366,7 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
         </aside>
 
         {/* Conversa */}
-        <section className={`min-w-0 flex-col lg:flex ${mostrarConversa ? 'flex' : 'hidden'}`} aria-label="Conversa">
+        <section className={`min-h-0 min-w-0 flex-col lg:flex ${mostrarConversa ? 'flex' : 'hidden'}`} aria-label="Conversa">
           {mostrarConversa ? (
             <>
               <header className="flex items-center gap-3 border-b border-line px-4 py-3">
@@ -302,13 +376,33 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
                   {ativa && <p className="text-xs text-ink-3">{formatTelefone(ativa.telefone)}</p>}
                 </div>
               </header>
-              <div ref={scrollRef} className="max-h-[60dvh] min-h-[40dvh] flex-1 space-y-2 overflow-y-auto bg-raised/40 px-4 py-4">
+              <div ref={scrollRef} onScroll={aoRolar} className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-raised/40 px-3 py-3 sm:px-5">
                 {ativaId && mensagens === null ? (
                   <div className="space-y-2" aria-hidden><Skeleton className="h-10 w-2/3" /><Skeleton className="ml-auto h-10 w-1/2" /></div>
                 ) : (mensagens ?? []).length === 0 ? (
                   <p className="py-10 text-center text-sm text-ink-3">Nenhuma mensagem ainda. Escreva abaixo para começar.</p>
                 ) : (
-                  mensagens!.map((m) => <MensagemBolha key={m.id} m={m} onRetry={(t) => void enviar(t)} />)
+                  <>
+                    {mais && (
+                      <p className="pb-3 text-center text-xs text-ink-3" aria-live="polite">{carregandoAntigas ? 'Carregando mensagens anteriores...' : 'Role para cima para ver as anteriores'}</p>
+                    )}
+                    <ol className="space-y-1.5" aria-label="Mensagens">
+                      {mensagens!.map((m, i) => {
+                        const dia = rotuloDia(m.enviada_em, agora)
+                        const novoDia = i === 0 || rotuloDia(mensagens![i - 1].enviada_em, agora) !== dia
+                        return (
+                          <li key={m.id}>
+                            {novoDia && (
+                              <div className="flex justify-center py-2">
+                                <span className="rounded-full bg-surface px-3 py-1 text-xs font-medium text-ink-2 shadow-sm ring-1 ring-line">{dia}</span>
+                              </div>
+                            )}
+                            <MensagemBolha m={m} onRetry={(t) => void enviar(t)} />
+                          </li>
+                        )
+                      })}
+                    </ol>
+                  </>
                 )}
               </div>
               <Composer onSend={enviar} />
@@ -319,7 +413,7 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
         </section>
 
         {/* Lead e controles da gestão */}
-        <aside className="hidden min-w-0 border-l border-line lg:block" aria-label="Lead da conversa">
+        <aside className="hidden min-h-0 min-w-0 overflow-y-auto border-l border-line lg:block" aria-label="Lead da conversa">
           {ativa ? <PainelLead c={ativa} gestao={gestao} atendentes={atendentes} onChange={alterar} /> : null}
         </aside>
       </div>
