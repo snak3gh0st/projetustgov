@@ -6,6 +6,14 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.16',
+    items: [
+      'WhatsApp: a página abre rápido e a lista e a conversa rolam cada uma no seu lugar, com as mensagens separadas por dia',
+      'Fotos, áudios e vídeos aparecem na conversa; rolando para cima aparecem as mensagens mais antigas',
+      'Envie foto, vídeo ou documento pelo clipe (ou arrastando o arquivo) e grave mensagem de voz pelo microfone',
+    ],
+  },
+  {
     version: 'v1.15',
     items: [
       'O botão WhatsApp dos leads abre a conversa no PROJETE, com o número das consultorias, em vez do WhatsApp do celular',
