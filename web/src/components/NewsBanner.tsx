@@ -6,11 +6,17 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
-    version: 'v1.16',
+    version: 'v1.17',
     items: [
       'WhatsApp: a página abre rápido e a lista e a conversa rolam cada uma no seu lugar, com as mensagens separadas por dia',
       'Fotos, áudios e vídeos aparecem na conversa; rolando para cima aparecem as mensagens mais antigas',
       'Envie foto, vídeo ou documento pelo clipe (ou arrastando o arquivo) e grave mensagem de voz pelo microfone',
+    ],
+  },
+  {
+    version: 'v1.16',
+    items: [
+      'TGov: comentários voltaram a funcionar (erro HTTP 504 corrigido) e o PROJETE ficou mais rápido',
     ],
   },
   {

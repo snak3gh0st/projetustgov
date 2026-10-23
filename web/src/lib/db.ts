@@ -16,6 +16,14 @@ export function getPool(): Pool {
   return pool
 }
 
+// Erro de SQL (ex.: 23505) deixa a conexão utilizável. Erro de conexão
+// (SQLSTATE 08*, término 57P*, ou ECONNRESET/socket fechado) a descarta do pool.
+function isConnectionError(err: unknown): boolean {
+  const code = (err as { code?: unknown })?.code
+  if (typeof code !== 'string' || !/^[0-9A-Z]{5}$/.test(code)) return true
+  return code.startsWith('08') || code.startsWith('57P')
+}
+
 export async function query<T = Record<string, unknown>>(
   text: string,
   params?: unknown[]
@@ -23,22 +31,24 @@ export async function query<T = Record<string, unknown>>(
   const maxRetries = 2
   let lastError: unknown
 
+  // Só repete quando não conseguiu conexão: aí nada foi executado, então
+  // repetir um INSERT é seguro. Não recria o pool (cada recriação deixava
+  // conexões órfãs no pgbouncer até esgotar o max_client_conn).
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     let client
     try {
       client = await getPool().connect()
-      const result = await client.query(text, params)
-      return result.rows as T[]
     } catch (err) {
       lastError = err
-      // Reset pool reference so next getPool() creates a fresh pool.
-      // Do NOT call pool.end() — it would invalidate pools held by concurrent long-running
-      // operations like syncLeadsFromRepo() which hold the same pool reference.
-      if (attempt < maxRetries) {
-        pool = null
-      }
-    } finally {
-      if (client) client.release()
+      continue
+    }
+    try {
+      const result = await client.query(text, params)
+      client.release()
+      return result.rows as T[]
+    } catch (err) {
+      client.release(isConnectionError(err) ? (err as Error) : undefined)
+      throw err
     }
   }
 
