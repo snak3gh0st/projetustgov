@@ -94,3 +94,29 @@ export function googleCalendarEventUrl(opts: {
   }
   return `https://calendar.google.com/calendar/render?${params.toString()}`
 }
+
+/** Lê valor digitado em reais ("1.234,56", "1234.56", "1.234"); NaN se vazio. */
+export function parseCurrencyInput(raw: string): number {
+  const trimmed = raw.trim()
+  if (!trimmed) return NaN
+  const digitsOnly = trimmed.replace(/\D/g, '')
+  if (!digitsOnly) return NaN
+
+  const hasComma = trimmed.includes(',')
+  const hasDot = trimmed.includes('.')
+
+  if (hasComma && hasDot) {
+    return Number(trimmed.replace(/\./g, '').replace(',', '.'))
+  }
+  if (hasComma) {
+    return Number(trimmed.replace(',', '.'))
+  }
+  if (hasDot) {
+    const parts = trimmed.split('.')
+    const maybeThousands = parts.length > 1 && parts.every((p, i) => (i === 0 ? p.length >= 1 : p.length === 3))
+    if (maybeThousands) {
+      return Number(trimmed.replace(/\./g, ''))
+    }
+  }
+  return Number(trimmed)
+}

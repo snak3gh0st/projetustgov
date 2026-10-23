@@ -68,6 +68,10 @@ export async function PATCH(
     if (requestedStatus !== undefined && currentStatus === 'Fechado' && requestedStatus !== 'Fechado' && !canReopenClosedSale(session.role)) {
       return NextResponse.json({ error: 'Somente gestores podem desfazer uma venda fechada' }, { status: 403 })
     }
+    // Valor do contrato de venda já fechada (vendas antigas sem valor): só a gestão informa.
+    if (body.valor_venda !== undefined && requestedStatus === undefined && currentStatus === 'Fechado' && !canManagePipeline) {
+      return NextResponse.json({ error: 'Somente gestores podem alterar o valor de uma venda fechada' }, { status: 403 })
+    }
 
     const updates: string[] = []
     const values: unknown[] = []

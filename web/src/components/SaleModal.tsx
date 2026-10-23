@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { parseCurrencyInput } from '@/lib/format'
 import { CRM_COMMISSIONS, CRM_TIPO_SERVICO, type CrmTipoServico } from '@/lib/crm-catalog'
 
 interface SaleModalProps {
@@ -47,31 +48,6 @@ export default function SaleModal({ open, leadNome, userRole, leadContratoAssina
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [open, onCancel])
-
-  function parseCurrencyInput(raw: string): number {
-    const trimmed = raw.trim()
-    if (!trimmed) return NaN
-    const digitsOnly = trimmed.replace(/\D/g, '')
-    if (!digitsOnly) return NaN
-
-    const hasComma = trimmed.includes(',')
-    const hasDot = trimmed.includes('.')
-
-    if (hasComma && hasDot) {
-      return Number(trimmed.replace(/\./g, '').replace(',', '.'))
-    }
-    if (hasComma) {
-      return Number(trimmed.replace(',', '.'))
-    }
-    if (hasDot) {
-      const parts = trimmed.split('.')
-      const maybeThousands = parts.length > 1 && parts.every((p, i) => (i === 0 ? p.length >= 1 : p.length === 3))
-      if (maybeThousands) {
-        return Number(trimmed.replace(/\./g, ''))
-      }
-    }
-    return Number(trimmed)
-  }
 
   function handleSubmit() {
     setError('')
