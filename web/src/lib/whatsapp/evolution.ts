@@ -49,6 +49,30 @@ export async function sendText(phone: string, text: string): Promise<{ waId: str
   return { waId }
 }
 
+// Mídia sobe para o WhatsApp antes de sair: até 2 minutos para arquivos grandes.
+const TEMPO_MIDIA = 120_000
+
+/** Foto, vídeo ou documento (base64 sem o prefixo data:), com legenda opcional. */
+export async function sendMedia(
+  phone: string,
+  m: { mediatype: 'image' | 'video' | 'document'; mimetype: string; caption: string | null; fileName: string; base64: string }
+): Promise<{ waId: string }> {
+  const { status, data } = await call<{ key?: { id?: string } }>('POST', `/message/sendMedia/${instancePath()}`, {
+    number: phone, mediatype: m.mediatype, mimetype: m.mimetype, fileName: m.fileName, media: m.base64, ...(m.caption ? { caption: m.caption } : {}),
+  }, TEMPO_MIDIA)
+  const waId = data?.key?.id
+  if (status >= 300 || !waId) throw new Error(`Evolution sendMedia falhou (${status})`)
+  return { waId }
+}
+
+/** Mensagem de voz: o Evolution converte qualquer áudio (webm do Chrome, mp4 do Safari) para ogg/opus. */
+export async function sendVoice(phone: string, base64: string): Promise<{ waId: string }> {
+  const { status, data } = await call<{ key?: { id?: string } }>('POST', `/message/sendWhatsAppAudio/${instancePath()}`, { number: phone, audio: base64 }, TEMPO_MIDIA)
+  const waId = data?.key?.id
+  if (status >= 300 || !waId) throw new Error(`Evolution sendWhatsAppAudio falhou (${status})`)
+  return { waId }
+}
+
 export type EstadoConexao = 'conectado' | 'conectando' | 'desconectado'
 
 export async function connectionState(timeoutMs?: number): Promise<EstadoConexao> {
