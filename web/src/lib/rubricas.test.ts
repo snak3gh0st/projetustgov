@@ -21,13 +21,13 @@ test('total das rubricas soma as linhas sem erro de centavos', () => {
 
 test('parseRubricas normaliza linhas válidas', () => {
   const result = parseRubricas([
-    { cargo: '  Engenheiro civil ', meses: 6, dataInicio: '2026-11-01', valorUnitario: 8000.005 },
-    { cargo: 'Assistente', meses: 12, dataInicio: '', valorUnitario: 2500 },
+    { cargo: '  Engenheiro civil ', meses: 6, valorUnitario: 8000.005 },
+    { cargo: 'Assistente', meses: 12, valorUnitario: 2500 },
   ])
   assert.deepEqual(result, {
     linhas: [
-      { cargo: 'Engenheiro civil', meses: 6, dataInicio: '2026-11-01', valorUnitario: 8000.01 },
-      { cargo: 'Assistente', meses: 12, dataInicio: null, valorUnitario: 2500 },
+      { cargo: 'Engenheiro civil', meses: 6, valorUnitario: 8000.01 },
+      { cargo: 'Assistente', meses: 12, valorUnitario: 2500 },
     ],
   })
 })
@@ -38,7 +38,9 @@ test('parseRubricas recusa linhas incompletas', () => {
   assert.match((parseRubricas([{ cargo: 'A', meses: 0, valorUnitario: 1 }]) as { error: string }).error, /meses/)
   assert.match((parseRubricas([{ cargo: 'A', meses: 1.5, valorUnitario: 1 }]) as { error: string }).error, /meses/)
   assert.match((parseRubricas([{ cargo: 'A', meses: 1, valorUnitario: -1 }]) as { error: string }).error, /valor/)
-  assert.match((parseRubricas([{ cargo: 'A', meses: 1, valorUnitario: 1, dataInicio: '01/11/2026' }]) as { error: string }).error, /data/)
+  // valor vazio chega como null no JSON e não pode virar zero
+  assert.match((parseRubricas([{ cargo: 'A', meses: 1, valorUnitario: null }]) as { error: string }).error, /valor/)
+  assert.match((parseRubricas([{ cargo: 'A', meses: 1, valorUnitario: '10' }]) as { error: string }).error, /valor/)
   assert.match((parseRubricas(Array(MAX_RUBRICAS + 1).fill({ cargo: 'A', meses: 1, valorUnitario: 1 })) as { error: string }).error, /Máximo/)
 })
 
@@ -46,5 +48,7 @@ test('parseCurrencyInput lê o formato brasileiro', () => {
   assert.equal(parseCurrencyInput('1.234,56'), 1234.56)
   assert.equal(parseCurrencyInput('3500'), 3500)
   assert.equal(parseCurrencyInput('1.500'), 1500)
+  assert.equal(parseCurrencyInput('R$ 1.500,00'), 1500)
+  assert.equal(parseCurrencyInput('R$777,78'), 777.78)
   assert.ok(Number.isNaN(parseCurrencyInput('')))
 })

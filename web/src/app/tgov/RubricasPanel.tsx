@@ -5,7 +5,7 @@ import { formatCurrencyFull, parseCurrencyInput } from '@/lib/format'
 import { totalLinha, totalRubricas, type Rubrica } from '@/lib/rubricas'
 
 // ---------------------------------------------------------------------------
-// RubricasPanel — linhas de cargo/meses/data/valor da proposta.
+// RubricasPanel — linhas de cargo/meses/valor da proposta.
 // mode="edit": time de Aprovação adiciona e edita. mode="total": Execução só vê.
 // ---------------------------------------------------------------------------
 
@@ -13,7 +13,6 @@ interface LinhaForm {
   key: number
   cargo: string
   meses: string
-  dataInicio: string
   valor: string
 }
 
@@ -24,23 +23,25 @@ function toForm(r: Rubrica): LinhaForm {
     key: nextKey++,
     cargo: r.cargo,
     meses: String(r.meses),
-    dataInicio: r.dataInicio ?? '',
     valor: r.valorUnitario.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
   }
 }
 
 function emptyLinha(): LinhaForm {
-  return { key: nextKey++, cargo: '', meses: '', dataInicio: '', valor: '' }
+  return { key: nextKey++, cargo: '', meses: '', valor: '' }
 }
 
+// Valor que não dá para ler fica NaN (não zero): o salvar avisa em vez de gravar 0.
 function toRubrica(l: LinhaForm): Rubrica {
-  const valor = parseCurrencyInput(l.valor)
   return {
     cargo: l.cargo.trim(),
     meses: Number(l.meses),
-    dataInicio: l.dataInicio || null,
-    valorUnitario: Number.isFinite(valor) ? valor : 0,
+    valorUnitario: parseCurrencyInput(l.valor),
   }
+}
+
+function firstInvalidValor(linhas: Rubrica[]): number {
+  return linhas.findIndex((r) => !Number.isFinite(r.valorUnitario) || r.valorUnitario < 0)
 }
 
 const inputClass =
@@ -86,6 +87,11 @@ export default function RubricasPanel({ nrProposta, mode }: { nrProposta: string
   }
 
   async function handleSave() {
+    const invalid = firstInvalidValor(atuais)
+    if (invalid >= 0) {
+      setSaveError(`Linha ${invalid + 1}: informe o valor unitário (ex.: 1.500,00)`)
+      return
+    }
     setSaving(true)
     setSaveError(null)
     try {
@@ -134,7 +140,6 @@ export default function RubricasPanel({ nrProposta, mode }: { nrProposta: string
                   {r.cargo}
                   <span className="text-gray-400 dark:text-gray-500">
                     {' · '}{r.meses} {r.meses === 1 ? 'mês' : 'meses'} × {formatCurrencyFull(r.valorUnitario)}
-                    {r.dataInicio ? ` · início ${new Date(r.dataInicio + 'T00:00:00').toLocaleDateString('pt-BR')}` : ''}
                   </span>
                 </span>
                 <span className="shrink-0 font-medium tabular-nums text-gray-900 dark:text-gray-100">{formatCurrencyFull(totalLinha(r))}</span>
@@ -171,7 +176,7 @@ export default function RubricasPanel({ nrProposta, mode }: { nrProposta: string
                     </svg>
                   </button>
                 </div>
-                <div className="grid grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,1fr)] gap-2">
+                <div className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-2">
                   <label className="text-[11px] text-gray-500 dark:text-gray-400">
                     Meses
                     <input
@@ -181,15 +186,6 @@ export default function RubricasPanel({ nrProposta, mode }: { nrProposta: string
                       inputMode="numeric"
                       value={l.meses}
                       onChange={(e) => update(l.key, { meses: e.target.value })}
-                      className={`${inputClass} mt-0.5`}
-                    />
-                  </label>
-                  <label className="text-[11px] text-gray-500 dark:text-gray-400">
-                    Início
-                    <input
-                      type="date"
-                      value={l.dataInicio}
-                      onChange={(e) => update(l.key, { dataInicio: e.target.value })}
                       className={`${inputClass} mt-0.5`}
                     />
                   </label>
