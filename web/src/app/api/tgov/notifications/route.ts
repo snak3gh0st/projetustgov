@@ -33,69 +33,87 @@ export async function GET() {
       comment_body: string | null
       tab: string | null
     }>(`
-      WITH all_props AS (
-        SELECT nr_proposta, titulo, situacao_changed_at, tecnico_assigned_at, 'execucao' AS tab
-        FROM tgov_propostas
+      -- Começa pelos eventos (comentários, situação, atribuição), não pelas
+      -- ~900 mil linhas de propostas: só elas podem gerar notificação.
+      WITH last_comments AS (
+        SELECT DISTINCT ON (c.target_key)
+          c.target_key AS proposta_key,
+          c.created_at AS comment_at,
+          c.body AS comment_body,
+          u.nome AS comment_author_nome
+        FROM tgov_comments c
+        LEFT JOIN users u ON u.id = c.author_id
+        WHERE c.target_type = 'proposta'
+        ORDER BY c.target_key, c.created_at DESC
+      ),
+      candidates AS (
+        SELECT proposta_key FROM last_comments
+        UNION
+        SELECT nr_proposta FROM tgov_propostas
         WHERE nr_proposta IS NOT NULL
-        UNION ALL
-        SELECT nr_proposta, titulo, NULL::timestamptz AS situacao_changed_at, NULL::timestamptz AS tecnico_assigned_at, 'aprovacao' AS tab
-        FROM propostas
-        WHERE nr_proposta IS NOT NULL
-          AND NOT EXISTS (
-            SELECT 1 FROM tgov_propostas tp2 WHERE tp2.nr_proposta = propostas.nr_proposta
-          )
+          AND (situacao_changed_at IS NOT NULL OR tecnico_assigned_at IS NOT NULL)
       ),
       linked AS (
         ${seeAll
-          ? `SELECT nr_proposta AS proposta_key FROM all_props`
-          : `SELECT proposta_key FROM tgov_proposta_participants WHERE user_id = $1
-             UNION
-             SELECT nr_proposta AS proposta_key FROM tgov_propostas WHERE tecnico_id = $1 AND nr_proposta IS NOT NULL
-             UNION
-             SELECT nr_proposta AS proposta_key FROM propostas WHERE tecnico_id = $1 AND nr_proposta IS NOT NULL`
+          ? `SELECT k.proposta_key FROM candidates k
+             WHERE EXISTS (SELECT 1 FROM tgov_propostas tp WHERE tp.nr_proposta = k.proposta_key)
+                OR EXISTS (SELECT 1 FROM propostas p WHERE p.nr_proposta = k.proposta_key)`
+          : `SELECT k.proposta_key FROM candidates k
+             WHERE k.proposta_key IN (
+               SELECT proposta_key FROM tgov_proposta_participants WHERE user_id = $1
+               UNION
+               SELECT nr_proposta FROM tgov_propostas WHERE tecnico_id = $1 AND nr_proposta IS NOT NULL
+               UNION
+               SELECT nr_proposta FROM propostas WHERE tecnico_id = $1 AND nr_proposta IS NOT NULL
+             )`
         }
       ),
       activities AS (
         SELECT
           l.proposta_key,
+          info.titulo,
+          info.tab,
+          lc.comment_at,
+          lc.comment_author_nome,
+          lc.comment_body,
+          info.situacao_changed_at,
+          info.tecnico_assigned_at,
           GREATEST(
-            COALESCE((SELECT MAX(c.created_at) FROM tgov_comments c
-             WHERE c.target_type = 'proposta' AND c.target_key = l.proposta_key), '1970-01-01'::timestamptz),
-            COALESCE(tp.situacao_changed_at, '1970-01-01'::timestamptz),
-            COALESCE(tp.tecnico_assigned_at, '1970-01-01'::timestamptz)
+            COALESCE(lc.comment_at, '1970-01-01'::timestamptz),
+            COALESCE(info.situacao_changed_at, '1970-01-01'::timestamptz),
+            COALESCE(info.tecnico_assigned_at, '1970-01-01'::timestamptz)
           ) AS latest_at,
-          CASE
-            WHEN (SELECT MAX(c.created_at) FROM tgov_comments c
-                  WHERE c.target_type = 'proposta' AND c.target_key = l.proposta_key)
-                 >= GREATEST(COALESCE(tp.situacao_changed_at, '1970-01-01'),
-                             COALESCE(tp.tecnico_assigned_at, '1970-01-01'))
-            THEN 'comment'
-            WHEN tp.situacao_changed_at >= COALESCE(tp.tecnico_assigned_at, '1970-01-01')
-            THEN 'situacao'
-            ELSE 'assignment'
-          END AS event_type,
-          tp.titulo,
-          tp.tab,
-          (SELECT u.nome FROM tgov_comments c
-           LEFT JOIN users u ON u.id = c.author_id
-           WHERE c.target_type = 'proposta' AND c.target_key = l.proposta_key
-           ORDER BY c.created_at DESC LIMIT 1) AS comment_author_nome,
-          (SELECT c.body FROM tgov_comments c
-           WHERE c.target_type = 'proposta' AND c.target_key = l.proposta_key
-           ORDER BY c.created_at DESC LIMIT 1) AS comment_body
+          s.seen_at
         FROM linked l
-        LEFT JOIN all_props tp ON tp.nr_proposta = l.proposta_key
+        LEFT JOIN LATERAL (
+          SELECT titulo, situacao_changed_at, tecnico_assigned_at, 'execucao' AS tab, 0 AS ord
+          FROM tgov_propostas WHERE nr_proposta = l.proposta_key
+          UNION ALL
+          SELECT titulo, NULL::timestamptz, NULL::timestamptz, 'aprovacao', 1
+          FROM propostas WHERE nr_proposta = l.proposta_key
+          ORDER BY ord
+          LIMIT 1
+        ) info ON true
+        LEFT JOIN last_comments lc ON lc.proposta_key = l.proposta_key
         LEFT JOIN tgov_proposta_seen s ON s.user_id = $1 AND s.proposta_key = l.proposta_key
-        WHERE GREATEST(
-          COALESCE((SELECT MAX(c.created_at) FROM tgov_comments c
-           WHERE c.target_type = 'proposta' AND c.target_key = l.proposta_key), '1970-01-01'::timestamptz),
-          COALESCE(tp.situacao_changed_at, '1970-01-01'::timestamptz),
-          COALESCE(tp.tecnico_assigned_at, '1970-01-01'::timestamptz)
-        ) > COALESCE(s.seen_at, '1970-01-01'::timestamptz)
       )
-      SELECT proposta_key, titulo, event_type, latest_at::text AS event_at, comment_author_nome, comment_body, tab
+      SELECT
+        proposta_key,
+        titulo,
+        CASE
+          WHEN comment_at >= GREATEST(COALESCE(situacao_changed_at, '1970-01-01'),
+                                      COALESCE(tecnico_assigned_at, '1970-01-01'))
+          THEN 'comment'
+          WHEN situacao_changed_at >= COALESCE(tecnico_assigned_at, '1970-01-01')
+          THEN 'situacao'
+          ELSE 'assignment'
+        END AS event_type,
+        latest_at::text AS event_at,
+        comment_author_nome,
+        comment_body,
+        tab
       FROM activities
-      WHERE latest_at IS NOT NULL
+      WHERE latest_at > COALESCE(seen_at, '1970-01-01'::timestamptz)
       ORDER BY latest_at DESC
       LIMIT 50
     `, [userId])
