@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import TGovStatusDonut from '@/components/TGovStatusDonut'
 import CommentsThread from './CommentsThread'
 import TecnicoSelector, { type Tecnico } from './TecnicoSelector'
+import RubricasPanel from './RubricasPanel'
+import ValorContrato from './ValorContrato'
 import {
   BarChart as BIBarChart,
   Bar as BIBar,
@@ -88,13 +90,8 @@ function buildYearOptions(): string[] {
 const YEAR_OPTIONS = buildYearOptions()
 
 // ---------------------------------------------------------------------------
-// Internal CRM status constants
+// Internal CRM status badge
 // ---------------------------------------------------------------------------
-
-const TGOV_INTERACTION_STATUSES = [
-  'Sem Contato', 'Em Contato', 'Proposta Enviada', 'Em Negociação', 'Fechado', 'Sem Interesse',
-] as const
-type TGovInteractionStatus = typeof TGOV_INTERACTION_STATUSES[number]
 
 function InternalStatusBadge({ status }: { status: string | null | undefined }) {
   if (!status || status === 'Sem Contato') return <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
@@ -126,176 +123,6 @@ function VencimentoBadge({ vencimento }: { vencimento: string | null | undefined
         {isVencida ? 'Vencida' : 'Em tempo'}
       </span>
     </span>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// TGovInteractionPanel — CRM status + obs editor inside sidecards
-// ---------------------------------------------------------------------------
-
-function TGovInteractionPanel({
-  itemKey,
-  tab,
-  onSave,
-  currentUserRole,
-}: {
-  itemKey: string
-  tab: 'aprovacao' | 'execucao'
-  onSave: (patch: { status?: string; vencimento?: string | null }) => void
-  currentUserRole?: string
-}) {
-  const [status, setStatus] = useState<TGovInteractionStatus | ''>('')
-  const [obs, setObs] = useState('')
-  const [vencimento, setVencimento] = useState<string>('')
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const isProjetista = currentUserRole === 'projetista'
-  const isAssistenteAprovacao = currentUserRole === 'assistente_aprovacao'
-
-  useEffect(() => {
-    let cancelled = false
-    async function load() {
-      try {
-        const res = await fetch(`/api/tgov/interaction/${encodeURIComponent(itemKey)}?tab=${tab}`)
-        if (!res.ok) return
-        const data = await res.json()
-        if (!cancelled) {
-          setStatus((data.status as TGovInteractionStatus) ?? '')
-          setObs(data.obs ?? '')
-          setVencimento(data.vencimento ?? '')
-        }
-      } catch {
-        if (!cancelled) setLoadError('Erro ao carregar')
-      }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [itemKey, tab])
-
-  // projetista só pode comentar, não alterar status
-  if (isProjetista) return null
-
-  async function handleSave() {
-    setSaving(true)
-    setSaveError(null)
-    try {
-      const body = tab === 'aprovacao'
-        ? { vencimento: vencimento || null, obs, tab }
-        : { status: status || null, obs, tab }
-      const res = await fetch(`/api/tgov/interaction/${encodeURIComponent(itemKey)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || `HTTP ${res.status}`)
-      }
-      const data = await res.json()
-      // Sync state from server response (confirms what was actually persisted)
-      setVencimento(data.vencimento ?? '')
-      setObs(data.obs ?? '')
-      setSaved(true)
-      if (tab === 'aprovacao') {
-        onSave({ vencimento: data.vencimento ?? null })
-      } else {
-        onSave({ status: data.status ?? '' })
-      }
-      setTimeout(() => setSaved(false), 2000)
-    } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'Erro ao salvar')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-4 space-y-3">
-      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">CRM Interno</p>
-
-      {loadError && <p className="text-xs text-red-500">{loadError}</p>}
-
-      {tab === 'aprovacao' ? (
-        /* Vencimento date picker for aprovacao tab */
-        <div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Vencimento</p>
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={vencimento}
-              onChange={(e) => setVencimento(e.target.value)}
-              className="flex-1 text-sm border border-gray-200 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
-            />
-            {vencimento && (
-              <button
-                type="button"
-                onClick={() => setVencimento('')}
-                title="Limpar data"
-                className="flex-shrink-0 text-gray-400 hover:text-red-500 transition-colors p-1 rounded"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </button>
-            )}
-          </div>
-          {vencimento && (
-            <div className="mt-1.5">
-              <VencimentoBadge vencimento={vencimento} />
-            </div>
-          )}
-        </div>
-      ) : (
-        /* Status selector for execucao tab */
-        <div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Status</p>
-          <div className="flex flex-wrap gap-1.5">
-            {TGOV_INTERACTION_STATUSES.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStatus(s)}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                  status === s
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-300 hover:text-blue-600'
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Obs textarea */}
-      <div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Observações</p>
-        <textarea
-          value={obs}
-          onChange={(e) => setObs(e.target.value)}
-          rows={3}
-          placeholder="Notas internas..."
-          className="w-full text-sm border border-gray-200 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
-        />
-      </div>
-
-      {/* Save button */}
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-        >
-          {saving ? 'Salvando...' : 'Salvar'}
-        </button>
-        {saved && <span className="text-xs text-green-600 dark:text-green-400 font-medium">Salvo!</span>}
-        {saveError && <span className="text-xs text-red-600 dark:text-red-400">{saveError}</span>}
-      </div>
-    </div>
   )
 }
 
@@ -1680,7 +1507,9 @@ function ExecucaoSidecard({
             <SidecardCurrency label="Ingresso Contrapartida" value={row.ingressoContrapartida} />
           </SidecardSection>
 
-          <TGovInteractionPanel itemKey={row.nrConvenio} tab="execucao" onSave={() => {}} currentUserRole={currentUserRole} />
+          <ValorContrato cnpj={row.cnpj} />
+
+          <RubricasPanel nrProposta={row.numeroProposta} mode="total" />
 
           {/* Comentários */}
           <div id="sidecard-comments">
@@ -1818,7 +1647,9 @@ function AprovacaoSidecard({
             <SidecardCurrency label="Valor Contrapartida" value={row.valorContrapartida} />
           </SidecardSection>
 
-          <TGovInteractionPanel itemKey={row.numeroProposta} tab="aprovacao" onSave={(patch) => onRowUpdate({ vencimento: patch.vencimento })} currentUserRole={currentUserRole} />
+          <ValorContrato cnpj={row.cnpj} />
+
+          <RubricasPanel nrProposta={row.numeroProposta} mode="edit" />
 
           {/* Comentários */}
           <div id="sidecard-comments">

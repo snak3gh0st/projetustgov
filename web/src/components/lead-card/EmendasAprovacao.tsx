@@ -1,8 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import Button from '@/components/ui/Button'
 import { StatusSelect } from '@/components/leads/list-ui'
-import { formatCurrency } from '@/lib/format'
+import { formatCurrency, parseCurrencyInput } from '@/lib/format'
 import {
   CRM_STATUS_SELECT_OPTIONS,
   formatCrmStatusLabel,
@@ -20,6 +21,7 @@ interface EmendasAprovacaoProps {
   onObservacao: (id: number, value: string) => void
   onContrato: (id: number, value: boolean) => void
   onAutorizar: (projeto: VendedorProjeto) => void
+  onValorContrato: (id: number, valor: number) => void
 }
 
 const pct = (v: number | null | undefined) => `${Number(v || 0).toFixed(1).replace('.', ',')}%`
@@ -53,6 +55,45 @@ function Comissao({ p }: { p: VendedorProjeto }) {
   )
 }
 
+// Venda fechada sem valor (vendas antigas): o gestor informa o valor do contrato,
+// que aparece no card da proposta no TGov. Não recalcula comissão.
+function ValorContratoPendente({ p, canFill, onSave }: { p: VendedorProjeto; canFill: boolean; onSave: (id: number, valor: number) => void }) {
+  const [valorStr, setValorStr] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const box = 'rounded-lg bg-amber-50 px-3 py-2.5 text-xs text-amber-900 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25'
+  if (!canFill) return <p className={box}>Venda fechada sem valor do contrato. O gestor precisa informar.</p>
+
+  function save() {
+    const valor = parseCurrencyInput(valorStr)
+    if (!Number.isFinite(valor) || valor <= 0) {
+      setError('Informe um valor maior que zero')
+      return
+    }
+    setError(null)
+    onSave(p.id, valor)
+  }
+
+  return (
+    <div className={`${box} space-y-2`}>
+      <p className="font-medium">Venda fechada sem valor do contrato</p>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          inputMode="decimal"
+          value={valorStr}
+          onChange={(e) => setValorStr(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') save() }}
+          placeholder="R$ 0,00"
+          aria-label={`Valor do contrato da emenda ${p.nr_emenda || p.id}`}
+          className="min-w-0 flex-1 rounded-md border border-amber-300 bg-white px-2 py-1 text-xs tabular-nums text-ink focus:outline-none focus:ring-1 focus:ring-accent dark:border-amber-500/40 dark:bg-transparent"
+        />
+        <Button size="sm" variant="primary" onClick={save}>Salvar valor</Button>
+      </div>
+      {error && <p className="text-red-600 dark:text-red-400">{error}</p>}
+    </div>
+  )
+}
+
 // Emendas do CNPJ no funil de Aprovação: cada uma com o próprio status e o próprio fluxo de venda.
 export default function EmendasAprovacao({
   projetos,
@@ -62,6 +103,7 @@ export default function EmendasAprovacao({
   onObservacao,
   onContrato,
   onAutorizar,
+  onValorContrato,
 }: EmendasAprovacaoProps) {
   const role = userRole ?? ''
   const isSellerRole = role === 'vendedor' || role === 'coordenador'
@@ -131,6 +173,10 @@ export default function EmendasAprovacao({
                   </p>
                 )}
               </div>
+            )}
+
+            {status === 'Fechado' && !(Number(p.valor_venda) > 0) && (
+              <ValorContratoPendente p={p} canFill={isGestao && canModify} onSave={onValorContrato} />
             )}
 
             <Comissao p={p} />

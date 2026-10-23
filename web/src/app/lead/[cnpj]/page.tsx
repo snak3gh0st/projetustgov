@@ -167,6 +167,12 @@ export default function LeadDetailPage() {
     if (field === 'status_contato') bumpHistory()
   }
 
+  async function setValorContrato(id: number, valor: number) {
+    const data = await patchLead({ id, valor_venda: valor })
+    if (!data) return
+    setProjetos((prev) => prev.map((p) => (p.id === id ? { ...p, valor_venda: valor, ...mergeFromServer(data) } : p)))
+  }
+
   async function submitFechado(projetoId: number, sale: { valor_venda: number; status_contato?: string; contrato_assinado?: boolean; tipo_servico: string }) {
     const finalStatus = sale.status_contato || 'Vendas Aprovação'
     const body: Record<string, unknown> = { id: projetoId, status_contato: finalStatus, valor_venda: sale.valor_venda, tipo_servico: sale.tipo_servico }
@@ -356,6 +362,7 @@ export default function LeadDetailPage() {
                 onObservacao={(id, value) => void updateProjeto(id, 'observacoes', value)}
                 onContrato={(id, value) => void setContratoAssinado(id, value)}
                 onAutorizar={(p) => setSaleModal({ projetoId: p.id, tipoVendedor: p.tipo_vendedor || null, isExclusivo: false, contratoAssinado: !!p.contrato_assinado })}
+                onValorContrato={(id, valor) => void setValorContrato(id, valor)}
               />
             </Panel>
           )}

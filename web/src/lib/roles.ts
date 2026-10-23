@@ -114,6 +114,12 @@ export function canWriteOperacao(role: string | undefined): boolean {
 }
 
 /** TGov mutations privilegiadas (whitelist write, interaction PATCH, tecnico assignment). NÃO inclui CSM nem projetista. */
+/** Rubricas da proposta: o time de Aprovação monta; Execução e Prestação só leem. */
+export function canEditRubricas(role: string | undefined): boolean {
+  return role === 'diretoria' || role === 'admin' || role === 'adm_produto'
+      || role === 'coord_aprovacao' || role === 'assistente_aprovacao' || role === 'projetista'
+}
+
 export function canWriteTgov(role: string | undefined): boolean {
   return role === 'diretoria' || role === 'admin' || role === 'adm_produto'
       || role === 'coord_aprovacao' || role === 'assistente_aprovacao'

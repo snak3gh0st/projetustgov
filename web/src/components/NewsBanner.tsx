@@ -6,6 +6,14 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.18',
+    items: [
+      'TGov: o card da proposta tem Rubricas no lugar do CRM Interno — adicione linhas com cargo, meses, data de início e valor unitário, e o total sai somado',
+      'TGov: o card da Execução mostra o total das rubricas feitas pela Aprovação',
+      'TGov: os cards mostram o valor do contrato fechado pelo Comercial; venda fechada sem valor pode ser completada pelo gestor no card do lead',
+    ],
+  },
+  {
     version: 'v1.17',
     items: [
       'WhatsApp: a página abre rápido e a lista e a conversa rolam cada uma no seu lugar, com as mensagens separadas por dia',
