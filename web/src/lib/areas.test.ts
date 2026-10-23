@@ -185,3 +185,7 @@ test('Conversas only shows with WhatsApp on, and never for visualizador or csm',
     assert.ok(!getAreaNav(role, 'comercial', { whatsapp: true }).some((i) => i.href === '/conversas'), role)
   }
 })
+
+test('the conversations page is called WhatsApp in the menu', () => {
+  assert.equal(getAreaNav('vendedor', 'comercial', { whatsapp: true }).find((i) => i.href === '/conversas')?.label, 'WhatsApp')
+})

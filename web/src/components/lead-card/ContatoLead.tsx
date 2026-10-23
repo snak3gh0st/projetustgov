@@ -8,6 +8,7 @@ import type { ValorExibido } from '@/lib/lead-timeline'
 type Campo = 'telefone' | 'email'
 
 interface ContatoLeadProps {
+  cnpj: string
   telefone: ValorExibido
   email: ValorExibido
   endereco: string | null
@@ -34,7 +35,7 @@ function PencilButton({ label, onClick }: { label: string; onClick: () => void }
 }
 
 // Telefone e email que o lead mostra: do contato principal quando há, senão do próprio lead.
-export default function ContatoLead({ telefone, email, endereco, canEdit, onSave }: ContatoLeadProps) {
+export default function ContatoLead({ cnpj, telefone, email, endereco, canEdit, onSave }: ContatoLeadProps) {
   const [editing, setEditing] = useState<Campo | null>(null)
   const [valor, setValor] = useState('')
 
@@ -75,7 +76,7 @@ export default function ContatoLead({ telefone, email, endereco, canEdit, onSave
             ) : (
               <span className="text-sm text-ink-3">{campo === 'email' ? 'Sem email' : 'Sem telefone'}</span>
             )}
-            {campo === 'telefone' && atual && <WhatsAppAction telefone={atual} compact label="WhatsApp" />}
+            {campo === 'telefone' && atual && <WhatsAppAction telefone={atual} cnpj={cnpj} compact label="WhatsApp" />}
           </div>
           {canEdit(campo) && <PencilButton label={`Editar ${label.toLowerCase()}`} onClick={() => { setEditing(campo); setValor(atual ?? '') }} />}
         </>

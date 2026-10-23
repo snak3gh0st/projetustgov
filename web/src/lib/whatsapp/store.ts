@@ -3,6 +3,7 @@ import 'server-only'
 import { getPool, query } from '@/lib/db'
 import { mensagensDoChat, parDoContato } from './evolution'
 import { localPhoneSql, phoneFromJid, phoneVariants } from './phone'
+import { comTrava } from './trava'
 import { parseMensagem, type WebhookEvent } from './webhook'
 
 type MensagemEvent = Extract<WebhookEvent, { kind: 'mensagem' }>
@@ -169,16 +170,20 @@ export async function conversaDoContato(
  * origem 'projete' marca uma mensagem enviada pela tela, mesmo que o webhook tenha chegado antes.
  */
 export async function recordMessage(ev: MensagemEvent, opts: GravarOpts = {}): Promise<Gravada> {
-  // Duas mensagens do mesmo contato novo ao mesmo tempo (uma pelo lid, outra pelo telefone) disputam os índices únicos
-  // ou a união; quem perde procura de novo e acha a conversa que a outra criou.
-  for (let tentativa = 1; ; tentativa++) {
-    try {
-      return await gravarMensagem(ev, opts)
-    } catch (error) {
-      const code = (error as { code?: string }).code
-      if (tentativa >= 3 || (code !== '23505' && code !== '23503')) throw error
+  // Mensagens do mesmo contato (pelo lid ou pelo telefone) uma por vez: sem isso a união de conversas apaga a conversa
+  // em que outra mensagem acabou de entrar, antes do resumo, e mensagens se perdem.
+  const chaves = [ev.lid, ev.telefone, ev.lid || ev.telefone ? null : ev.jid].map((c) => c && `${ev.instancia}:${c}`)
+  return comTrava(chaves, async () => {
+    // Outro processo (dois containers durante o deploy) ainda pode disputar os índices únicos; quem perde procura de novo.
+    for (let tentativa = 1; ; tentativa++) {
+      try {
+        return await gravarMensagem(ev, opts)
+      } catch (error) {
+        const code = (error as { code?: string }).code
+        if (tentativa >= 3 || (code !== '23505' && code !== '23503')) throw error
+      }
     }
-  }
+  })
 }
 
 // historico: mensagem antiga importada; não soma não lidas, não tira do arquivo e não conta como esperando resposta.

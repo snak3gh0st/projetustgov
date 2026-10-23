@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { formatCNPJ, formatCurrency, googleCalendarEventUrl, whatsappMeUrlFromTelefone } from '@/lib/format'
+import { formatCNPJ, formatCurrency, googleCalendarEventUrl } from '@/lib/format'
+import { useLinkWhatsappFn } from '@/components/whatsapp/WhatsappNoProjete'
 import type { VendedorProjeto } from '@/lib/types'
 import LeadContacts from '@/components/LeadContacts'
 import SaleModal from '@/components/SaleModal'
@@ -71,12 +72,7 @@ export default function LeadDetailPage() {
   const [contactsBump, setContactsBump] = useState(0)
   const [contatosReload, setContatosReload] = useState(0)
   // WhatsApp ligado para este usuário: o botão do topo abre a conversa no PROJETE.
-  const [whatsappOn, setWhatsappOn] = useState(false)
-  useEffect(() => {
-    fetch(`/api/whatsapp/conversas?filtro=todas&cnpj=${cnpjClean}`, { cache: 'no-store' })
-      .then((r) => setWhatsappOn(r.ok))
-      .catch(() => setWhatsappOn(false))
-  }, [cnpjClean])
+  const linkWhatsapp = useLinkWhatsappFn()
 
   useEffect(() => {
     Promise.all([
@@ -264,10 +260,7 @@ export default function LeadDetailPage() {
       .filter((t): t is { valor: string; nome: string | null } => Boolean(t.valor))
       .map((t) => [t.valor, { valor: t.valor, label: `${t.nome ? `${t.nome} · ` : ''}(${t.valor.slice(2, 4)}) ${t.valor.slice(4, -4)}-${t.valor.slice(-4)}` }] as const)
   ).values())
-  const telefonePrincipal = canonicalPhone(telefone)
-  const whatsappUrl = whatsappOn && telefonePrincipal
-    ? `/conversas?telefone=${telefonePrincipal}&cnpj=${cnpjClean}`
-    : whatsappMeUrlFromTelefone(telefone)
+  const whatsapp = linkWhatsapp(telefone, cnpjClean)
   const temReuniao = projetos.some((p) => p.status_contato === 'Reunião Agendada') || normalizeCrmStatus(execStatus) === 'Reunião Agendada'
   const totalEmendas = projetos.reduce((sum, p) => sum + (Number(p.valor_emenda) || 0), 0)
   // Mesma trava da lista de Execução: gestão acompanha, consultor muda.
@@ -294,13 +287,13 @@ export default function LeadDetailPage() {
             </div>
           )}
         </div>
-        {(whatsappUrl || email) && (
+        {(whatsapp || email) && (
           <div className="flex flex-wrap gap-2">
-            {whatsappUrl && (
+            {whatsapp && (
               <a
-                href={whatsappUrl}
+                href={whatsapp.href}
                 // Conversas é tela do próprio app; só o wa.me abre em outra aba.
-                {...(whatsappUrl.startsWith('/') ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
+                {...(whatsapp.externo ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                 className={buttonClass('secondary', 'sm')}
               >
                 WhatsApp
@@ -382,6 +375,7 @@ export default function LeadDetailPage() {
           {first && (
             <Panel title="Contato" padded={false}>
               <ContatoLead
+                cnpj={cnpjClean}
                 telefone={exibido.telefone}
                 email={exibido.email}
                 endereco={first.endereco ?? null}

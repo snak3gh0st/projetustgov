@@ -1,4 +1,6 @@
 import { whatsappConfigured } from '@/lib/whatsapp/evolution'
+import { canUseWhatsapp } from '@/lib/whatsapp/access'
+import { WhatsappNoProjeteProvider } from '@/components/whatsapp/WhatsappNoProjete'
 import type { Metadata } from 'next'
 import { Inter, Space_Grotesk } from 'next/font/google'
 import './globals.css'
@@ -61,7 +63,7 @@ export default async function RootLayout({
               </div>
             )}
             {user && <NewsBanner />}
-            {children}
+            <WhatsappNoProjeteProvider ligado={Boolean(whatsapp && user && canUseWhatsapp(user.role))}>{children}</WhatsappNoProjeteProvider>
           </main>
         </Providers>
       </body>

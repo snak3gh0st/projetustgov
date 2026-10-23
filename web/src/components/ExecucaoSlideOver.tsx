@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatCNPJ, formatCompactCurrency, formatDate, whatsappMeUrlFromTelefone } from '@/lib/format'
+import { formatCNPJ, formatCompactCurrency, formatDate } from '@/lib/format'
+import { useLinkWhatsappFn } from '@/components/whatsapp/WhatsappNoProjete'
 import ContactNotesTimeline from '@/components/ContactNotesTimeline'
 import { formatCrmStatusLabel, normalizeCrmStatus } from '@/lib/crm-catalog'
 import SlideOver, { SlideOverSection } from '@/components/ui/SlideOver'
@@ -101,6 +102,7 @@ export default function ExecucaoSlideOver({
   onClose,
 }: ExecucaoSlideOverProps) {
   const router = useRouter()
+  const linkWhatsapp = useLinkWhatsappFn()
   const toast = useToast()
   const [detailRows, setDetailRows] = useState<ExecucaoDetailRow[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
@@ -269,7 +271,8 @@ export default function ExecucaoSlideOver({
     headerRef.current = { cnpj, nomeProponente, temAlerta, contactPresent, totalValorGlobal, totalPropostas, tagAutossuficiente, tagIniciante, tagDesembolso, tagLobby, tagRendimento }
   }
   const h = headerRef.current
-  const whatsappContact = contacts.find(c => c.principal && c.telefone && whatsappMeUrlFromTelefone(c.telefone)) || contacts.find(c => c.telefone && whatsappMeUrlFromTelefone(c.telefone))
+  const whatsappContact = contacts.find(c => c.principal && linkWhatsapp(c.telefone)) || contacts.find(c => linkWhatsapp(c.telefone))
+  const whatsappPrincipal = whatsappContact ? linkWhatsapp(whatsappContact.telefone, cnpj) : null
   const emailContact = contacts.find(c => c.principal && c.email) || contacts.find(c => c.email)
 
   async function saveObservacoes() {
@@ -308,10 +311,11 @@ export default function ExecucaoSlideOver({
         <div className="grid grid-cols-3 gap-2">
           <button
             type="button"
-            disabled={!whatsappContact}
+            disabled={!whatsappPrincipal}
             onClick={() => {
-              const url = whatsappContact?.telefone ? whatsappMeUrlFromTelefone(whatsappContact.telefone) : null
-              if (url) window.open(url, '_blank')
+              if (!whatsappPrincipal) return
+              if (whatsappPrincipal.externo) window.open(whatsappPrincipal.href, '_blank')
+              else router.push(whatsappPrincipal.href)
             }}
             className={buttonClass('secondary', 'md', 'w-full text-emerald-700 dark:text-emerald-300')}
           >
@@ -359,7 +363,9 @@ export default function ExecucaoSlideOver({
           <p className="text-sm text-ink-3">Nenhum contato encontrado para este CNPJ.</p>
         ) : (
           <ul className="space-y-2">
-            {contacts.map(c => (
+            {contacts.map(c => {
+              const wa = linkWhatsapp(c.telefone, cnpj)
+              return (
               <li key={c.id} className={`rounded-lg p-3 ring-1 ring-inset ${c.principal ? 'bg-accent-soft/50 ring-accent/30' : 'ring-line'}`}>
                 <div className="mb-1 flex flex-wrap items-center gap-1.5">
                   {c.nome_pessoa && <span className="text-sm font-medium text-ink">{c.nome_pessoa}</span>}
@@ -367,8 +373,8 @@ export default function ExecucaoSlideOver({
                   {c.principal && <span className="text-xs font-medium text-accent-ink">Principal</span>}
                 </div>
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                  {c.telefone && whatsappMeUrlFromTelefone(c.telefone) && (
-                    <a href={whatsappMeUrlFromTelefone(c.telefone)!} target="_blank" rel="noopener noreferrer" className="font-medium text-emerald-700 hover:underline dark:text-emerald-300" title="Conversar no WhatsApp">
+                  {c.telefone && wa && (
+                    <a href={wa.href} {...(wa.externo ? { target: '_blank', rel: 'noopener noreferrer' } : {})} className="font-medium text-emerald-700 hover:underline dark:text-emerald-300" title="Conversar no WhatsApp">
                       {c.telefone}
                     </a>
                   )}
@@ -377,7 +383,8 @@ export default function ExecucaoSlideOver({
                   )}
                 </div>
               </li>
-            ))}
+              )
+            })}
           </ul>
         )}
       </SlideOverSection>

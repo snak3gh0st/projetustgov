@@ -290,7 +290,7 @@ export default function LeadContacts({ cnpj, canModify, refreshKey, onChange }: 
                       {contact.telefone && (
                         <>
                           <span className="text-gray-700 dark:text-gray-300">{contact.telefone}</span>
-                          <WhatsAppAction telefone={contact.telefone} compact label="WhatsApp" />
+                          <WhatsAppAction telefone={contact.telefone} cnpj={cnpj} compact label="WhatsApp" />
                         </>
                       )}
                       {contact.email && (

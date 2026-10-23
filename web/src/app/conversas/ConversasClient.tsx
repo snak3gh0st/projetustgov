@@ -266,7 +266,7 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-heading text-2xl font-semibold text-ink">Conversas</h1>
+        <h1 className="font-heading text-2xl font-semibold text-ink">WhatsApp</h1>
         {gestao && <Link href="/conversas/conexao" className={buttonClass('secondary', 'sm')}>Conexão do WhatsApp</Link>}
       </div>
       {estado && estado !== 'conectado' && <AvisoDesconectado gestao={gestao} />}

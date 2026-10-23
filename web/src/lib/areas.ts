@@ -40,7 +40,7 @@ const AREA_NAV: Record<AreaId, Item[]> = {
     { href: '/', label: 'Pipeline', icon: 'pipeline', roles: SELLERS.filter((r) => r !== 'vendedor' && r !== 'diretoria') },
     { href: '/meu-dia', label: 'Meu dia', icon: 'hoje', roles: ['coordenador'] },
     { href: '/leads', label: 'Leads', icon: 'leads', roles: SELLERS },
-    { href: '/conversas', label: 'Conversas', icon: 'conversas', roles: ['vendedor', 'coordenador', 'gestor', 'diretoria', 'admin'], requires: 'whatsapp' },
+    { href: '/conversas', label: 'WhatsApp', icon: 'conversas', roles: ['vendedor', 'coordenador', 'gestor', 'diretoria', 'admin'], requires: 'whatsapp' },
     { href: '/operacao', label: 'Operação', icon: 'tgov', roles: ['vendedor', 'coordenador'] },
     { href: '/csm', label: 'CSM Clientes', icon: 'csm', roles: CSM_VIEW },
     { href: '/csm/comissoes', label: 'Comissões CSM', icon: 'comissoes', roles: CSM_VIEW },

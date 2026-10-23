@@ -20,7 +20,7 @@ interface MobileDrawerProps {
     email?: string | null
   }
   preferredArea?: string | null
-  /** Canal de WhatsApp ligado (mostra Conversas). */
+  /** Canal de WhatsApp ligado (mostra a página WhatsApp). */
   whatsapp?: boolean
 }
 
