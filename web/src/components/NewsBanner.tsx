@@ -6,6 +6,14 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.21',
+    items: [
+      'TGov: cada rubrica tem um campo de observação opcional',
+      'TGov: a coordenação da Aprovação aprova as rubricas pelo botão "Aprovar rubricas"; a Execução passa a ver as linhas aprovadas para basear as parcelas',
+      'TGov: quando o Comercial não tem o valor do contrato, a Aprovação informa o valor direto no card da proposta',
+    ],
+  },
+  {
     version: 'v1.20',
     items: [
       'TGov: ao salvar, a rubrica vira uma linha pronta; use a caneta para editar e o X para excluir',

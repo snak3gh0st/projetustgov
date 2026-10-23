@@ -120,6 +120,11 @@ export function canEditRubricas(role: string | undefined): boolean {
       || role === 'coord_aprovacao' || role === 'assistente_aprovacao' || role === 'projetista'
 }
 
+/** Aprovar as rubricas (libera para a Execução): coordenação da Aprovação e adm. de produto. */
+export function canAprovarRubricas(role: string | undefined): boolean {
+  return role === 'diretoria' || role === 'admin' || role === 'adm_produto' || role === 'coord_aprovacao'
+}
+
 export function canWriteTgov(role: string | undefined): boolean {
   return role === 'diretoria' || role === 'admin' || role === 'adm_produto'
       || role === 'coord_aprovacao' || role === 'assistente_aprovacao'

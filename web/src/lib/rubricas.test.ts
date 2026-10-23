@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { parseCurrencyInput } from './format'
-import { MAX_RUBRICAS, parseRubricas, totalLinha, totalRubricas } from './rubricas'
+import { MAX_OBSERVACAO, MAX_RUBRICAS, parseRubricas, totalLinha, totalRubricas } from './rubricas'
 
 test('total da linha é meses × valor unitário', () => {
   assert.equal(totalLinha({ meses: 12, valorUnitario: 3500 }), 42000)
@@ -21,13 +21,13 @@ test('total das rubricas soma as linhas sem erro de centavos', () => {
 
 test('parseRubricas normaliza linhas válidas', () => {
   const result = parseRubricas([
-    { cargo: '  Engenheiro civil ', meses: 6, valorUnitario: 8000.005 },
+    { cargo: '  Engenheiro civil ', meses: 6, valorUnitario: 8000.005, observacao: ' pago em 3 parcelas ' },
     { cargo: 'Assistente', meses: 12, valorUnitario: 2500 },
   ])
   assert.deepEqual(result, {
     linhas: [
-      { cargo: 'Engenheiro civil', meses: 6, valorUnitario: 8000.01 },
-      { cargo: 'Assistente', meses: 12, valorUnitario: 2500 },
+      { cargo: 'Engenheiro civil', meses: 6, valorUnitario: 8000.01, observacao: 'pago em 3 parcelas' },
+      { cargo: 'Assistente', meses: 12, valorUnitario: 2500, observacao: '' },
     ],
   })
 })
@@ -41,6 +41,8 @@ test('parseRubricas recusa linhas incompletas', () => {
   // valor vazio chega como null no JSON e não pode virar zero
   assert.match((parseRubricas([{ cargo: 'A', meses: 1, valorUnitario: null }]) as { error: string }).error, /valor/)
   assert.match((parseRubricas([{ cargo: 'A', meses: 1, valorUnitario: '10' }]) as { error: string }).error, /valor/)
+  assert.match((parseRubricas([{ cargo: 'A', meses: 1, valorUnitario: 1, observacao: 5 }]) as { error: string }).error, /observação/)
+  assert.match((parseRubricas([{ cargo: 'A', meses: 1, valorUnitario: 1, observacao: 'x'.repeat(MAX_OBSERVACAO + 1) }]) as { error: string }).error, /observação/)
   assert.match((parseRubricas(Array(MAX_RUBRICAS + 1).fill({ cargo: 'A', meses: 1, valorUnitario: 1 })) as { error: string }).error, /Máximo/)
 })
 

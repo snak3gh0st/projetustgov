@@ -1,37 +1,51 @@
 'use client'
 
 import { Fragment, useEffect, useState } from 'react'
-import { formatCurrencyFull, parseCurrencyInput } from '@/lib/format'
-import { totalLinha, totalRubricas, type Rubrica } from '@/lib/rubricas'
+import { formatCurrencyFull, formatDate, parseCurrencyInput } from '@/lib/format'
+import { MAX_OBSERVACAO, totalLinha, totalRubricas, type Rubrica } from '@/lib/rubricas'
 
 // ---------------------------------------------------------------------------
-// RubricasPanel — linhas de cargo/meses/valor da proposta.
+// RubricasPanel — linhas de cargo/meses/valor (e observação) da proposta.
 // mode="edit": time de Aprovação adiciona, edita (caneta) e exclui (X); cada
-// ação grava na hora e a linha volta a ser só texto. mode="total": Execução só vê.
+// ação grava na hora e a linha volta a ser só texto. A coordenação aprova, e
+// salvar as linhas de novo tira a aprovação. mode="execucao": só leitura, e
+// só depois de aprovadas.
 // ---------------------------------------------------------------------------
 
 interface LinhaForm {
   cargo: string
   meses: string
   valor: string
+  observacao: string
+}
+
+interface Aprovacao {
+  por: string | null
+  em: string
 }
 
 // 'new' = linha sendo adicionada; número = índice da linha salva em edição.
 type Editing = { index: number | 'new'; form: LinhaForm } | null
 
-const EMPTY_FORM: LinhaForm = { cargo: '', meses: '', valor: '' }
+const EMPTY_FORM: LinhaForm = { cargo: '', meses: '', valor: '', observacao: '' }
 
 function toForm(r: Rubrica): LinhaForm {
   return {
     cargo: r.cargo,
     meses: String(r.meses),
     valor: r.valorUnitario.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    observacao: r.observacao,
   }
 }
 
 // Valor que não dá para ler fica NaN (não zero): o salvar avisa em vez de gravar 0.
 function toRubrica(f: LinhaForm): Rubrica {
-  return { cargo: f.cargo.trim(), meses: Number(f.meses), valorUnitario: parseCurrencyInput(f.valor) }
+  return {
+    cargo: f.cargo.trim(),
+    meses: Number(f.meses),
+    valorUnitario: parseCurrencyInput(f.valor),
+    observacao: f.observacao.trim(),
+  }
 }
 
 function validate(r: Rubrica): string | null {
@@ -54,6 +68,9 @@ function RubricaLinha({ r, actions }: { r: Rubrica; actions?: React.ReactNode })
         <span className="text-gray-400 dark:text-gray-500">
           {' · '}{r.meses} {r.meses === 1 ? 'mês' : 'meses'} × {formatCurrencyFull(r.valorUnitario)}
         </span>
+        {r.observacao && (
+          <span className="block text-[11px] text-gray-500 dark:text-gray-400 whitespace-pre-line">{r.observacao}</span>
+        )}
       </span>
       <span className="flex shrink-0 items-center gap-1">
         <span className="font-medium tabular-nums text-gray-900 dark:text-gray-100">{formatCurrencyFull(totalLinha(r))}</span>
@@ -63,9 +80,11 @@ function RubricaLinha({ r, actions }: { r: Rubrica; actions?: React.ReactNode })
   )
 }
 
-export default function RubricasPanel({ nrProposta, mode }: { nrProposta: string; mode: 'edit' | 'total' }) {
+export default function RubricasPanel({ nrProposta, mode }: { nrProposta: string; mode: 'edit' | 'execucao' }) {
   const [saved, setSaved] = useState<Rubrica[]>([])
+  const [aprovacao, setAprovacao] = useState<Aprovacao | null>(null)
   const [canEdit, setCanEdit] = useState(false)
+  const [canAprovar, setCanAprovar] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [editing, setEditing] = useState<Editing>(null)
@@ -80,12 +99,14 @@ export default function RubricasPanel({ nrProposta, mode }: { nrProposta: string
     fetch(`/api/tgov/rubricas?nr_proposta=${encodeURIComponent(nrProposta)}`)
       .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json() as Promise<{ linhas: Rubrica[]; canEdit: boolean }>
+        return res.json() as Promise<{ linhas: Rubrica[]; aprovacao: Aprovacao | null; canEdit: boolean; canAprovar: boolean }>
       })
       .then((data) => {
         if (cancelled) return
         setSaved(data.linhas)
+        setAprovacao(data.aprovacao)
         setCanEdit(data.canEdit)
+        setCanAprovar(data.canAprovar)
       })
       .catch(() => { if (!cancelled) setLoadError('Erro ao carregar rubricas') })
       .finally(() => { if (!cancelled) setLoading(false) })
@@ -93,7 +114,9 @@ export default function RubricasPanel({ nrProposta, mode }: { nrProposta: string
   }, [nrProposta])
 
   const editable = mode === 'edit' && canEdit
-  const total = totalRubricas(saved)
+  // Na Execução, rubrica pendente de aprovação não aparece.
+  const visible = mode === 'execucao' && !aprovacao ? [] : saved
+  const total = totalRubricas(visible)
 
   // Grava a lista inteira; quem chama só fecha o formulário se o servidor aceitou.
   async function persist(linhas: Rubrica[]): Promise<boolean> {
@@ -108,6 +131,7 @@ export default function RubricasPanel({ nrProposta, mode }: { nrProposta: string
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setSaved(data.linhas)
+      setAprovacao(data.aprovacao)
       return true
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao salvar')
@@ -133,6 +157,25 @@ export default function RubricasPanel({ nrProposta, mode }: { nrProposta: string
 
   async function remove(index: number) {
     await persist(saved.filter((_, i) => i !== index))
+  }
+
+  async function aprovar() {
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/tgov/rubricas/aprovacao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nr_proposta: nrProposta, linhas: saved.length, total }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      setAprovacao(data.aprovacao)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao aprovar')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function startEditing(index: number | 'new') {
@@ -181,6 +224,15 @@ export default function RubricasPanel({ nrProposta, mode }: { nrProposta: string
           />
         </label>
       </div>
+      <textarea
+        value={editing.form.observacao}
+        onChange={(e) => updateForm({ observacao: e.target.value })}
+        placeholder="Observação (opcional)"
+        aria-label="Observação"
+        rows={2}
+        maxLength={MAX_OBSERVACAO}
+        className={`${inputClass} resize-y`}
+      />
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <button
@@ -223,15 +275,15 @@ export default function RubricasPanel({ nrProposta, mode }: { nrProposta: string
 
       {!loading && !loadError && (
         <>
-          {saved.length === 0 && editing === null && (
+          {visible.length === 0 && editing === null && (
             <p className="text-xs text-gray-400 dark:text-gray-500">
-              {mode === 'edit' ? 'Nenhuma rubrica cadastrada.' : 'Nenhuma rubrica cadastrada pela Aprovação.'}
+              {mode === 'edit' ? 'Nenhuma rubrica cadastrada.' : 'Aguardando a Aprovação cadastrar e aprovar as rubricas.'}
             </p>
           )}
 
-          {(saved.length > 0 || editing) && (
+          {(visible.length > 0 || editing) && (
             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-              {saved.map((r, i) => (
+              {visible.map((r, i) => (
                 editing?.index === i ? (
                   <Fragment key={i}>{form}</Fragment>
                 ) : (
@@ -271,6 +323,30 @@ export default function RubricasPanel({ nrProposta, mode }: { nrProposta: string
               ))}
               {editing?.index === 'new' && form}
             </ul>
+          )}
+
+          {aprovacao && visible.length > 0 && (
+            <p className="rounded-md bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1.5 text-xs text-emerald-800 dark:text-emerald-300">
+              Aprovada{aprovacao.por ? ` por ${aprovacao.por}` : ''} em {formatDate(aprovacao.em)}
+              {editable && <span className="block text-[11px] opacity-80">Alterar uma linha tira a aprovação.</span>}
+            </p>
+          )}
+
+          {mode === 'edit' && !aprovacao && saved.length > 0 && editing === null && (
+            canAprovar ? (
+              <button
+                type="button"
+                onClick={() => void aprovar()}
+                disabled={saving}
+                className="w-full rounded-lg bg-emerald-600 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+              >
+                Aprovar rubricas
+              </button>
+            ) : (
+              <p className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-800 dark:text-amber-300">
+                Aguardando aprovação. A Execução só vê as rubricas depois de aprovadas.
+              </p>
+            )
           )}
 
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
