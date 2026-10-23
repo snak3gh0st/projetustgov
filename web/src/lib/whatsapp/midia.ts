@@ -12,7 +12,28 @@ const VIDEO = ['video/mp4', 'video/3gpp', 'video/webm']
 /** Pode abrir dentro da página. Qualquer outro tipo (HTML, SVG, PDF...) só baixa: rodaria no domínio do PROJETE. */
 export function exibivel(mimetype: string): boolean {
   const b = base(mimetype)
-  return FOTO.includes(b) || VIDEO.includes(b) || /^audio\/[a-z0-9.+-]+$/.test(b)
+  // Áudio sem "+xml": audio/x+xml o navegador abriria como documento XML.
+  return FOTO.includes(b) || VIDEO.includes(b) || (/^audio\/[a-z0-9.-]+$/.test(b))
+}
+
+/**
+ * Faixa de bytes pedida no cabeçalho Range (o Safari só toca áudio e vídeo assim). null: entregar o arquivo todo
+ * (sem Range, várias faixas ou outra unidade); 'invalida': fora do arquivo (responder 416).
+ */
+export function faixaPedida(range: string | null, total: number): { inicio: number; fim: number } | null | 'invalida' {
+  const m = range?.trim().match(/^bytes=(\d*)-(\d*)$/)
+  if (!m || (!m[1] && !m[2])) return null
+  let inicio: number
+  let fim: number
+  if (!m[1]) {
+    inicio = Math.max(0, total - Number(m[2]))
+    fim = total - 1
+  } else {
+    inicio = Number(m[1])
+    fim = m[2] ? Math.min(Number(m[2]), total - 1) : total - 1
+  }
+  if (inicio >= total || inicio > fim) return 'invalida'
+  return { inicio, fim }
 }
 
 type Classificado =

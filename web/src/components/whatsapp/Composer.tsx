@@ -54,6 +54,7 @@ export function Composer({ onSend, onSendArquivo, arquivoSolto, disabled }: {
   const [segundos, setSegundos] = useState(0)
   const [voz, setVoz] = useState<File | null>(null)
   const gravadorRef = useRef<{ rec: MediaRecorder; stream: MediaStream; pedacos: Blob[]; descartar: boolean } | null>(null)
+  const iniciandoRef = useRef(false)
 
   function escolher(f: File | null | undefined) {
     if (!f) return
@@ -81,6 +82,13 @@ export function Composer({ onSend, onSendArquivo, arquivoSolto, disabled }: {
   useEffect(() => () => { gravadorRef.current?.stream.getTracks().forEach((t) => t.stop()) }, [])
 
   async function gravar() {
+    // Clique duplo não abre um segundo microfone.
+    if (iniciandoRef.current || gravadorRef.current) return
+    iniciandoRef.current = true
+    try { await iniciarGravacao() } finally { iniciandoRef.current = false }
+  }
+
+  async function iniciarGravacao() {
     const formato = formatoGravacao()
     if (!formato || !navigator.mediaDevices?.getUserMedia) { toast.error('Este navegador não grava áudio. Use o Chrome, o Edge ou o Safari.'); return }
     let stream: MediaStream
@@ -90,7 +98,14 @@ export function Composer({ onSend, onSendArquivo, arquivoSolto, disabled }: {
       toast.error('Libere o microfone para o PROJETE no navegador e tente de novo.')
       return
     }
-    const rec = new MediaRecorder(stream, { mimeType: formato.mimeType })
+    let rec: MediaRecorder
+    try {
+      rec = new MediaRecorder(stream, { mimeType: formato.mimeType })
+    } catch {
+      stream.getTracks().forEach((t) => t.stop())
+      toast.error('Não foi possível gravar neste navegador.')
+      return
+    }
     const g = { rec, stream, pedacos: [] as Blob[], descartar: false }
     rec.ondataavailable = (e) => { if (e.data.size > 0) g.pedacos.push(e.data) }
     rec.onstop = () => {

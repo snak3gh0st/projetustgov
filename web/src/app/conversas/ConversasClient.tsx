@@ -146,7 +146,13 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
   const [mensagens, setMensagens] = useState<MensagemView[] | null>(null)
   // Há mensagens mais antigas no servidor (rolar até o topo carrega mais 50).
   const [mais, setMais] = useState(false)
+  // Arrastar um arquivo para a conversa abre a prévia na caixa de envio.
+  // Guarda de qual conversa é: a caixa nova de outra conversa não pega o arquivo solto na anterior.
+  const [solto, setSolto] = useState<{ arquivo: File; conversa: number | null } | null>(null)
+  const [arrastando, setArrastando] = useState(false)
   const [carregandoAntigas, setCarregandoAntigas] = useState(false)
+  // Trava síncrona: vários eventos de rolagem antes do próximo desenho não pedem a mesma página duas vezes.
+  const antigasRef = useRef<number | null>(null)
   const [atendentes, setAtendentes] = useState<{ id: string; nome: string }[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
   // Conversa aberta agora: respostas atrasadas de outra conversa são descartadas.
@@ -171,8 +177,10 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
   // Página mais recente. Ao abrir, substitui; na atualização, junta às já carregadas (as antigas continuam).
   const carregarConversa = useCallback(async (id: number, abrir = false) => {
     const r = await fetch(`/api/whatsapp/conversas/${id}`, { cache: 'no-store' }).catch(() => null)
-    if (!r?.ok || abertaRef.current !== id) return
-    const d = await r.json() as { conversa: Conversa; mensagens: MensagemView[]; mais: boolean }
+    if (!r?.ok) return
+    const d = await r.json().catch(() => null) as { conversa: Conversa; mensagens: MensagemView[]; mais: boolean } | null
+    // Conferido depois do corpo chegar: a pessoa pode ter trocado de conversa enquanto ele baixava.
+    if (!d || abertaRef.current !== id) return
     setAtiva(d.conversa)
     if (abrir) {
       rolagemRef.current = { modo: 'fim' }
@@ -188,19 +196,23 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
   const carregarAntigas = useCallback(async () => {
     const id = abertaRef.current
     const primeira = mensagens?.[0]
-    if (!id || !primeira || !mais || carregandoAntigas) return
+    if (!id || !primeira || !mais || antigasRef.current === id) return
+    antigasRef.current = id
     setCarregandoAntigas(true)
     const q = new URLSearchParams({ antes: primeira.enviada_em, antes_id: String(primeira.id) })
     const r = await fetch(`/api/whatsapp/conversas/${id}?${q}`, { cache: 'no-store' }).catch(() => null)
+    const d = r?.ok ? await r.json().catch(() => null) as { mensagens: MensagemView[]; mais: boolean } | null : null
+    // Trocou de conversa no meio: descarta (a trava e o aviso já são da conversa nova).
+    if (abertaRef.current !== id) return
+    antigasRef.current = null
     setCarregandoAntigas(false)
-    if (!r?.ok || abertaRef.current !== id) return
-    const d = await r.json() as { mensagens: MensagemView[]; mais: boolean }
+    if (!d) return
     const el = scrollRef.current
     // Mantém na tela a mensagem que a pessoa estava vendo: o conteúdo novo entra acima dela.
     if (el) rolagemRef.current = { modo: 'manter', altura: el.scrollHeight, topo: el.scrollTop }
     setMensagens((prev) => juntarMensagens(prev ?? [], d.mensagens))
     setMais(d.mais)
-  }, [mensagens, mais, carregandoAntigas])
+  }, [mensagens, mais])
 
   function aoRolar() {
     const el = scrollRef.current
@@ -222,6 +234,11 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
 
   useEffect(() => {
     abertaRef.current = ativaId
+    // A conversa anterior sai de cena na hora: nada é enviado para ela enquanto a nova carrega.
+    setAtiva(null)
+    setSolto(null)
+    antigasRef.current = null
+    setCarregandoAntigas(false)
     if (!ativaId) return
     setMensagens(null)
     setMais(false)
@@ -292,7 +309,11 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
     return () => { window.removeEventListener('resize', medir); obs.disconnect() }
   }, [])
 
+  // Conversa escolhida que ainda não carregou: espera (senão o envio iria pelo telefone da URL).
+  const carregando = () => { if (ativaId && !ativa) { toast.error('Espere a conversa carregar e envie de novo.'); return true } return false }
+
   async function enviar(texto: string): Promise<boolean> {
+    if (carregando()) return false
     const body = ativa ? { conversa_id: ativa.id, texto } : { telefone: novoTelefone, cnpj: novoCnpj, texto }
     const r = await fetch('/api/whatsapp/enviar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null)
     const d = r ? await r.json().catch(() => ({})) : {}
@@ -304,6 +325,7 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
   }
 
   async function enviarArquivo(arquivo: File, opts: { voz: boolean; legenda: string | null }): Promise<boolean> {
+    if (carregando()) return false
     const form = new FormData()
     if (ativa) form.set('conversa_id', String(ativa.id))
     else { form.set('telefone', novoTelefone ?? ''); form.set('cnpj', novoCnpj ?? '') }
@@ -319,9 +341,6 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
     return true
   }
 
-  // Arrastar um arquivo para a conversa abre a prévia na caixa de envio.
-  const [arquivoSolto, setArquivoSolto] = useState<File | null>(null)
-  const [arrastando, setArrastando] = useState(false)
 
   async function alterar(patch: { atendente_id?: string | null; lead_cnpj?: string | null; arquivar?: boolean }) {
     if (!ativa) return
@@ -378,7 +397,7 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
           aria-label="Conversa"
           onDragOver={(e) => { if (mostrarConversa && e.dataTransfer.types.includes('Files')) { e.preventDefault(); setArrastando(true) } }}
           onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setArrastando(false) }}
-          onDrop={(e) => { e.preventDefault(); setArrastando(false); const f = e.dataTransfer.files?.[0]; if (f) setArquivoSolto(f) }}
+          onDrop={(e) => { e.preventDefault(); setArrastando(false); const f = e.dataTransfer.files?.[0]; if (f) setSolto({ arquivo: f, conversa: ativaId }) }}
         >
           {arrastando && (
             <div className="pointer-events-none absolute inset-2 z-20 flex items-center justify-center rounded-xl border-2 border-dashed border-accent bg-accent-soft/80 text-sm font-medium text-accent-ink">
@@ -423,7 +442,8 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
                   </>
                 )}
               </div>
-              <Composer onSend={enviar} onSendArquivo={enviarArquivo} arquivoSolto={arquivoSolto} />
+              {/* Uma caixa por conversa: anexo, voz e rascunho não passam para a próxima. */}
+              <Composer key={ativaId ?? `novo-${novoTelefone}`} onSend={enviar} onSendArquivo={enviarArquivo} arquivoSolto={solto?.conversa === ativaId ? solto.arquivo : null} />
             </>
           ) : (
             <p className="m-auto p-10 text-center text-sm text-ink-3">Escolha uma conversa na lista.</p>

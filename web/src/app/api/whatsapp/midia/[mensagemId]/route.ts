@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { conversaVisivel, whatsappGuard } from '@/lib/whatsapp/api'
 import { mediaBase64 } from '@/lib/whatsapp/evolution'
-import { exibivel } from '@/lib/whatsapp/midia'
+import { exibivel, faixaPedida } from '@/lib/whatsapp/midia'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,8 +27,17 @@ export async function GET(request: Request, { params }: { params: { mensagemId: 
     const nome = msg.midia?.fileName || `whatsapp-${msg.tipo}.${EXT[base] ?? (base.startsWith('audio/') ? 'ogg' : 'bin')}`
     // Na página só foto, áudio e vídeo; o resto (HTML, SVG, PDF...) sempre baixa.
     const naPagina = new URL(request.url).searchParams.get('ver') === '1' && exibivel(base)
-    return new NextResponse(Buffer.from(base64.replace(/^data:[^,]+,/, ''), 'base64'), {
+    const arquivo = Buffer.from(base64.replace(/^data:[^,]+,/, ''), 'base64')
+    // O Safari toca áudio e vídeo pedindo pedaços (Range); sem a resposta 206 o player não abre.
+    const faixa = naPagina ? faixaPedida(request.headers.get('range'), arquivo.length) : null
+    if (faixa === 'invalida') {
+      return new NextResponse(null, { status: 416, headers: { 'Content-Range': `bytes */${arquivo.length}` } })
+    }
+    return new NextResponse(faixa ? arquivo.subarray(faixa.inicio, faixa.fim + 1) : arquivo, {
+      status: faixa ? 206 : 200,
       headers: {
+        'Accept-Ranges': naPagina ? 'bytes' : 'none',
+        ...(faixa ? { 'Content-Range': `bytes ${faixa.inicio}-${faixa.fim}/${arquivo.length}` } : {}),
         'Content-Type': base,
         // filename em ASCII para navegadores antigos; filename* leva o nome com acentos.
         'Content-Disposition': `${naPagina ? 'inline' : 'attachment'}; filename="${nome.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '')}"; filename*=UTF-8''${encodeURIComponent(nome)}`,
