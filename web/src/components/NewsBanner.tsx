@@ -6,6 +6,12 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.20',
+    items: [
+      'TGov: ao salvar, a rubrica vira uma linha pronta; use a caneta para editar e o X para excluir',
+    ],
+  },
+  {
     version: 'v1.19',
     items: [
       'TGov: as rubricas salvam o valor unitário digitado com R$ (antes ficava zerado)',
