@@ -6,8 +6,8 @@ import { parseRubricas, totalRubricas, type Rubrica } from '@/lib/rubricas'
 export const dynamic = 'force-dynamic'
 
 async function loadRubricas(nrProposta: string): Promise<Rubrica[]> {
-  const rows = await query<{ cargo: string; meses: number; data_inicio: string | null; valor_unitario: string }>(
-    `SELECT cargo, meses, data_inicio::text AS data_inicio, valor_unitario
+  const rows = await query<{ cargo: string; meses: number; valor_unitario: string }>(
+    `SELECT cargo, meses, valor_unitario
      FROM tgov_rubricas
      WHERE nr_proposta = $1
      ORDER BY ordem`,
@@ -16,7 +16,6 @@ async function loadRubricas(nrProposta: string): Promise<Rubrica[]> {
   return rows.map(r => ({
     cargo: r.cargo,
     meses: Number(r.meses),
-    dataInicio: r.data_inicio,
     valorUnitario: Number(r.valor_unitario),
   }))
 }
@@ -72,9 +71,9 @@ export async function PUT(request: NextRequest) {
       for (let i = 0; i < parsed.linhas.length; i++) {
         const r = parsed.linhas[i]
         await client.query(
-          `INSERT INTO tgov_rubricas (nr_proposta, ordem, cargo, meses, data_inicio, valor_unitario, updated_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [nrProposta, i, r.cargo, r.meses, r.dataInicio, r.valorUnitario, session.userId],
+          `INSERT INTO tgov_rubricas (nr_proposta, ordem, cargo, meses, valor_unitario, updated_by)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [nrProposta, i, r.cargo, r.meses, r.valorUnitario, session.userId],
         )
       }
       await client.query('COMMIT')

@@ -6,6 +6,13 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.19',
+    items: [
+      'TGov: as rubricas salvam o valor unitário digitado com R$ (antes ficava zerado)',
+      'TGov: a rubrica não pede mais data de início — só cargo, meses e valor unitário',
+    ],
+  },
+  {
     version: 'v1.18',
     items: [
       'TGov: o card da proposta tem Rubricas no lugar do CRM Interno — adicione linhas com cargo, meses, data de início e valor unitário, e o total sai somado',

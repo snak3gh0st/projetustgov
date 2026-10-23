@@ -1,12 +1,11 @@
-// Rubricas da proposta (time de Aprovação): cargo, meses, data de início e
-// valor unitário por linha. Total da linha = meses × valor unitário; o total
+// Rubricas da proposta (time de Aprovação): cargo, meses e valor unitário
+// por linha. Total da linha = meses × valor unitário; o total
 // das rubricas é a soma das linhas. Contas em centavos para não somar erro
 // de ponto flutuante.
 
 export interface Rubrica {
   cargo: string
   meses: number
-  dataInicio: string | null // YYYY-MM-DD
   valorUnitario: number
 }
 
@@ -25,8 +24,6 @@ export function totalLinha(r: Pick<Rubrica, 'meses' | 'valorUnitario'>): number 
 export function totalRubricas(linhas: Pick<Rubrica, 'meses' | 'valorUnitario'>[]): number {
   return linhas.reduce((acc, r) => acc + cents(totalLinha(r)), 0) / 100
 }
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 /** Valida o corpo do PUT. Devolve as linhas normalizadas ou a mensagem de erro. */
 export function parseRubricas(input: unknown): { linhas: Rubrica[] } | { error: string } {
@@ -48,20 +45,13 @@ export function parseRubricas(input: unknown): { linhas: Rubrica[] } | { error: 
       return { error: `Linha ${n}: meses deve ser um número inteiro maior que zero` }
     }
 
-    const valorUnitario = Number(raw.valorUnitario)
-    if (!Number.isFinite(valorUnitario) || valorUnitario < 0 || valorUnitario > 1e10) {
+    // Sem conversão: null/'' viraria 0 e salvaria um valor que ninguém digitou.
+    const valorUnitario = raw.valorUnitario
+    if (typeof valorUnitario !== 'number' || !Number.isFinite(valorUnitario) || valorUnitario < 0 || valorUnitario > 1e10) {
       return { error: `Linha ${n}: valor unitário inválido` }
     }
 
-    let dataInicio: string | null = null
-    if (raw.dataInicio != null && raw.dataInicio !== '') {
-      if (typeof raw.dataInicio !== 'string' || !DATE_RE.test(raw.dataInicio) || isNaN(Date.parse(raw.dataInicio))) {
-        return { error: `Linha ${n}: data inválida` }
-      }
-      dataInicio = raw.dataInicio
-    }
-
-    linhas.push({ cargo, meses, dataInicio, valorUnitario: cents(valorUnitario) / 100 })
+    linhas.push({ cargo, meses, valorUnitario: cents(valorUnitario) / 100 })
   }
   return { linhas }
 }

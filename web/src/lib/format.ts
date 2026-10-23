@@ -95,9 +95,9 @@ export function googleCalendarEventUrl(opts: {
   return `https://calendar.google.com/calendar/render?${params.toString()}`
 }
 
-/** Lê valor digitado em reais ("1.234,56", "1234.56", "1.234"); NaN se vazio. */
+/** Lê valor digitado em reais ("R$ 1.234,56", "1234.56", "1.234"); NaN se vazio ou inválido. */
 export function parseCurrencyInput(raw: string): number {
-  const trimmed = raw.trim()
+  const trimmed = raw.replace(/[^\d.,-]/g, '')
   if (!trimmed) return NaN
   const digitsOnly = trimmed.replace(/\D/g, '')
   if (!digitsOnly) return NaN
