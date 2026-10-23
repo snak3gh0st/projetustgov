@@ -13,8 +13,9 @@ export default auth((req) => {
     '/api/migrate',
     '/api/cron',
     '/api/integrations/conta-azul/callback',
-    // Evolution API chama sem sessão; a rota confere o segredo no cabeçalho.
+    // Evolution API chama sem sessão; as rotas conferem o segredo no cabeçalho.
     '/api/whatsapp/webhook',
+    '/api/whatsapp/importar',
   ]
   const isPublic = publicPaths.some(path => pathname.startsWith(path))
 

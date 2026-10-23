@@ -26,13 +26,16 @@ export async function POST(request: NextRequest) {
 
   let destino: string | null = null
   let jid: string | null = null
+  let lid: string | null = null
   // CNPJ a ligar explicitamente: só a gestão, quando o telefone é de mais de um lead.
   let ligarA: string | null = null
   if (body.conversa_id) {
     const conversa = await conversaVisivel(Number(body.conversa_id), session, cfg)
     if (!conversa) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    destino = canonicalPhone(conversa.telefone)
+    // Conversa sem telefone (só o lid do WhatsApp) guarda o JID no lugar do telefone.
+    destino = conversa.telefone.includes('@') ? null : canonicalPhone(conversa.telefone)
     jid = conversa.jid
+    lid = conversa.lid
   } else {
     destino = canonicalPhone(body.telefone)
     if (!destino) return NextResponse.json({ error: 'Telefone inválido.' }, { status: 400 })
@@ -68,7 +71,7 @@ export async function POST(request: NextRequest) {
 
   const numero = destino ?? jid!
   const base = {
-    kind: 'mensagem' as const, instancia: cfg.instance, telefone: destino, jid: destino ? `${destino}@s.whatsapp.net` : jid!,
+    kind: 'mensagem' as const, instancia: cfg.instance, telefone: destino, jid: destino ? `${destino}@s.whatsapp.net` : jid!, lid,
     nome: null, fromMe: true, texto, tipo: 'texto' as const, midia: null, enviadaEm: new Date().toISOString(),
   }
   const ligar = (conversaId: number) => ligarA

@@ -6,12 +6,14 @@ export type MensagemTipo = 'texto' | 'imagem' | 'audio' | 'video' | 'documento' 
 
 export type WebhookEvent =
   | {
-      kind: 'mensagem'; instancia: string; waId: string; telefone: string | null; jid: string; nome: string | null
+      // lid: identificador do contato no WhatsApp (…@lid), quando vier; o histórico só tem ele.
+      kind: 'mensagem'; instancia: string; waId: string; telefone: string | null; jid: string; lid: string | null; nome: string | null
       fromMe: boolean; texto: string | null; tipo: MensagemTipo; midia: { mimetype?: string; fileName?: string } | null; enviadaEm: string
     }
   | { kind: 'status'; instancia: string; waId: string; status: 'enviada' | 'entregue' | 'lida' | 'falhou' }
   | { kind: 'conexao'; instancia: string; estado: 'conectado' | 'conectando' | 'desconectado' }
   | { kind: 'qrcode'; instancia: string; base64: string }
+  | { kind: 'etiqueta'; instancia: string; chatJid: string; labelId: string; tipo: 'add' | 'remove' }
   | { kind: 'ignorado'; motivo: string }
 
 type Obj = Record<string, unknown>
@@ -31,11 +33,14 @@ const ESTADO: Record<string, 'conectado' | 'conectando' | 'desconectado'> = {
   open: 'conectado', connecting: 'conectando', close: 'desconectado', refused: 'desconectado',
 }
 
-function parseMessage(instancia: string, d: unknown): WebhookEvent {
+/** Uma mensagem no formato do Evolution: o data de messages.upsert ou um registro de /chat/findMessages. */
+export function parseMensagem(instancia: string, d: unknown): WebhookEvent {
   if (!isObj(d) || !isObj(d.key) || !isObj(d.message)) return { kind: 'ignorado', motivo: 'mensagem sem chave' }
   const k = d.key
   let jid = str(k.remoteJid)
-  if (jid?.endsWith('@lid') && str(k.remoteJidAlt)) jid = str(k.remoteJidAlt)
+  const alt = str(k.remoteJidAlt)
+  const lid = jid?.endsWith('@lid') ? jid : alt?.endsWith('@lid') ? alt : null
+  if (jid?.endsWith('@lid') && alt) jid = alt
   const waId = str(k.id)
   if (!jid || !waId) return { kind: 'ignorado', motivo: 'mensagem sem contato' }
   if (jid.endsWith('@g.us') || jid.endsWith('@broadcast') || jid.endsWith('@newsletter')) {
@@ -68,6 +73,7 @@ function parseMessage(instancia: string, d: unknown): WebhookEvent {
     waId,
     telefone: phoneFromJid(jid),
     jid,
+    lid,
     // pushName de mensagem enviada é o nome do próprio número, não do contato.
     nome: fromMe ? null : str(d.pushName),
     fromMe,
@@ -87,7 +93,7 @@ export function parseWebhook(body: unknown): WebhookEvent[] {
   switch (event) {
     case 'MESSAGES_UPSERT': {
       const list = Array.isArray(data) ? data : isObj(data) && Array.isArray(data.messages) ? data.messages : [data]
-      return list.map((d) => parseMessage(instancia, d))
+      return list.map((d) => parseMensagem(instancia, d))
     }
     case 'MESSAGES_UPDATE': {
       const list = Array.isArray(data) ? data : [data]
@@ -105,6 +111,12 @@ export function parseWebhook(body: unknown): WebhookEvent[] {
     case 'QRCODE_UPDATED': {
       const base64 = isObj(data) && isObj(data.qrcode) ? str(data.qrcode.base64) : null
       return [base64 ? { kind: 'qrcode', instancia, base64 } : { kind: 'ignorado', motivo: 'qrcode vazio' }]
+    }
+    case 'LABELS_ASSOCIATION': {
+      const chatJid = isObj(data) ? str(data.chatId) : null
+      const labelId = isObj(data) && (typeof data.labelId === 'string' || typeof data.labelId === 'number') ? String(data.labelId) : null
+      const tipo = isObj(data) && (data.type === 'add' || data.type === 'remove') ? data.type : null
+      return [chatJid && labelId && tipo ? { kind: 'etiqueta', instancia, chatJid, labelId, tipo } : { kind: 'ignorado', motivo: 'etiqueta incompleta' }]
     }
     default:
       return [{ kind: 'ignorado', motivo: `evento ${event || 'vazio'}` }]

@@ -27,10 +27,19 @@ export function conversationScopeSql(role: string, userParam: string, alias = 'w
     WHERE vp.vendedor_id = ${userParam} OR vp.closer_id = ${userParam}))`
 }
 
-/** A última mensagem é do contato e ninguém respondeu depois. */
-export function aguardandoResposta(c: { ultima_recebida_em: string | null; ultima_enviada_em: string | null }): boolean {
+/** A última mensagem é do contato, ninguém respondeu depois e ela não veio do histórico importado. */
+export function aguardandoResposta(c: { ultima_recebida_em: string | null; ultima_enviada_em: string | null; historico_ate?: string | null }): boolean {
   if (!c.ultima_recebida_em) return false
-  return !c.ultima_enviada_em || new Date(c.ultima_recebida_em).getTime() > new Date(c.ultima_enviada_em).getTime()
+  const recebida = new Date(c.ultima_recebida_em).getTime()
+  if (c.historico_ate && recebida <= new Date(c.historico_ate).getTime()) return false
+  return !c.ultima_enviada_em || recebida > new Date(c.ultima_enviada_em).getTime()
+}
+
+/** A mesma regra de aguardandoResposta, em SQL. */
+export function aguardandoSql(alias = 'wc'): string {
+  return `(${alias}.ultima_recebida_em IS NOT NULL
+    AND (${alias}.ultima_enviada_em IS NULL OR ${alias}.ultima_recebida_em > ${alias}.ultima_enviada_em)
+    AND (${alias}.historico_ate IS NULL OR ${alias}.ultima_recebida_em > ${alias}.historico_ate))`
 }
 
 /** Quem responde: o atendente direcionado; sem direcionamento, os donos do lead (que continuam vendo de todo jeito). */

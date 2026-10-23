@@ -4,6 +4,8 @@
 //   node scripts/dev-db/evolution-mock.mjs                     # servidor em http://127.0.0.1:8085
 //   node scripts/dev-db/evolution-mock.mjs inbound 61998765432 "Bom dia" [Nome]   # mensagem de um contato
 //   MOCK_STATE=close / MOCK_FAIL_SEND=1                         # simula desconectado / falha de envio
+//   POST /mock/registros [{ key, message, messageTimestamp, ... }]  # mensagens guardadas (histórico e pares lid/telefone)
+//   DELETE /mock/registros                                          # esvazia
 //
 // Usa WHATSAPP_WEBHOOK_SECRET e APP_URL (padrão http://localhost:3100) para chamar o webhook do app.
 import http from 'node:http'
@@ -45,6 +47,22 @@ const read = (req) => new Promise((resolve) => {
   req.on('end', () => { try { resolve(JSON.parse(body || '{}')) } catch { resolve({}) } })
 })
 
+// Mensagens "guardadas no banco do Evolution", para /chat/findMessages e /chat/findChats.
+let registros = []
+
+function findMessages(where = {}, page = 1, offset = 50) {
+  const k = where.key || {}
+  const ts = where.messageTimestamp || {}
+  const gte = ts.gte ? Date.parse(ts.gte) / 1000 : -Infinity
+  const lte = ts.lte ? Date.parse(ts.lte) / 1000 : Infinity
+  const lista = registros
+    .filter((r) => (!k.remoteJid && !k.remoteJidAlt) || (k.remoteJid && r.key.remoteJid === k.remoteJid) || (k.remoteJidAlt && r.key.remoteJidAlt === k.remoteJidAlt))
+    .filter((r) => r.messageTimestamp >= gte && r.messageTimestamp <= lte)
+    .sort((a, b) => b.messageTimestamp - a.messageTimestamp)
+  const records = lista.slice((page - 1) * offset, page * offset)
+  return { messages: { total: lista.length, pages: Math.ceil(lista.length / offset), currentPage: page, records } }
+}
+
 http.createServer(async (req, res) => {
   const send = (status, obj) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)) }
   const url = req.url || ''
@@ -64,6 +82,19 @@ http.createServer(async (req, res) => {
   if (url.startsWith('/instance/connectionState/')) return send(200, { instance: { instanceName: INSTANCE, state: process.env.MOCK_STATE || 'open' } })
   if (url.startsWith('/instance/connect/')) return send(200, { base64: QR, code: 'mock' })
   if (url === '/instance/create' || url.startsWith('/webhook/set/')) return send(201, { ok: true })
+  if (url === '/mock/registros' && req.method === 'POST') { registros.push(...(Array.isArray(body) ? body : [body])); return send(201, { total: registros.length }) }
+  if (url === '/mock/registros' && req.method === 'DELETE') { registros = []; return send(200, { total: 0 }) }
+  if (url.startsWith('/chat/findMessages/')) return send(200, findMessages(body.where, Number(body.page) || 1, Number(body.offset) || 50))
+  if (url.startsWith('/chat/findChats/')) {
+    // Como o Evolution: um chat por remoteJid, com o pushName da última mensagem ("Você" se for nossa).
+    const ultimas = new Map()
+    for (const r of [...registros].sort((a, b) => b.messageTimestamp - a.messageTimestamp)) {
+      if (!ultimas.has(r.key.remoteJid)) ultimas.set(r.key.remoteJid, r.key.fromMe ? 'Você' : r.pushName || null)
+    }
+    const chats = [...ultimas].map(([remoteJid, pushName]) => ({ remoteJid, pushName }))
+    const skip = Number(body.skip) || 0
+    return send(200, chats.slice(skip, body.take ? skip + Number(body.take) : undefined))
+  }
   if (url.startsWith('/chat/getBase64FromMediaMessage/')) return send(200, { base64: Buffer.from('arquivo de teste').toString('base64'), mimetype: 'text/plain' })
   send(404, { error: 'rota do mock não existe' })
 }).listen(PORT, '127.0.0.1', () => console.log(`Evolution mock em http://127.0.0.1:${PORT}`))

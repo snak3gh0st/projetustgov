@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { phoneFromJid } from './phone'
+
 // Cliente do Evolution API (serviço que mantém o número das consultorias ligado ao WhatsApp).
 
 export interface WhatsappConfig {
@@ -21,7 +23,7 @@ export function whatsappConfigured(): boolean {
   return whatsappConfig() !== null
 }
 
-const WEBHOOK_EVENTS = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE', 'QRCODE_UPDATED']
+const WEBHOOK_EVENTS = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE', 'QRCODE_UPDATED', 'LABELS_ASSOCIATION']
 
 async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown, timeoutMs = 15_000): Promise<{ status: number; data: T | null }> {
   const cfg = whatsappConfig()
@@ -83,6 +85,63 @@ export async function ensureInstanceAndQr(webhookUrl: string): Promise<{ estado:
   if (estado === 'conectado') return { estado, qrBase64: null }
   const qr = await call<{ base64?: string }>('GET', `/instance/connect/${instancePath()}`)
   return { estado, qrBase64: qr.data?.base64 ?? null }
+}
+
+/**
+ * Lid e telefone do mesmo contato, pelas mensagens ao vivo guardadas no Evolution (key.remoteJid = lid,
+ * key.remoteJidAlt = telefone). O histórico não traz o par; sem mensagem ao vivo, devolve o que se sabe.
+ */
+export async function parDoContato(jid: string, opts: { estrito?: boolean } = {}): Promise<{ lid: string | null; telefone: string | null }> {
+  const par = { lid: jid.endsWith('@lid') ? jid : null, telefone: phoneFromJid(jid) }
+  try {
+    const { status, data } = await call<{ messages?: { records?: { key?: { remoteJid?: string; remoteJidAlt?: string } }[] } }>(
+      'POST', `/chat/findMessages/${instancePath()}`, { where: { key: { remoteJid: jid, remoteJidAlt: jid } }, offset: 50, page: 1 }, 5_000
+    )
+    if (status >= 300) throw new Error(`Evolution findMessages falhou (${status})`)
+    // Só registros deste contato: um par errado uniria duas pessoas numa conversa.
+    for (const r of (data?.messages?.records ?? []).filter((x) => x.key?.remoteJid === jid || x.key?.remoteJidAlt === jid)) {
+      for (const j of [r.key?.remoteJid, r.key?.remoteJidAlt]) {
+        if (!j) continue
+        if (!par.lid && j.endsWith('@lid')) par.lid = j
+        if (!par.telefone) par.telefone = phoneFromJid(j)
+      }
+      if (par.lid && par.telefone) break
+    }
+  } catch (error) {
+    // Ao vivo, sem o Evolution segue com o que já se sabe; a importação para o chat e tenta de novo.
+    if (opts.estrito) throw error
+  }
+  return par
+}
+
+/**
+ * JIDs de todos os chats com mensagens guardadas no Evolution, ordenados pelo JID. O Evolution ordena pela última
+ * mensagem, que muda durante a importação; a ordem própria deixa as páginas estáveis.
+ */
+export async function listarChats(): Promise<{ jid: string; nome: string | null }[]> {
+  const { status, data } = await call<{ remoteJid?: string; pushName?: string | null }[]>('POST', `/chat/findChats/${instancePath()}`, {}, 60_000)
+  if (status >= 300 || !Array.isArray(data)) throw new Error(`Evolution findChats falhou (${status})`)
+  const porJid = new Map<string, string | null>()
+  // Quando a última mensagem é nossa, o Evolution põe "Você" como nome.
+  for (const c of data) if (c.remoteJid && !porJid.has(c.remoteJid)) porJid.set(c.remoteJid, c.pushName && c.pushName !== 'Você' ? c.pushName : null)
+  return Array.from(porJid, ([jid, nome]) => ({ jid, nome })).sort((a, b) => (a.jid < b.jid ? -1 : a.jid > b.jid ? 1 : 0))
+}
+
+/** Uma página (100) das mensagens de um chat entre `desde` e `ate`, mais recentes primeiro. */
+export async function mensagensDoChat(jid: string, desde: Date, ate: Date, pagina: number): Promise<{ registros: unknown[]; paginas: number }> {
+  const { status, data } = await call<{ messages?: { pages?: number; records?: { key?: { remoteJid?: string; remoteJidAlt?: string } }[] } }>(
+    'POST', `/chat/findMessages/${instancePath()}`,
+    {
+      // Os dois campos: com só um, o filtro OR do Evolution devolve as mensagens de todos os chats.
+      where: { key: { remoteJid: jid, remoteJidAlt: jid }, messageTimestamp: { gte: desde.toISOString(), lte: ate.toISOString() } },
+      offset: 100,
+      page: pagina,
+    },
+    30_000
+  )
+  if (status >= 300) throw new Error(`Evolution findMessages falhou (${status})`)
+  const registros = (data?.messages?.records ?? []).filter((r) => r.key?.remoteJid === jid || r.key?.remoteJidAlt === jid)
+  return { registros, paginas: data?.messages?.pages ?? 0 }
 }
 
 export async function mediaBase64(waId: string): Promise<{ base64: string; mimetype: string }> {
