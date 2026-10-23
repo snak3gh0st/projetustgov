@@ -11,6 +11,7 @@ import { Tag, inputClass, selectClass } from '@/components/leads/list-ui'
 import { formatCNPJ } from '@/lib/format'
 import { AvisoDesconectado } from '@/components/whatsapp/AvisoDesconectado'
 import { MensagemBolha, type MensagemView } from '@/components/whatsapp/MensagemBolha'
+import { Composer } from '@/components/whatsapp/Composer'
 import { juntarMensagens, rotuloDia } from '@/lib/whatsapp/janela'
 
 interface Conversa {
@@ -74,34 +75,6 @@ function ConversaItem({ c, ativa, onOpen }: { c: Conversa; ativa: boolean; onOpe
         {!c.lead_cnpj && !c.atendente_id && <p className="mt-1 text-xs text-ink-3">Sem lead ligado</p>}
       </button>
     </li>
-  )
-}
-
-function Composer({ onSend, disabled }: { onSend: (texto: string) => Promise<boolean>; disabled?: boolean }) {
-  const [texto, setTexto] = useState('')
-  const [enviando, setEnviando] = useState(false)
-  async function enviar() {
-    const t = texto.trim()
-    if (!t || enviando) return
-    setEnviando(true)
-    const ok = await onSend(t)
-    setEnviando(false)
-    if (ok) setTexto('')
-  }
-  return (
-    <form className="flex items-end gap-2 border-t border-line bg-surface px-3 py-3" onSubmit={(e) => { e.preventDefault(); void enviar() }}>
-      <textarea
-        aria-label="Mensagem de WhatsApp"
-        rows={1}
-        value={texto}
-        disabled={disabled}
-        onChange={(e) => setTexto(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void enviar() } }}
-        placeholder={disabled ? 'Você só pode consultar esta conversa.' : 'Escreva uma mensagem. Enter envia, Shift+Enter quebra a linha.'}
-        className={`${inputClass} max-h-40 min-h-10 flex-1 resize-y`}
-      />
-      <Button type="submit" variant="primary" disabled={disabled || enviando || !texto.trim()}>{enviando ? 'Enviando...' : 'Enviar'}</Button>
-    </form>
   )
 }
 
@@ -285,6 +258,20 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
     else el.scrollTop = r.topo + (el.scrollHeight - r.altura)
   }, [mensagens])
 
+  // Foto e vídeo terminam de carregar depois da rolagem e aumentam a conversa: quem estava no fim continua no fim.
+  const listaRef = useRef<HTMLOListElement>(null)
+  const temLista = Boolean(mensagens && mensagens.length > 0)
+  useEffect(() => {
+    const lista = listaRef.current
+    if (!lista) return
+    const obs = new ResizeObserver(() => {
+      const el = scrollRef.current
+      if (el && noFimRef.current) el.scrollTop = el.scrollHeight
+    })
+    obs.observe(lista)
+    return () => obs.disconnect()
+  }, [ativaId, temLista])
+
   // A janela ocupa a altura que sobra na tela; cada painel rola sozinho e a página não rola.
   const gradeRef = useRef<HTMLDivElement>(null)
   const [altura, setAltura] = useState<number | null>(null)
@@ -315,6 +302,26 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
     if (!r?.ok) { toast.error(d?.error ?? 'Não foi possível enviar pelo WhatsApp.'); return r?.status === 502 }
     return true
   }
+
+  async function enviarArquivo(arquivo: File, opts: { voz: boolean; legenda: string | null }): Promise<boolean> {
+    const form = new FormData()
+    if (ativa) form.set('conversa_id', String(ativa.id))
+    else { form.set('telefone', novoTelefone ?? ''); form.set('cnpj', novoCnpj ?? '') }
+    form.set('arquivo', arquivo)
+    if (opts.voz) form.set('voz', '1')
+    if (opts.legenda) form.set('legenda', opts.legenda)
+    const r = await fetch('/api/whatsapp/enviar', { method: 'POST', body: form }).catch(() => null)
+    const d = r ? await r.json().catch(() => ({})) : {}
+    if (d?.conversa_id && !ativaId) setAtivaId(Number(d.conversa_id))
+    else if (ativaId) { noFimRef.current = true; await carregarConversa(ativaId) }
+    void carregarLista()
+    if (!r?.ok) { toast.error(d?.error ?? 'Não foi possível enviar pelo WhatsApp.'); return false }
+    return true
+  }
+
+  // Arrastar um arquivo para a conversa abre a prévia na caixa de envio.
+  const [arquivoSolto, setArquivoSolto] = useState<File | null>(null)
+  const [arrastando, setArrastando] = useState(false)
 
   async function alterar(patch: { atendente_id?: string | null; lead_cnpj?: string | null; arquivar?: boolean }) {
     if (!ativa) return
@@ -366,7 +373,18 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
         </aside>
 
         {/* Conversa */}
-        <section className={`min-h-0 min-w-0 flex-col lg:flex ${mostrarConversa ? 'flex' : 'hidden'}`} aria-label="Conversa">
+        <section
+          className={`relative min-h-0 min-w-0 flex-col lg:flex ${mostrarConversa ? 'flex' : 'hidden'}`}
+          aria-label="Conversa"
+          onDragOver={(e) => { if (mostrarConversa && e.dataTransfer.types.includes('Files')) { e.preventDefault(); setArrastando(true) } }}
+          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setArrastando(false) }}
+          onDrop={(e) => { e.preventDefault(); setArrastando(false); const f = e.dataTransfer.files?.[0]; if (f) setArquivoSolto(f) }}
+        >
+          {arrastando && (
+            <div className="pointer-events-none absolute inset-2 z-20 flex items-center justify-center rounded-xl border-2 border-dashed border-accent bg-accent-soft/80 text-sm font-medium text-accent-ink">
+              Solte para enviar pelo WhatsApp
+            </div>
+          )}
           {mostrarConversa ? (
             <>
               <header className="flex items-center gap-3 border-b border-line px-4 py-3">
@@ -386,7 +404,7 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
                     {mais && (
                       <p className="pb-3 text-center text-xs text-ink-3" aria-live="polite">{carregandoAntigas ? 'Carregando mensagens anteriores...' : 'Role para cima para ver as anteriores'}</p>
                     )}
-                    <ol className="space-y-1.5" aria-label="Mensagens">
+                    <ol ref={listaRef} className="space-y-1.5" aria-label="Mensagens">
                       {mensagens!.map((m, i) => {
                         const dia = rotuloDia(m.enviada_em, agora)
                         const novoDia = i === 0 || rotuloDia(mensagens![i - 1].enviada_em, agora) !== dia
@@ -405,7 +423,7 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
                   </>
                 )}
               </div>
-              <Composer onSend={enviar} />
+              <Composer onSend={enviar} onSendArquivo={enviarArquivo} arquivoSolto={arquivoSolto} />
             </>
           ) : (
             <p className="m-auto p-10 text-center text-sm text-ink-3">Escolha uma conversa na lista.</p>
