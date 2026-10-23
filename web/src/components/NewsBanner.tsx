@@ -6,6 +6,12 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.16',
+    items: [
+      'TGov: comentários voltaram a funcionar (erro HTTP 504 corrigido) e o PROJETE ficou mais rápido',
+    ],
+  },
+  {
     version: 'v1.15',
     items: [
       'O botão WhatsApp dos leads abre a conversa no PROJETE, com o número das consultorias, em vez do WhatsApp do celular',

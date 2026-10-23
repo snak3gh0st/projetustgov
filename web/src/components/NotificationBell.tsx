@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 interface NotificationItem {
   propostaKey: string
@@ -36,11 +36,16 @@ export default function NotificationBell({ align = 'right' }: { align?: 'left' |
   const [data, setData] = useState<NotificationsData | null>(null)
   const [open, setOpen] = useState(false)
 
+  // Não empilha requisições: se a anterior ainda não voltou, pula esta rodada.
+  const inFlight = useRef(false)
   const fetchNotifications = useCallback(() => {
+    if (inFlight.current) return
+    inFlight.current = true
     fetch('/api/tgov/notifications')
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setData(d) })
       .catch(() => {})
+      .finally(() => { inFlight.current = false })
   }, [])
 
   useEffect(() => {
