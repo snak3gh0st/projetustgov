@@ -34,6 +34,15 @@ test('media keeps its type, caption and file data', () => {
   ])
 })
 
+test('media keeps size and duration when WhatsApp sends them', () => {
+  const [img] = parseWebhook(upsert({ key: key({ id: 'IMG2' }), message: { imageMessage: { mimetype: 'image/jpeg', fileLength: '34567' } }, messageTimestamp: 1 }))
+  const [audio] = parseWebhook(upsert({ key: key({ id: 'AUD2' }), message: { audioMessage: { mimetype: 'audio/ogg; codecs=opus', seconds: 7, fileLength: 9100 } }, messageTimestamp: 1 }))
+  assert.deepEqual([img, audio].map((e) => e.kind === 'mensagem' && e.midia), [
+    { mimetype: 'image/jpeg', tamanho: 34567 },
+    { mimetype: 'audio/ogg; codecs=opus', tamanho: 9100, segundos: 7 },
+  ])
+})
+
 test('groups and broadcasts are ignored', () => {
   assert.equal(parseWebhook(upsert({ key: key({ remoteJid: '120363025246125244@g.us' }), message: { conversation: 'oi' }, messageTimestamp: 1 }))[0].kind, 'ignorado')
   assert.equal(parseWebhook(upsert({ key: key({ remoteJid: 'status@broadcast' }), message: { conversation: 'oi' }, messageTimestamp: 1 }))[0].kind, 'ignorado')

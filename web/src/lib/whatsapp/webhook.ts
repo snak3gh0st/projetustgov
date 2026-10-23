@@ -3,12 +3,14 @@ import { phoneFromJid } from './phone'
 // Eventos do Evolution API (v2) traduzidos para o que o PROJETE grava. Nunca lança: corpo estranho vira 'ignorado'.
 
 export type MensagemTipo = 'texto' | 'imagem' | 'audio' | 'video' | 'documento' | 'figurinha' | 'outro'
+/** tamanho em bytes e segundos (áudio, vídeo), quando o WhatsApp manda. */
+export type MidiaInfo = { mimetype?: string; fileName?: string; tamanho?: number; segundos?: number }
 
 export type WebhookEvent =
   | {
       // lid: identificador do contato no WhatsApp (…@lid), quando vier; o histórico só tem ele.
       kind: 'mensagem'; instancia: string; waId: string; telefone: string | null; jid: string; lid: string | null; nome: string | null
-      fromMe: boolean; texto: string | null; tipo: MensagemTipo; midia: { mimetype?: string; fileName?: string } | null; enviadaEm: string
+      fromMe: boolean; texto: string | null; tipo: MensagemTipo; midia: MidiaInfo | null; enviadaEm: string
     }
   | { kind: 'status'; instancia: string; waId: string; status: 'enviada' | 'entregue' | 'lida' | 'falhou' }
   | { kind: 'conexao'; instancia: string; estado: 'conectado' | 'conectando' | 'desconectado' }
@@ -50,7 +52,7 @@ export function parseMensagem(instancia: string, d: unknown): WebhookEvent {
   const m = d.message
   let tipo: MensagemTipo = 'outro'
   let texto = str(m.conversation) ?? (isObj(m.extendedTextMessage) ? str(m.extendedTextMessage.text) : null)
-  let midia: { mimetype?: string; fileName?: string } | null = null
+  let midia: MidiaInfo | null = null
   if (texto) tipo = 'texto'
   for (const [field, t] of MEDIA) {
     const node = m[field]
@@ -58,9 +60,13 @@ export function parseMensagem(instancia: string, d: unknown): WebhookEvent {
     const inner = isObj(node.message) && isObj(node.message.documentMessage) ? node.message.documentMessage : node
     tipo = t
     texto = texto ?? str(inner.caption)
+    const tamanho = Number(inner.fileLength)
+    const segundos = Number(inner.seconds)
     midia = {
       ...(str(inner.mimetype) ? { mimetype: str(inner.mimetype)! } : {}),
       ...(str(inner.fileName) ? { fileName: str(inner.fileName)! } : {}),
+      ...(Number.isFinite(tamanho) && tamanho > 0 ? { tamanho } : {}),
+      ...(Number.isFinite(segundos) && segundos > 0 ? { segundos } : {}),
     }
     break
   }
