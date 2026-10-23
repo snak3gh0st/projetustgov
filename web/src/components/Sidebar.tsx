@@ -23,7 +23,7 @@ interface SidebarProps {
   showBell?: boolean
   /** Área escolhida por último (cookie), lida no servidor. */
   preferredArea?: string | null
-  /** Canal de WhatsApp ligado (mostra Conversas). */
+  /** Canal de WhatsApp ligado (mostra a página WhatsApp). */
   whatsapp?: boolean
 }
 

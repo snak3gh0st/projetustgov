@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { formatCNPJ, formatCompactCurrency, formatDate, whatsappMeUrlFromTelefone } from '@/lib/format'
+import { formatCNPJ, formatCompactCurrency, formatDate } from '@/lib/format'
+import { useLinkWhatsappFn } from '@/components/whatsapp/WhatsappNoProjete'
 import ExecucaoSlideOver from '@/components/ExecucaoSlideOver'
 import LeadAssignmentModal from '@/components/LeadAssignmentModal'
 import { canEditLeads } from '@/lib/roles'
@@ -92,6 +93,7 @@ export default function ExecucaoClient({
   initialStatus?: string
   initialAlertOnly?: boolean
 }) {
+  const linkWhatsapp = useLinkWhatsappFn()
   const toast = useToast()
   const isGestor = userRole === 'gestor' || userRole === 'diretoria' || userRole === 'coordenador'
   const [rows, setRows] = useState<ExecucaoAggRow[]>([])
@@ -431,7 +433,7 @@ export default function ExecucaoClient({
               <tbody className="divide-y divide-line">
                 {visibleRows.map(row => {
                   const hasContact = row.contact_telefone || row.contact_email
-                  const waUrl = row.contact_telefone ? whatsappMeUrlFromTelefone(row.contact_telefone) : null
+                  const wa = linkWhatsapp(row.contact_telefone, row.cnpj)
                   const pct = row.pct_execucao_ponderado != null ? Number(row.pct_execucao_ponderado) : null
 
                   return (
@@ -496,11 +498,10 @@ export default function ExecucaoClient({
                             {row.contact_telefone && (
                               <div className="flex items-center truncate text-xs text-ink-2">
                                 <PhoneStatusDot status={row.contact_telefone_status} />
-                                {waUrl ? (
+                                {wa ? (
                                   <a
-                                    href={waUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                    href={wa.href}
+                                    {...(wa.externo ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                                     onClick={e => e.stopPropagation()}
                                     className="truncate text-emerald-700 hover:underline dark:text-emerald-300"
                                     title="Conversar no WhatsApp"

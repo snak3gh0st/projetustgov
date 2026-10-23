@@ -559,7 +559,7 @@ export default function LeadsClient() {
                             <div className="flex items-center gap-1 truncate text-xs text-ink-2">
                               <PhoneStatusDot status={lead.principal_telefone_status} />
                               <span className="truncate">{lead.telefone}</span>
-                              <WhatsAppAction telefone={lead.telefone} compact label="WA" onClick={e => e.stopPropagation()} />
+                              <WhatsAppAction telefone={lead.telefone} cnpj={lead.cnpj} compact label="WA" onClick={e => e.stopPropagation()} />
                             </div>
                           )}
                           {lead.email && <div className="truncate text-xs text-ink-3">{lead.email}</div>}

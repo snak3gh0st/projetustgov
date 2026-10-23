@@ -50,7 +50,7 @@ export default function ConexaoClient() {
   const info = estado ? ESTADO_LABEL[estado] : null
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      <Link href="/conversas" className="text-sm text-ink-3 hover:text-ink">Voltar para Conversas</Link>
+      <Link href="/conversas" className="text-sm text-ink-3 hover:text-ink">Voltar para o WhatsApp</Link>
       <PageHeader title="Conexão do WhatsApp" description="Número das consultorias ligado ao PROJETE." />
       <Panel>
         <div className="space-y-4">

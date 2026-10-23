@@ -1,10 +1,12 @@
 'use client'
 
-import { whatsappMeUrlFromTelefone } from '@/lib/format'
+import { useLinkWhatsapp } from '@/components/whatsapp/WhatsappNoProjete'
 import type { MouseEventHandler } from 'react'
 
 interface WhatsAppActionProps {
   telefone: string | null | undefined
+  /** Lead do telefone: a conversa aberta no PROJETE já fica ligada a ele. */
+  cnpj?: string | null
   label?: string
   compact?: boolean
   className?: string
@@ -21,14 +23,15 @@ function WhatsAppIcon() {
 
 export default function WhatsAppAction({
   telefone,
+  cnpj,
   label = 'WhatsApp',
   compact = false,
   className = '',
   onClick,
 }: WhatsAppActionProps) {
-  const href = whatsappMeUrlFromTelefone(telefone)
+  const link = useLinkWhatsapp(telefone, cnpj)
 
-  if (!href) {
+  if (!link) {
     return (
       <span
         role="status"
@@ -47,12 +50,12 @@ export default function WhatsAppAction({
 
   return (
     <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+      href={link.href}
+      // Conversas é tela do próprio app; só o WhatsApp do aparelho abre em outra aba.
+      {...(link.externo ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
       onClick={onClick}
       aria-label={`${label} para ${telefone}`}
-      title="Abrir conversa no WhatsApp"
+      title={link.externo ? 'Abrir conversa no WhatsApp' : 'Abrir a conversa no PROJETE'}
       className={`inline-flex items-center justify-center gap-1.5 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10 hover:bg-green-100 dark:hover:bg-green-500/20 transition-colors ${
         compact
           ? 'rounded-md px-1.5 py-1 text-[10px] font-medium'

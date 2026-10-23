@@ -105,7 +105,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
       )}
       footer={shown && (
         <div className="grid grid-cols-2 gap-2">
-          <WhatsAppAction telefone={shown.telefone} label="WhatsApp" className="min-h-10 w-full" />
+          <WhatsAppAction telefone={shown.telefone} cnpj={shown.cnpj} label="WhatsApp" className="min-h-10 w-full" />
           <button
             type="button"
             disabled={!shown.email}
@@ -249,7 +249,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                         {shown.telefone ? (
                           <>
                             <span className="truncate">{shown.telefone}</span>
-                            <WhatsAppAction telefone={shown.telefone} compact label="Abrir" />
+                            <WhatsAppAction telefone={shown.telefone} cnpj={shown.cnpj} compact label="Abrir" />
                           </>
                         ) : (
                           <span className="text-ink-3">Sem telefone</span>
