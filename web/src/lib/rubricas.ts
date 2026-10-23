@@ -1,5 +1,5 @@
-// Rubricas da proposta (time de Aprovação): cargo, meses e valor unitário
-// por linha. Total da linha = meses × valor unitário; o total
+// Rubricas da proposta (time de Aprovação): cargo, meses, valor unitário e
+// observação opcional por linha. Total da linha = meses × valor unitário; o total
 // das rubricas é a soma das linhas. Contas em centavos para não somar erro
 // de ponto flutuante.
 
@@ -7,9 +7,11 @@ export interface Rubrica {
   cargo: string
   meses: number
   valorUnitario: number
+  observacao: string
 }
 
 export const MAX_RUBRICAS = 200
+export const MAX_OBSERVACAO = 500
 
 function cents(value: number): number {
   return Math.round(value * 100)
@@ -51,7 +53,13 @@ export function parseRubricas(input: unknown): { linhas: Rubrica[] } | { error: 
       return { error: `Linha ${n}: valor unitário inválido` }
     }
 
-    linhas.push({ cargo, meses, valorUnitario: cents(valorUnitario) / 100 })
+    if (raw.observacao != null && typeof raw.observacao !== 'string') {
+      return { error: `Linha ${n}: observação inválida` }
+    }
+    const observacao = (raw.observacao ?? '').trim()
+    if (observacao.length > MAX_OBSERVACAO) return { error: `Linha ${n}: observação muito longa` }
+
+    linhas.push({ cargo, meses, valorUnitario: cents(valorUnitario) / 100, observacao })
   }
   return { linhas }
 }

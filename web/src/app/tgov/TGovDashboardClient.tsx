@@ -1507,9 +1507,9 @@ function ExecucaoSidecard({
             <SidecardCurrency label="Ingresso Contrapartida" value={row.ingressoContrapartida} />
           </SidecardSection>
 
-          <ValorContrato cnpj={row.cnpj} />
+          <ValorContrato cnpj={row.cnpj} nrProposta={row.numeroProposta} />
 
-          <RubricasPanel nrProposta={row.numeroProposta} mode="total" />
+          <RubricasPanel nrProposta={row.numeroProposta} mode="execucao" />
 
           {/* Comentários */}
           <div id="sidecard-comments">
@@ -1647,7 +1647,7 @@ function AprovacaoSidecard({
             <SidecardCurrency label="Valor Contrapartida" value={row.valorContrapartida} />
           </SidecardSection>
 
-          <ValorContrato cnpj={row.cnpj} />
+          <ValorContrato cnpj={row.cnpj} nrProposta={row.numeroProposta} editable />
 
           <RubricasPanel nrProposta={row.numeroProposta} mode="edit" />
 
