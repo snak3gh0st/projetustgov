@@ -4,7 +4,7 @@
 //
 // ENRICHMENT PIPELINE:
 //
-//   Source 1: siconv_proponentes (CSV from repositorio.dados.gov.br)
+//   Source 1: siconv_proponentes (CSV from the Transferegov download area)
 //   - Covers 64% of CNPJs (238/374)
 //   - Provides: telefone, email, nome, UF, municipio
 //   - Does NOT provide: endereco
@@ -38,16 +38,16 @@ import { createInflateRaw } from 'zlib'
 import { createInterface } from 'readline'
 import { getPool } from '@/lib/db'
 import { AUTO_DISTRIBUTION_ENABLED } from '@/lib/distribution-policy'
+import { tgovRepoFile } from '@/lib/tgov-repo'
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const REPO_BASE = 'https://repositorio.dados.gov.br/seges/detru'
 const ZIP_FILES = {
-  programa: `${REPO_BASE}/siconv_programa.csv.zip`,
-  emenda: `${REPO_BASE}/siconv_emenda.csv.zip`,
-  proponentes: `${REPO_BASE}/siconv_proponentes.csv.zip`,
+  programa: tgovRepoFile('siconv_programa'),
+  emenda: tgovRepoFile('siconv_emenda'),
+  proponentes: tgovRepoFile('siconv_proponentes'),
 }
 
 // ---------------------------------------------------------------------------

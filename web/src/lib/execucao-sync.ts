@@ -23,6 +23,7 @@
 import { getPool, query } from '@/lib/db'
 import { buildStructuredLeadScopeSql } from '@/lib/crm-scope'
 import { cleanCNPJ, parseBRNumber, fixText, downloadAndStreamCSV, formatPhone } from '@/lib/repo-sync'
+import { tgovRepoFile } from '@/lib/tgov-repo'
 import { APROVACAO_NR_PROPOSTAS } from '@/lib/tgov'
 import { sendCommercialSituacaoChangeNotification } from './email-service'
 
@@ -36,9 +37,8 @@ function delay(ms: number): Promise<void> { return new Promise(r => setTimeout(r
 // Constants
 // ---------------------------------------------------------------------------
 
-const REPO_BASE = 'https://repositorio.dados.gov.br/seges/detru'
-const PROPOSTA_URL = `${REPO_BASE}/siconv_proposta.csv.zip`
-const CONVENIO_URL = `${REPO_BASE}/siconv_convenio.csv.zip`
+const PROPOSTA_URL = tgovRepoFile('siconv_proposta')
+const CONVENIO_URL = tgovRepoFile('siconv_convenio')
 
 // ---------------------------------------------------------------------------
 // Exported types

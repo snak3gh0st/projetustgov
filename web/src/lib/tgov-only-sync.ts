@@ -32,12 +32,12 @@
 import { getPool, query } from '@/lib/db'
 import { sendSituacaoChangeNotification, sendCommercialSituacaoChangeNotification } from './email-service'
 import { cleanCNPJ, parseBRNumber, fixText, downloadAndStreamCSV } from '@/lib/repo-sync'
+import { tgovRepoFile } from '@/lib/tgov-repo'
 import { EXECUCAO_NR_PROPOSTAS, APROVACAO_NR_PROPOSTAS } from '@/lib/tgov'
 import { ensureTgovTables } from '@/lib/tgov-tables'
 
-const REPO_BASE = 'https://repositorio.dados.gov.br/seges/detru'
-const PROPOSTA_URL = `${REPO_BASE}/siconv_proposta.csv.zip`
-const CONVENIO_URL = `${REPO_BASE}/siconv_convenio.csv.zip`
+const PROPOSTA_URL = tgovRepoFile('siconv_proposta')
+const CONVENIO_URL = tgovRepoFile('siconv_convenio')
 
 export interface TgovOnlySyncStats {
   proposta_rows_scanned: number

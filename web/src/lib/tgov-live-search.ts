@@ -1,7 +1,7 @@
 import { cleanCNPJ, downloadAndStreamCSV, fixText, parseBRNumber } from '@/lib/repo-sync'
+import { tgovRepoFile } from '@/lib/tgov-repo'
 
-const REPO_BASE = 'https://repositorio.dados.gov.br/seges/detru'
-const PROPOSTA_URL = `${REPO_BASE}/siconv_proposta.csv.zip`
+const PROPOSTA_URL = tgovRepoFile('siconv_proposta')
 
 export interface LivePropostaResult {
   transferGovId: string
