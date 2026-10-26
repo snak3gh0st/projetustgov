@@ -2,17 +2,18 @@ import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
 import { assessLeadSyncFreshness, type SyncLogRow } from '@/lib/sync-freshness'
+import { fetchTgovDataCarga } from '@/lib/tgov-repo'
 
 export const dynamic = 'force-dynamic'
 // NOTE: POST triggers full sync (300s needed). Works in local dev.
 // On Vercel: use /api/cron/sync-leads with gestor session instead (maxDuration=300).
 export const maxDuration = 60 // Vercel hobby limit
 
-// GET /api/debug-sync — gestor-only: returns current DB state for sync diagnosis
+// GET /api/debug-sync — gestor/diretoria/admin: returns current DB state for sync diagnosis
 export async function GET() {
   try {
     const session = await getApiSession()
-    if (!session || (session.role !== 'gestor' && session.role !== 'diretoria' && session.role !== 'coordenador')) {
+    if (!session || (session.role !== 'gestor' && session.role !== 'diretoria' && session.role !== 'coordenador' && session.role !== 'admin')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -25,6 +26,7 @@ export async function GET() {
 
     // Fetch last sync log row — handle case where table doesn't exist yet
     let lastSyncLog = null
+    let lastExecucaoLog = null
     let leadSyncFreshness = null
     try {
       const recent = await query<SyncLogRow>(
@@ -36,17 +38,27 @@ export async function GET() {
       leadSyncFreshness = null
     }
     try {
-      const logRows = await query(
-        `SELECT ran_at, inserted, updated, errors, duration_ms
-         FROM cron_sync_log
-         ORDER BY ran_at DESC
-         LIMIT 1`
-      )
-      lastSyncLog = logRows[0] ?? null
+      const [leadRows, execucaoRows] = await Promise.all([
+        query(
+          `SELECT ran_at, inserted, updated, errors, duration_ms
+           FROM cron_sync_log WHERE source = 'sync-leads'
+           ORDER BY ran_at DESC LIMIT 1`
+        ),
+        query(
+          `SELECT ran_at, inserted, updated, errors, duration_ms
+           FROM cron_sync_log WHERE source = 'sync-execucao'
+           ORDER BY ran_at DESC LIMIT 1`
+        ),
+      ])
+      lastSyncLog = leadRows[0] ?? null
+      lastExecucaoLog = execucaoRows[0] ?? null
     } catch {
       // Table doesn't exist yet — return null
       lastSyncLog = null
     }
+
+    // When the government published the files the syncs read
+    const fonteAtualizadaEm = await fetchTgovDataCarga()
 
     // Fetch enrichment queue stats — handle case where table doesn't exist yet
     let enrichmentQueue = null
@@ -67,6 +79,8 @@ export async function GET() {
         last_repo_sync: recentUpdates[0]?.last_updated ?? null,
       },
       last_sync_log: lastSyncLog,
+      last_execucao_log: lastExecucaoLog,
+      fonte_atualizada_em: fonteAtualizadaEm,
       lead_sync_freshness: leadSyncFreshness,
       enrichment_queue: enrichmentQueue,
       cron_schedule: '12:30 UTC + 18:00 UTC daily (09:30 + 15:00 BRT)',

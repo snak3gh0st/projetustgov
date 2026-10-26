@@ -96,3 +96,9 @@ test('fails loudly when no source answers', async () => {
     restore()
   }
 })
+
+test('parseDataCarga reads the government load date as Brasília time', async () => {
+  const { parseDataCarga } = await import('./tgov-repo')
+  assert.equal(parseDataCarga('26/10/2026 06:35:34'), '2026-10-26T06:35:34-03:00')
+  assert.equal(parseDataCarga('lixo'), null)
+})

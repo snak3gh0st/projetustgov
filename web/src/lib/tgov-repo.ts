@@ -78,3 +78,27 @@ export async function downloadTgovTable(
   }
   throw new Error(`Fonte atual do Transferegov bloqueada para ${tabela} (tentadas: ${tried.join(', ')}); nenhuma linha desta tabela foi gravada`)
 }
+
+/**
+ * When the government published the files the syncs read (data_carga_siconv),
+ * as ISO in Brasília time, or null when no current source answers.
+ */
+export async function fetchTgovDataCarga(): Promise<string | null> {
+  let raw = ''
+  try {
+    await downloadTgovTable('data_carga_siconv', (row) => {
+      raw = row['data_carga'] ?? ''
+      return false
+    })
+  } catch {
+    return null
+  }
+  return parseDataCarga(raw)
+}
+
+export function parseDataCarga(raw: string): string | null {
+  const m = raw.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?/)
+  if (!m) return null
+  const [, d, mo, y, h, mi, s] = m
+  return `${y}-${mo}-${d}T${h}:${mi}:${s ?? '00'}-03:00`
+}

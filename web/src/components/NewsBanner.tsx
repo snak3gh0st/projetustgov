@@ -6,6 +6,14 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.22',
+    items: [
+      'Sincronização com o TransfereGov voltou a receber dados novos do governo',
+      'A barra de sincronização do Pipeline mostra a data dos dados do governo e os novos da execução, e aparece também para admin',
+      'Comentários das propostas TGov não são mais apagados quando a proposta muda de fase',
+    ],
+  },
+  {
     version: 'v1.21',
     items: [
       'TGov: cada rubrica tem um campo de observação opcional',

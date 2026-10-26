@@ -177,43 +177,68 @@ function stagesFor(
   }))
 }
 
-// --- SyncBar: status da sincronização com o governo (só gestor) ---
+// --- SyncBar: status da sincronização com o governo (gestor, diretoria e admin) ---
+type SyncRunLog = { inserted: number; updated: number; errors: number; ran_at?: string; duration_ms?: number }
+
+const canSyncGov = (role: string | undefined) => hasTeamCommercialView(role) || role === 'admin'
+
+function formatFonte(iso: string): string {
+  return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+}
+
 function SyncBar({ role, onSynced }: { role: string | undefined; onSynced: () => void }) {
   const [syncLog, setSyncLog] = useState<SyncLog | null>(null)
+  const [fonteEm, setFonteEm] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [justFinished, setJustFinished] = useState(false)
 
   useEffect(() => {
-    if (!hasTeamCommercialView(role)) return
+    if (!canSyncGov(role)) return
     fetch('/api/debug-sync')
       .then(r => r.json())
-      .then(d => setSyncLog(d.last_sync_log ?? null))
+      .then(d => {
+        const leads: SyncRunLog | null = d.last_sync_log ?? null
+        const execucao: SyncRunLog | null = d.last_execucao_log ?? null
+        if (leads) {
+          setSyncLog({
+            ran_at: leads.ran_at ?? new Date().toISOString(),
+            inserted: leads.inserted,
+            updated: leads.updated,
+            errors: leads.errors,
+            duration_ms: leads.duration_ms ?? 0,
+            execucao_inserted: execucao?.inserted,
+            execucao_updated: execucao?.updated,
+            execucao_errors: execucao?.errors,
+          })
+        }
+        setFonteEm(d.fonte_atualizada_em ?? null)
+      })
       .catch(() => {})
   }, [role])
 
-  if (!hasTeamCommercialView(role)) return null
+  if (!canSyncGov(role)) return null
+
+  const run = (route: string) =>
+    fetch(`/api/cron/${route}`).then(r => r.json().then(d => ({ ok: r.ok, status: r.status, d })))
 
   const handleSync = async () => {
     setSyncing(true)
     setSyncError(null)
     setJustFinished(false)
     try {
-      const [leadsRes, execucaoRes] = await Promise.allSettled([
-        fetch('/api/cron/sync-leads').then(r => r.json().then(d => ({ ok: r.ok, d }))),
-        fetch('/api/cron/sync-execucao').then(r => r.json().then(d => ({ ok: r.ok, d }))),
-      ])
-
-      const leads = leadsRes.status === 'fulfilled' ? leadsRes.value : null
-      const execucao = execucaoRes.status === 'fulfilled' ? execucaoRes.value : null
-
-      if (!leads?.ok) {
-        const rawError: string = leads?.d?.error || 'Erro ao sincronizar leads'
-        setSyncError(rawError.includes('Servidor do governo indisponível')
-          ? 'Servidor do governo indisponível. Tente em alguns minutos.'
-          : rawError)
+      // Um de cada vez: leads e execução juntos disputam o banco e o download do governo.
+      const leads = await run('sync-leads')
+      if (!leads.ok) {
+        const rawError: string = leads.d?.error || 'Erro ao sincronizar leads'
+        setSyncError(leads.status === 409
+          ? 'Já existe uma sincronização em andamento. Aguarde terminar.'
+          : rawError.includes('bloqueada') || rawError.includes('indisponível')
+            ? 'A fonte de dados do governo não respondeu. Nada foi alterado na base.'
+            : rawError)
         return
       }
+      const execucao = await run('sync-execucao').catch(() => null)
 
       setSyncLog({
         ran_at: new Date().toISOString(),
@@ -225,9 +250,15 @@ function SyncBar({ role, onSynced }: { role: string | undefined; onSynced: () =>
         execucao_updated: execucao?.ok ? (execucao.d.updated ?? 0) : undefined,
         execucao_errors: execucao?.ok ? (execucao.d.errors ?? 0) : undefined,
       })
-      setJustFinished(true)
+      if (execucao && !execucao.ok) {
+        setSyncError(execucao.status === 409
+          ? 'Leads sincronizados. A execução já estava sincronizando em outra aba.'
+          : 'Leads sincronizados, mas a execução falhou. Tente de novo em alguns minutos.')
+      } else {
+        setJustFinished(true)
+        setTimeout(() => setJustFinished(false), 8000)
+      }
       onSynced()
-      setTimeout(() => setJustFinished(false), 8000)
     } catch {
       setSyncError('Erro de conexão ao sincronizar')
     } finally {
@@ -260,13 +291,16 @@ function SyncBar({ role, onSynced }: { role: string | undefined; onSynced: () =>
             </span>
             {syncLog.execucao_updated !== undefined && (
               <span className="tabular">
-                Execução: <span className="font-medium text-ink">{syncLog.execucao_updated}</span> atualizados
+                Execução: <span className="font-medium text-ink">{syncLog.execucao_inserted ?? 0}</span> novos,{' '}
+                <span className="font-medium text-ink">{syncLog.execucao_updated}</span> atualizados
                 {(syncLog.execucao_errors ?? 0) > 0 && (
                   <span className="text-red-600 dark:text-red-400">, {syncLog.execucao_errors} erros</span>
                 )}
               </span>
             )}
-            <span className="hidden text-xs text-ink-3 tabular sm:inline">{(syncLog.duration_ms / 1000).toFixed(1)} s</span>
+            {fonteEm && (
+              <span className="text-xs text-ink-3 tabular">Dados do governo de {formatFonte(fonteEm)}</span>
+            )}
           </p>
         ) : (
           <span className="text-ink-3">Nenhuma sincronização registrada</span>

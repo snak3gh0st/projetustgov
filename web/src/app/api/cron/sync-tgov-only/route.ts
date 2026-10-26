@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server'
 import { syncTgovOnly } from '@/lib/tgov-only-sync'
 import { tgovSourcesUsed } from '@/lib/tgov-repo'
 import { getApiSession } from '@/lib/dal'
+import { runExclusive, SyncAlreadyRunningError } from '@/lib/sync-lock'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,10 +24,13 @@ export async function GET(request: Request) {
 
   try {
     console.log('[cron/sync-tgov-only] Starting TGov-only sync...')
-    const stats = await syncTgovOnly()
+    const stats = await runExclusive('sync-tgov-only', syncTgovOnly)
     console.log('[cron/sync-tgov-only] Sync complete:', JSON.stringify(stats))
     return NextResponse.json({ success: true, ...stats, fonte_dados: tgovSourcesUsed() })
   } catch (error) {
+    if (error instanceof SyncAlreadyRunningError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 409 })
+    }
     console.error('[cron/sync-tgov-only] Sync failed:', error)
     return NextResponse.json(
       { success: false, error: String(error) },
