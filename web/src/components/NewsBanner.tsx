@@ -6,6 +6,13 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.25',
+    items: [
+      'Na sincronização do TransfereGov, veja quais instituições e emendas entraram; a gestão decide a atribuição dos novos registros',
+      'No WhatsApp, a aba Novas mostra as conversas recentes; etiquetas ficam visíveis, sem trocar o atendente automaticamente',
+    ],
+  },
+  {
     version: 'v1.24',
     items: [
       'Leads novos marcados com "Novo": na Distribuição e na Execução aparece o que entrou nos últimos 7 dias',

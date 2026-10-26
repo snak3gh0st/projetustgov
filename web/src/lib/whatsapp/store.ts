@@ -2,7 +2,7 @@ import 'server-only'
 
 import { getPool, query } from '@/lib/db'
 import { mensagensDoChat, parDoContato } from './evolution'
-import { localPhoneSql, phoneFromJid, phoneVariants } from './phone'
+import { localPhoneSql, phoneVariants } from './phone'
 import { comTrava } from './trava'
 import { parseMensagem, type WebhookEvent } from './webhook'
 
@@ -44,18 +44,6 @@ interface ConversaChave { id: number; telefone: string; lid: string | null; lead
 const CHAVE = `id, telefone, lid, lead_cnpj`
 // Sem telefone, a coluna telefone guarda o JID (…@lid).
 const temTelefone = (c: ConversaChave | null) => !!c && !c.telefone.includes('@')
-
-/** Vendedor da etiqueta do chat (pelo lid); com mais de uma etiqueta de vendedor, a de menor id. */
-export async function vendedorDaEtiqueta(instancia: string, lid: string): Promise<string | null> {
-  const [r] = await query<{ user_id: string }>(
-    `SELECT e.user_id FROM whatsapp_chat_etiquetas ce
-     JOIN whatsapp_etiquetas e ON e.instancia = ce.instancia AND e.label_id = ce.label_id
-     WHERE ce.instancia = $1 AND ce.chat_jid = $2 AND e.user_id IS NOT NULL
-     ORDER BY LENGTH(ce.label_id), ce.label_id LIMIT 1`,
-    [instancia, lid]
-  )
-  return r?.user_id ?? null
-}
 
 /** Junta duas conversas do mesmo contato: mensagens, lead, direcionamento e resumo ficam em `ficaId`. */
 export async function unirConversas(ficaId: number, saiId: number): Promise<void> {
@@ -134,7 +122,6 @@ export async function conversaDoContato(
 
   if (porTelefone && porLid && porTelefone.id !== porLid.id) await unirConversas(porTelefone.id, porLid.id)
   const existente = porTelefone ?? porLid
-  const atendente = lid ? await vendedorDaEtiqueta(c.instancia, lid) : null
   const jid = telefone ? `${telefone}@s.whatsapp.net` : c.jid
 
   if (existente) {
@@ -144,23 +131,21 @@ export async function conversaDoContato(
          telefone = CASE WHEN $3::text IS NOT NULL AND telefone LIKE '%@%' THEN $3 ELSE telefone END,
          jid = CASE WHEN $3::text IS NOT NULL OR jid NOT LIKE '%@s.whatsapp.net' THEN $4 ELSE jid END,
          -- No histórico o primeiro nome lido é o mais recente.
-         nome_contato = CASE WHEN $7 THEN COALESCE(nome_contato, $5) ELSE COALESCE($5, nome_contato) END,
-         -- A etiqueta direciona só quando o lid chega; depois vale o que a gestão ou a etiqueta mudarem.
-         atendente_id = CASE WHEN lid IS NULL THEN COALESCE(atendente_id, $6) ELSE atendente_id END
+         nome_contato = CASE WHEN $6 THEN COALESCE(nome_contato, $5) ELSE COALESCE($5, nome_contato) END
        WHERE id = $1 RETURNING id, lead_cnpj`,
-      [existente.id, lid, telefone, jid, c.nome, atendente, !!opts.historico]
+      [existente.id, lid, telefone, jid, c.nome, !!opts.historico]
     )
     return { id: row.id, lead_cnpj: row.lead_cnpj, telefone, criada: false }
   }
 
   const [row] = await query<{ id: number; lead_cnpj: string | null; criada: boolean }>(
-    `INSERT INTO whatsapp_conversas (instancia, telefone, jid, lid, nome_contato, atendente_id)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO whatsapp_conversas (instancia, telefone, jid, lid, nome_contato)
+     VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (instancia, telefone) DO UPDATE
        SET jid = EXCLUDED.jid, lid = COALESCE(whatsapp_conversas.lid, EXCLUDED.lid),
            nome_contato = COALESCE(EXCLUDED.nome_contato, whatsapp_conversas.nome_contato)
      RETURNING id, lead_cnpj, (xmax = 0) AS criada`,
-    [c.instancia, telefone ?? lid ?? c.jid, jid, lid, c.nome, atendente]
+    [c.instancia, telefone ?? lid ?? c.jid, jid, lid, c.nome]
   )
   return { id: row.id, lead_cnpj: row.lead_cnpj, telefone, criada: row.criada }
 }
@@ -246,8 +231,8 @@ export async function recordStatus(ev: StatusEvent): Promise<void> {
 }
 
 /**
- * Etiqueta posta ou tirada no celular. Fica espelhada; se for de vendedor, direciona a conversa para ele (vale a última
- * mudança) e, ao sair, só limpa o direcionamento que era dela. Conversa que ainda não existe recebe ao nascer.
+ * Etiquetas do celular ficam espelhadas para consulta pela gestão.
+ * A atribuição da conversa é sempre uma ação explícita no PROJETE.
  */
 export async function aplicarEtiqueta(ev: EtiquetaEvent): Promise<void> {
   if (ev.tipo === 'add') {
@@ -255,19 +240,6 @@ export async function aplicarEtiqueta(ev: EtiquetaEvent): Promise<void> {
       [ev.instancia, ev.chatJid, ev.labelId])
   } else {
     await query(`DELETE FROM whatsapp_chat_etiquetas WHERE instancia = $1 AND chat_jid = $2 AND label_id = $3`, [ev.instancia, ev.chatJid, ev.labelId])
-  }
-  const [etiqueta] = await query<{ user_id: string | null }>(
-    `SELECT user_id FROM whatsapp_etiquetas WHERE instancia = $1 AND label_id = $2`, [ev.instancia, ev.labelId]
-  )
-  if (!etiqueta?.user_id) return
-  const telefone = phoneFromJid(ev.chatJid)
-  const onde = `instancia = $1 AND (lid = $2 OR telefone = $2 OR telefone = $3)`
-  if (ev.tipo === 'add') {
-    await query(`UPDATE whatsapp_conversas SET atendente_id = $4, arquivada_em = NULL WHERE ${onde}`,
-      [ev.instancia, ev.chatJid, telefone ?? ev.chatJid, etiqueta.user_id])
-  } else {
-    await query(`UPDATE whatsapp_conversas SET atendente_id = NULL WHERE ${onde} AND atendente_id = $4`,
-      [ev.instancia, ev.chatJid, telefone ?? ev.chatJid, etiqueta.user_id])
   }
 }
 

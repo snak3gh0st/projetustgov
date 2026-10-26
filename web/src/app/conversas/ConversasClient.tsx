@@ -13,11 +13,14 @@ import { AvisoDesconectado } from '@/components/whatsapp/AvisoDesconectado'
 import { MensagemBolha, type MensagemView } from '@/components/whatsapp/MensagemBolha'
 import { Composer } from '@/components/whatsapp/Composer'
 import { juntarMensagens, rotuloDia } from '@/lib/whatsapp/janela'
+import { conversaNova } from '@/lib/whatsapp/access'
 
 interface Conversa {
   id: number
   telefone: string
   nome_contato: string | null
+  created_at: string
+  etiquetas: string[]
   lead_cnpj: string | null
   lead_nome: string | null
   atendente_id: string | null
@@ -30,7 +33,9 @@ interface Conversa {
   aguardando: boolean
 }
 
-type Filtro = 'minhas' | 'em-aberto' | 'todas' | 'arquivadas'
+type Filtro = 'minhas' | 'em-aberto' | 'todas' | 'novas' | 'arquivadas'
+const FILTROS_GESTAO: Filtro[] = ['todas', 'novas', 'em-aberto', 'minhas', 'arquivadas']
+const FILTROS_CONSULTOR: Filtro[] = ['minhas', 'todas']
 const POLL_MS = 10_000
 
 const titulo = (c: Pick<Conversa, 'lead_nome' | 'nome_contato' | 'telefone'>) => c.lead_nome || c.nome_contato || formatTelefone(c.telefone)
@@ -61,11 +66,13 @@ function ConversaItem({ c, ativa, onOpen }: { c: Conversa; ativa: boolean; onOpe
       >
         <div className="flex items-baseline gap-2">
           <p className={`min-w-0 flex-1 truncate text-sm ${c.nao_lidas > 0 ? 'font-semibold text-ink' : 'font-medium text-ink'}`}>{titulo(c)}</p>
+          {conversaNova(c.created_at) && <Tag tone="amber" title="Entrou no PROJETE nos últimos 7 dias">Nova</Tag>}
           <span className="shrink-0 text-xs tabular-nums text-ink-3">{quando(c.ultima_mensagem_em)}</span>
         </div>
         <div className="mt-1 flex items-center gap-1.5">
           <p className="min-w-0 flex-1 truncate text-xs text-ink-2">{c.ultima_previa ?? 'Sem mensagens'}</p>
           {c.aguardando && <Tag tone="amber">Esperando</Tag>}
+          {c.arquivada_em && <Tag tone="neutral">Arquivada</Tag>}
           {c.nao_lidas > 0 && (
             <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-semibold text-white" aria-label={`${c.nao_lidas} não lidas`}>
               {c.nao_lidas}
@@ -91,6 +98,7 @@ function PainelLead({ c, gestao, atendentes, onChange }: {
         <p className="text-xs text-ink-3">Contato</p>
         <p className="font-medium text-ink">{c.nome_contato || 'Sem nome no WhatsApp'}</p>
         <p className="tabular-nums text-ink-2">{formatTelefone(c.telefone)}</p>
+        <p className="mt-1 text-xs text-ink-3">No PROJETE desde {quando(c.created_at)}</p>
       </div>
       {c.lead_cnpj ? (
         <div>
@@ -104,6 +112,14 @@ function PainelLead({ c, gestao, atendentes, onChange }: {
         <p className="text-ink-3">Este número não está em nenhum lead.</p>
       )}
       {c.atendente_nome && <p className="text-xs text-ink-2">Direcionada para {c.atendente_nome}</p>}
+      {c.etiquetas?.length > 0 && (
+        <div>
+          <p className="mb-1 text-xs text-ink-3">Etiquetas do WhatsApp</p>
+          <div className="flex flex-wrap gap-1">
+            {c.etiquetas.map((etiqueta) => <Tag key={etiqueta} tone="neutral">{etiqueta}</Tag>)}
+          </div>
+        </div>
+      )}
 
       {gestao && (
         <div className="space-y-3 border-t border-line pt-4">
@@ -137,7 +153,11 @@ function PainelLead({ c, gestao, atendentes, onChange }: {
 export default function ConversasClient({ gestao }: { gestao: boolean }) {
   const toast = useToast()
   const params = useSearchParams()
-  const [filtro, setFiltro] = useState<Filtro>((params.get('filtro') as Filtro) || (gestao ? 'todas' : 'minhas'))
+  const [filtro, setFiltro] = useState<Filtro>(() => {
+    const pedido = params.get('filtro') as Filtro | null
+    return pedido && (gestao ? FILTROS_GESTAO : FILTROS_CONSULTOR).includes(pedido)
+      ? pedido : gestao ? 'todas' : 'minhas'
+  })
   const [busca, setBusca] = useState('')
   const [conversas, setConversas] = useState<Conversa[] | null>(null)
   const [estado, setEstado] = useState<string | null>(null)
@@ -352,7 +372,7 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
   }
 
   const tabs = useMemo(() => (gestao
-    ? [{ id: 'todas', label: 'Todas' }, { id: 'em-aberto', label: 'Em aberto' }, { id: 'minhas', label: 'Minhas' }, { id: 'arquivadas', label: 'Arquivadas' }]
+    ? [{ id: 'todas', label: 'Todas' }, { id: 'novas', label: 'Novas' }, { id: 'em-aberto', label: 'Em aberto' }, { id: 'minhas', label: 'Minhas' }, { id: 'arquivadas', label: 'Arquivadas' }]
     : [{ id: 'minhas', label: 'Minhas' }, { id: 'todas', label: 'Todas' }]), [gestao])
 
   const mostrarConversa = ativaId !== null || Boolean(novoTelefone)
@@ -374,15 +394,16 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
         {/* Lista */}
         <aside className={`min-h-0 min-w-0 flex-col border-line lg:flex lg:border-r ${mostrarConversa ? 'hidden' : 'flex'}`} aria-label="Lista de conversas">
           <div className="space-y-2 border-b border-line p-3">
-            {/* As quatro abas cabem inteiras na coluna. */}
+            {/* A faixa rola horizontalmente quando as abas não cabem na coluna. */}
             <SectionTabs ariaLabel="Filtrar conversas" value={filtro} onChange={(v) => setFiltro(v as Filtro)} tabs={tabs} className="flex w-full [&>button]:flex-1 [&>button]:whitespace-nowrap [&>button]:px-1 [&>button]:text-[13px]" />
+            {filtro === 'novas' && <p className="text-xs text-ink-3">Conversas que entraram no PROJETE nos últimos 7 dias.</p>}
             <input aria-label="Buscar conversa" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou telefone" className={`${inputClass} w-full`} />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {conversas === null ? (
               <div className="space-y-3 p-4" aria-hidden><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
             ) : conversas.length === 0 ? (
-              <p className="p-6 text-center text-sm text-ink-3">{filtro === 'em-aberto' ? 'Nenhuma conversa esperando direcionamento.' : 'Nenhuma conversa aqui ainda.'}</p>
+              <p className="p-6 text-center text-sm text-ink-3">{filtro === 'em-aberto' ? 'Nenhuma conversa esperando direcionamento.' : filtro === 'novas' ? 'Nenhuma conversa nova nos últimos 7 dias.' : 'Nenhuma conversa aqui ainda.'}</p>
             ) : (
               <ul className="divide-y divide-line">
                 {conversas.map((c) => <ConversaItem key={c.id} c={c} ativa={c.id === ativaId} onOpen={() => setAtivaId(c.id)} />)}
