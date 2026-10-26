@@ -6,6 +6,12 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.23',
+    items: [
+      'PROJETE mais rápido: Execução, TGov Aprovação e Produtos Digitais carregam em poucos segundos',
+    ],
+  },
+  {
     version: 'v1.22',
     items: [
       'Sincronização com o TransfereGov voltou a receber dados novos do governo',

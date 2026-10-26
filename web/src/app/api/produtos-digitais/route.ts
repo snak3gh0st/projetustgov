@@ -4,6 +4,12 @@ import { query } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
+// Server-side cache per filter combination: the Mapa OSC tables (~1.1M orgs) only
+// change when the ETL runs, and every load scans them in full.
+const _cache = new Map<string, { data: unknown; expiresAt: number }>()
+const CACHE_TTL = 10 * 60 * 1000 // 10 minutes
+const CACHE_MAX_KEYS = 200
+
 function canAccess(role: string | undefined) {
   return role === 'gestor' || role === 'diretoria' || role === 'admin' || role === 'adm_produto'
 }
@@ -66,6 +72,12 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const { where, params } = buildFilter(searchParams)
 
+  const cacheKey = searchParams.toString()
+  const cached = _cache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) {
+    return NextResponse.json(cached.data)
+  }
+
   const filtered = `
     FROM digital_products_mosc_orgs m
     WHERE ${where}
@@ -84,9 +96,10 @@ export async function GET(request: Request) {
         COUNT(*)::int AS total,
         COUNT(*) FILTER (WHERE m.situacao_cadastral = 'Ativa')::int AS ativas,
         COUNT(*) FILTER (WHERE m.latitude IS NOT NULL AND m.longitude IS NOT NULL)::int AS geolocalizadas,
-        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM vendedor_projetos vp WHERE vp.cnpj = m.cnpj))::int AS no_crm,
-        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM proponentes p WHERE p.cnpj = m.cnpj))::int AS no_proponentes,
-        COUNT(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM vendedor_projetos vp WHERE vp.cnpj = m.cnpj))::int AS fora_crm
+        -- IN (subquery) is hashed once; EXISTS inside FILTER ran a lookup per org (14s)
+        COUNT(*) FILTER (WHERE m.cnpj IN (SELECT vp.cnpj FROM vendedor_projetos vp))::int AS no_crm,
+        COUNT(*) FILTER (WHERE m.cnpj IN (SELECT p.cnpj FROM proponentes p))::int AS no_proponentes,
+        COUNT(*) FILTER (WHERE m.cnpj NOT IN (SELECT vp.cnpj FROM vendedor_projetos vp WHERE vp.cnpj IS NOT NULL))::int AS fora_crm
       ${filtered}`,
       params
     )
@@ -148,11 +161,14 @@ export async function GET(request: Request) {
         m.municipio,
         m.uf,
         m.situacao_cadastral,
-        ARRAY_REMOVE(ARRAY_AGG(a.nome ORDER BY a.nome), NULL) AS areas
+        -- Areas only for the 40 rows returned, not aggregated over every org
+        ARRAY(
+          SELECT a.nome FROM digital_products_mosc_areas a
+          WHERE a.cnpj = m.cnpj AND a.tipo = 'area'
+          ORDER BY a.nome
+        ) AS areas
       FROM digital_products_mosc_orgs m
-      LEFT JOIN digital_products_mosc_areas a ON a.cnpj = m.cnpj AND a.tipo = 'area'
       WHERE ${where}
-      GROUP BY m.cnpj, m.razao_social, m.municipio, m.uf, m.situacao_cadastral
       ORDER BY m.situacao_cadastral = 'Ativa' DESC, m.razao_social
       LIMIT 40`,
       params
@@ -170,14 +186,17 @@ export async function GET(request: Request) {
       LIMIT 1`
     )
 
-    return NextResponse.json({
+    const data = {
       metrics,
       points,
       ufs,
       areas,
       rows,
       latestRun: latestRun[0] || null,
-    })
+    }
+    if (_cache.size >= CACHE_MAX_KEYS) _cache.clear()
+    _cache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL })
+    return NextResponse.json(data)
   } catch (error) {
     console.error('Produtos Digitais API error:', error)
     return NextResponse.json({ error: 'Failed to load digital products data' }, { status: 500 })
