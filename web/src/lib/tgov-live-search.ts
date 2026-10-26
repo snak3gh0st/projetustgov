@@ -71,7 +71,7 @@ export async function searchLivePropostas(params: {
     })
 
     return hits.length < limit
-  })
+  }, { allowLegacy: true })
 
   return hits
 }

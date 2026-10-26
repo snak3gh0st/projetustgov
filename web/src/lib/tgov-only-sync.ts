@@ -46,8 +46,6 @@ export interface TgovOnlySyncStats {
   propostas_updated: number
   execucao_inserted: number
   execucao_updated: number
-  propostas_purged: number
-  execucao_purged: number
   errors: number
   duration_ms: number
 }
@@ -105,7 +103,6 @@ function buildDate(d: string | undefined, m: string | undefined, y: string | und
 
 export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
   const startTime = Date.now()
-  const syncStartTimestamp = new Date().toISOString()
 
   const stats: TgovOnlySyncStats = {
     proposta_rows_scanned: 0,
@@ -116,8 +113,6 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
     propostas_updated: 0,
     execucao_inserted: 0,
     execucao_updated: 0,
-    propostas_purged: 0,
-    execucao_purged: 0,
     errors: 0,
     duration_ms: 0,
   }
@@ -613,30 +608,8 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
     stats.execucao_inserted = Math.max(0, execAfterN - execBeforeN)
     stats.execucao_updated = execucaoRows.length - stats.execucao_inserted
 
-    // -----------------------------------------------------------------------
-    // STEP F: Purge stale rows (rows que não foram tocadas neste run).
-    // Acontece se um nr_proposta saiu da hardcoded list ou da tgov_whitelist,
-    // ou se um CNPJ migrou para o CRM (passou a ser tratado pelo execucao-sync).
-    // -----------------------------------------------------------------------
-    const propPurge = await client.query<{ n: string }>(
-      `WITH deleted AS (
-        DELETE FROM tgov_propostas WHERE updated_at < $1 RETURNING 1
-      ) SELECT COUNT(*) AS n FROM deleted`,
-      [syncStartTimestamp]
-    )
-    stats.propostas_purged = parseInt(propPurge.rows[0].n, 10)
-
-    const execPurge = await client.query<{ n: string }>(
-      `WITH deleted AS (
-        DELETE FROM tgov_projetos_execucao WHERE synced_at < $1 RETURNING 1
-      ) SELECT COUNT(*) AS n FROM deleted`,
-      [syncStartTimestamp]
-    )
-    stats.execucao_purged = parseInt(execPurge.rows[0].n, 10)
-
-    if (stats.propostas_purged > 0 || stats.execucao_purged > 0) {
-      console.log(`[tgov-only-sync] STEP F: purged ${stats.propostas_purged} propostas + ${stats.execucao_purged} execucao stale rows`)
-    }
+    // Rows that leave the TGov-only scope are kept as last synced: the sync
+    // only updates and inserts, it never deletes from the base.
   } finally {
     client.release()
   }

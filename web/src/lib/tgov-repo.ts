@@ -5,9 +5,11 @@
 // host stopped updating on 17/07/2026. The new host sits behind a Cloudflare
 // challenge that answers 403 to datacenter IPs (our btapps/btdb servers), so
 // each download probes the sources in order and uses the first one that
-// answers. The legacy host still serves the 17/07 snapshot: a run that falls
-// back to it succeeds, but with stale data, which is why the source used is
-// recorded and reported.
+// answers, before reading any row.
+//
+// The legacy host still serves the frozen 17/07 snapshot. Syncs that write to
+// the base never read it: overwriting newer rows with July data would roll the
+// base back. Only read-only callers (live search) opt into it.
 //
 // TGOV_REPO_BASE overrides the new host (same file naming) when a reachable
 // mirror or an allowlisted route exists.
@@ -24,12 +26,12 @@ interface TgovSource {
 export const TGOV_REPO_BASE = 'https://api-publica.transferegov.gestao.gov.br/downloads/dadosgov'
 const LEGACY_REPO_BASE = 'https://repositorio.dados.gov.br/seges/detru'
 
-function sources(): TgovSource[] {
+function sources(allowLegacy: boolean): TgovSource[] {
   const list: TgovSource[] = []
   const override = process.env.TGOV_REPO_BASE?.trim().replace(/\/$/, '')
   if (override) list.push({ id: 'override', url: (t) => `${override}/${t}.zip` })
   list.push({ id: 'atual', url: (t) => `${TGOV_REPO_BASE}/${t}.zip` })
-  list.push({ id: 'legado', url: (t) => `${LEGACY_REPO_BASE}/${t}.csv.zip` })
+  if (allowLegacy) list.push({ id: 'legado', url: (t) => `${LEGACY_REPO_BASE}/${t}.csv.zip` })
   return list
 }
 
@@ -52,13 +54,15 @@ async function reachable(url: string): Promise<boolean> {
 /**
  * Streams a SICONV table from the first source that answers. The probe runs
  * before any row is read, so a fallback never processes rows twice.
+ * allowLegacy: only for read-only callers; writers must not read the frozen snapshot.
  */
 export async function downloadTgovTable(
   tabela: string,
-  onRow: (row: Record<string, string>) => void | boolean
+  onRow: (row: Record<string, string>) => void | boolean,
+  opts: { allowLegacy?: boolean } = {}
 ): Promise<number> {
   const tried: string[] = []
-  for (const source of sources()) {
+  for (const source of sources(opts.allowLegacy ?? false)) {
     const url = source.url(tabela)
     if (!(await reachable(url))) {
       tried.push(source.id)
@@ -72,5 +76,5 @@ export async function downloadTgovTable(
     lastSourceByTable.set(tabela, source.id)
     return downloadAndStreamCSV(url, onRow)
   }
-  throw new Error(`Nenhuma fonte do Transferegov respondeu para ${tabela} (tentadas: ${tried.join(', ')})`)
+  throw new Error(`Fonte atual do Transferegov bloqueada para ${tabela} (tentadas: ${tried.join(', ')}); nenhuma linha desta tabela foi gravada`)
 }

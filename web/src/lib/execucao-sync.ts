@@ -683,20 +683,8 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
 
     console.log(`[execucao-sync] STEP D complete: inserted=${stats.inserted}, updated=${stats.updated}, errors=${stats.errors}`)
 
-    // -------------------------------------------------------------------------
-    // STEP D2: Purge stale rows — convenios no longer matching Projetus clients
-    // -------------------------------------------------------------------------
-    const syncStartTimestamp = new Date(startTime).toISOString()
-    const purgeResult = await client.query<{ n: string }>(
-      `WITH deleted AS (
-        DELETE FROM projetos_execucao WHERE synced_at < $1 RETURNING 1
-      ) SELECT COUNT(*) AS n FROM deleted`,
-      [syncStartTimestamp]
-    )
-    const purged = parseInt(purgeResult.rows[0].n, 10)
-    if (purged > 0) {
-      console.log(`[execucao-sync] STEP D2: purged ${purged} stale rows`)
-    }
+    // Convênios that leave em execução keep their last synced row: the sync
+    // only updates and inserts, it never deletes from the base.
 
     // -------------------------------------------------------------------------
     // STEP D3: BrasilAPI contact enrichment for projetos_execucao CNPJs

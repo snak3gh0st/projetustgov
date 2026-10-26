@@ -579,18 +579,6 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     }
 
     // ========================================================================
-    // STEP 5b: Clean up old concatenated emenda rows (migration from pre-emenda scheme)
-    // Old sync stored multiple emendas per (cnpj, codigo_programa) as one row with pipe-separated
-    // nr_emenda/parlamentar. Now that we read assignments above, we can safely delete these rows.
-    // The next upsert will re-insert them as separate per-emenda rows with assignments preserved.
-    // ========================================================================
-    await client.query(`
-      DELETE FROM vendedor_projetos
-      WHERE importado_de = 'auto-repo-sync'
-        AND (nr_emenda LIKE '%|%' OR parlamentar LIKE '%|%')
-    `).catch(() => {})
-
-    // ========================================================================
     // STEP 6: Load existing clients for flagging
     // ========================================================================
     const clientsRes = await client.query('SELECT cnpj FROM existing_clients').catch(() => ({ rows: [] as { cnpj: string }[] }))

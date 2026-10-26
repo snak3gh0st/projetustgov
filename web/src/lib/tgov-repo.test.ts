@@ -49,11 +49,11 @@ test('uses the new host when it answers', async () => {
   }
 })
 
-test('falls back to the legacy host when the new one is challenged, reading rows once', async () => {
+test('read-only callers fall back to the legacy host when the new one is challenged, reading rows once', async () => {
   const { calls, restore } = mockFetch(['https://api-publica.transferegov.gestao.gov.br'])
   try {
     const rows: Record<string, string>[] = []
-    await downloadTgovTable('siconv_proposta', (r) => { rows.push(r) })
+    await downloadTgovTable('siconv_proposta', (r) => { rows.push(r) }, { allowLegacy: true })
     assert.equal(rows.length, 2)
     assert.equal(tgovSourcesUsed().siconv_proposta, 'legado')
     const gets = calls.filter((c) => c.method === 'GET')
@@ -76,10 +76,22 @@ test('TGOV_REPO_BASE override is tried first', async () => {
   }
 })
 
+test('writers never read the frozen legacy snapshot: blocked source fails before any row', async () => {
+  const { calls, restore } = mockFetch(['https://api-publica.transferegov.gestao.gov.br'])
+  try {
+    let rows = 0
+    await assert.rejects(downloadTgovTable('siconv_proposta', () => { rows++ }), /nenhuma linha desta tabela foi gravada/)
+    assert.equal(rows, 0)
+    assert.ok(!calls.some((c) => c.url.startsWith('https://repositorio.dados.gov.br')))
+  } finally {
+    restore()
+  }
+})
+
 test('fails loudly when no source answers', async () => {
   const { restore } = mockFetch(['https://'])
   try {
-    await assert.rejects(downloadTgovTable('siconv_proposta', () => {}), /Nenhuma fonte do Transferegov respondeu/)
+    await assert.rejects(downloadTgovTable('siconv_proposta', () => {}, { allowLegacy: true }), /Fonte atual do Transferegov bloqueada/)
   } finally {
     restore()
   }
