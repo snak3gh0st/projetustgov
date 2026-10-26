@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { formatCNPJ, formatCompactCurrency } from '@/lib/format'
+import { formatCNPJ, formatCompactCurrency, formatDate } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import SectionTabs from '@/components/SectionTabs'
 
@@ -14,6 +14,13 @@ interface Vendedor {
 
 type Tab = 'unassigned' | 'assigned'
 
+// "Novo": lead que entrou pela sincronização nos últimos 7 dias, para não misturar com os antigos.
+const NOVO_MS = 7 * 24 * 60 * 60 * 1000
+function isNovo(lead: VendedorProjeto): boolean {
+  const t = new Date(lead.created_at).getTime()
+  return !isNaN(t) && Date.now() - t <= NOVO_MS
+}
+
 export default function DistribuirPage() {
   const [tab, setTab] = useState<Tab>('unassigned')
   const [leads, setLeads] = useState<VendedorProjeto[]>([])
@@ -24,6 +31,7 @@ export default function DistribuirPage() {
   const [filterVendedorId, setFilterVendedorId] = useState('')
   const [search, setSearch] = useState('')
   const [ufFilter, setUfFilter] = useState('')
+  const [novosOnly, setNovosOnly] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadingAssigned, setLoadingAssigned] = useState(false)
   const [assigning, setAssigning] = useState(false)
@@ -144,6 +152,7 @@ export default function DistribuirPage() {
       if (!lead.cnpj.includes(s) && !(lead.nome || '').toLowerCase().includes(s)) return false
     }
     if (ufFilter && lead.uf !== ufFilter) return false
+    if (novosOnly && !isNovo(lead)) return false
     if (tab === 'assigned' && filterVendedorId && lead.vendedor_id !== filterVendedorId) return false
     return true
   })
@@ -567,6 +576,15 @@ export default function DistribuirPage() {
             ))}
           </select>
         )}
+        <label className="inline-flex items-center gap-2 px-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={novosOnly}
+            onChange={e => setNovosOnly(e.target.checked)}
+            className="rounded border-gray-300 text-[#0072F7] focus:ring-blue-500/30"
+          />
+          Só os novos (7 dias)
+        </label>
       </div>
 
       {/* CNPJ grouping note */}
@@ -648,7 +666,19 @@ export default function DistribuirPage() {
                       <span className="text-gray-500">1</span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-gray-900 dark:text-gray-100 font-medium truncate max-w-[180px]">{lead.nome || '-'}</td>
+                  <td className="px-3 py-2 text-gray-900 dark:text-gray-100 font-medium max-w-[220px]">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate">{lead.nome || '-'}</span>
+                      {isNovo(lead) && (
+                        <span
+                          title={`Entrou em ${formatDate(lead.created_at)}`}
+                          className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25"
+                        >
+                          Novo
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-3 py-2 text-gray-600 dark:text-gray-300 text-xs truncate max-w-[150px]">{lead.nome_programa || '-'}</td>
                   <td className="px-3 py-2 text-[#0072F7] text-xs">{formatCompactCurrency(lead.valor_emenda)}</td>
                   <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{lead.uf || '-'}</td>

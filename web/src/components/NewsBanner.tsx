@@ -6,6 +6,13 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.24',
+    items: [
+      'Leads novos marcados com "Novo": na Distribuição e na Execução aparece o que entrou nos últimos 7 dias',
+      'Filtro "Só os novos (7 dias)" para distribuir os novos sem misturar com os antigos',
+    ],
+  },
+  {
     version: 'v1.23',
     items: [
       'PROJETE mais rápido: Execução, TGov Aprovação e Produtos Digitais carregam em poucos segundos',

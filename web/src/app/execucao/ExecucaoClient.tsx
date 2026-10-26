@@ -61,6 +61,8 @@ interface ExecucaoAggRow {
   tag_desembolso: boolean
   tag_lobby: boolean
   tag_rendimento: boolean
+  novos_7d: number
+  entrou_em: string | null
 }
 
 const UF_OPTIONS = [
@@ -105,6 +107,7 @@ export default function ExecucaoClient({
   const [uf, setUf] = useState('')
   const [statusFilter, setStatusFilter] = useState(initialStatus ? normalizeCrmStatus(initialStatus) : '')
   const [alertOnly, setAlertOnly] = useState(initialAlertOnly)
+  const [novosOnly, setNovosOnly] = useState(false)
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
   const [selectedCnpj, setSelectedCnpj] = useState<string | null>(null)
   const [vendedorFilter, setVendedorFilter] = useState('')
@@ -139,6 +142,7 @@ export default function ExecucaoClient({
     if (search) params.set('search', search)
     if (uf) params.set('uf', uf)
     if (alertOnly) params.set('alert_only', 'true')
+    if (novosOnly) params.set('novos', 'true')
     if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
     if (fase) params.set('fase', fase)
     try {
@@ -164,7 +168,7 @@ export default function ExecucaoClient({
         else setLoading(false)
       }
     }
-  }, [search, uf, alertOnly, vendedorFilter, fase])
+  }, [search, uf, alertOnly, novosOnly, vendedorFilter, fase])
 
   useEffect(() => {
     const timer = setTimeout(() => { void fetchData() }, 300)
@@ -286,12 +290,13 @@ export default function ExecucaoClient({
 
   const visibleRows = useMemo(() => sortedRows.slice(0, visibleCount), [sortedRows, visibleCount])
 
-  const hasFilters = !!(search || uf || statusFilter || alertOnly || vendedorFilter || activeTags.size > 0)
+  const hasFilters = !!(search || uf || statusFilter || alertOnly || novosOnly || vendedorFilter || activeTags.size > 0)
   function clearFilters() {
     setSearch('')
     setUf('')
     setStatusFilter('')
     setAlertOnly(false)
+    setNovosOnly(false)
     setVendedorFilter('')
     setActiveTags(new Set())
   }
@@ -357,6 +362,15 @@ export default function ExecucaoClient({
             className="h-4 w-4 rounded border-line-strong text-accent focus:ring-accent/40"
           />
           Só com alerta
+        </label>
+        <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg px-2 text-sm text-ink-2 hover:text-ink">
+          <input
+            type="checkbox"
+            checked={novosOnly}
+            onChange={e => setNovosOnly(e.target.checked)}
+            className="h-4 w-4 rounded border-line-strong text-accent focus:ring-accent/40"
+          />
+          Só os novos (7 dias)
         </label>
       </div>
 
@@ -451,6 +465,14 @@ export default function ExecucaoClient({
                           >
                             {row.nome_proponente || 'Sem nome'}
                           </button>
+                          {row.novos_7d > 0 && (
+                            <Tag
+                              tone="emerald"
+                              title={`${row.novos_7d} ${row.novos_7d === 1 ? 'convênio entrou' : 'convênios entraram'} em ${formatDate(row.entrou_em)}`}
+                            >
+                              Novo
+                            </Tag>
+                          )}
                           <OpenCardLink cnpj={row.cnpj} />
                         </div>
                         <span className="mt-0.5 block font-mono text-[11px] text-ink-3">{formatCNPJ(row.cnpj)}</span>

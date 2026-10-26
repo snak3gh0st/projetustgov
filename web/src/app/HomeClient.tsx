@@ -282,7 +282,8 @@ function SyncBar({ role, onSynced }: { role: string | undefined; onSynced: () =>
           <span className="text-red-700 dark:text-red-300">{syncError}</span>
         ) : syncLog ? (
           <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-ink-2">
-            <span className="whitespace-nowrap">Sincronizado {timeAgo(syncLog.ran_at)}</span>
+            {/* Os números são só desta sincronização: os novos de dias anteriores aparecem com "Novo" nas listas */}
+            <span className="whitespace-nowrap">Última sincronização {timeAgo(syncLog.ran_at)}</span>
             <span className="hidden text-ink-3 sm:inline">·</span>
             <span className="tabular">
               Leads: <span className="font-medium text-ink">{syncLog.inserted}</span> novos,{' '}

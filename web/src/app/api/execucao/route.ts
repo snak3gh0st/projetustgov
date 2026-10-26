@@ -43,6 +43,8 @@ interface ExecucaoAggRow {
   tag_desembolso: boolean
   tag_lobby: boolean
   tag_rendimento: boolean
+  novos_7d: number
+  entrou_em: string | null
 }
 
 // Alert business rule — Confirmed with client on 2026-03-18
@@ -74,6 +76,7 @@ export async function GET(request: NextRequest) {
     const alert_only = searchParams.get('alert_only')
     const vendedor_id = searchParams.get('vendedor_id')
     const fase = parseExecucaoFase(searchParams.get('fase'))
+    const novos = searchParams.get('novos') === 'true'
 
     const conditions: string[] = ['1=1']
     const params: unknown[] = []
@@ -163,7 +166,10 @@ export async function GET(request: NextRequest) {
           BOOL_OR(
             COALESCE(pe.rendimento_aplicacao, 0) > 5000
             AND COALESCE(pe.saldo_conta, 0) >= COALESCE(pe.rendimento_aplicacao, 0)
-          ) AS tag_rendimento
+          ) AS tag_rendimento,
+          -- Convênios que apareceram nos últimos 7 dias: o "Novo" da distribuição
+          COUNT(*) FILTER (WHERE pe.primeira_vez_em >= NOW() - INTERVAL '7 days')::INT AS novos_7d,
+          MAX(pe.primeira_vez_em) AS entrou_em
         FROM projetos_execucao pe
         WHERE ${conditions.join(' AND ')}
         GROUP BY pe.cnpj
@@ -284,7 +290,9 @@ export async function GET(request: NextRequest) {
         COALESCE(pc.cnt, 0) < 5 AS tag_iniciante,
         a.tag_desembolso,
         a.tag_lobby,
-        a.tag_rendimento
+        a.tag_rendimento,
+        a.novos_7d,
+        a.entrou_em
       FROM agg a
       LEFT JOIN crm_statuses cs ON cs.cnpj_clean = a.cnpj
       LEFT JOIN aprovacao_statuses aps ON aps.cnpj_clean = a.cnpj
@@ -294,6 +302,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN proposta_counts pc ON pc.cnpj = a.cnpj
       LEFT JOIN vendedor_owners vo ON vo.cnpj_clean = a.cnpj
       LEFT JOIN last_contact lc ON lc.cnpj_clean = a.cnpj
+      ${novos ? 'WHERE a.novos_7d > 0' : ''}
       ORDER BY a.pct_execucao_ponderado ASC NULLS LAST, a.tem_alerta DESC, a.cnpj
     `, params)
 
