@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation'
 import { useRef } from 'react'
+import Link from 'next/link'
 import PageHeader from '@/components/ui/PageHeader'
 import SectionTabs from '@/components/SectionTabs'
 import { LEAD_TAB_LABEL, leadsHref, type LeadTab } from '@/lib/lead-tabs'
@@ -30,12 +31,25 @@ function description(tab: LeadTab, role: Role): string {
 export default function LeadsTabs({ role, tabs, initialStatus, initialAlertOnly }: LeadsTabsProps) {
   const searchParams = useSearchParams()
   const fase = searchParams.get('fase')
+  const allNewConvenios = fase === 'todos' && searchParams.get('novos') === 'true'
   const tab: LeadTab = tabs.includes(fase as LeadTab) ? (fase as LeadTab) : tabs[0]
   // Filtros vindos do link (funil da tela inicial) valem só para a aba aberta pelo link.
   const linkedTab = useRef(tab)
 
   function changeTab(next: string) {
     window.history.replaceState(null, '', leadsHref(next as LeadTab))
+  }
+
+  if (allNewConvenios) {
+    return (
+      <div className="mx-auto w-full max-w-[1800px] space-y-5">
+        <PageHeader title="Convênios novos" description="Instituições com convênios que entraram no PROJETE nos últimos 7 dias, em qualquer situação do TransfereGov." />
+        <Link href="/leads?fase=execucao" className="text-sm font-medium text-accent-ink underline underline-offset-2">
+          Voltar para Execução
+        </Link>
+        <ExecucaoClient key="todos-novos" userRole={role} fase={null} initialNovosOnly forceNovosOnly />
+      </div>
+    )
   }
 
   return (

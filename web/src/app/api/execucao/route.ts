@@ -138,6 +138,12 @@ export async function GET(request: NextRequest) {
       conditions.push(execucaoFaseSql(fase, 'pe'))
     }
 
+    // In the new-only view, aggregate the convênios that actually entered in
+    // this window; older convênios of the same CNPJ belong to the regular view.
+    if (novos) {
+      conditions.push(`pe.primeira_vez_em >= NOW() - INTERVAL '7 days'`)
+    }
+
     const rows = await query<ExecucaoAggRow>(`
       WITH agg AS (
         SELECT
@@ -302,7 +308,6 @@ export async function GET(request: NextRequest) {
       LEFT JOIN proposta_counts pc ON pc.cnpj = a.cnpj
       LEFT JOIN vendedor_owners vo ON vo.cnpj_clean = a.cnpj
       LEFT JOIN last_contact lc ON lc.cnpj_clean = a.cnpj
-      ${novos ? 'WHERE a.novos_7d > 0' : ''}
       ORDER BY a.pct_execucao_ponderado ASC NULLS LAST, a.tem_alerta DESC, a.cnpj
     `, params)
 
