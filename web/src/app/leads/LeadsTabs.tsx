@@ -58,6 +58,7 @@ export default function LeadsTabs({ role, tabs, initialStatus, initialAlertOnly 
           fase={tab}
           initialStatus={tab === linkedTab.current ? initialStatus : ''}
           initialAlertOnly={tab === linkedTab.current && initialAlertOnly}
+          initialNovosOnly={tab === linkedTab.current && searchParams.get('novos') === 'true'}
         />
       )}
     </div>

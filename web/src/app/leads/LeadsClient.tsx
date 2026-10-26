@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { formatCNPJ, formatCompactCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import LeadSlideOver from '@/components/LeadSlideOver'
@@ -54,6 +54,7 @@ interface SessionUser {
 // Aba Aprovação da página Leads: emendas agrupadas por CNPJ.
 export default function LeadsClient() {
   const toast = useToast()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [leads, setLeads] = useState<VendedorProjeto[]>([])
   const [selectedLead, setSelectedLead] = useState<VendedorProjeto | null>(null)
@@ -61,6 +62,7 @@ export default function LeadsClient() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status_contato') || '')
   const [vendedorFilter, setVendedorFilter] = useState('')
+  const [lastSyncOnly, setLastSyncOnly] = useState(() => searchParams.get('sync') === 'latest')
   const [vendedores, setVendedores] = useState<Vendedor[]>([])
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null)
   const [assignmentModal, setAssignmentModal] = useState<{
@@ -123,6 +125,7 @@ export default function LeadsClient() {
     if (search) params.set('search', search)
     if (statusFilter) params.set('status_contato', statusFilter)
     if (vendedorFilter) params.set('vendedor_id', vendedorFilter)
+    if (lastSyncOnly) params.set('sync', 'latest')
     params.set('limit', '10000')
 
     try {
@@ -135,7 +138,7 @@ export default function LeadsClient() {
     } finally {
       setLoading(false)
     }
-  }, [search, statusFilter, vendedorFilter, toast])
+  }, [search, statusFilter, vendedorFilter, lastSyncOnly, toast])
 
   useEffect(() => {
     const timer = setTimeout(fetchLeads, 300)
@@ -235,7 +238,7 @@ export default function LeadsClient() {
   function isNewLead(createdAt: string | null): boolean {
     if (!createdAt) return false
     const created = new Date(createdAt)
-    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000) // 48h ago
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     return created > cutoff
   }
 
@@ -367,7 +370,7 @@ export default function LeadsClient() {
   const canExportCSV = hasTeamCommercialView(role) || role === 'admin' || isCoordinator
   const coordinatorHasCommercialFilter = vendedorFilter !== '' && vendedorFilter !== 'unassigned'
   const exportDisabled = isCoordinator && !coordinatorHasCommercialFilter
-  const hasFilters = !!(search || statusFilter || vendedorFilter || clientFilter || activeTags.size > 0)
+  const hasFilters = !!(search || statusFilter || vendedorFilter || clientFilter || activeTags.size > 0 || lastSyncOnly)
   const sortProps = { sortCol, sortDir, onSort: handleSort }
 
   function clearFilters() {
@@ -376,6 +379,8 @@ export default function LeadsClient() {
     setVendedorFilter('')
     setClientFilter('')
     setActiveTags(new Set())
+    setLastSyncOnly(false)
+    router.replace('/leads')
   }
 
   function buildExportHref(kind?: 'pendentes') {
@@ -432,6 +437,17 @@ export default function LeadsClient() {
           </>
         )}
       </div>
+
+      {lastSyncOnly && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+          <span>
+            <strong>Entradas da última sincronização:</strong>{' '}
+            {loading ? 'carregando…' : `${displayLeads.length} instituições, ${leads.length} emendas`}.
+            {' '}A atribuição é feita pela gestão.
+          </span>
+          <Button size="sm" variant="ghost" onClick={clearFilters}>Ver todos</Button>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="mr-0.5 text-xs text-ink-3">Tags</span>
@@ -527,7 +543,7 @@ export default function LeadsClient() {
                             <span className="text-sm font-medium leading-snug text-ink">{lead.nome || 'Sem nome'}</span>
                             <OpenCardLink cnpj={lead.cnpj} />
                             {lead.is_existing_client && <Tag tone="rose">Cliente</Tag>}
-                            {isNewLead(lead.created_at) && <Tag tone="amber">Novo</Tag>}
+                            {(lastSyncOnly || isNewLead(lead.created_at)) && <Tag tone="amber">Novo</Tag>}
                           </div>
                           <span className="mt-0.5 block font-mono text-[11px] text-ink-3">{formatCNPJ(lead.cnpj)}</span>
                         </div>
