@@ -31,13 +31,11 @@
 
 import { getPool, query } from '@/lib/db'
 import { sendSituacaoChangeNotification, sendCommercialSituacaoChangeNotification } from './email-service'
-import { cleanCNPJ, parseBRNumber, fixText, downloadAndStreamCSV } from '@/lib/repo-sync'
-import { tgovRepoFile } from '@/lib/tgov-repo'
+import { cleanCNPJ, parseBRNumber, fixText } from '@/lib/repo-sync'
+import { downloadTgovTable } from '@/lib/tgov-repo'
 import { EXECUCAO_NR_PROPOSTAS, APROVACAO_NR_PROPOSTAS } from '@/lib/tgov'
 import { ensureTgovTables } from '@/lib/tgov-tables'
 
-const PROPOSTA_URL = tgovRepoFile('siconv_proposta')
-const CONVENIO_URL = tgovRepoFile('siconv_convenio')
 
 export interface TgovOnlySyncStats {
   proposta_rows_scanned: number
@@ -196,7 +194,7 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
     orgao_vinculado: string | null
   }> = []
 
-  await downloadAndStreamCSV(PROPOSTA_URL, (row) => {
+  await downloadTgovTable('siconv_proposta', (row) => {
     stats.proposta_rows_scanned++
     const rawCnpj = row['IDENTIF_PROPONENTE'] || row['CNPJ_PROPONENTE'] || null
     const cnpj = cleanCNPJ(rawCnpj)
@@ -275,7 +273,7 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
     verificar_saldo: boolean
   }> = []
 
-  await downloadAndStreamCSV(CONVENIO_URL, (row) => {
+  await downloadTgovTable('siconv_convenio', (row) => {
     stats.convenio_rows_scanned++
     const proposta = propostaMap.get(row['ID_PROPOSTA'])
     if (!proposta) return

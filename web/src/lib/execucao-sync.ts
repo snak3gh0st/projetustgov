@@ -22,8 +22,8 @@
 
 import { getPool, query } from '@/lib/db'
 import { buildStructuredLeadScopeSql } from '@/lib/crm-scope'
-import { cleanCNPJ, parseBRNumber, fixText, downloadAndStreamCSV, formatPhone } from '@/lib/repo-sync'
-import { tgovRepoFile } from '@/lib/tgov-repo'
+import { cleanCNPJ, parseBRNumber, fixText, formatPhone } from '@/lib/repo-sync'
+import { downloadTgovTable } from '@/lib/tgov-repo'
 import { APROVACAO_NR_PROPOSTAS } from '@/lib/tgov'
 import { sendCommercialSituacaoChangeNotification } from './email-service'
 
@@ -37,8 +37,6 @@ function delay(ms: number): Promise<void> { return new Promise(r => setTimeout(r
 // Constants
 // ---------------------------------------------------------------------------
 
-const PROPOSTA_URL = tgovRepoFile('siconv_proposta')
-const CONVENIO_URL = tgovRepoFile('siconv_convenio')
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -183,7 +181,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
   const propostaMap = new Map<string, PropostaInfo>()
   let propostaHeadersLogged = false
 
-  await downloadAndStreamCSV(PROPOSTA_URL, (row) => {
+  await downloadTgovTable('siconv_proposta', (row) => {
     stats.proposta_rows_scanned++
 
     // Debug: log headers on first row so CSV column mapping can be verified
@@ -484,7 +482,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
   // -------------------------------------------------------------------------
   const records: ExecucaoRecord[] = []
 
-  await downloadAndStreamCSV(CONVENIO_URL, (row) => {
+  await downloadTgovTable('siconv_convenio', (row) => {
     stats.convenio_rows_scanned++
 
     // Debug: log headers on first row

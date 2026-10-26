@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server'
 import { syncTgovOnly } from '@/lib/tgov-only-sync'
+import { tgovSourcesUsed } from '@/lib/tgov-repo'
 import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
@@ -24,7 +25,7 @@ export async function GET(request: Request) {
     console.log('[cron/sync-tgov-only] Starting TGov-only sync...')
     const stats = await syncTgovOnly()
     console.log('[cron/sync-tgov-only] Sync complete:', JSON.stringify(stats))
-    return NextResponse.json({ success: true, ...stats })
+    return NextResponse.json({ success: true, ...stats, fonte_dados: tgovSourcesUsed() })
   } catch (error) {
     console.error('[cron/sync-tgov-only] Sync failed:', error)
     return NextResponse.json(

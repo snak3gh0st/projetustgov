@@ -38,16 +38,16 @@ import { createInflateRaw } from 'zlib'
 import { createInterface } from 'readline'
 import { getPool } from '@/lib/db'
 import { AUTO_DISTRIBUTION_ENABLED } from '@/lib/distribution-policy'
-import { tgovRepoFile } from '@/lib/tgov-repo'
+import { downloadTgovTable } from '@/lib/tgov-repo'
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const ZIP_FILES = {
-  programa: tgovRepoFile('siconv_programa'),
-  emenda: tgovRepoFile('siconv_emenda'),
-  proponentes: tgovRepoFile('siconv_proponentes'),
+const TABLES = {
+  programa: 'siconv_programa',
+  emenda: 'siconv_emenda',
+  proponentes: 'siconv_proponentes',
 }
 
 // ---------------------------------------------------------------------------
@@ -360,7 +360,7 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
   let programsDroppedNatJur = 0
   const droppedNatJurSamples: string[] = []
 
-  await downloadAndStreamCSV(ZIP_FILES.programa, (row) => {
+  await downloadTgovTable(TABLES.programa, (row) => {
     const ano = row.ANO_DISPONIBILIZACAO || ''
     const cod = row.COD_PROGRAMA || ''
     const natJur = row.NATUREZA_JURIDICA_PROGRAMA || ''
@@ -406,7 +406,7 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
   console.log('[repo-sync] STEP 2: Loading siconv_emenda...')
   const emendasMap = new Map<string, EmendaRecord[]>() // "cod|cnpj" -> emendas
 
-  await downloadAndStreamCSV(ZIP_FILES.emenda, (row) => {
+  await downloadTgovTable(TABLES.emenda, (row) => {
     const cod = row.COD_PROGRAMA_EMENDA || ''
     if (!validCods.has(cod)) return
 
@@ -439,7 +439,7 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     neededCnpjs.add(key.split('|')[1])
   })
 
-  await downloadAndStreamCSV(ZIP_FILES.proponentes, (row) => {
+  await downloadTgovTable(TABLES.proponentes, (row) => {
     let cnpj = (row.IDENTIF_PROPONENTE || '').replace(/\D/g, '')
     if (!cnpj) return
     cnpj = cnpj.padStart(14, '0')

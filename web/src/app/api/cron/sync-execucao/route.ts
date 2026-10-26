@@ -4,6 +4,7 @@
 
 import { NextResponse } from 'next/server'
 import { syncProjetosExecucao } from '@/lib/execucao-sync'
+import { tgovSourcesUsed } from '@/lib/tgov-repo'
 import { distributeUnassignedExecucao } from '@/lib/distribute-execucao'
 import { AUTO_DISTRIBUTION_ENABLED } from '@/lib/distribution-policy'
 import { getApiSession } from '@/lib/dal'
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
       success: true,
       ...stats,
       distribution: distResult,
+      fonte_dados: tgovSourcesUsed(),
     })
   } catch (error) {
     console.error('[cron/sync-execucao] Sync failed:', error)

@@ -4,6 +4,7 @@
 
 import { NextResponse } from 'next/server'
 import { syncLeadsFromRepo } from '@/lib/repo-sync'
+import { tgovSourcesUsed } from '@/lib/tgov-repo'
 import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
@@ -28,6 +29,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       ...stats,
+      fonte_dados: tgovSourcesUsed(),
     })
   } catch (error) {
     console.error('[cron/sync-leads] Sync failed:', error)
