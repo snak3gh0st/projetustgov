@@ -89,13 +89,15 @@ export default function ExecucaoClient({
   initialStatus = '',
   initialAlertOnly = false,
   initialNovosOnly = false,
+  forceNovosOnly = false,
 }: {
   userRole: string
-  /** null = as duas fases juntas (aba Operação do CSM). */
+  /** null = todas as situações dos convênios. */
   fase: ExecucaoFase | null
   initialStatus?: string
   initialAlertOnly?: boolean
   initialNovosOnly?: boolean
+  forceNovosOnly?: boolean
 }) {
   const linkWhatsapp = useLinkWhatsappFn()
   const toast = useToast()
@@ -292,13 +294,13 @@ export default function ExecucaoClient({
 
   const visibleRows = useMemo(() => sortedRows.slice(0, visibleCount), [sortedRows, visibleCount])
 
-  const hasFilters = !!(search || uf || statusFilter || alertOnly || novosOnly || vendedorFilter || activeTags.size > 0)
+  const hasFilters = !!(search || uf || statusFilter || alertOnly || (novosOnly && !forceNovosOnly) || vendedorFilter || activeTags.size > 0)
   function clearFilters() {
     setSearch('')
     setUf('')
     setStatusFilter('')
     setAlertOnly(false)
-    setNovosOnly(false)
+    if (!forceNovosOnly) setNovosOnly(false)
     setVendedorFilter('')
     setActiveTags(new Set())
   }
@@ -306,7 +308,7 @@ export default function ExecucaoClient({
   const showBlockingLoad = loading && rows.length === 0
   const showBlockingError = error && rows.length === 0
   const sortProps = { sortCol, sortDir, onSort: toggleSort }
-  const faseLabel = fase === 'prestacao_contas' ? 'em prestação de contas' : fase === 'execucao' ? 'em execução' : 'em execução ou prestação de contas'
+  const faseLabel = fase === 'prestacao_contas' ? 'em prestação de contas' : fase === 'execucao' ? 'em execução' : 'no TransfereGov'
 
   return (
     <div className="space-y-4">
@@ -369,6 +371,7 @@ export default function ExecucaoClient({
           <input
             type="checkbox"
             checked={novosOnly}
+            disabled={forceNovosOnly}
             onChange={e => setNovosOnly(e.target.checked)}
             className="h-4 w-4 rounded border-line-strong text-accent focus:ring-accent/40"
           />

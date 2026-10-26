@@ -313,8 +313,8 @@ function SyncBar({ role, onSynced }: { role: string | undefined; onSynced: () =>
               </Link>
             )}
             {(recentNew?.convenios ?? 0) > 0 && (
-              <Link href="/leads?fase=execucao&novos=true" className="font-medium text-accent-ink underline underline-offset-2">
-                Ver convênios novos (7 dias)
+              <Link href="/leads?fase=todos&novos=true" className="font-medium text-accent-ink underline underline-offset-2">
+                Ver todos os convênios novos
               </Link>
             )}
             {syncLog && <span className="text-xs text-ink-3 tabular">Última execução: {syncLog.inserted} emendas inseridas, {syncLog.updated} atualizadas</span>}
