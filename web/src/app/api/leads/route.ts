@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
     const statusContato = searchParams.get('status_contato')
     const emExecucao = searchParams.get('em_execucao')
-    const lastSyncOnly = searchParams.get('sync') === 'latest'
+    const recentSyncOnly = ['recent', 'latest'].includes(searchParams.get('sync') ?? '')
     const limit = searchParams.get('limit') || '10000'
 
     const conditions: string[] = ['1=1']
@@ -86,21 +86,10 @@ export async function GET(request: NextRequest) {
       conditions.push(`EXISTS (SELECT 1 FROM projetos_execucao pe WHERE pe.cnpj = vp.cnpj)`)
     }
 
-    if (lastSyncOnly) {
-      // created_at is set only on INSERT; updates to existing emendas keep their original date.
-      // Use the latest lead run's own duration so the list matches its "new" counter.
-      conditions.push(`vp.importado_de = 'auto-repo-sync' AND EXISTS (
-        SELECT 1
-        FROM (
-          SELECT ran_at, duration_ms
-          FROM cron_sync_log
-          WHERE source = 'sync-leads'
-          ORDER BY ran_at DESC
-          LIMIT 1
-        ) last_run
-        WHERE vp.created_at >= last_run.ran_at - last_run.duration_ms * INTERVAL '1 millisecond'
-          AND vp.created_at <= last_run.ran_at
-      )`)
+    if (recentSyncOnly) {
+      // created_at is set only on INSERT. Later syncs with zero inserts must not
+      // hide records that entered earlier in the seven-day review window.
+      conditions.push(`vp.importado_de = 'auto-repo-sync' AND vp.created_at >= NOW() - INTERVAL '7 days'`)
     }
 
     params.push(Number(limit))

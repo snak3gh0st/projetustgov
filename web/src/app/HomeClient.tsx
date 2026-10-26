@@ -126,6 +126,13 @@ interface SyncLog {
   execucao_errors?: number
 }
 
+interface RecentNew {
+  emendas: number
+  instituicoes_aprovacao: number
+  convenios: number
+  instituicoes_execucao: number
+}
+
 const STATUS_ORDER = CRM_STATUS_FUNNEL_ORDER
 // Execução/PC: etapas canônicas, as mesmas das abas Execução e Prestação de Leads (normalizeCrmStatus).
 const EXECUCAO_STATUS_ORDER = CRM_STATUS_CANONICAL
@@ -188,6 +195,7 @@ function formatFonte(iso: string): string {
 
 function SyncBar({ role, onSynced }: { role: string | undefined; onSynced: () => void }) {
   const [syncLog, setSyncLog] = useState<SyncLog | null>(null)
+  const [recentNew, setRecentNew] = useState<RecentNew | null>(null)
   const [fonteEm, setFonteEm] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
@@ -198,6 +206,7 @@ function SyncBar({ role, onSynced }: { role: string | undefined; onSynced: () =>
     fetch('/api/debug-sync')
       .then(r => r.json())
       .then(d => {
+        setRecentNew(d.recent_new ?? null)
         const leads: SyncRunLog | null = d.last_sync_log ?? null
         const execucao: SyncRunLog | null = d.last_execucao_log ?? null
         if (leads) {
@@ -259,6 +268,10 @@ function SyncBar({ role, onSynced }: { role: string | undefined; onSynced: () =>
         setTimeout(() => setJustFinished(false), 8000)
       }
       onSynced()
+      fetch('/api/debug-sync')
+        .then(r => r.json())
+        .then(d => setRecentNew(d.recent_new ?? null))
+        .catch(() => {})
     } catch {
       setSyncError('Erro de conexão ao sincronizar')
     } finally {
@@ -280,34 +293,31 @@ function SyncBar({ role, onSynced }: { role: string | undefined; onSynced: () =>
           <span className="font-medium text-accent-ink">Sincronizando dados do TransfereGov…</span>
         ) : syncError ? (
           <span className="text-red-700 dark:text-red-300">{syncError}</span>
-        ) : syncLog ? (
+        ) : syncLog || recentNew ? (
           <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-ink-2">
-            <span className="whitespace-nowrap">Última sincronização {timeAgo(syncLog.ran_at)}</span>
-            <span className="hidden text-ink-3 sm:inline">·</span>
-            <span className="tabular">
-              Emendas: <span className="font-medium text-ink">{syncLog.inserted}</span> novas,{' '}
-              <span className="font-medium text-ink">{syncLog.updated}</span> atualizadas
-              {syncLog.errors > 0 && <span className="text-red-600 dark:text-red-400">, {syncLog.errors} erros</span>}
-            </span>
-            {syncLog.inserted > 0 && (
-              <Link href="/leads?sync=latest" className="font-medium text-accent-ink underline underline-offset-2">
-                Ver quem entrou
-              </Link>
-            )}
-            {syncLog.execucao_updated !== undefined && (
+            {syncLog && <span className="whitespace-nowrap">Última sincronização {timeAgo(syncLog.ran_at)}</span>}
+            {recentNew && (
               <span className="tabular">
-                Execução: <span className="font-medium text-ink">{syncLog.execucao_inserted ?? 0}</span> novos,{' '}
-                <span className="font-medium text-ink">{syncLog.execucao_updated}</span> atualizados
-                {(syncLog.execucao_errors ?? 0) > 0 && (
-                  <span className="text-red-600 dark:text-red-400">, {syncLog.execucao_errors} erros</span>
-                )}
+                Novos em 7 dias: <span className="font-medium text-ink">{recentNew.instituicoes_aprovacao}</span> instituições ({recentNew.emendas} emendas) e{' '}
+                <span className="font-medium text-ink">{recentNew.instituicoes_execucao}</span> instituições ({recentNew.convenios} convênios)
               </span>
             )}
-            {(syncLog.execucao_inserted ?? 0) > 0 && (
+            {(recentNew?.emendas ?? 0) > 0 && (
+              <Link href="/leads?sync=recent" className="font-medium text-accent-ink underline underline-offset-2">
+                Ver emendas novas
+              </Link>
+            )}
+            {(recentNew?.emendas ?? 0) > 0 && (role === 'gestor' || role === 'diretoria' || role === 'coordenador') && (
+              <Link href="/distribuir?tab=assigned&novos=true" className="font-medium text-accent-ink underline underline-offset-2">
+                Rooger: revisar distribuição
+              </Link>
+            )}
+            {(recentNew?.convenios ?? 0) > 0 && (
               <Link href="/leads?fase=execucao&novos=true" className="font-medium text-accent-ink underline underline-offset-2">
                 Ver convênios novos (7 dias)
               </Link>
             )}
+            {syncLog && <span className="text-xs text-ink-3 tabular">Última execução: {syncLog.inserted} emendas inseridas, {syncLog.updated} atualizadas</span>}
             {fonteEm && (
               <span className="text-xs text-ink-3 tabular">Dados do governo de {formatFonte(fonteEm)}</span>
             )}

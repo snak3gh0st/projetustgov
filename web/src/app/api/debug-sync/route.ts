@@ -17,11 +17,19 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const [totalRows, importSources, recentUpdates, distinctCnpjs] = await Promise.all([
+    const [totalRows, importSources, recentUpdates, distinctCnpjs, recentLeads, recentExecucao] = await Promise.all([
       query('SELECT COUNT(*)::int as total FROM vendedor_projetos'),
       query(`SELECT importado_de, COUNT(*)::int as count FROM vendedor_projetos GROUP BY importado_de ORDER BY count DESC`),
       query(`SELECT MAX(updated_at) as last_updated FROM vendedor_projetos WHERE importado_de = 'auto-repo-sync'`),
       query('SELECT COUNT(DISTINCT cnpj)::int as distinct_cnpjs FROM vendedor_projetos'),
+      query<{ emendas: number; instituicoes: number }>(`
+        SELECT COUNT(*)::int AS emendas, COUNT(DISTINCT cnpj)::int AS instituicoes
+        FROM vendedor_projetos
+        WHERE importado_de = 'auto-repo-sync' AND created_at >= NOW() - INTERVAL '7 days'`),
+      query<{ convenios: number; instituicoes: number }>(`
+        SELECT COUNT(*)::int AS convenios, COUNT(DISTINCT cnpj)::int AS instituicoes
+        FROM projetos_execucao
+        WHERE primeira_vez_em >= NOW() - INTERVAL '7 days'`),
     ])
 
     // Fetch last sync log row — handle case where table doesn't exist yet
@@ -80,6 +88,12 @@ export async function GET() {
       },
       last_sync_log: lastSyncLog,
       last_execucao_log: lastExecucaoLog,
+      recent_new: {
+        emendas: recentLeads[0]?.emendas ?? 0,
+        instituicoes_aprovacao: recentLeads[0]?.instituicoes ?? 0,
+        convenios: recentExecucao[0]?.convenios ?? 0,
+        instituicoes_execucao: recentExecucao[0]?.instituicoes ?? 0,
+      },
       fonte_atualizada_em: fonteAtualizadaEm,
       lead_sync_freshness: leadSyncFreshness,
       enrichment_queue: enrichmentQueue,

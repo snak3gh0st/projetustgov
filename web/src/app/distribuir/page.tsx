@@ -45,10 +45,16 @@ export default function DistribuirPage() {
   const [pendingForce, setPendingForce] = useState(false)
   const [randomPickCount, setRandomPickCount] = useState('')
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('tab') === 'assigned') setTab('assigned')
+    if (params.get('novos') === 'true') setNovosOnly(true)
+  }, [])
+
   const fetchLeads = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/leads?vendedor_id=unassigned&limit=5000&all=true')
+      const res = await fetch(`/api/leads?vendedor_id=unassigned&limit=5000&all=true${novosOnly ? '&sync=recent' : ''}`)
       const data = await res.json()
       setLeads(Array.isArray(data) ? data : [])
     } catch (err) {
@@ -56,12 +62,12 @@ export default function DistribuirPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [novosOnly])
 
   const fetchAssignedLeads = useCallback(async () => {
     setLoadingAssigned(true)
     try {
-      const res = await fetch('/api/leads?limit=5000&all=true')
+      const res = await fetch(`/api/leads?limit=5000&all=true${novosOnly ? '&sync=recent' : ''}`)
       const data = await res.json()
       const assigned = (Array.isArray(data) ? data : []).filter(
         (l: VendedorProjeto) => l.vendedor_id !== null
@@ -72,7 +78,7 @@ export default function DistribuirPage() {
     } finally {
       setLoadingAssigned(false)
     }
-  }, [])
+  }, [novosOnly])
 
   const fetchVendedores = useCallback(async () => {
     try {
@@ -423,6 +429,12 @@ export default function DistribuirPage() {
         onChange={value => setTab(value as Tab)}
         ariaLabel="Estado da distribuição"
       />
+
+      {novosOnly && tab === 'assigned' && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+          Emendas que entraram nos últimos 7 dias e estão com responsável. Rooger pode revisar e redistribuir manualmente; o sync não altera o responsável.
+        </p>
+      )}
 
       {/* Manual distribution helper */}
       {tab === 'unassigned' && leads.length > 0 && (
