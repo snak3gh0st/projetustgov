@@ -88,12 +88,14 @@ export default function ExecucaoClient({
   fase,
   initialStatus = '',
   initialAlertOnly = false,
+  initialNovosOnly = false,
 }: {
   userRole: string
   /** null = as duas fases juntas (aba Operação do CSM). */
   fase: ExecucaoFase | null
   initialStatus?: string
   initialAlertOnly?: boolean
+  initialNovosOnly?: boolean
 }) {
   const linkWhatsapp = useLinkWhatsappFn()
   const toast = useToast()
@@ -107,7 +109,7 @@ export default function ExecucaoClient({
   const [uf, setUf] = useState('')
   const [statusFilter, setStatusFilter] = useState(initialStatus ? normalizeCrmStatus(initialStatus) : '')
   const [alertOnly, setAlertOnly] = useState(initialAlertOnly)
-  const [novosOnly, setNovosOnly] = useState(false)
+  const [novosOnly, setNovosOnly] = useState(initialNovosOnly)
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set())
   const [selectedCnpj, setSelectedCnpj] = useState<string | null>(null)
   const [vendedorFilter, setVendedorFilter] = useState('')

@@ -282,14 +282,18 @@ function SyncBar({ role, onSynced }: { role: string | undefined; onSynced: () =>
           <span className="text-red-700 dark:text-red-300">{syncError}</span>
         ) : syncLog ? (
           <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-ink-2">
-            {/* Os números são só desta sincronização: os novos de dias anteriores aparecem com "Novo" nas listas */}
             <span className="whitespace-nowrap">Última sincronização {timeAgo(syncLog.ran_at)}</span>
             <span className="hidden text-ink-3 sm:inline">·</span>
             <span className="tabular">
-              Leads: <span className="font-medium text-ink">{syncLog.inserted}</span> novos,{' '}
-              <span className="font-medium text-ink">{syncLog.updated}</span> atualizados
+              Emendas: <span className="font-medium text-ink">{syncLog.inserted}</span> novas,{' '}
+              <span className="font-medium text-ink">{syncLog.updated}</span> atualizadas
               {syncLog.errors > 0 && <span className="text-red-600 dark:text-red-400">, {syncLog.errors} erros</span>}
             </span>
+            {syncLog.inserted > 0 && (
+              <Link href="/leads?sync=latest" className="font-medium text-accent-ink underline underline-offset-2">
+                Ver quem entrou
+              </Link>
+            )}
             {syncLog.execucao_updated !== undefined && (
               <span className="tabular">
                 Execução: <span className="font-medium text-ink">{syncLog.execucao_inserted ?? 0}</span> novos,{' '}
@@ -298,6 +302,11 @@ function SyncBar({ role, onSynced }: { role: string | undefined; onSynced: () =>
                   <span className="text-red-600 dark:text-red-400">, {syncLog.execucao_errors} erros</span>
                 )}
               </span>
+            )}
+            {(syncLog.execucao_inserted ?? 0) > 0 && (
+              <Link href="/leads?fase=execucao&novos=true" className="font-medium text-accent-ink underline underline-offset-2">
+                Ver convênios novos (7 dias)
+              </Link>
             )}
             {fonteEm && (
               <span className="text-xs text-ink-3 tabular">Dados do governo de {formatFonte(fonteEm)}</span>

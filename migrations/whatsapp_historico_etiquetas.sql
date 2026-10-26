@@ -1,8 +1,9 @@
--- WhatsApp das consultorias: histórico de 1 ano e divisão pelas etiquetas do WhatsApp Business.
+-- WhatsApp das consultorias: histórico de 1 ano e espelhamento das etiquetas do WhatsApp Business.
 --
 -- lid: identificador do contato no WhatsApp (…@lid). O histórico e as etiquetas chegam por ele, sem telefone.
 -- historico_ate: mensagens recebidas até esse instante vieram do histórico e não contam como "esperando resposta".
--- whatsapp_etiquetas: etiqueta do celular → vendedor que atende. whatsapp_chat_etiquetas: qual etiqueta está em qual chat.
+-- whatsapp_etiquetas: nomes e usuário associado para consulta. whatsapp_chat_etiquetas: qual etiqueta está em qual chat.
+-- Etiquetas não atribuem nem redistribuem conversas; o atendente é escolhido pela gestão.
 --
 -- Aplicar ANTES do deploy:
 --   sudo -u postgres psql -d projetus_hub -f whatsapp_historico_etiquetas.sql

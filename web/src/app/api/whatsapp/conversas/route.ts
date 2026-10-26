@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { aguardandoResposta, seesAllConversations } from '@/lib/whatsapp/access'
+import { aguardandoResposta, NOVA_CONVERSA_DIAS, seesAllConversations } from '@/lib/whatsapp/access'
 import { CONVERSA_SELECT, scopeWhere, whatsappGuard, type ConversaRow } from '@/lib/whatsapp/api'
 import { connectionStateCached } from '@/lib/whatsapp/evolution'
 
 export const dynamic = 'force-dynamic'
 
-const FILTROS = ['minhas', 'em-aberto', 'todas', 'arquivadas'] as const
+const FILTROS = ['minhas', 'em-aberto', 'todas', 'novas', 'arquivadas'] as const
 type Filtro = typeof FILTROS[number]
 
-// GET /api/whatsapp/conversas?filtro=minhas|em-aberto|todas|arquivadas&cnpj=&busca=
+// GET /api/whatsapp/conversas?filtro=minhas|em-aberto|todas|novas|arquivadas&cnpj=&busca=
 export async function GET(request: NextRequest) {
   const guard = await whatsappGuard()
   if (guard instanceof NextResponse) return guard
@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
   const sp = new URL(request.url).searchParams
   const gestao = seesAllConversations(session.role)
   const pedido = sp.get('filtro') as Filtro | null
-  const filtro: Filtro = pedido && FILTROS.includes(pedido) ? pedido : gestao ? 'todas' : 'minhas'
+  const filtro: Filtro = pedido && FILTROS.includes(pedido) && (gestao || pedido !== 'novas')
+    ? pedido : gestao ? 'todas' : 'minhas'
 
   const where = [`wc.instancia = $1`, scopeWhere(session.role)]
   const params: unknown[] = [cfg.instance, session.userId]
@@ -27,6 +28,9 @@ export async function GET(request: NextRequest) {
       SELECT REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') FROM vendedor_projetos vp WHERE vp.vendedor_id = $2 OR vp.closer_id = $2)))`)
   } else if (filtro === 'em-aberto') {
     where.push(`wc.lead_cnpj IS NULL AND wc.atendente_id IS NULL AND wc.arquivada_em IS NULL`)
+  } else if (filtro === 'novas') {
+    params.push(NOVA_CONVERSA_DIAS)
+    where.push(`wc.created_at >= NOW() - $${params.length}::int * INTERVAL '1 day'`)
   } else if (filtro === 'arquivadas') {
     where.push(`wc.arquivada_em IS NOT NULL`)
   } else {
@@ -46,7 +50,7 @@ export async function GET(request: NextRequest) {
 
   const [rows, estado] = await Promise.all([
     query<ConversaRow>(
-      `${CONVERSA_SELECT} WHERE ${where.join(' AND ')} ORDER BY wc.ultima_mensagem_em DESC NULLS LAST LIMIT 200`,
+      `${CONVERSA_SELECT} WHERE ${where.join(' AND ')} ORDER BY ${filtro === 'novas' ? 'wc.created_at DESC' : 'wc.ultima_mensagem_em DESC NULLS LAST'} LIMIT 200`,
       params
     ),
     connectionStateCached(),

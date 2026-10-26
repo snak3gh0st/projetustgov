@@ -1,5 +1,13 @@
 // Quem vê, usa e gerencia conversas de WhatsApp. Puro: usado nas rotas e testado sozinho.
 
+export const NOVA_CONVERSA_DIAS = 7
+
+export function conversaNova(createdAt: string | null, now: number = Date.now()): boolean {
+  if (!createdAt) return false
+  const criadaEm = Date.parse(createdAt)
+  return Number.isFinite(criadaEm) && criadaEm <= now && criadaEm >= now - NOVA_CONVERSA_DIAS * 86_400_000
+}
+
 /** Gestor comercial, diretoria e admin veem todas as conversas. */
 export function seesAllConversations(role: string): boolean {
   return role === 'gestor' || role === 'diretoria' || role === 'admin'

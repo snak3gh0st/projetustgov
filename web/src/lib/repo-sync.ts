@@ -37,7 +37,6 @@ import { Readable } from 'stream'
 import { createInflateRaw } from 'zlib'
 import { createInterface } from 'readline'
 import { getPool } from '@/lib/db'
-import { AUTO_DISTRIBUTION_ENABLED } from '@/lib/distribution-policy'
 import { downloadTgovTable } from '@/lib/tgov-repo'
 
 // ---------------------------------------------------------------------------
@@ -498,9 +497,9 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
   console.log(`[repo-sync] Leads built: ${leads.length}`)
 
   // ========================================================================
-  // STEP 5: Load vendedor state from DB for round-robin assignment
+  // STEP 5: Open the database connection for sync metadata and UPSERT
   // ========================================================================
-  console.log('[repo-sync] STEP 5: Loading vendedor state...')
+  console.log('[repo-sync] STEP 5: Preparing database...')
   // Call getPool() here (not the reference captured at start) — avoids stale pool if
   // db.ts retry logic reset the singleton between STEP 1-4 and now.
   const client = await getPool().connect()
@@ -531,53 +530,6 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `)
-    // Get active vendedores
-    const vendedoresRes = await client.query(
-      "SELECT id, email FROM users WHERE role = 'vendedor' AND active = true ORDER BY nome"
-    )
-    const vendedorIds: string[] = vendedoresRes.rows.map((u: { id: string }) => u.id)
-
-    // Get existing lead assignments (to preserve vendedor_id on updates)
-    // Also build a CNPJ-level map so if all emenda rows for a CNPJ were deleted during migration,
-    // we can still restore the vendedor assignment to the newly-split emenda rows.
-    const assignmentsRes = await client.query(
-      "SELECT cnpj, codigo_programa, COALESCE(nr_emenda, '') as nr_emenda, vendedor_id FROM vendedor_projetos WHERE vendedor_id IS NOT NULL"
-    )
-    const existingAssignments = new Map<string, string>() // cnpj|nr_emenda -> vendedor_id
-    const cnpjAssignments = new Map<string, string>()    // cnpj -> vendedor_id (fallback)
-    for (const r of assignmentsRes.rows) {
-      const key = r.nr_emenda
-        ? `${r.cnpj}|${r.nr_emenda}`
-        : `${r.cnpj}|${r.codigo_programa}`
-      existingAssignments.set(key, r.vendedor_id)
-      // CNPJ-level fallback: first vendedor found for a CNPJ (all emendas share same vendedor)
-      if (!cnpjAssignments.has(r.cnpj)) {
-        cnpjAssignments.set(r.cnpj, r.vendedor_id)
-      }
-    }
-
-    // Get vendedor lead counts for round-robin
-    const countsRes = await client.query(
-      'SELECT vendedor_id, COUNT(*)::int as cnt FROM vendedor_projetos WHERE vendedor_id IS NOT NULL GROUP BY vendedor_id'
-    )
-    const vendedorCounts = new Map<string, number>()
-    for (const vid of vendedorIds) vendedorCounts.set(vid, 0)
-    for (const r of countsRes.rows) {
-      if (vendedorCounts.has(r.vendedor_id)) vendedorCounts.set(r.vendedor_id, r.cnt)
-    }
-
-    // Pick the vendedor with fewest leads (least-loaded)
-    const pickNextVendedor = (): string | null => {
-      if (vendedorIds.length === 0) return null
-      let minId = vendedorIds[0]
-      let minCount = vendedorCounts.get(minId) ?? 0
-      for (const vid of vendedorIds) {
-        const c = vendedorCounts.get(vid) ?? 0
-        if (c < minCount) { minCount = c; minId = vid }
-      }
-      return minId
-    }
-
     // ========================================================================
     // STEP 6: Load existing clients for flagging
     // ========================================================================
@@ -588,18 +540,7 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       if (cc) existingClients.add(cc)
     }
 
-    // Look up the current lead manager for existing client routing.
-    const managerEmail = process.env.PRIMARY_LEAD_MANAGER_EMAIL || 'rooger@projetus.org'
-    const managerRes = await client.query(
-      'SELECT id, nome FROM users WHERE email = $1 AND active = true LIMIT 1',
-      [managerEmail]
-    )
-    const managerId: string | null = managerRes.rows[0]?.id ?? null
-    const managerName: string = managerRes.rows[0]?.nome ?? managerEmail
-    if (!managerId) {
-      console.warn(`[repo-sync] WARNING: lead manager (${managerEmail}) not found or inactive, existing clients will use normal round-robin`)
-    }
-    console.log(`[repo-sync] Existing client routing: manager=${managerName} (${managerEmail}), existing client CNPJs=${existingClients.size}`)
+    console.log(`[repo-sync] Existing client CNPJs flagged: ${existingClients.size}`)
 
     // ========================================================================
     // STEP 7: UPSERT leads in batches
@@ -615,13 +556,11 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     // PostgreSQL rejects ON CONFLICT DO UPDATE when the same row appears twice in one statement.
     // In row-by-row mode this was silently fine; in batch mode we must deduplicate first.
     // Strategy: use a Map keyed by conflict key — last occurrence wins (matches prior behavior).
-    type LeadWithVendedor = {
+    type LeadBatchEntry = {
       lead: typeof leads[0]
-      vendedorId: string | null
       obs: string | null
-      tipoVendedor: string
     }
-    const dedupMap = new Map<string, LeadWithVendedor>()
+    const dedupMap = new Map<string, LeadBatchEntry>()
 
     // Build typed arrays for batch unnest upsert (one entry per lead, matching column order)
     const bCnpj: (string | null)[] = []
@@ -643,56 +582,16 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
     const bEmail: (string | null)[] = []
 
     for (const lead of leads) {
-      // Use nr_emenda-based key if available, otherwise fall back to codigo_programa
-      const assignmentKey = lead.nr_emenda
-        ? `${lead.cnpj}|${lead.nr_emenda}`
-        : `${lead.cnpj}|${lead.codigo_programa}`
-      // isExisting: this exact emenda row already exists in DB (preserve its vendedor assignment)
-      const isExisting = existingAssignments.has(assignmentKey)
       const isExistingClient = existingClients.has(lead.cnpj)
-
-      // For new leads, keep CNPJs together.
-      // Existing assignments are preserved; new CNPJs stay unassigned unless auto distribution is enabled.
-      let vendedorId: string | null = null
-      if (isExisting) {
-        // Existing lead: keep current vendedor assignment.
-        // Prefer exact emenda key match; fall back to CNPJ-level assignment (migration case).
-        vendedorId = existingAssignments.get(assignmentKey) ?? cnpjAssignments.get(lead.cnpj) ?? null
-      } else if (isExistingClient && managerId) {
-        // New lead from existing paying client: route directly to the current lead manager.
-        vendedorId = managerId
-        vendedorCounts.set(managerId, (vendedorCounts.get(managerId) ?? 0) + 1)
-      } else if (cnpjAssignments.has(lead.cnpj)) {
-        // New emenda for a CNPJ that already has rows — inherit the existing vendedor.
-        // This ensures all emendas of the same organization go to the same vendedor,
-        // preventing split assignments where two vendedores unknowingly work the same org.
-        vendedorId = cnpjAssignments.get(lead.cnpj)!
-        // Do NOT increment vendedorCounts — this isn't a new allocation, it's inheritance.
-      } else if (AUTO_DISTRIBUTION_ENABLED) {
-        // Truly new CNPJ: round-robin only when automatic distribution is enabled.
-        vendedorId = pickNextVendedor()
-        if (vendedorId) {
-          vendedorCounts.set(vendedorId, (vendedorCounts.get(vendedorId) ?? 0) + 1)
-          // Track this assignment so subsequent emendas for the same CNPJ in this batch
-          // also inherit this vendedor (handles multiple new emendas in same sync run).
-          cnpjAssignments.set(lead.cnpj, vendedorId)
-        }
-      } else {
-        // Manual distribution default: leave the new CNPJ unassigned for the gestor.
-        vendedorId = null
-      }
-
       const obs = isExistingClient ? 'JA E CLIENTE PROJETUS' : null
-      // Existing clients routed to the lead manager get tipo_vendedor = 'Exclusivo'
-      const tipoVendedor = (isExistingClient && managerId && vendedorId === managerId) ? 'Exclusivo' : 'SDR'
 
       // Conflict key mirrors the DB constraint: (cnpj, codigo_programa, COALESCE(nr_emenda, ''))
       const conflictKey = `${lead.cnpj}|${lead.codigo_programa}|${lead.nr_emenda ?? ''}`
-      dedupMap.set(conflictKey, { lead, vendedorId, obs, tipoVendedor })
+      dedupMap.set(conflictKey, { lead, obs })
     }
 
     // Build batch arrays from deduplicated map (last-write-wins per conflict key)
-    for (const { lead, vendedorId, obs, tipoVendedor } of Array.from(dedupMap.values())) {
+    for (const { lead, obs } of Array.from(dedupMap.values())) {
       bCnpj.push(lead.cnpj)
       bCodigoPrograma.push(lead.codigo_programa)
       bNomePrograma.push(lead.nome_programa)
@@ -705,9 +604,10 @@ export async function syncLeadsFromRepo(): Promise<SyncStats> {
       bParlamentar.push(lead.parlamentar)
       bNome.push(lead.nome || 'Sem nome')
       bValorEmenda.push(lead.valor_emenda ?? null)
-      bVendedorId.push(vendedorId)
+      // New rows wait for an explicit assignment. ON CONFLICT preserves the owner of existing rows.
+      bVendedorId.push(null)
       bObservacoes.push(obs)
-      bTipoVendedor.push(tipoVendedor)
+      bTipoVendedor.push('SDR')
       bTelefone.push(lead.telefone || null)
       bEmail.push(lead.email || null)
     }

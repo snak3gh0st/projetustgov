@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { SendLimiter, aguardandoResposta, aguardandoSql, canManageConversations, canUseWhatsapp, conversationScopeSql, responsavelDaConversa, seesAllConversations } from './access'
+import { SendLimiter, aguardandoResposta, aguardandoSql, canManageConversations, canUseWhatsapp, conversaNova, conversationScopeSql, responsavelDaConversa, seesAllConversations } from './access'
+
+test('conversations first seen in the last seven days are marked new', () => {
+  const now = Date.parse('2026-10-26T16:00:00Z')
+  assert.equal(conversaNova('2026-10-26T15:59:00Z', now), true)
+  assert.equal(conversaNova('2026-10-19T16:00:00Z', now), true)
+  assert.equal(conversaNova('2026-10-19T15:59:59Z', now), false)
+  assert.equal(conversaNova('2026-10-27T00:00:00Z', now), false)
+  assert.equal(conversaNova(null, now), false)
+})
 
 test('gestão sees and manages every conversation; sellers use their own; others none', () => {
   for (const r of ['gestor', 'diretoria', 'admin']) {

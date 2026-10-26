@@ -5,8 +5,6 @@
 import { NextResponse } from 'next/server'
 import { syncProjetosExecucao } from '@/lib/execucao-sync'
 import { tgovSourcesUsed } from '@/lib/tgov-repo'
-import { distributeUnassignedExecucao } from '@/lib/distribute-execucao'
-import { AUTO_DISTRIBUTION_ENABLED } from '@/lib/distribution-policy'
 import { getApiSession } from '@/lib/dal'
 import { runExclusive, SyncAlreadyRunningError } from '@/lib/sync-lock'
 
@@ -28,20 +26,9 @@ export async function GET(request: Request) {
     const stats = await runExclusive('sync-execucao', syncProjetosExecucao)
     console.log('[cron/sync-execucao] Sync complete:', JSON.stringify(stats))
 
-    type DistResult = Awaited<ReturnType<typeof distributeUnassignedExecucao>>
-    let distResult: DistResult = { distributed: 0, updated: 0, inserted: 0, vendedores: [], skipped: true }
-    if (AUTO_DISTRIBUTION_ENABLED) {
-      console.log('[cron/sync-execucao] Starting auto-distribute...')
-      distResult = await distributeUnassignedExecucao()
-      console.log(`[cron/sync-execucao] Distributed ${distResult.distributed} CNPJs:`, distResult.vendedores.map(v => `${v.nome}: +${v.assigned}`).join(', '))
-    } else {
-      console.log('[cron/sync-execucao] Auto-distribution disabled; skipping round-robin step')
-    }
-
     return NextResponse.json({
       success: true,
       ...stats,
-      distribution: distResult,
       fonte_dados: tgovSourcesUsed(),
     })
   } catch (error) {

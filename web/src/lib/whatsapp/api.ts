@@ -24,6 +24,8 @@ export interface ConversaRow {
   jid: string
   lid: string | null
   nome_contato: string | null
+  created_at: string
+  etiquetas: string[]
   lead_cnpj: string | null
   lead_nome: string | null
   atendente_id: string | null
@@ -43,8 +45,17 @@ const LEAD_DO_CNPJ = `REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = wc.lead_cnpj`
 
 /** SELECT de conversas com nome do lead, donos e atendente. $1 = instância, $2 = usuário (escopo). */
 export const CONVERSA_SELECT = `
-  SELECT wc.id, wc.telefone, wc.jid, wc.lid, wc.nome_contato, wc.lead_cnpj, wc.atendente_id, wc.arquivada_em, wc.historico_ate,
+  SELECT wc.id, wc.telefone, wc.jid, wc.lid, wc.nome_contato, wc.created_at, wc.lead_cnpj, wc.atendente_id, wc.arquivada_em, wc.historico_ate,
          wc.ultima_recebida_em, wc.ultima_enviada_em, wc.ultima_mensagem_em, wc.ultima_previa, wc.nao_lidas,
+         ARRAY(
+           SELECT DISTINCT COALESCE(e.nome, ce.label_id)
+           FROM whatsapp_chat_etiquetas ce
+           LEFT JOIN whatsapp_etiquetas e ON e.instancia = ce.instancia AND e.label_id = ce.label_id
+           WHERE ce.instancia = wc.instancia
+             AND (ce.chat_jid = wc.lid OR ce.chat_jid = wc.jid OR ce.chat_jid = wc.telefone
+                  OR ce.chat_jid = wc.telefone || '@s.whatsapp.net')
+           ORDER BY 1
+         ) AS etiquetas,
          (SELECT MAX(vp.nome) FROM vendedor_projetos vp WHERE ${LEAD_DO_CNPJ}) AS lead_nome,
          (SELECT ARRAY_AGG(DISTINCT vp.vendedor_id::text) FROM vendedor_projetos vp WHERE ${LEAD_DO_CNPJ} AND vp.vendedor_id IS NOT NULL) AS donos,
          (SELECT STRING_AGG(DISTINCT u2.nome, ', ') FROM vendedor_projetos vp JOIN users u2 ON u2.id = vp.vendedor_id WHERE ${LEAD_DO_CNPJ}) AS donos_nomes,
