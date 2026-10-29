@@ -67,6 +67,7 @@ const AREA_NAV: Record<AreaId, Item[]> = {
   ],
   gestao: [
     { href: '/gestao', label: 'Visão geral', icon: 'visao', roles: ['diretoria', 'admin'] },
+    { href: '/gestao/relatorio-semanal', label: 'Relatório semanal', icon: 'hoje', roles: ['diretoria', 'admin'] },
     { href: '/bi', label: 'BI comercial', icon: 'bi', roles: ['diretoria', 'admin'] },
     { href: '/csm/bi', label: 'BI CSM', icon: 'bi', roles: ['diretoria', 'admin'] },
     { href: '/financeiro', label: 'BI Financeiro', icon: 'financeiro', roles: ['diretoria', 'admin'] },
