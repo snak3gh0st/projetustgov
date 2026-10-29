@@ -57,14 +57,14 @@ mês anterior; vendedor sem atividade na semana.
 
 - Rota `GET /api/cron/relatorio-semanal` (Bearer `CRON_SECRET`), chamada pelo timer
   `projetus-cron@relatorio-semanal.timer` no btapps, `OnCalendar=Fri *-*-* 18:00:00` (servidor em -03).
-- Destinatários em `WEEKLY_REPORT_TO` (lista separada por vírgula). Sem a variável, grava o retrato e não envia.
+- Remetente `PROJETUS <report@projetus.org>` (`WEEKLY_REPORT_FROM`). Destinatários em `WEEKLY_REPORT_TO` (lista separada por vírgula). Sem a variável, grava o retrato e não envia.
 - **Idempotente**: `relatorio_semanal.enviado_para` guarda quem já recebeu a semana; o `run-cron.sh`
   repete até 5 vezes em erro e não pode duplicar e-mail.
 - Sempre envia a **última semana fechada** (sexta 18h). Rodar antes, ou com atraso, envia a semana
   anterior, que já pode ter saído (e então é pulada): nunca grava semana pela metade.
 - `?preview=1` devolve o HTML sem gravar nem enviar; `?teste=1` envia `[TESTE]` para quem está logado
   (ou para `?to=` com o `CRON_SECRET`), também sem gravar. Testes usam só esses dois.
-- Primeiros envios só para o Paulo. Trocar para o Philipe é mudar a variável.
+- Destinatário: Philipe (`philipe@projetus.org`), decisão do Paulo em 29/10/2026.
 
 ## Fora do escopo
 

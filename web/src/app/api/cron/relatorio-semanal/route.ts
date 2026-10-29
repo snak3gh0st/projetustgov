@@ -1,5 +1,6 @@
 // systemd timer on btapps: sexta 18:00 BRT (projetus-cron@relatorio-semanal).
-// Destinatários em WEEKLY_REPORT_TO (vírgula). Sem a variável, grava o retrato e não envia.
+// Remetente report@projetus.org (WEEKLY_REPORT_FROM). Destinatários em WEEKLY_REPORT_TO (vírgula).
+// Sem WEEKLY_REPORT_TO, grava o retrato e não envia.
 //
 //   ?preview=1  devolve o HTML do e-mail, sem gravar nem enviar (sessão diretoria/admin ou cron)
 //   ?teste=1    envia [TESTE] para quem está logado (ou para ?to= com o CRON_SECRET), sem gravar
@@ -20,7 +21,7 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 120
 
 const APP_URL = process.env.NEXTAUTH_URL || 'https://projete.projetus.org'
-const FROM = process.env.DIGEST_FROM_EMAIL || 'PROJETUS <noreply@projetus.org>'
+const FROM = process.env.WEEKLY_REPORT_FROM || 'PROJETUS <report@projetus.org>'
 
 function horaSP(): number {
   return Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hourCycle: 'h23' }).format(new Date()))
