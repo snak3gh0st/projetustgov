@@ -24,8 +24,7 @@ const AVANCOS = ['Em Atendimento', 'Reunião Agendada', 'Proposta Enviada', 'Apr
 const PERDAS = ['Sem Interesse', 'Churn']
 const r2 = (n: number) => Math.round(n * 100) / 100
 
-export async function montarRelatorio(hoje: string = todaySP()): Promise<Relatorio> {
-  const semana = semanaDe(hoje)
+export async function montarRelatorio(hoje: string = todaySP(), semana: Semana = semanaDe(hoje)): Promise<Relatorio> {
   const proxima = semanaSeguinte(semana)
   const anterior = await carregar(addDaysISO(semana.ate, -7))
 

@@ -23,23 +23,25 @@ function esc(s: string): string {
 const signColor = (v: number) => (v < 0 ? BAD : v > 0 ? GOOD : MUTED)
 
 function section(title: string, inner: string): string {
-  return `<tr><td style="padding:28px 32px 0;">
+  return `<tr><td style="padding:24px 20px 0;">
     <div style="font-family:${FONT};font-size:11px;font-weight:700;color:${MUTED};text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;">${esc(title)}</div>
     ${inner}
   </td></tr>`
 }
 
+// Duas colunas: no celular (Gmail ignora media query) três valores lado a lado não cabem.
 function kpis(items: { label: string; value: string; sub?: string; color?: string }[]): string {
-  const cells = items
-    .map(
-      (k) => `<td width="${Math.floor(100 / items.length)}%" valign="top" style="padding:12px 12px;border:1px solid ${LINE};border-radius:10px;background:#fff;">
+  const cell = (k: (typeof items)[number], span = 1) => `<td width="${span === 1 ? '50%' : '100%'}"${span > 1 ? ` colspan="${span}"` : ''} valign="top" style="padding:12px;border:1px solid ${LINE};border-radius:10px;background:#fff;">
         <div style="font-family:${FONT};font-size:11px;color:${MUTED};">${esc(k.label)}</div>
-        <div style="font-family:${FONT};font-size:18px;font-weight:700;color:${k.color ?? INK};margin-top:4px;white-space:nowrap;">${esc(k.value)}</div>
+        <div style="font-family:${FONT};font-size:18px;font-weight:700;color:${k.color ?? INK};margin-top:4px;">${esc(k.value)}</div>
         ${k.sub ? `<div style="font-family:${FONT};font-size:11px;color:${FAINT};margin-top:2px;">${esc(k.sub)}</div>` : ''}
       </td>`
-    )
-    .join('<td width="8" style="font-size:0;">&nbsp;</td>')
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;"><tr>${cells}</tr></table>`
+  const linhas: string[] = []
+  for (let i = 0; i < items.length; i += 2) {
+    const [a, b] = items.slice(i, i + 2)
+    linhas.push(b ? `<tr>${cell(a)}<td width="8" style="font-size:0;">&nbsp;</td>${cell(b)}</tr>` : `<tr>${cell(a, 3)}</tr>`)
+  }
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;">${linhas.join('<tr><td colspan="3" style="height:8px;font-size:0;">&nbsp;</td></tr>')}</table>`
 }
 
 function rows(lines: { left: string; sub?: string; right: string; color?: string }[]): string {
@@ -114,18 +116,14 @@ export function relatorioSemanalEmail(r: Relatorio, opts: { url: string; teste?:
         { label: 'Saldo em conta', value: moneyCompact(f.saldo.total), sub: variacao != null ? `${signedMoneyCompact(variacao)} na semana` : undefined, color: (f.saldo.total ?? 0) < 0 ? BAD : INK },
         { label: 'Recebido na semana', value: moneyCompact(f.semana.recebido), color: GOOD },
         { label: 'Pago na semana', value: moneyCompact(f.semana.pago) },
-      ])}
-      <div style="height:8px;"></div>
-      ${kpis([
         { label: 'Faturamento do mês', value: moneyCompact(f.resultado.mtd.atual), sub: `mês passado no mesmo ponto: ${moneyCompact(f.resultado.mtd.anterior)}` },
         { label: 'A receber vencido', value: moneyCompact(f.atrasados.receber.total), sub: `${f.atrasados.receber.count} títulos`, color: f.atrasados.receber.total > 0 ? WARN : INK },
         { label: 'Posição líquida 12m', value: moneyCompact(f.posicao.liquida), color: signColor(f.posicao.liquida) },
       ])}`
     )}
     ${section(`Próxima semana · ${dayMonth(r.proxima.de)} a ${dayMonth(r.proxima.ate)}`, `${kpis([
-      { label: 'A receber', value: moneyCompact(totalReceber), color: GOOD },
+      { label: 'A receber', value: moneyCompact(totalReceber), color: GOOD, sub: `receber − pagar: ${signedMoneyCompact(totalReceber - totalPagar)}` },
       { label: 'A pagar', value: moneyCompact(totalPagar), color: BAD },
-      { label: 'Receber − pagar', value: signedMoneyCompact(totalReceber - totalPagar), color: signColor(totalReceber - totalPagar) },
     ])}<div style="height:6px;"></div>${agenda}`)}
     ${section('Saldo por empresa', empresas)}
     ${section(
@@ -133,11 +131,10 @@ export function relatorioSemanalEmail(r: Relatorio, opts: { url: string; teste?:
       `${kpis([
         { label: 'Vendas na semana', value: String(c.vendas.itens.length), sub: moneyCompact(c.vendas.total) },
         { label: 'Vendas no mês', value: String(c.vendas.mes.count), sub: moneyCompact(c.vendas.mes.total) },
-        { label: 'Leads distribuídos', value: String(c.distribuidos) },
       ])}
       <div style="height:10px;"></div>${vendas}`
     )}
-    ${section('Time comercial na semana', time)}
+    ${section(`Time comercial na semana · ${c.distribuidos} leads distribuídos`, time)}
   `
 
   const subject = `${opts.teste ? '[TESTE] ' : ''}Relatório semanal TS&CO · ${periodo}`
@@ -148,18 +145,18 @@ export function relatorioSemanalEmail(r: Relatorio, opts: { url: string; teste?:
     <tr><td align="center">
       <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%;background:#fff;border:1px solid ${LINE};border-radius:16px;overflow:hidden;">
         <tr><td style="height:4px;background:linear-gradient(90deg,#FD225C 0%,#7A4BAC 50%,${BRAND} 100%);font-size:0;line-height:0;">&nbsp;</td></tr>
-        <tr><td style="padding:28px 32px 0;">
+        <tr><td style="padding:24px 20px 0;">
           <div style="font-family:${FONT};font-size:11px;font-weight:700;color:${BRAND};text-transform:uppercase;letter-spacing:1px;">Relatório semanal</div>
           <div style="font-family:${FONT};font-size:22px;font-weight:700;color:${INK};margin-top:4px;">Semana de ${br(r.semana.de)} a ${br(r.semana.ate)}</div>
           <div style="font-family:${FONT};font-size:13px;color:${MUTED};margin-top:4px;">Financeiro do grupo TS&amp;CO e comercial da PROJETUS</div>
         </td></tr>
         ${body}
-        <tr><td style="padding:28px 32px 8px;" align="center">
+        <tr><td style="padding:24px 20px 8px;" align="center">
           <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:${BRAND};border-radius:10px;">
             <a href="${esc(opts.url)}" style="display:inline-block;padding:13px 26px;color:#fff;font-family:${FONT};font-weight:600;font-size:14px;text-decoration:none;">Abrir relatório completo</a>
           </td></tr></table>
         </td></tr>
-        <tr><td style="padding:16px 32px 28px;font-family:${FONT};font-size:11px;color:${FAINT};line-height:1.6;text-align:center;">
+        <tr><td style="padding:16px 20px 24px;font-family:${FONT};font-size:11px;color:${FAINT};line-height:1.6;text-align:center;">
           Financeiro: Conta Azul${r.financeiroAte ? `, sincronizado em ${esc(new Date(r.financeiroAte).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }))}` : ''}. Pagamentos feitos depois disso entram no próximo relatório.<br>
           Comercial: CRM do PROJETE. Enviado automaticamente pela PROJETUS toda sexta às 18h.
         </td></tr>

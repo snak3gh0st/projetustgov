@@ -9,6 +9,16 @@ export function semanaDe(hoje: string): Semana {
   return { de, ate: addDaysISO(de, 6) }
 }
 
+/**
+ * Última semana já encerrada (a de sexta às 18h em diante). Antes disso, a anterior:
+ * um envio forçado ou atrasado (servidor fora do ar na sexta) nunca grava semana pela metade.
+ */
+export function ultimaSemanaFechada(hoje: string, horaSP: number): Semana {
+  const atual = semanaDe(hoje)
+  if (hoje === atual.ate && horaSP >= 18) return atual
+  return { de: addDaysISO(atual.de, -7), ate: addDaysISO(atual.ate, -7) }
+}
+
 export function semanaSeguinte(s: Semana): Semana {
   return { de: addDaysISO(s.de, 7), ate: addDaysISO(s.ate, 7) }
 }

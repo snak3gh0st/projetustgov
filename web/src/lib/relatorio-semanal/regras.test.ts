@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { diasDa, empresaDaConta, montarAlertas, negocioDoCentro, semanaDe, semanaSeguinte } from './regras'
+import { diasDa, empresaDaConta, montarAlertas, negocioDoCentro, semanaDe, semanaSeguinte, ultimaSemanaFechada } from './regras'
 import type { Relatorio } from './types'
 
 test('semanaDe vai de sábado a sexta', () => {
@@ -11,6 +11,17 @@ test('semanaDe vai de sábado a sexta', () => {
   assert.deepEqual(semanaDe('2026-10-31'), { de: '2026-10-31', ate: '2026-11-06' })
   assert.deepEqual(semanaSeguinte(semanaDe('2026-10-30')), { de: '2026-10-31', ate: '2026-11-06' })
   assert.equal(diasDa(semanaDe('2026-10-30')).length, 7)
+})
+
+test('ultimaSemanaFechada só fecha a semana na sexta às 18h', () => {
+  const s = { de: '2026-10-24', ate: '2026-10-30' }
+  const anterior = { de: '2026-10-17', ate: '2026-10-23' }
+  assert.deepEqual(ultimaSemanaFechada('2026-10-30', 18), s)
+  assert.deepEqual(ultimaSemanaFechada('2026-10-30', 17), anterior)
+  assert.deepEqual(ultimaSemanaFechada('2026-10-29', 23), anterior)
+  // atraso: rodou no sábado ou na segunda, envia a semana que fechou na sexta
+  assert.deepEqual(ultimaSemanaFechada('2026-10-31', 9), s)
+  assert.deepEqual(ultimaSemanaFechada('2026-11-02', 9), s)
 })
 
 test('empresaDaConta usa o nome da conta bancária', () => {

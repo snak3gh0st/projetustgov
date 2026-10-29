@@ -3,12 +3,15 @@
 //
 //   ?preview=1  devolve o HTML do e-mail, sem gravar nem enviar (sessão diretoria/admin ou cron)
 //   ?teste=1    envia [TESTE] para quem está logado (ou para ?to= com o CRON_SECRET), sem gravar
-//   ?force=1    com o CRON_SECRET, grava e envia fora de sexta-feira
+//
+// Sem parâmetro (só com o CRON_SECRET) grava e envia a última semana fechada (sexta 18h). Rodar antes
+// disso, ou com atraso, envia a semana anterior, que já pode ter saído: nunca congela semana pela metade.
 
 import { NextResponse } from 'next/server'
 import { getApiSession } from '@/lib/dal'
 import { todaySP } from '@/lib/conta-azul/finance/dates'
 import { montarRelatorio } from '@/lib/relatorio-semanal/build'
+import { ultimaSemanaFechada } from '@/lib/relatorio-semanal/regras'
 import { relatorioSemanalEmail } from '@/lib/relatorio-semanal/email'
 import { carregar, liberarEnvio, reservarEnvio, salvar } from '@/lib/relatorio-semanal/store'
 import type { Relatorio } from '@/lib/relatorio-semanal/types'
@@ -18,6 +21,10 @@ export const maxDuration = 120
 
 const APP_URL = process.env.NEXTAUTH_URL || 'https://projete.projetus.org'
 const FROM = process.env.DIGEST_FROM_EMAIL || 'PROJETUS <noreply@projetus.org>'
+
+function horaSP(): number {
+  return Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hourCycle: 'h23' }).format(new Date()))
+}
 
 function linkDa(r: Relatorio) {
   return `${APP_URL.replace(/\/$/, '')}/gestao/relatorio-semanal?semana=${r.semana.ate}`
@@ -56,16 +63,17 @@ export async function GET(request: Request) {
     if (!isCron) return NextResponse.json({ error: 'Envio só pelo agendamento' }, { status: 403 })
 
     const hoje = todaySP()
-    const sexta = new Date(`${hoje}T12:00:00Z`).getUTCDay() === 5
-    if (!sexta && url.searchParams.get('force') !== '1') {
-      return NextResponse.json({ success: true, skipped: 'not_friday', hoje })
-    }
+    const semana = ultimaSemanaFechada(hoje, horaSP())
 
     // Retentativas do run-cron.sh reaproveitam o retrato já enviado, para os números não mudarem.
-    const r0 = await montarRelatorio(hoje)
-    const gravado = await carregar(r0.semana.ate)
-    const r = gravado && gravado.enviadoPara.length ? gravado.dados : r0
-    if (r === r0) await salvar(r)
+    const gravado = await carregar(semana.ate)
+    let r: Relatorio
+    if (gravado && gravado.enviadoPara.length) {
+      r = gravado.dados
+    } else {
+      r = await montarRelatorio(hoje, semana)
+      await salvar(r)
+    }
 
     const destinatarios = (process.env.WEEKLY_REPORT_TO ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
     const enviados: string[] = []
