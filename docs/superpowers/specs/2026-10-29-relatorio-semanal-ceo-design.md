@@ -60,7 +60,10 @@ mês anterior; vendedor sem atividade na semana.
 - Destinatários em `WEEKLY_REPORT_TO` (lista separada por vírgula). Sem a variável, grava o retrato e não envia.
 - **Idempotente**: `relatorio_semanal.enviado_para` guarda quem já recebeu a semana; o `run-cron.sh`
   repete até 5 vezes em erro e não pode duplicar e-mail.
-- `?dry=1` monta e devolve o HTML sem gravar nem enviar; `?to=` envia um teste `[TESTE]` só para esse endereço.
+- Sempre envia a **última semana fechada** (sexta 18h). Rodar antes, ou com atraso, envia a semana
+  anterior, que já pode ter saído (e então é pulada): nunca grava semana pela metade.
+- `?preview=1` devolve o HTML sem gravar nem enviar; `?teste=1` envia `[TESTE]` para quem está logado
+  (ou para `?to=` com o `CRON_SECRET`), também sem gravar. Testes usam só esses dois.
 - Primeiros envios só para o Paulo. Trocar para o Philipe é mudar a variável.
 
 ## Fora do escopo
