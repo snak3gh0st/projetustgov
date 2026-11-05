@@ -25,19 +25,17 @@
 //
 // CRONS
 // -----
-// Chamado por /api/cron/sync-tgov-only (vercel.json — 13:30 UTC, depois do
-// sync-execucao). Pode ser disparado manualmente como gestor.
+// Chamado por /api/cron/sync-tgov-only via systemd no btapps, às 10:30 BRT,
+// depois do sync-execucao. Pode ser disparado manualmente como gestor.
 // ============================================================================
 
 import { getPool, query } from '@/lib/db'
 import { sendSituacaoChangeNotification, sendCommercialSituacaoChangeNotification } from './email-service'
-import { cleanCNPJ, parseBRNumber, fixText, downloadAndStreamCSV } from '@/lib/repo-sync'
+import { cleanCNPJ, parseBRNumber, fixText } from '@/lib/repo-sync'
+import { downloadTgovTable } from '@/lib/tgov-repo'
 import { EXECUCAO_NR_PROPOSTAS, APROVACAO_NR_PROPOSTAS } from '@/lib/tgov'
 import { ensureTgovTables } from '@/lib/tgov-tables'
 
-const REPO_BASE = 'https://repositorio.dados.gov.br/seges/detru'
-const PROPOSTA_URL = `${REPO_BASE}/siconv_proposta.csv.zip`
-const CONVENIO_URL = `${REPO_BASE}/siconv_convenio.csv.zip`
 
 export interface TgovOnlySyncStats {
   proposta_rows_scanned: number
@@ -48,8 +46,6 @@ export interface TgovOnlySyncStats {
   propostas_updated: number
   execucao_inserted: number
   execucao_updated: number
-  propostas_purged: number
-  execucao_purged: number
   errors: number
   duration_ms: number
 }
@@ -61,33 +57,6 @@ interface PropostaInfo {
   uf: string | null
   municipio: string | null
   nr_proposta: string | null
-}
-
-/**
- * Returns true when a situacao transition crosses a major phase boundary:
- *   - aprovacao-phase keywords → execucao-phase keywords
- *   - execucao-phase keywords  → prestacao_contas-phase keywords
- *
- * Used to decide whether tgov_comments should be cleared for a proposal.
- */
-function isMajorPhaseTransition(oldSituacao: string, newSituacao: string): boolean {
-  const old = oldSituacao.toLowerCase()
-  const next = newSituacao.toLowerCase()
-
-  const isAprovacaoPhase = (s: string) =>
-    s.includes('aprovado') || s.includes('aguardando análise') || s.includes('aguardando analise') ||
-    s.includes('em análise') || s.includes('em analise') || s.includes('aguardando envio') ||
-    s.includes('reprovado') || s.includes('complementação') || s.includes('complementacao')
-
-  const isExecucaoPhase = (s: string) =>
-    s.includes('em execução') || s.includes('em execucao')
-
-  const isPrestacaoPhase = (s: string) =>
-    s.includes('prestação de contas') || s.includes('prestacao de contas') ||
-    s.includes('aguardando prestação') || s.includes('aguardando prestacao')
-
-  return (isAprovacaoPhase(old) && isExecucaoPhase(next)) ||
-         (isExecucaoPhase(old) && isPrestacaoPhase(next))
 }
 
 function parseBRDate(val: string | null | undefined): string | null {
@@ -107,7 +76,6 @@ function buildDate(d: string | undefined, m: string | undefined, y: string | und
 
 export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
   const startTime = Date.now()
-  const syncStartTimestamp = new Date().toISOString()
 
   const stats: TgovOnlySyncStats = {
     proposta_rows_scanned: 0,
@@ -118,8 +86,6 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
     propostas_updated: 0,
     execucao_inserted: 0,
     execucao_updated: 0,
-    propostas_purged: 0,
-    execucao_purged: 0,
     errors: 0,
     duration_ms: 0,
   }
@@ -196,7 +162,7 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
     orgao_vinculado: string | null
   }> = []
 
-  await downloadAndStreamCSV(PROPOSTA_URL, (row) => {
+  await downloadTgovTable('siconv_proposta', (row) => {
     stats.proposta_rows_scanned++
     const rawCnpj = row['IDENTIF_PROPONENTE'] || row['CNPJ_PROPONENTE'] || null
     const cnpj = cleanCNPJ(rawCnpj)
@@ -275,7 +241,7 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
     verificar_saldo: boolean
   }> = []
 
-  await downloadAndStreamCSV(CONVENIO_URL, (row) => {
+  await downloadTgovTable('siconv_convenio', (row) => {
     stats.convenio_rows_scanned++
     const proposta = propostaMap.get(row['ID_PROPOSTA'])
     if (!proposta) return
@@ -460,57 +426,51 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
             [change.nrProposta],
           )
           if (participants.length > 0) {
-            sendSituacaoChangeNotification({
+            await sendSituacaoChangeNotification({
               recipientIds: participants.map(p => p.user_id),
               actorId: '00000000-0000-0000-0000-000000000000', // sync has no human actor; no recipient will match this
               propostaNr: change.nrProposta,
               propostaTitulo: change.titulo,
               oldStatus: change.oldSituacao,
               newStatus: change.newSituacao,
-            }).catch(err => console.error('[tgov-only-sync] situacao notification failed', err))
+            })
           }
 
           // Commercial owners of the CNPJ — alert only; never overwrite CRM funnel
           const cnpjClean = String(change.cnpj ?? '').replace(/\D/g, '')
           if (cnpjClean) {
-            const sellers = await query<{ vendedor_id: string }>(
-              `SELECT DISTINCT vendedor_id
-               FROM vendedor_projetos
-               WHERE vendedor_id IS NOT NULL
-                 AND REGEXP_REPLACE(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1`,
+            const sellers = await query<{ user_id: string }>(
+              `SELECT DISTINCT user_id
+               FROM (
+                 SELECT vendedor_id AS user_id
+                 FROM vendedor_projetos
+                 WHERE vendedor_id IS NOT NULL
+                   AND REGEXP_REPLACE(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1
+                 UNION
+                 SELECT closer_id AS user_id
+                 FROM vendedor_projetos
+                 WHERE closer_id IS NOT NULL
+                   AND REGEXP_REPLACE(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1
+               ) owners`,
               [cnpjClean],
             )
             if (sellers.length > 0) {
-              sendCommercialSituacaoChangeNotification({
-                recipientIds: sellers.map(s => s.vendedor_id),
+              await sendCommercialSituacaoChangeNotification({
+                recipientIds: sellers.map(s => s.user_id),
                 propostaNr: change.nrProposta,
                 propostaTitulo: change.titulo,
                 cnpj: cnpjClean,
                 oldStatus: change.oldSituacao,
                 newStatus: change.newSituacao,
-              }).catch(err => console.error('[tgov-only-sync] commercial situacao notification failed', err))
+              })
+              console.log(`[tgov-only-sync] commercial situacao notification sent to ${sellers.length} CRM owner(s) for ${change.nrProposta}`)
             }
           }
         } catch (err) {
           console.error('[tgov-only-sync] situacao notification gather failed', err)
         }
 
-        // Clear tgov_comments and tgov_interactions.obs for major phase transitions
-        if (isMajorPhaseTransition(change.oldSituacao, change.newSituacao)) {
-          try {
-            await query(
-              `DELETE FROM tgov_comments WHERE target_key = $1 AND target_type = 'proposta'`,
-              [change.nrProposta],
-            )
-            await query(
-              `UPDATE tgov_interactions SET obs = NULL WHERE item_key = $1`,
-              [change.nrProposta],
-            )
-            console.log(`[tgov-only-sync] cleared comments for ${change.nrProposta} (${change.oldSituacao} -> ${change.newSituacao})`)
-          } catch (err) {
-            console.error('[tgov-only-sync] comment clear failed for', change.nrProposta, err)
-          }
-        }
+        // Comments and observations survive phase changes: the sync never erases user data.
       }
     }
 
@@ -606,30 +566,8 @@ export async function syncTgovOnly(): Promise<TgovOnlySyncStats> {
     stats.execucao_inserted = Math.max(0, execAfterN - execBeforeN)
     stats.execucao_updated = execucaoRows.length - stats.execucao_inserted
 
-    // -----------------------------------------------------------------------
-    // STEP F: Purge stale rows (rows que não foram tocadas neste run).
-    // Acontece se um nr_proposta saiu da hardcoded list ou da tgov_whitelist,
-    // ou se um CNPJ migrou para o CRM (passou a ser tratado pelo execucao-sync).
-    // -----------------------------------------------------------------------
-    const propPurge = await client.query<{ n: string }>(
-      `WITH deleted AS (
-        DELETE FROM tgov_propostas WHERE updated_at < $1 RETURNING 1
-      ) SELECT COUNT(*) AS n FROM deleted`,
-      [syncStartTimestamp]
-    )
-    stats.propostas_purged = parseInt(propPurge.rows[0].n, 10)
-
-    const execPurge = await client.query<{ n: string }>(
-      `WITH deleted AS (
-        DELETE FROM tgov_projetos_execucao WHERE synced_at < $1 RETURNING 1
-      ) SELECT COUNT(*) AS n FROM deleted`,
-      [syncStartTimestamp]
-    )
-    stats.execucao_purged = parseInt(execPurge.rows[0].n, 10)
-
-    if (stats.propostas_purged > 0 || stats.execucao_purged > 0) {
-      console.log(`[tgov-only-sync] STEP F: purged ${stats.propostas_purged} propostas + ${stats.execucao_purged} execucao stale rows`)
-    }
+    // Rows that leave the TGov-only scope are kept as last synced: the sync
+    // only updates and inserts, it never deletes from the base.
   } finally {
     client.release()
   }

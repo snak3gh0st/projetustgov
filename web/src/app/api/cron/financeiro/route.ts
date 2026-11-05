@@ -25,7 +25,7 @@ async function sendSlack(text:string){
 export async function GET(request:NextRequest){
   try{
     requireCron(request)
-    const {store,engine,contaAzul}=financeRuntime(),task=request.nextUrl.searchParams.get('task')||'sync'
+    const {store,engine,contaAzul,refreshMirror}=financeRuntime(),task=request.nextUrl.searchParams.get('task')||'sync'
     if(task==='report')return NextResponse.json(await dailyReport(store,engine,sendEmail,process.env.FINANCE_SLACK_ENABLED==='true'?sendSlack:undefined),{headers:PRIVATE_HEADERS})
     if(task==='statements')return NextResponse.json(await commissionStatements(store,sendEmail),{headers:PRIVATE_HEADERS})
     if(task!=='sync')throw new FinanceError('Tarefa desconhecida.')
@@ -38,7 +38,7 @@ export async function GET(request:NextRequest){
     const now=new Date(),start=new Date(now);start.setUTCDate(start.getUTCDate()-365)
     const end=new Date(now);end.setUTCDate(end.getUTCDate()+365)
     const from=request.nextUrl.searchParams.get('from')||businessDate(start),to=request.nextUrl.searchParams.get('to')||businessDate(end)
-    try{results.contaAzul=await engine.pull(contaAzul,from,to)}catch(e){errors.push(e instanceof Error?e.message:'Conta Azul indisponível')}
+    try{results.contaAzul=await refreshMirror(from,to)}catch(e){errors.push(e instanceof Error?e.message:'Espelho Conta Azul indisponível')}
     const ready=connectorReadiness()
     if(ready.hotmartCredentials&&ready.hotmartProducts.length){
       try{results.hotmart=await engine.importHotmart(hotmartClient(),from,businessDate())}catch(e){errors.push(e instanceof Error?e.message:'Hotmart indisponível')}

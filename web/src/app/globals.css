@@ -2,38 +2,198 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+/*
+ * Tokens do Projete. Canais OKLCH (L C H) consumidos pelo tailwind.config:
+ * cor = oklch(var(--token) / alpha). Neutros com leve tom do azul da marca (h 255).
+ */
+:root {
+  --n-50: 0.985 0.003 255;
+  --n-100: 0.968 0.005 255;
+  --n-200: 0.926 0.008 255;
+  --n-300: 0.872 0.011 255;
+  --n-400: 0.66 0.016 255;
+  --n-500: 0.54 0.018 255;
+  --n-600: 0.44 0.018 255;
+  --n-700: 0.37 0.016 255;
+  --n-800: 0.28 0.012 255;
+  --n-900: 0.215 0.009 255;
+  --n-950: 0.16 0.007 255;
+
+  --canvas: var(--n-50);
+  --surface: 1 0 0;
+  --raised: var(--n-100);
+  --line: var(--n-200);
+  --line-strong: var(--n-300);
+  --ink: var(--n-950);
+  --ink-2: var(--n-600);
+  --ink-3: var(--n-500);
+
+  /* Sigma Blue #0072F7 */
+  --accent: 0.585 0.208 258;
+  --accent-hover: 0.52 0.19 258;
+  --accent-soft: 0.955 0.025 258;
+  --accent-ink: 0.48 0.18 258;
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 150ms;
+  --dur-base: 200ms;
+  --dur-slow: 280ms;
+}
+
+.dark {
+  --n-50: 0.985 0.002 255;
+  --n-100: 0.955 0.003 255;
+  --n-200: 0.905 0.004 255;
+  --n-300: 0.84 0.005 255;
+  --n-400: 0.74 0.006 255;
+  --n-500: 0.64 0.007 255;
+  --n-600: 0.5 0.008 255;
+  --n-700: 0.37 0.008 255;
+  --n-800: 0.27 0.007 255;
+  --n-900: 0.205 0.006 255;
+  --n-950: 0.155 0.005 255;
+
+  --canvas: var(--n-950);
+  --surface: var(--n-900);
+  --raised: var(--n-800);
+  --line: var(--n-800);
+  --line-strong: var(--n-700);
+  --ink: var(--n-50);
+  --ink-2: var(--n-300);
+  --ink-3: var(--n-400);
+
+  --accent: 0.64 0.19 258;
+  --accent-hover: 0.7 0.17 258;
+  --accent-soft: 0.3 0.07 258;
+  --accent-ink: 0.76 0.13 258;
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body), Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv11', 'ss01';
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Space Grotesk', sans-serif;
+h1, h2 {
+  font-family: var(--font-heading), 'Space Grotesk', system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
-/* Custom scrollbar — light */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #F1F5F9;
-}
-::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+h3, h4, h5, h6 {
+  text-wrap: balance;
 }
 
-/* Custom scrollbar — dark (when html.dark) */
-html.dark ::-webkit-scrollbar-track {
-  background: #111827;
+::selection {
+  background: oklch(var(--accent) / 0.18);
 }
-html.dark ::-webkit-scrollbar-thumb {
-  background: #374151;
+
+:focus-visible {
+  outline: 2px solid oklch(var(--accent));
+  outline-offset: 2px;
 }
-html.dark ::-webkit-scrollbar-thumb:hover {
-  background: #4B5563;
+
+/* Números de dados alinhados em colunas */
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
+
+/* Skeleton com brilho deslizante (estático com reduced-motion) */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    oklch(var(--n-200)) 0%,
+    oklch(var(--n-100)) 50%,
+    oklch(var(--n-200)) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+.dark .skeleton {
+  background: linear-gradient(
+    90deg,
+    oklch(var(--n-800)) 0%,
+    oklch(var(--n-700) / 0.6) 50%,
+    oklch(var(--n-800)) 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* Barras de rolagem nativas, só com a cor do tema */
+* {
+  scrollbar-color: oklch(var(--n-300)) transparent;
+  scrollbar-width: thin;
+}
+.dark * {
+  scrollbar-color: oklch(var(--n-700)) transparent;
+}
+
+/* Movimento reduzido: sem deslocamento, só troca instantânea */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* BI Financeiro chart tokens (palette validated for colour-vision deficiency and contrast in both modes). */
+.fin {
+  --fin-in: #0072F7;
+  --fin-in-soft: rgba(0, 114, 247, 0.38);
+  --fin-in-wash: rgba(0, 114, 247, 0.10);
+  --fin-out: #E8692E;
+  --fin-out-soft: rgba(232, 105, 46, 0.40);
+  --fin-od1: #F0985C;
+  --fin-od2: #DF6A2C;
+  --fin-od3: #B9501C;
+  --fin-od4: #86380F;
+  --fin-good: #047857;
+  --fin-warn: #B45309;
+  --fin-bad: #B91C1C;
+  --fin-neutral: #64748B;
+  --fin-grid: #EDF1F5;
+  --fin-axis: #CBD5E1;
+  --fin-text: #64748B;
+  --fin-ink: #0F172A;
+  --fin-ink2: #475569;
+  --fin-surface: #FFFFFF;
+  --fin-band: #F1F5F9;
+}
+.dark .fin {
+  --fin-in: #3D8EF8;
+  --fin-in-soft: rgba(61, 142, 248, 0.40);
+  --fin-in-wash: rgba(61, 142, 248, 0.12);
+  --fin-out: #E8692E;
+  --fin-out-soft: rgba(232, 105, 46, 0.42);
+  --fin-od1: #9A4A22;
+  --fin-od2: #C5602A;
+  --fin-od3: #E8803F;
+  --fin-od4: #F7AD72;
+  --fin-good: #34D399;
+  --fin-warn: #FBBF24;
+  --fin-bad: #F87171;
+  --fin-neutral: #A1A1AA;
+  --fin-grid: #1F2937;
+  --fin-axis: #374151;
+  --fin-text: #9CA3AF;
+  --fin-ink: #F9FAFB;
+  --fin-ink2: #D1D5DB;
+  --fin-surface: #111827;
+  --fin-band: #1F2937;
+}
+.fin .num { font-variant-numeric: tabular-nums; }
+.fin svg text { font-family: var(--font-body), Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; }

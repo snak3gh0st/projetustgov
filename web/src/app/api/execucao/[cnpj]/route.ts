@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { query } from '@/lib/db'
-import { getApiSession } from '@/lib/dal'
+import { query, queryAs } from '@/lib/db'
+import { canEditLeads, getApiSession } from '@/lib/dal'
 import { isClosedCrmStatus, normalizeCrmStatus } from '@/lib/crm-catalog'
 
 export const dynamic = 'force-dynamic'
@@ -38,6 +38,9 @@ export async function PATCH(
   try {
     const session = await getApiSession()
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!canEditLeads(session.role)) {
+      return NextResponse.json({ error: 'Forbidden: read-only role' }, { status: 403 })
+    }
 
     const cnpj = decodeURIComponent(params.cnpj)
     const cnpjClean = cnpj.replace(/\D/g, '')
@@ -62,7 +65,7 @@ export async function PATCH(
 
     // Mesmo gate do pipeline de vendas: só gestor fecha, e só a partir de "Em Aprovação".
     if (body.status_contato !== undefined && isClosedCrmStatus(normalizeCrmStatus(body.status_contato))) {
-      if (session.role !== 'gestor') {
+      if (session.role !== 'gestor' && session.role !== 'diretoria') {
         return NextResponse.json({ error: 'Only gestores can move a lead to Vendas Concluídas' }, { status: 403 })
       }
       const currentRow = await query<{ status_contato_execucao: string | null }>(
@@ -80,7 +83,8 @@ export async function PATCH(
 
     if (session.role === 'vendedor') {
       updateParams.push(cnpjClean, session.userId)
-      await query(
+      await queryAs(
+        { userId: session.userId, origem: 'manual' },
         `UPDATE vendedor_projetos
          SET ${setClauses.join(', ')}
          WHERE REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') = $${pi++}
@@ -89,7 +93,8 @@ export async function PATCH(
       )
     } else {
       updateParams.push(cnpjClean)
-      await query(
+      await queryAs(
+        { userId: session.userId, origem: 'manual' },
         `UPDATE vendedor_projetos
          SET ${setClauses.join(', ')}
          WHERE REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') = $${pi++}`,

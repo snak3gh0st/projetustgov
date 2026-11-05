@@ -22,7 +22,8 @@
 
 import { getPool, query } from '@/lib/db'
 import { buildStructuredLeadScopeSql } from '@/lib/crm-scope'
-import { cleanCNPJ, parseBRNumber, fixText, downloadAndStreamCSV, formatPhone } from '@/lib/repo-sync'
+import { cleanCNPJ, parseBRNumber, fixText, formatPhone } from '@/lib/repo-sync'
+import { downloadTgovTable } from '@/lib/tgov-repo'
 import { APROVACAO_NR_PROPOSTAS } from '@/lib/tgov'
 import { sendCommercialSituacaoChangeNotification } from './email-service'
 
@@ -36,9 +37,6 @@ function delay(ms: number): Promise<void> { return new Promise(r => setTimeout(r
 // Constants
 // ---------------------------------------------------------------------------
 
-const REPO_BASE = 'https://repositorio.dados.gov.br/seges/detru'
-const PROPOSTA_URL = `${REPO_BASE}/siconv_proposta.csv.zip`
-const CONVENIO_URL = `${REPO_BASE}/siconv_convenio.csv.zip`
 
 // ---------------------------------------------------------------------------
 // Exported types
@@ -183,7 +181,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
   const propostaMap = new Map<string, PropostaInfo>()
   let propostaHeadersLogged = false
 
-  await downloadAndStreamCSV(PROPOSTA_URL, (row) => {
+  await downloadTgovTable('siconv_proposta', (row) => {
     stats.proposta_rows_scanned++
 
     // Debug: log headers on first row so CSV column mapping can be verified
@@ -437,22 +435,31 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
 
   for (const change of commercialSituacaoChanges) {
     try {
-      const owners = await query<{ vendedor_id: string }>(
-        `SELECT DISTINCT vendedor_id
-         FROM vendedor_projetos
-         WHERE vendedor_id IS NOT NULL
-           AND REGEXP_REPLACE(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1`,
+      const owners = await query<{ user_id: string }>(
+        `SELECT DISTINCT user_id
+         FROM (
+           SELECT vendedor_id AS user_id
+           FROM vendedor_projetos
+           WHERE vendedor_id IS NOT NULL
+             AND REGEXP_REPLACE(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1
+           UNION
+           SELECT closer_id AS user_id
+           FROM vendedor_projetos
+           WHERE closer_id IS NOT NULL
+             AND REGEXP_REPLACE(COALESCE(cnpj, ''), '[^0-9]', '', 'g') = $1
+         ) owners`,
         [change.cnpj],
       )
       if (owners.length > 0) {
-        sendCommercialSituacaoChangeNotification({
-          recipientIds: owners.map(row => row.vendedor_id),
+        await sendCommercialSituacaoChangeNotification({
+          recipientIds: owners.map(row => row.user_id),
           propostaNr: change.propostaNr,
           propostaTitulo: change.propostaTitulo,
           cnpj: change.cnpj,
           oldStatus: change.oldStatus,
           newStatus: change.newStatus,
-        }).catch(error => console.error('[execucao-sync] commercial situacao notification failed', error))
+        })
+        console.log(`[execucao-sync] commercial situacao notification sent to ${owners.length} CRM owner(s) for ${change.propostaNr}`)
       }
     } catch (error) {
       console.error('[execucao-sync] commercial situacao owner lookup failed', error)
@@ -475,7 +482,7 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
   // -------------------------------------------------------------------------
   const records: ExecucaoRecord[] = []
 
-  await downloadAndStreamCSV(CONVENIO_URL, (row) => {
+  await downloadTgovTable('siconv_convenio', (row) => {
     stats.convenio_rows_scanned++
 
     // Debug: log headers on first row
@@ -676,20 +683,8 @@ export async function syncProjetosExecucao(): Promise<ExecucaoSyncStats> {
 
     console.log(`[execucao-sync] STEP D complete: inserted=${stats.inserted}, updated=${stats.updated}, errors=${stats.errors}`)
 
-    // -------------------------------------------------------------------------
-    // STEP D2: Purge stale rows — convenios no longer matching Projetus clients
-    // -------------------------------------------------------------------------
-    const syncStartTimestamp = new Date(startTime).toISOString()
-    const purgeResult = await client.query<{ n: string }>(
-      `WITH deleted AS (
-        DELETE FROM projetos_execucao WHERE synced_at < $1 RETURNING 1
-      ) SELECT COUNT(*) AS n FROM deleted`,
-      [syncStartTimestamp]
-    )
-    const purged = parseInt(purgeResult.rows[0].n, 10)
-    if (purged > 0) {
-      console.log(`[execucao-sync] STEP D2: purged ${purged} stale rows`)
-    }
+    // Convênios that leave em execução keep their last synced row: the sync
+    // only updates and inserts, it never deletes from the base.
 
     // -------------------------------------------------------------------------
     // STEP D3: BrasilAPI contact enrichment for projetos_execucao CNPJs

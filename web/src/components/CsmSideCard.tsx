@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { formatCNPJ, formatCompactCurrency, formatDate, whatsappMeUrlFromTelefone } from '@/lib/format'
+import { formatCNPJ, formatCompactCurrency, formatDate } from '@/lib/format'
+import { useLinkWhatsappFn } from '@/components/whatsapp/WhatsappNoProjete'
 
 interface CsmContact {
   id: number
@@ -60,6 +61,7 @@ const SITUACAO_COLORS: Record<string, string> = {
 }
 
 export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
+  const linkWhatsapp = useLinkWhatsappFn()
   const [data, setData] = useState<CsmClientDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -217,7 +219,7 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
                     Contatos ({data.contacts.length})
                   </h3>
                   {data.contacts.map((contact) => {
-                    const waUrl = whatsappMeUrlFromTelefone(contact.telefone)
+                    const wa = linkWhatsapp(contact.telefone, cnpj)
                     return (
                       <div
                         key={contact.id}
@@ -243,12 +245,11 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
                           )}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-3">
-                          {contact.telefone && waUrl && (
+                          {contact.telefone && wa && (
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <a
-                                href={waUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                href={wa.href}
+                                {...(wa.externo ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                                 className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-300 hover:text-green-700 font-medium"
                                 title="Conversar no WhatsApp"
                               >

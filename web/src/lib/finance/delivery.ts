@@ -31,7 +31,7 @@ export async function dailyReport(store:FinanceStore,engine:FinanceEngine,send:E
     ['Previsões locais a receber (fora dos totais ERP)',s.unsyncedReceivableCents],['Previsões locais a pagar (fora dos totais ERP)',s.unsyncedPayableCents]] as const
   const results:unknown[]=[]
   if(settings.dailyEmailEnabled){
-    const user=(await store.rows("SELECT id,nome,email FROM users WHERE id=$1 AND active AND role IN ('gestor','admin','gestor_financeiro')",[settings.reportRecipientId||null]))[0]
+    const user=(await store.rows("SELECT id,nome,email FROM users WHERE id=$1 AND active AND role IN ('diretoria','admin','gestor_financeiro')",[settings.reportRecipientId||null]))[0]
     if(!user?.email)throw new FinanceError('Destinatário do relatório financeiro indisponível.',409)
     const key=`daily:${report.date}:email:${user.id}`
     results.push(await deliverOnce(store,key,()=>send({to:user.email,subject:`Projete · Financeiro ${report.date}`,key:`${store.tenant}:${key}`,

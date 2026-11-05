@@ -273,6 +273,7 @@ CREATE TABLE IF NOT EXISTS projetos_execucao (
   dias_prest_contas        INTEGER          DEFAULT 0,
   synced_at            TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
   sync_run_id          INTEGER,
+  primeira_vez_em      TIMESTAMPTZ    DEFAULT NOW(),
   CONSTRAINT uq_projetos_execucao_nr_convenio UNIQUE (nr_convenio)
 );
 CREATE INDEX IF NOT EXISTS ix_projetos_execucao_cnpj ON projetos_execucao(cnpj);

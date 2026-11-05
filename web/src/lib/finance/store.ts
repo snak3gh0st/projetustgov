@@ -50,7 +50,7 @@ export class FinanceStore {
       throw new FinanceError('Confirme a empresa e configure conta financeira e categorias antes de habilitar envios.')
     }
     if (settings.dailyEmailEnabled) {
-      const u = (await this.rows("SELECT id FROM users WHERE id=$1 AND active AND role IN ('gestor','admin','gestor_financeiro')", [settings.reportRecipientId || null]))[0]
+      const u = (await this.rows("SELECT id FROM users WHERE id=$1 AND active AND role IN ('diretoria','admin','gestor_financeiro')", [settings.reportRecipientId || null]))[0]
       if (!u) throw new FinanceError('Selecione um responsável financeiro ativo para receber o relatório.')
     }
     await this.transaction(async c => {
@@ -80,12 +80,21 @@ export class FinanceStore {
         { role: 'gestor', id: input.closer_id, name: input.closer_name, amount: input.closer_commission_cents },
       ]
       for (const role of roles) {
-        if (!role.id || !Number.isSafeInteger(role.amount) || role.amount <= 0) continue
+        if (!role.id || !Number.isSafeInteger(role.amount) || role.amount <= 0) {
+          await c.query(`UPDATE finance_commissions SET status='void',eligibility_date=NULL,updated_at=now()
+            WHERE tenant_key=$1 AND source_ref=$2 AND status IN ('calculated','released')`,
+          [this.tenant, `projete:${input.external_key}:${role.role}`])
+          continue
+        }
         // Stable role key: changing the beneficiary never leaves an old unpaid duplicate behind.
         await c.query(`INSERT INTO finance_commissions(tenant_key,source_ref,sale_id,beneficiary_id,beneficiary_name,role,amount_cents)
           VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(tenant_key,source_ref) DO UPDATE
-          SET amount_cents=EXCLUDED.amount_cents,beneficiary_id=EXCLUDED.beneficiary_id,beneficiary_name=EXCLUDED.beneficiary_name,updated_at=now()
-          WHERE finance_commissions.status='calculated'`, [this.tenant, `projete:${input.external_key}:${role.role}`, sale.id, role.id, role.name, role.role, role.amount])
+          SET amount_cents=EXCLUDED.amount_cents,beneficiary_id=EXCLUDED.beneficiary_id,beneficiary_name=EXCLUDED.beneficiary_name,
+            status='calculated',eligibility_date=NULL,evidence=NULL,updated_at=now()
+          WHERE finance_commissions.status IN ('calculated','released','void') AND
+            (finance_commissions.amount_cents IS DISTINCT FROM EXCLUDED.amount_cents OR
+             finance_commissions.beneficiary_id IS DISTINCT FROM EXCLUDED.beneficiary_id OR finance_commissions.status='void')`,
+        [this.tenant, `projete:${input.external_key}:${role.role}`, sale.id, role.id, role.name, role.role, role.amount])
       }
       return sale
     })
@@ -101,9 +110,19 @@ export class FinanceStore {
       FROM vendedor_projetos vp LEFT JOIN users u ON u.id=vp.vendedor_id LEFT JOIN users uc ON uc.id=vp.closer_id
       WHERE vp.status_contato='Fechado' AND vp.valor_venda>0 AND vp.id>$1 ORDER BY vp.id LIMIT 200`, [after])
     for (const lead of leads) await this.ingestCrmSale({ ...lead, amount_cents: Number(lead.amount_cents), commission_cents: Number(lead.commission_cents), closer_commission_cents: Number(lead.closer_commission_cents) })
-    await this.rows(`UPDATE finance_sales s SET status='canceled',needs_review='Venda reaberta ou cancelada no CRM. Conferir financeiro e comissões.',updated_at=now()
-      FROM vendedor_projetos vp WHERE s.tenant_key=$1 AND s.origin='projete' AND s.external_key=vp.id::text
-      AND vp.status_contato IS DISTINCT FROM 'Fechado'`, [this.tenant])
+    await this.transaction(async c=>{
+      const canceled=await c.query(`UPDATE finance_sales s SET status='canceled',needs_review='Venda reaberta ou cancelada no CRM. Conferir financeiro e comissões.',updated_at=now()
+        FROM vendedor_projetos vp WHERE s.tenant_key=$1 AND s.origin='projete' AND s.external_key=vp.id::text
+        AND vp.status_contato IS DISTINCT FROM 'Fechado' RETURNING s.id`, [this.tenant])
+      const ids=canceled.rows.map(r=>r.id)
+      if(!ids.length)return
+      await c.query(`UPDATE finance_commissions SET status='void',eligibility_date=NULL,updated_at=now()
+        WHERE tenant_key=$1 AND sale_id=ANY($2::uuid[]) AND status IN ('calculated','released')`,[this.tenant,ids])
+      await c.query(`UPDATE finance_jobs j SET status='canceled',last_error='Venda reaberta ou cancelada no CRM',updated_at=now()
+        FROM finance_entries e WHERE j.tenant_key=$1 AND j.entry_id=e.id AND e.sale_id=ANY($2::uuid[]) AND j.status IN ('pending','failed')`,[this.tenant,ids])
+      await c.query(`UPDATE finance_entries SET status='canceled',updated_at=now()
+        WHERE tenant_key=$1 AND sale_id=ANY($2::uuid[]) AND remote_id IS NULL`,[this.tenant,ids])
+    })
     return { imported: leads.length, nextCursor: leads.length === 200 ? Number(leads[leads.length - 1].id) : null }
   }
 
@@ -141,9 +160,9 @@ export class FinanceStore {
       return { saleId: sale.id }
     })
     const rule=settings.hotmartRules[String(p.snapshot.productId)]
-    if(rule&&p.amountCents>0&&p.paymentStatus==='paid'&&p.approvedDate){
-      const sale=(await this.rows("SELECT id,schedule_confirmed,status FROM finance_sales WHERE tenant_key=$1 AND origin='hotmart' AND external_key=$2",[this.tenant,p.externalKey]))[0]
-      if(sale&&!sale.schedule_confirmed&&sale.status==='active'){
+    if(!('stale' in result)&&rule&&p.amountCents>0&&p.paymentStatus==='paid'&&p.approvedDate){
+      const sale=(await this.rows("SELECT id,schedule_confirmed,status,snapshot FROM finance_sales WHERE tenant_key=$1 AND origin='hotmart' AND external_key=$2",[this.tenant,p.externalKey]))[0]
+      if(sale&&!sale.schedule_confirmed&&sale.status==='active'&&['APPROVED','COMPLETE'].includes(sale.snapshot.status)){
         const due=new Date(`${isoDate(p.approvedDate)}T12:00:00Z`);due.setUTCDate(due.getUTCDate()+rule.dueOffsetDays)
         try{await this.confirmSchedule(sale.id,{count:rule.count,firstDate:due.toISOString().slice(0,10),billingMode:rule.billingMode},null)}
         catch(e){

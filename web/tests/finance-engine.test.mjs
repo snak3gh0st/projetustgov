@@ -98,3 +98,13 @@ test('Hotmart history enriches and maps actual affiliate commissions without rel
   assert.equal(Number(c.amount_cents),2500)
   assert.equal(c.status,'calculated')
 })
+
+test('run bookkeeping releases its connection before provider work (transaction-pool compatible)',{skip:!url},async()=>{
+  const single=new pg.Pool({connectionString:url,max:1,connectionTimeoutMillis:150})
+  try{
+    const oneStore=new FinanceStore(single,'test-engine')
+    const one=new m.FinanceEngine(oneStore)
+    const result=await one.run('single-connection',{},async()=>({count:Number((await oneStore.rows('SELECT 1 n'))[0].n)}))
+    assert.equal(result.count,1)
+  }finally{await single.end()}
+})

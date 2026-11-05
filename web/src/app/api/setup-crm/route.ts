@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Pool } from 'pg'
 import bcrypt from 'bcryptjs'
-import { getApiSession } from '@/lib/dal'
+import { canRunSystemSetup, getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -19,16 +19,16 @@ function getPool() {
 
 export async function GET() {
   const session = await getApiSession()
-  if (!session || session.role !== 'gestor') {
-    return NextResponse.json({ error: 'Unauthorized — gestor only' }, { status: 401 })
+  if (!session || !canRunSystemSetup(session.role)) {
+    return NextResponse.json({ error: 'Unauthorized — diretoria only' }, { status: 401 })
   }
   return runSetup()
 }
 
 export async function POST() {
   const session = await getApiSession()
-  if (!session || session.role !== 'gestor') {
-    return NextResponse.json({ error: 'Unauthorized — gestor only' }, { status: 401 })
+  if (!session || !canRunSystemSetup(session.role)) {
+    return NextResponse.json({ error: 'Unauthorized — diretoria only' }, { status: 401 })
   }
   return runSetup()
 }
@@ -50,7 +50,7 @@ async function runSetup() {
           'coord_aprovacao', 'assistente_aprovacao', 'projetista',
           'coord_execucao', 'assistente_execucao',
           'coord_prestacao', 'assistente_prestacao',
-          'gestor_financeiro'
+          'gestor_financeiro', 'diretoria'
         )),
         active BOOLEAN DEFAULT true,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -69,7 +69,7 @@ async function runSetup() {
           'coord_aprovacao', 'assistente_aprovacao', 'projetista',
           'coord_execucao', 'assistente_execucao',
           'coord_prestacao', 'assistente_prestacao',
-          'gestor_financeiro'
+          'gestor_financeiro', 'diretoria'
         ));
       END $$;
     `).catch(() => {}) // Ignore if constraint doesn't exist or already updated
@@ -118,6 +118,7 @@ async function runSetup() {
         situacao VARCHAR(100),
         saldo_conta NUMERIC(15,2),
         valor_venda NUMERIC(15,2),
+        venda_etapa VARCHAR(32),
         telefone VARCHAR(50),
         email VARCHAR(500),
         status_contato VARCHAR(50) DEFAULT 'Não Contatado',
@@ -135,6 +136,7 @@ async function runSetup() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_status_contato ON vendedor_projetos(status_contato)`)
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_vp_uf ON vendedor_projetos(uf)`)
     await pool.query(`ALTER TABLE propostas ADD COLUMN IF NOT EXISTS situacao_changed_at TIMESTAMPTZ`).catch(() => {})
+    await pool.query(`ALTER TABLE vendedor_projetos ADD COLUMN IF NOT EXISTS venda_etapa VARCHAR(32)`).catch(() => {})
 
     // 2a. Deduplicate on new granularity: (cnpj, codigo_programa, nr_emenda).
     // Old concatenated rows (nr_emenda = "EM1 | EM2") are cleaned up in repo-sync.ts AFTER
@@ -194,8 +196,16 @@ async function runSetup() {
         AND (comissao_valor IS NULL OR comissao_percentual IS NULL);
     `).catch(() => {})
 
-    // 3. Migrate old statuses to the new CRM labels
+    // 3. Migrate old statuses to the new CRM labels.
+    // Technical impediment/cancellation are historical reasons, not funnel stages.
     await pool.query(`
+      UPDATE vendedor_projetos
+      SET venda_etapa = CASE
+        WHEN tipo_servico = 'Aprovação' THEN 'aprovacao'
+        ELSE 'execucao_prestacao'
+      END
+      WHERE status_contato = 'Fechado' AND venda_etapa IS NULL;
+
       UPDATE vendedor_projetos
       SET status_contato = CASE
         WHEN status_contato IN ('Ainda Não') THEN 'Sem Interesse'
@@ -203,6 +213,7 @@ async function runSetup() {
         WHEN status_contato IN ('Proposta') THEN 'Proposta Enviada'
         WHEN status_contato IN ('Aguardando Closer') THEN 'Em Aprovação'
         WHEN status_contato IN ('Quente', 'Muito Quente', 'Telefone Invalido') THEN 'Não Contatado'
+        WHEN status_contato IN ('Impedimento Técnico', 'Impedimento Tecnico', 'Cancelado') THEN 'Em Atendimento'
         WHEN status_contato IS NULL OR status_contato IN ('Novo', 'Contactado') THEN 'Não Contatado'
         ELSE status_contato
       END;
@@ -232,12 +243,17 @@ async function runSetup() {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         lead_cnpj VARCHAR(20) NOT NULL,
         vendedor_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        tipo VARCHAR(50) NOT NULL CHECK (tipo IN ('ligacao', 'email', 'whatsapp', 'reuniao', 'outro')),
+        tipo VARCHAR(50) NOT NULL CHECK (tipo IN ('ligacao', 'email', 'whatsapp', 'reuniao', 'outro', 'impedimento_tecnico', 'cancelamento')),
         observacao TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
     `)
+    await pool.query(`
+      ALTER TABLE contact_notes DROP CONSTRAINT IF EXISTS contact_notes_tipo_check;
+      ALTER TABLE contact_notes ADD CONSTRAINT contact_notes_tipo_check
+        CHECK (tipo IN ('ligacao', 'email', 'whatsapp', 'reuniao', 'outro', 'impedimento_tecnico', 'cancelamento'));
+    `).catch(() => {})
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_contact_notes_lead_cnpj ON contact_notes(lead_cnpj);`)
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_contact_notes_vendedor ON contact_notes(vendedor_id);`)
 
@@ -528,8 +544,8 @@ async function runSetup() {
       { nome: 'Vitória', email: 'vitoria@projetus.org', role: 'vendedor', password: 'Vitoria#904' },
       { nome: 'Rooger', email: 'rooger@projetus.org', role: 'gestor', password: 'Rjr*940302' },
       { nome: 'Bruno', email: 'bruno@projetus.org', role: 'csm', password: 'Bruno#837' },
-      { nome: 'Philipe', email: 'philipe@projetus.org', role: 'gestor', password: 'Philipe#268' },
-      { nome: 'Tito', email: 'tito@projetus.org', role: 'gestor', password: 'Tito#351' },
+      { nome: 'Philipe', email: 'philipe@projetus.org', role: 'diretoria', password: 'Philipe#268' },
+      { nome: 'Tito', email: 'tito@projetus.org', role: 'diretoria', password: 'Tito#351' },
       { nome: 'Paulo', email: 'paulo@projetus.org', role: 'coordenador', password: 'Paulo#649' },
       { nome: 'Admin', email: 'admin@projetus.org', role: 'admin', password: 'admin123' },
     ]

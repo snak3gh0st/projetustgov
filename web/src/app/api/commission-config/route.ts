@@ -13,7 +13,7 @@ export async function GET() {
     }
 
     // Gestor-only access
-    if (session.role !== 'gestor') {
+    if (session.role !== 'gestor' && session.role !== 'diretoria') {
       return NextResponse.json({ error: 'Forbidden: gestor only' }, { status: 403 })
     }
 
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Gestor-only access
-    if (session.role !== 'gestor') {
+    if (session.role !== 'gestor' && session.role !== 'diretoria') {
       return NextResponse.json({ error: 'Forbidden: gestor only' }, { status: 403 })
     }
 
@@ -125,7 +125,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Gestor-only access
-    if (session.role !== 'gestor') {
+    if (session.role !== 'gestor' && session.role !== 'diretoria') {
       return NextResponse.json({ error: 'Forbidden: gestor only' }, { status: 403 })
     }
 

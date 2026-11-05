@@ -6,10 +6,10 @@ Escopo aprovado: vendas internas e Hotmart, recebíveis/pagáveis Conta Azul, co
 
 1. Modelo financeiro com centavos inteiros, trilha de auditoria e testes de regras.
 2. Importação idempotente do CRM e Hotmart (histórico e webhook autenticado).
-3. Integração Conta Azul: fila durável, vínculo dos registros, importação paginada e detecção de divergências. Escritas dependem da configuração confirmada da empresa e das categorias/contas.
+3. Integração Conta Azul: fila durável, vínculo dos registros, reutilização do espelho BI e detecção de divergências. Escritas dependem da configuração confirmada da empresa e das categorias/contas.
 4. Calendário conferido pelo financeiro e liberação de comissões com data/evidência explícitas; fechamento imutável e títulos para o dia 15 seguinte.
 5. Relatório consolidado gerado pela Projete, CSV e entrega diária opcional; pendências e atualização das fontes visíveis. Apps Script excluído por orientação do usuário.
-6. Área `/financeiro`, controle de acesso, configuração e operação; validação local com PostgreSQL isolado e APIs simuladas na borda.
+6. Seção `/financeiro/operacao` dentro do BI existente, controle de acesso, configuração e operação; validação local com PostgreSQL isolado e APIs simuladas na borda.
 
 ## Limites e decisões
 
@@ -20,7 +20,7 @@ Escopo aprovado: vendas internas e Hotmart, recebíveis/pagáveis Conta Azul, co
 - Importação não altera os dados comerciais originais, nem recalcula comissões aprovadas.
 - Conta Azul é fonte dos registros financeiros formais. Registros locais não sincronizados são exibidos separadamente dos valores confirmados no ERP.
 - Requisição de escrita com resultado inconclusivo fica para conciliação, sem repetição automática cega.
-- Emissão fiscal e integração Slack/Google exigem configuração; nenhuma mensagem real é enviada na validação.
+- Emissão fiscal manual. E-mail e Slack exigem configuração; nenhuma mensagem real é enviada na validação.
 - Credenciais ausentes impedem execução dos respectivos conectores, mas não a conferência e o uso local do módulo.
 
 ## Referências de contrato verificadas em 2026-11-05

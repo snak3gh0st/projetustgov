@@ -74,10 +74,54 @@ test('stale and repeated Hotmart events do not resurrect refunded sales', { skip
 test('a confirmed product rule automatically builds Hotmart installments exactly once', {skip:!url},async()=>{
   const config=await store.settings()
   await store.saveSettings({...config,hotmartRules:{'12':{billingMode:'fixed',count:3,dueOffsetDays:0}}},uid)
-  const p={externalKey:'HP-auto',eventId:'auto-1',eventDate:'2026-10-01T00:00:00Z',eventType:'PURCHASE_APPROVED',customerName:'Aluno',customerEmail:'',customerDocument:'12345678901',description:'Mentoria',amountCents:10000,paymentStatus:'paid',billingMode:'review',approvedDate:'2026-10-31',affiliateCode:null,affiliateName:null,affiliateCents:null,snapshot:{productId:12}}
+  const p={externalKey:'HP-auto',eventId:'auto-1',eventDate:'2026-10-01T00:00:00Z',eventType:'PURCHASE_APPROVED',customerName:'Aluno',customerEmail:'',customerDocument:'12345678901',description:'Mentoria',amountCents:10000,paymentStatus:'paid',billingMode:'review',approvedDate:'2026-10-31',affiliateCode:null,affiliateName:null,affiliateCents:null,snapshot:{productId:12,status:'APPROVED'}}
   await store.ingestHotmart(p)
   await store.ingestHotmart(p)
   const entries=await pool.query("SELECT e.amount_cents,e.due_date::text FROM finance_entries e JOIN finance_sales s ON s.id=e.sale_id WHERE s.tenant_key='test-finance' AND s.external_key='HP-auto' ORDER BY e.due_date")
   assert.deepEqual(entries.rows.map(r=>Number(r.amount_cents)),[3334,3333,3333])
   assert.equal(entries.rows[1].due_date,'2026-11-30')
+})
+
+test('CRM commission removal voids an unapproved amount rather than leaving it payable',{skip:!url},async()=>{
+  const s=await store.ingestCrmSale({...sale,external_key:'zero-commission'})
+  await store.ingestCrmSale({...sale,external_key:'zero-commission',commission_cents:0})
+  const row=(await pool.query("SELECT status FROM finance_commissions WHERE sale_id=$1 AND role='consultor'",[s.id])).rows[0]
+  assert.equal(row.status,'void')
+})
+
+test('source corrections revoke an unreconciled release and require a new explicit release',{skip:!url},async()=>{
+  const s=await store.ingestCrmSale({...sale,external_key:'corrected-release'})
+  const id=(await pool.query("SELECT id FROM finance_commissions WHERE sale_id=$1 AND role='consultor'",[s.id])).rows[0].id
+  await store.releaseCommission(id,'2026-11-01','Recebimento conferido no extrato',uid)
+  await store.ingestCrmSale({...sale,external_key:'corrected-release'})
+  assert.equal((await pool.query('SELECT status FROM finance_commissions WHERE id=$1',[id])).rows[0].status,'released')
+  await store.ingestCrmSale({...sale,external_key:'corrected-release',commission_cents:200})
+  const row=(await pool.query('SELECT status,amount_cents,eligibility_date FROM finance_commissions WHERE id=$1',[id])).rows[0]
+  assert.equal(row.status,'calculated')
+  assert.equal(Number(row.amount_cents),200)
+  assert.equal(row.eligibility_date,null)
+})
+
+test('an old approved Hotmart event cannot create a schedule after a newer overdue event',{skip:!url},async()=>{
+  const p={externalKey:'HP-stale-schedule',eventId:'stale-newer',eventDate:'2026-10-02T00:00:00Z',eventType:'PURCHASE_DELAYED',customerName:'Aluno',customerEmail:'',customerDocument:'',description:'Mentoria',amountCents:10000,paymentStatus:'overdue',billingMode:'review',approvedDate:'2026-10-01',affiliateCode:null,affiliateName:null,affiliateCents:null,snapshot:{productId:12,status:'OVERDUE'}}
+  await store.ingestHotmart(p)
+  await store.ingestHotmart({...p,eventId:'stale-older',eventDate:'2026-10-01T00:00:00Z',eventType:'PURCHASE_APPROVED',paymentStatus:'paid',snapshot:{productId:12,status:'APPROVED'}})
+  const rows=await pool.query("SELECT schedule_confirmed FROM finance_sales WHERE tenant_key='test-finance' AND external_key='HP-stale-schedule'")
+  assert.equal(rows.rows[0].schedule_confirmed,false)
+})
+
+test('reopening a CRM sale voids unapproved commissions and cancels local obligations',{skip:!url},async()=>{
+  await pool.query(`CREATE TABLE IF NOT EXISTS vendedor_projetos(id bigint PRIMARY KEY,nome text,cnpj text,email text,tipo_servico text,
+    valor_venda numeric,vendedor_id uuid,closer_id uuid,comissao_valor numeric,closer_comissao_valor numeric,status_contato text,fechamento_at timestamptz,updated_at timestamptz)`)
+  await pool.query("INSERT INTO vendedor_projetos(id,nome,cnpj,status_contato) VALUES(2147483601,'Fixture CRM','12345678000190','Em Atendimento') ON CONFLICT(id) DO UPDATE SET status_contato='Em Atendimento'")
+  try{
+    const s=await store.ingestCrmSale({...sale,external_key:'2147483601'})
+    await store.confirmSchedule(s.id,{count:1,firstDate:'2026-11-01',billingMode:'single'},uid)
+    const cm=(await pool.query("SELECT id FROM finance_commissions WHERE sale_id=$1 AND role='consultor'",[s.id])).rows[0]
+    await store.releaseCommission(cm.id,'2026-11-01','Recebimento fictício conferido antes da reabertura',uid)
+    await store.importCrm()
+    assert.ok((await pool.query('SELECT status FROM finance_commissions WHERE sale_id=$1',[s.id])).rows.every(r=>r.status==='void'))
+    assert.ok((await pool.query('SELECT status FROM finance_entries WHERE sale_id=$1',[s.id])).rows.every(r=>r.status==='canceled'))
+    assert.ok((await pool.query('SELECT j.status FROM finance_jobs j JOIN finance_entries e ON e.id=j.entry_id WHERE e.sale_id=$1',[s.id])).rows.every(r=>r.status==='canceled'))
+  }finally{await pool.query('DELETE FROM vendedor_projetos WHERE id=2147483601')}
 })

@@ -15,17 +15,18 @@ import {
 } from './email-templates'
 
 const FROM = process.env.DIGEST_FROM_EMAIL || 'Projetus <noreply@projetus.org>'
+const COMMERCIAL_HEAD_EMAIL = process.env.PRIMARY_LEAD_MANAGER_EMAIL || 'rooger@projetus.org'
 
 const TGOV_ROLES = [
-  'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao',
+  'adm_produto', 'coord_aprovacao', 'assistente_aprovacao',
   'projetista', 'coord_execucao', 'assistente_execucao',
   'coord_prestacao', 'assistente_prestacao',
-  'gestor', 'admin', // gestor/admin see both worlds
+  'diretoria', 'admin', // diretoria/admin see both worlds
 ]
 
 const CRM_ROLES = [
   'vendedor', 'coordenador', 'visualizador', 'gestor_vendedor',
-  'gestor', 'admin',
+  'gestor', 'diretoria', 'admin',
 ]
 
 function appUrl(): string {
@@ -69,6 +70,17 @@ function filterTgov(users: UserRow[]): UserRow[] {
 
 function filterCrm(users: UserRow[]): UserRow[] {
   return users.filter(u => CRM_ROLES.includes(u.role))
+}
+
+async function loadCommercialRecipients(ids: string[]): Promise<UserRow[]> {
+  return query<UserRow>(
+    `SELECT id, nome, email, role, active
+     FROM users
+     WHERE active = true
+       AND email IS NOT NULL
+       AND (id = ANY($1::uuid[]) OR LOWER(email) = LOWER($2))`,
+    [ids, COMMERCIAL_HEAD_EMAIL],
+  )
 }
 
 // ——— Public API ———
@@ -157,7 +169,11 @@ export async function sendCommercialSituacaoChangeNotification(params: {
   oldStatus: string
   newStatus: string
 }): Promise<void> {
-  const users = filterCrm(await loadUsers(params.recipientIds))
+  // The commercial head receives every alert in addition to the CNPJ owners.
+  // This is intentionally independent of lead assignment and digest opt-in.
+  const users = (await loadCommercialRecipients(params.recipientIds)).filter(
+    u => CRM_ROLES.includes(u.role) || u.email.toLowerCase() === COMMERCIAL_HEAD_EMAIL.toLowerCase(),
+  )
   const cnpjClean = String(params.cnpj ?? '').replace(/\D/g, '')
   const leadUrl = cnpjClean
     ? `${appUrl()}/lead/${encodeURIComponent(cnpjClean)}`

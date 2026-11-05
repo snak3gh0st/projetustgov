@@ -76,9 +76,18 @@ export async function GET(request: NextRequest) {
     const mainParams: unknown[] = []
     const mainConditions: string[] = []
 
-    // Projetus whitelist (hardcoded) + dynamic whitelist from tgov_whitelist table
+    // Projetus whitelist (hardcoded) + dynamic whitelist from tgov_whitelist table.
+    // The dynamic list is read first and passed as arrays: an EXISTS inside the OR
+    // forces a full scan of propostas (~900k rows) on each of the 8 queries below.
+    const whitelistRows = await query<{ nr_proposta: string | null; cnpj: string | null }>(
+      `SELECT nr_proposta, cnpj FROM tgov_whitelist WHERE tab IN ('ambos', 'aprovacao')`
+    )
     const staticClause = buildNrPropostaWhereClause('p.nr_proposta', mainParams, APROVACAO_NR_PROPOSTAS)
-    mainConditions.push(`(${staticClause} OR EXISTS (SELECT 1 FROM tgov_whitelist tw WHERE (tw.cnpj = p.proponente_cnpj OR tw.nr_proposta = p.nr_proposta) AND tw.tab IN ('ambos','aprovacao')))`)
+    mainParams.push(whitelistRows.flatMap((r) => (r.nr_proposta ? [r.nr_proposta] : [])))
+    const nrIdx = mainParams.length
+    mainParams.push(whitelistRows.flatMap((r) => (r.cnpj ? [r.cnpj] : [])))
+    const cnpjIdx = mainParams.length
+    mainConditions.push(`(${staticClause} OR p.nr_proposta = ANY($${nrIdx}::text[]) OR p.proponente_cnpj = ANY($${cnpjIdx}::text[]))`)
 
     // projetista só vê propostas atribuídas a ele
     if (session.role === 'projetista') {

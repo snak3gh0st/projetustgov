@@ -9,9 +9,10 @@ import { normalizeContaAzul } from '@/lib/finance/providers'
 export const dynamic='force-dynamic'
 export const maxDuration=300
 const uuid=z.string().uuid()
+const externalId=z.union([uuid,z.string().regex(/^\d{1,40}$/)])
 const date=z.string().refine(v=>{try{isoDate(v);return true}catch{return false}},'Data inválida')
 const reason=z.string().trim().min(10).max(2000)
-const optionalId=z.union([uuid,z.literal('')]).default('')
+const optionalId=z.union([externalId,z.literal('')]).default('')
 const settingsSchema=z.object({writesEnabled:z.boolean(),companyConfirmed:z.boolean(),financialAccountId:optionalId,
   receivableCategoryId:optionalId,payableCategoryId:optionalId,reportRecipientId:optionalId,dailyEmailEnabled:z.boolean(),
   statementsEnabled:z.boolean(),affiliateMap:z.record(z.string().max(200),uuid),accountFingerprint:z.string().max(200),
@@ -28,7 +29,7 @@ export async function GET(){
 export async function POST(request:NextRequest){
   try{
     const session=await requireFinance(request)
-    const {store,engine,contaAzul}=financeRuntime()
+    const {store,engine,contaAzul,refreshMirror}=financeRuntime()
     const raw=await request.json()
     const action=z.string().parse(raw.action)
     let result:unknown={ok:true}
@@ -46,7 +47,7 @@ export async function POST(request:NextRequest){
       case 'import_hotmart':case 'pull':{
         const p=z.object({from:date,to:date}).parse(raw)
         if(p.from>p.to)throw new FinanceError('Intervalo inválido.')
-        result=action==='pull'?await engine.pull(contaAzul,p.from,p.to):await engine.importHotmart(hotmartClient(),p.from,p.to)
+        result=action==='pull'?await refreshMirror(p.from,p.to):await engine.importHotmart(hotmartClient(),p.from,p.to)
         break
       }
       case 'push':result=await engine.push(contaAzul);break
@@ -73,7 +74,7 @@ export async function POST(request:NextRequest){
         });break
       }
       case 'person':{
-        const p=z.object({userId:uuid,remotePersonId:uuid}).parse(raw)
+        const p=z.object({userId:uuid,remotePersonId:externalId}).parse(raw)
         await store.transaction(async c=>{
           if(!(await c.query('SELECT 1 FROM users WHERE id=$1 AND active',[p.userId])).rowCount)throw new FinanceError('Usuário inativo ou inexistente.')
           await c.query(`INSERT INTO finance_people(tenant_key,user_id,remote_person_id) VALUES($1,$2,$3)
@@ -134,7 +135,7 @@ export async function POST(request:NextRequest){
         break
       }
       case 'reconcile':{
-        const p=z.object({id:uuid,remoteId:uuid}).parse(raw)
+        const p=z.object({id:uuid,remoteId:externalId}).parse(raw)
         await engine.checkAccount(contaAzul)
         const local=(await store.rows('SELECT kind,due_date::text FROM finance_entries WHERE tenant_key=$1 AND id=$2',[store.tenant,p.id]))[0]
         if(!local)throw new FinanceError('Lançamento não encontrado.',404)

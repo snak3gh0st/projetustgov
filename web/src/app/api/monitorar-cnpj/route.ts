@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { query } from '@/lib/db'
+import { query, queryAs } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: NextRequest) {
   const session = await getApiSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.role !== 'gestor') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (session.role !== 'gestor' && session.role !== 'diretoria') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
   const { cnpj, force } = body
@@ -55,7 +55,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Assign all rows for this CNPJ to the current lead manager (tipo_vendedor = 'In-Sites Sells')
-  await query(
+  await queryAs(
+    { userId: session.userId, origem: 'distribuicao' },
     `UPDATE vendedor_projetos
      SET vendedor_id = $1, tipo_vendedor = 'In-Sites Sells', updated_at = NOW()
      WHERE cnpj = $2`,

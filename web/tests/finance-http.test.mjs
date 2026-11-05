@@ -86,3 +86,46 @@ test('HTTP authenticated Hotmart webhook deduplicates real ingestion',{skip:!ena
   assert.equal(rows.rowCount,1)
   assert.equal(Number(rows.rows[0].amount_cents),2001)
 })
+
+test('HTTP operator completes schedule, invoice record, commission release and immutable closing',{skip:!enabled},async()=>{
+  const saleId=crypto.randomUUID(),requestId=crypto.randomUUID()
+  const post=async(body,status=200)=>{
+    const r=await fetch(`${base}/api/financeiro`,{method:'POST',headers:{Cookie:financeCookie,Origin:base,'Content-Type':'application/json'},body:JSON.stringify(body)})
+    const data=await r.json()
+    assert.equal(r.status,status,JSON.stringify(data))
+    return data
+  }
+  let closingId
+  try{
+    await pool.query(`INSERT INTO finance_sales(id,tenant_key,origin,external_key,customer_name,description,amount_cents)
+      VALUES($1,'projetus','projete',$2,'Cliente HTTP fictício','Venda HTTP fictícia',2001)`,[saleId,`http-flow:${saleId}`])
+    await post({action:'sale_details',id:saleId,document:'12345678000190',email:'cliente@example.test',remotePersonId:'123456'})
+    assert.equal((await post({action:'schedule',saleId,count:3,firstDate:'1999-01-31',billingMode:'fixed',remotePersonId:'123456'})).created,3)
+    await post({action:'schedule',saleId,count:3,firstDate:'1999-01-31',billingMode:'fixed',remotePersonId:'123456'},409)
+    const entries=(await pool.query('SELECT id,amount_cents,due_date::text FROM finance_entries WHERE sale_id=$1 ORDER BY due_date',[saleId])).rows
+    assert.deepEqual(entries.map(e=>Number(e.amount_cents)),[667,667,667])
+    assert.equal(entries[1].due_date,'1999-02-28')
+    await post({action:'invoice',id:entries[0].id,number:'LOCAL-HTTP-1',date:'1999-01-31',url:'https://example.test/nota'})
+    await post({action:'add_commission',saleId,requestId,userId:seller,amount:'2.00',role:'consultor',evidence:'Contrato fictício conferido para validação HTTP',paidByHotmart:false})
+    // A repeated browser request must not duplicate a manually added commission.
+    await post({action:'add_commission',saleId,requestId,userId:seller,amount:'2.00',role:'consultor',evidence:'Contrato fictício conferido para validação HTTP',paidByHotmart:false})
+    const commissions=await pool.query('SELECT id FROM finance_commissions WHERE sale_id=$1',[saleId])
+    assert.equal(commissions.rowCount,1)
+    await post({action:'release',id:commissions.rows[0].id,date:'1999-01-20',evidence:'Recebimento fictício conciliado no extrato local'})
+    const closing=await post({action:'close',period:'1999-01'});closingId=closing.id
+    assert.equal((await post({action:'close',period:'1999-01'})).id,closing.id)
+    const payable=(await pool.query('SELECT amount_cents,due_date::text FROM finance_entries WHERE closing_id=$1',[closing.id])).rows
+    assert.equal(payable.length,1);assert.equal(Number(payable[0].amount_cents),200);assert.equal(payable[0].due_date,'1999-02-15')
+    const statement=await fetch(`${base}/api/financeiro/statement?id=${closing.id}&user=${seller}`,{headers:{Cookie:financeCookie}})
+    assert.equal(statement.status,200)
+    assert.match(await statement.text(),/1999-01/)
+    await post({action:'push'},409)
+    assert.equal((await pool.query('SELECT invoice_number FROM finance_entries WHERE id=$1',[entries[0].id])).rows[0].invoice_number,'LOCAL-HTTP-1')
+  }finally{
+    await pool.query('DELETE FROM finance_jobs WHERE entry_id IN (SELECT id FROM finance_entries WHERE sale_id=$1 OR closing_id=$2)',[saleId,closingId||null])
+    await pool.query('DELETE FROM finance_entries WHERE sale_id=$1 OR closing_id=$2',[saleId,closingId||null])
+    await pool.query('DELETE FROM finance_commissions WHERE sale_id=$1',[saleId])
+    if(closingId)await pool.query('DELETE FROM finance_closings WHERE id=$1',[closingId])
+    await pool.query('DELETE FROM finance_sales WHERE id=$1',[saleId])
+  }
+})

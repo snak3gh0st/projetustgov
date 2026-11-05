@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   try {
     // Check if user is gestor
     const session = await auth()
-    if (!session?.user || session.user.role !== 'gestor') {
+    if (!session?.user || (session.user.role !== 'gestor' && session.user.role !== 'diretoria')) {
       return NextResponse.json({ error: 'Acesso restrito a gestores' }, { status: 403 })
     }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { getApiSession } from '@/lib/dal'
+import { getApiSession, redactLeadCommission } from '@/lib/dal'
+import { whatsappContatosSql } from '@/lib/whatsapp/contato'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +17,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
     const statusContato = searchParams.get('status_contato')
     const emExecucao = searchParams.get('em_execucao')
+    const recentSyncOnly = ['recent', 'latest'].includes(searchParams.get('sync') ?? '')
     const limit = searchParams.get('limit') || '10000'
 
     const conditions: string[] = ['1=1']
@@ -66,12 +68,28 @@ export async function GET(request: NextRequest) {
     }
 
     if (statusContato && statusContato !== 'all') {
-      conditions.push(`vp.status_contato = $${paramIndex++}`)
-      params.push(statusContato)
+      if (statusContato === 'Sem Interesse / Em Atendimento') {
+        conditions.push(`vp.status_contato IN ('Ainda Não', 'Sem Interesse', 'Retorno', 'Em Atendimento')`)
+      } else if (statusContato === 'Aprovação') {
+        conditions.push(`vp.status_contato IN ('Aguardando Closer', 'Em Aprovação')`)
+      } else if (statusContato === 'Vendas Aprovação') {
+        conditions.push(`vp.status_contato = 'Fechado' AND COALESCE(vp.venda_etapa, 'aprovacao') = 'aprovacao'`)
+      } else if (statusContato === 'Execução/Prestação' || statusContato === 'Vendas Execução e Prestação e Contas' || statusContato === 'Vendas Execução e Prestação de Contas') {
+        conditions.push(`vp.status_contato = 'Fechado' AND vp.venda_etapa = 'execucao_prestacao'`)
+      } else {
+        conditions.push(`vp.status_contato = $${paramIndex++}`)
+        params.push(statusContato)
+      }
     }
 
     if (emExecucao === 'true') {
       conditions.push(`EXISTS (SELECT 1 FROM projetos_execucao pe WHERE pe.cnpj = vp.cnpj)`)
+    }
+
+    if (recentSyncOnly) {
+      // created_at is set only on INSERT. Later syncs with zero inserts must not
+      // hide records that entered earlier in the seven-day review window.
+      conditions.push(`vp.importado_de = 'auto-repo-sync' AND vp.created_at >= NOW() - INTERVAL '7 days'`)
     }
 
     params.push(Number(limit))
@@ -100,7 +118,9 @@ export async function GET(request: NextRequest) {
           SELECT EXTRACT(DAY FROM NOW() - GREATEST(
             (SELECT MAX(cn.created_at) FROM contact_notes cn WHERE cn.lead_cnpj = vp.cnpj ${scopedNoteFilter}),
             (SELECT MAX(vp2.updated_at) FROM vendedor_projetos vp2
-             WHERE vp2.cnpj = vp.cnpj AND vp2.status_contato != 'Não Contatado' ${scopedRowFilter})
+             WHERE vp2.cnpj = vp.cnpj AND vp2.status_contato != 'Não Contatado' ${scopedRowFilter}),
+            -- Mensagem de WhatsApp trocada com o lead também é contato.
+            (SELECT MAX(w.at) FROM (${whatsappContatosSql()}) w WHERE w.cnpj_clean = REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'))
           ))::int
         ) as days_since_last_contact,
         (
@@ -140,7 +160,7 @@ export async function GET(request: NextRequest) {
       LIMIT $${paramIndex}
     `, params)
 
-    return NextResponse.json(rows)
+    return NextResponse.json(rows.map((row) => redactLeadCommission(row, session.role, session.userId)))
   } catch (error) {
     console.error('Leads query error:', error)
     return NextResponse.json({ error: 'Failed to fetch leads' }, { status: 500 })

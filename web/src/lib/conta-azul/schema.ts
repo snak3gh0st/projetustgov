@@ -7,6 +7,22 @@ let ensured = false
 export async function ensureContaAzulSchema() {
   if (ensured) return
 
+  // The production database may provision this table as `postgres` while the
+  // application connects as `sigma_app`. CREATE TABLE IF NOT EXISTS still
+  // requires ownership, even when the table already exists, so only bootstrap
+  // DDL when the table is genuinely absent.
+  const existing = await query<{ exists: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'conta_azul_connections'
+     ) AS exists`
+  )
+  if (existing[0]?.exists) {
+    ensured = true
+    return
+  }
+
   await query(`
     CREATE TABLE IF NOT EXISTS conta_azul_connections (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

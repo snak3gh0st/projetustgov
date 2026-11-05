@@ -92,3 +92,4 @@ backups/
 # Worktrees
 .worktrees/
 worktrees/
+web/scripts/dev-db/schema.sql

@@ -8,8 +8,8 @@ export class ProviderError extends FinanceError {
   constructor(message: string, status: number, uncertain = false) { super(message,status); this.uncertain=uncertain }
 }
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-export function requireUuid(value: unknown): string {
-  if (typeof value !== 'string' || !uuidPattern.test(value)) throw new FinanceError('Identificador externo inválido.')
+export function requireExternalId(value: unknown): string {
+  if (typeof value !== 'string' || !(uuidPattern.test(value)||/^\d{1,40}$/.test(value))) throw new FinanceError('Identificador externo inválido.')
   return value
 }
 
@@ -42,7 +42,7 @@ export class ContaAzulClient {
     }
     throw new ProviderError('Conta Azul: intervalo excede 10.000 parcelas; reduza o período.',422)
   }
-  detail(id:string) { return this.request(`/v1/financeiro/eventos-financeiros/parcelas/${requireUuid(id)}`) }
+  detail(id:string) { return this.request(`/v1/financeiro/eventos-financeiros/parcelas/${requireExternalId(id)}`) }
   async accountIdentity(){
     const c=await this.request('/v1/pessoas/conta-conectada')
     if(!c.id_empresa||!c.documento)throw new FinanceError('A Conta Azul não retornou a identificação da empresa conectada.',502)
@@ -54,7 +54,7 @@ export class ContaAzulClient {
     const result=await this.request(`/v1/pessoas?${new URLSearchParams({pagina:'1',tamanho_pagina:'100',documentos:doc,tipos_pessoa:doc.length===11?'Física':'Jurídica'})}`)
     if(!Array.isArray(result.items)) throw new ProviderError('Formato de pessoas Conta Azul não reconhecido.',502)
     if(result.items.length>1) throw new FinanceError('Mais de uma pessoa encontrada na Conta Azul; faça o vínculo manual.')
-    if(result.items.length===1) return requireUuid(result.items[0].id)
+    if(result.items.length===1) return requireExternalId(result.items[0].id)
     const created=await this.request('/v1/pessoas','POST',{nome:sale.customer_name,tipo_pessoa:doc.length===11?'Física':'Jurídica',
       [doc.length===11?'cpf':'cnpj']:doc,...(sale.customer_email?{email:sale.customer_email}:{}),perfis:[{tipo_perfil:'Cliente'}],ativo:true})
     if(!uuidPattern.test(created.id)) throw new ProviderError('Cliente criado sem identificador reconhecido. Conciliar antes de reenviar.',502,true)
@@ -76,7 +76,7 @@ export class ContaAzulClient {
 }
 
 export function normalizeContaAzul(item:Row,detail:Row,kind:'receivable'|'payable') {
-  requireUuid(item.id)
+  requireExternalId(item.id)
   const status=String(item.status_traduzido??detail.status??item.status)
   const amountCents=toCents(item.total)
   const settledCents=toCents(item.pago??0)

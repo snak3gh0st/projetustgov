@@ -1,4 +1,5 @@
 import { auth } from '@/auth.config'
+import { commercialOnlyBlock, csmCanReadCommercial } from '@/lib/area-access'
 
 export default auth((req) => {
   const { pathname } = req.nextUrl
@@ -15,6 +16,9 @@ export default auth((req) => {
     '/api/migrate',
     '/api/cron',
     '/api/integrations/conta-azul/callback',
+    // Evolution API chama sem sessão; as rotas conferem o segredo no cabeçalho.
+    '/api/whatsapp/webhook',
+    '/api/whatsapp/importar',
   ]
   const isPublic = publicPaths.some(path => pathname.startsWith(path))
 
@@ -41,12 +45,16 @@ export default auth((req) => {
   // vendedor / coordenador / visualizador = CRM-only (cannot access TGov)
   const role = (req.auth?.user as { role?: string } | undefined)?.role
 
+  const commercialBlock = commercialOnlyBlock(role, pathname)
+  if (commercialBlock === 'forbid') return Response.json({ error: 'Forbidden' }, { status: 403 })
+  if (commercialBlock === 'redirect') return Response.redirect(new URL('/sem-permissao', req.url))
+
   // TGov-only paths (page + API)
   const TGOV_PATHS = ['/tgov', '/api/tgov']
   const isTGovPath = TGOV_PATHS.some(p => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?'))
 
   // CRM page paths that adm_produto must not access
-  const CRM_PAGE_PATHS = ['/leads', '/comissoes', '/bi', '/distribuir', '/monitoramento', '/monitorar', '/execucao']
+  const CRM_PAGE_PATHS = ['/leads', '/comissoes', '/bi', '/distribuir', '/monitoramento', '/monitorar', '/execucao', '/pipeline', '/meu-dia', '/gestao']
   const isCrmPage = CRM_PAGE_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
   const isCrmHome = pathname === '/'
 
@@ -62,6 +70,11 @@ export default auth((req) => {
   const CSM_PATHS = ['/csm', '/api/csm']
   const isCsmPath = CSM_PATHS.some(p => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?'))
 
+  // Operação v1 has its own route-level RBAC and is shared by CRM/TGov operations.
+  // Let the page/API decide access without being swallowed by area isolation.
+  const isOperacaoPath = pathname === '/operacao' || pathname.startsWith('/operacao/') || pathname === '/api/operacao' || pathname.startsWith('/api/operacao/')
+  if (isOperacaoPath) return
+
   if (role === 'adm_produto') {
     if (isCrmPage || isCrmHome) {
       return Response.redirect(new URL('/tgov', req.url))
@@ -76,20 +89,16 @@ export default auth((req) => {
     if (isCsmPath) {
       return
     }
-    // CSM is otherwise TGov-read + CSM-area only — CRM pages and CRM APIs are blocked.
+    // Telas de vendas levam o CSM de volta para a área dele (TGov e Operação já foram barrados acima).
     if (isCrmPage || isCrmHome) {
       return Response.redirect(new URL('/csm', req.url))
     }
+    // Aba Operação do CSM: leitura da carteira em Execução e Prestação.
+    if (csmCanReadCommercial(pathname, req.method)) {
+      return
+    }
     if (isCrmApi) {
       return Response.json({ error: 'Forbidden' }, { status: 403 })
-    }
-    // Mutation gate: CSM só pode escrever em /api/tgov/comments. Tudo mais bloqueado em TGov.
-    const isTgovPrivilegedMutation =
-      pathname.startsWith('/api/tgov/whitelist') ||
-      pathname.startsWith('/api/tgov/interaction') ||
-      pathname.startsWith('/api/tgov/tecnico')
-    if (isTgovPrivilegedMutation && req.method !== 'GET') {
-      return Response.json({ error: 'Forbidden: CSM is read-only on this resource' }, { status: 403 })
     }
   }
 
@@ -169,13 +178,13 @@ export default auth((req) => {
       (p) => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?')
     )
     if (pathname === '/' || isCrmHome) {
-      return Response.redirect(new URL('/admin/conta-azul', req.url))
+      return Response.redirect(new URL('/financeiro', req.url))
     }
     if (!isFinancePath) {
       if (pathname.startsWith('/api/')) {
         return Response.json({ error: 'Forbidden' }, { status: 403 })
       }
-      return Response.redirect(new URL('/admin/conta-azul', req.url))
+      return Response.redirect(new URL('/financeiro', req.url))
     }
   }
 

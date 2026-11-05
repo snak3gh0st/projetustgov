@@ -1,21 +1,24 @@
 # Current Infrastructure
 
-Last updated: 2026-06-03
+Last updated: 2026-09-28
 
 ## Production
 
-- App host: Hetzner `sigma-apps`
-- Public URL: `https://projete.sigmaintel.io`
+- App host: Hetzner `btapps` (hostname `sigma-apps`)
+- Public URL: `https://projete.projetus.org`
 - Runtime owner: Coolify project `projetus-hub`
-- Database host: Hetzner `sigma-db`
+- Database host: Hetzner `btdb` (hostname `sigma-db`)
 - Database: `projetus_hub`
 - PgBouncer: `10.0.0.2:6432`
 
 ## Operations
 
-- App backups run on `sigma-apps`.
-- Database backups run on `sigma-db`.
-- Projetus cron jobs run through systemd timers on `sigma-apps`.
+- App backups run on `btapps`.
+- Database backups run on `btdb`.
+- Projetus cron jobs run through systemd timers on `btapps`.
+- The live, sanitized unit definitions are versioned in `docs/infra/systemd/`.
+- `sync-conta-azul` runs daily at 05:00 BRT and pulls the Conta Azul finance data for the Financeiro area; its drop-in `projetus-cron@sync-conta-azul.service.d/timeout.conf` sets `CRON_CURL_MAX_TIME=900` because a full import can take up to 12 minutes.
+- `sync-leads` runs daily at 09:30 BRT; a successful run may legitimately insert zero rows when the government source has no new eligible key.
 
 ## Legacy Providers
 

@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency } from '@/lib/format'
 import { normalizeTipoVendedor } from '@/lib/crm-catalog'
+import { hasTeamCommercialView } from '@/lib/roles'
 
 interface ComissaoLead {
   id: string
@@ -171,7 +172,7 @@ export default function ComissoesPage() {
     return <span className="ml-1">{sortDir === 'asc' ? '▲' : '▼'}</span>
   }
 
-  const isGestor = data?.role === 'gestor'
+  const isGestor = hasTeamCommercialView(data?.role)
 
   useEffect(() => {
     if (!isGestor) return
@@ -404,7 +405,7 @@ export default function ComissoesPage() {
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Valor vendas concluídas</p>
           </div>
         </div>
-      ) : data.role === 'gestor' ? (
+      ) : hasTeamCommercialView(data.role) ? (
         /* Gestor view: show total paid out to everyone */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">

@@ -50,7 +50,8 @@ export async function PATCH(
 
     const targetRole = targetRows[0].role as Role
 
-    if (targetRole === 'gestor') {
+    // Cargo de gestor comercial só a diretoria altera; cargo de diretoria ninguém altera pela tela.
+    if ((targetRole === 'gestor' && actorRole !== 'diretoria') || targetRole === 'diretoria') {
       return NextResponse.json({ error: 'Nao e possivel alterar o cargo de um gestor' }, { status: 403 })
     }
 

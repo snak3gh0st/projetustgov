@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
 import { normalizeCrmStatus } from '@/lib/crm-catalog'
+import { execucaoFaseSql, parseExecucaoFase } from '@/lib/execucao-fase'
+import { normalizedStatusOrderSql, normalizedStatusSql } from '@/lib/execucao-status'
+import { whatsappContatosSql } from '@/lib/whatsapp/contato'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +43,8 @@ interface ExecucaoAggRow {
   tag_desembolso: boolean
   tag_lobby: boolean
   tag_rendimento: boolean
+  novos_7d: number
+  entrou_em: string | null
 }
 
 // Alert business rule — Confirmed with client on 2026-03-18
@@ -57,39 +62,6 @@ interface ExecucaoAggRow {
 //   2. The alert_only filter — restricts rows to those with tem_alerta = true
 const ALERT_ZERO_EXECUTION = 'pe.valor_desembolsado = 0'
 
-const normalizedStatusSql = (columnRef: string) => `
-  CASE
-    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado', 'Novo', 'Contactado') THEN 'Não Contatado'
-    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Ainda Não', 'Sem Interesse') THEN 'Sem Interesse'
-    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Retorno', 'Em Atendimento') THEN 'Em Atendimento'
-    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Contatado') THEN 'Contatado'
-    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Reunião Agendada', 'Reuniao Agendada') THEN 'Reunião Agendada'
-    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Proposta', 'Proposta Enviada') THEN 'Proposta Enviada'
-    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Aguardando Closer', 'Em Aprovação') THEN 'Em Aprovação'
-    WHEN COALESCE(${columnRef}, 'Não Contatado') IN ('Impedimento Técnico', 'Impedimento Tecnico') THEN 'Impedimento Técnico'
-    WHEN COALESCE(${columnRef}, 'Não Contatado') = 'Cancelado' THEN 'Cancelado'
-    ELSE COALESCE(${columnRef}, 'Não Contatado')
-  END
-`
-
-const normalizedStatusOrderSql = (normalizedExpr: string) => `
-  CASE ${normalizedExpr}
-    WHEN 'Fechado' THEN 1
-    WHEN 'Em Aprovação' THEN 2
-    WHEN 'Proposta Enviada' THEN 3
-    WHEN 'Reunião Agendada' THEN 4
-    WHEN 'Contatado' THEN 5
-    WHEN 'Em Atendimento' THEN 6
-    WHEN 'Sem Interesse' THEN 7
-    WHEN 'Impedimento Técnico' THEN 8
-    WHEN 'Cancelado' THEN 9
-    WHEN 'Quente' THEN 10
-    WHEN 'Muito Quente' THEN 11
-    WHEN 'Telefone Invalido' THEN 12
-    WHEN 'Não Contatado' THEN 14
-    ELSE 13
-  END
-`
 
 export async function GET(request: NextRequest) {
   void ALERT_ZERO_EXECUTION
@@ -103,6 +75,8 @@ export async function GET(request: NextRequest) {
     const uf = searchParams.get('uf')
     const alert_only = searchParams.get('alert_only')
     const vendedor_id = searchParams.get('vendedor_id')
+    const fase = parseExecucaoFase(searchParams.get('fase'))
+    const novos = searchParams.get('novos') === 'true'
 
     const conditions: string[] = ['1=1']
     const params: unknown[] = []
@@ -159,6 +133,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Aba comercial: só os convênios da fase (Execução ou Prestação de Contas)
+    if (fase) {
+      conditions.push(execucaoFaseSql(fase, 'pe'))
+    }
+
+    // In the new-only view, aggregate the convênios that actually entered in
+    // this window; older convênios of the same CNPJ belong to the regular view.
+    if (novos) {
+      conditions.push(`pe.primeira_vez_em >= NOW() - INTERVAL '7 days'`)
+    }
+
     const rows = await query<ExecucaoAggRow>(`
       WITH agg AS (
         SELECT
@@ -187,7 +172,10 @@ export async function GET(request: NextRequest) {
           BOOL_OR(
             COALESCE(pe.rendimento_aplicacao, 0) > 5000
             AND COALESCE(pe.saldo_conta, 0) >= COALESCE(pe.rendimento_aplicacao, 0)
-          ) AS tag_rendimento
+          ) AS tag_rendimento,
+          -- Convênios que apareceram nos últimos 7 dias: o "Novo" da distribuição
+          COUNT(*) FILTER (WHERE pe.primeira_vez_em >= NOW() - INTERVAL '7 days')::INT AS novos_7d,
+          MAX(pe.primeira_vez_em) AS entrou_em
         FROM projetos_execucao pe
         WHERE ${conditions.join(' AND ')}
         GROUP BY pe.cnpj
@@ -240,11 +228,14 @@ export async function GET(request: NextRequest) {
         ORDER BY REGEXP_REPLACE(vp_v.cnpj, '[^0-9]', '', 'g'), COUNT(*) DESC
       ),
       last_contact AS (
-        SELECT
-          REGEXP_REPLACE(cn.lead_cnpj, '[^0-9]', '', 'g') AS cnpj_clean,
-          EXTRACT(DAY FROM NOW() - MAX(cn.created_at))::INT AS days_since
-        FROM contact_notes cn
-        GROUP BY REGEXP_REPLACE(cn.lead_cnpj, '[^0-9]', '', 'g')
+        SELECT x.cnpj_clean, EXTRACT(DAY FROM NOW() - MAX(x.at))::INT AS days_since
+        FROM (
+          SELECT REGEXP_REPLACE(cn.lead_cnpj, '[^0-9]', '', 'g') AS cnpj_clean, cn.created_at AS at FROM contact_notes cn
+          UNION ALL
+          -- Mensagem de WhatsApp trocada com o lead também é contato.
+          ${whatsappContatosSql()}
+        ) x
+        GROUP BY x.cnpj_clean
       ),
       crm_statuses AS (
         SELECT DISTINCT ON (REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g'))
@@ -305,7 +296,9 @@ export async function GET(request: NextRequest) {
         COALESCE(pc.cnt, 0) < 5 AS tag_iniciante,
         a.tag_desembolso,
         a.tag_lobby,
-        a.tag_rendimento
+        a.tag_rendimento,
+        a.novos_7d,
+        a.entrou_em
       FROM agg a
       LEFT JOIN crm_statuses cs ON cs.cnpj_clean = a.cnpj
       LEFT JOIN aprovacao_statuses aps ON aps.cnpj_clean = a.cnpj

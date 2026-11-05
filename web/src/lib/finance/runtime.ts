@@ -5,10 +5,12 @@ import { FinanceStore } from './store'
 import { FinanceEngine } from './engine'
 import { ContaAzulClient, HotmartClient } from './providers'
 import { FinanceError } from './domain'
+import { ContaAzulMirrorClient,refreshFromMirror } from './mirror'
 
 export function financeRuntime(){
   const store=new FinanceStore(getPool(),process.env.CONTA_AZUL_TENANT_KEY?.trim()||'projetus')
-  return{store,engine:new FinanceEngine(store),contaAzul:new ContaAzulClient(getValidAccessToken)}
+  const engine=new FinanceEngine(store),mirror=new ContaAzulMirrorClient(store)
+  return{store,engine,contaAzul:new ContaAzulClient(getValidAccessToken),refreshMirror:(from:string,to:string)=>refreshFromMirror(engine,mirror,from,to)}
 }
 
 export function hotmartProductIds(){return(process.env.HOTMART_PRODUCT_IDS??'').split(',').map(s=>s.trim()).filter(s=>/^\d+$/.test(s))}

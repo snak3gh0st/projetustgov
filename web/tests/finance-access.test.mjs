@@ -13,6 +13,6 @@ test('scheduler tokens fail closed when unset, empty or wrong',()=>{
   finally{if(original)process.env.CRON_SECRET=original}
 })
 test('only financial operators can inspect and mutate consolidated finance',()=>{
-  for(const role of ['admin','gestor','gestor_financeiro'])assert.equal(canOperateFinance(role),true)
-  for(const role of ['vendedor','coordenador','csm','adm_produto','visualizador',undefined])assert.equal(canOperateFinance(role),false)
+  for(const role of ['admin','diretoria','gestor_financeiro'])assert.equal(canOperateFinance(role),true)
+  for(const role of ['gestor','vendedor','coordenador','csm','adm_produto','visualizador',undefined])assert.equal(canOperateFinance(role),false)
 })

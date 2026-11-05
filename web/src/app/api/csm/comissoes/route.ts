@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { getApiSession, canCsm } from '@/lib/dal'
+import { getApiSession, canCsm, hasTeamCommercialView } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     const summary = summaryRows[0] || {}
 
     // Comissão de gestor e Fundo Comercial são visíveis apenas para gestor — mesma regra de /api/comissoes.
-    const isGestorView = session.role === 'gestor'
+    const isGestorView = hasTeamCommercialView(session.role)
 
     const leads = leadsRows.map(lead => ({
       id: lead.id,

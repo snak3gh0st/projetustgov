@@ -1,7 +1,5 @@
-import { cleanCNPJ, downloadAndStreamCSV, fixText, parseBRNumber } from '@/lib/repo-sync'
-
-const REPO_BASE = 'https://repositorio.dados.gov.br/seges/detru'
-const PROPOSTA_URL = `${REPO_BASE}/siconv_proposta.csv.zip`
+import { cleanCNPJ, fixText, parseBRNumber } from '@/lib/repo-sync'
+import { downloadTgovTable } from '@/lib/tgov-repo'
 
 export interface LivePropostaResult {
   transferGovId: string
@@ -45,7 +43,7 @@ export async function searchLivePropostas(params: {
 
   const hits: LivePropostaResult[] = []
 
-  await downloadAndStreamCSV(PROPOSTA_URL, (row) => {
+  await downloadTgovTable('siconv_proposta', (row) => {
     const rowCnpj = cleanCNPJ(row['IDENTIF_PROPONENTE'] || row['CNPJ_PROPONENTE'] || null)
     const rowNrProposta = (row['NR_PROPOSTA'] || '').replace(/^0+/, '').trim()
     if (!rowCnpj || !rowNrProposta) return
@@ -73,7 +71,7 @@ export async function searchLivePropostas(params: {
     })
 
     return hits.length < limit
-  })
+  }, { allowLegacy: true })
 
   return hits
 }

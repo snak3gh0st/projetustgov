@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getApiSession, canExportContacts } from '@/lib/dal'
+import { execucaoFaseSql, parseExecucaoFase } from '@/lib/execucao-fase'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,6 +18,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const vendedor_id = searchParams.get('vendedor_id')
+    const fase = parseExecucaoFase(searchParams.get('fase'))
 
     const conditions: string[] = ['1=1']
     const params: unknown[] = []
@@ -54,6 +56,7 @@ export async function GET(request: NextRequest) {
           BOOL_OR(pe.valor_desembolsado = 0) AS tem_alerta,
           MIN(pe.data_fim_vigencia) AS data_fim_vigencia
         FROM projetos_execucao pe
+        ${fase ? `WHERE ${execucaoFaseSql(fase, 'pe')}` : ''}
         GROUP BY pe.cnpj
       ),
       crm_statuses AS (

@@ -1,0 +1,10 @@
+[Unit]
+Description=projetus Cron Timer: digest
+
+[Timer]
+OnCalendar=*-*-* 11:20:00
+Persistent=true
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

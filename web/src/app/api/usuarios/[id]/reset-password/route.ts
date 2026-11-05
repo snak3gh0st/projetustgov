@@ -2,12 +2,12 @@
 import { NextResponse } from 'next/server'
 import * as bcrypt from 'bcryptjs'
 import { query } from '@/lib/db'
-import { getApiSession } from '@/lib/dal'
+import { canManageRole, getApiSession, type Role } from '@/lib/dal'
 import { sendPasswordResetEmail } from '@/lib/email-service'
 
 export const dynamic = 'force-dynamic'
 
-const ALLOWED_ACTOR_ROLES = ['admin', 'gestor']
+const ALLOWED_ACTOR_ROLES = ['admin', 'gestor', 'diretoria']
 
 export async function PATCH(
   request: Request,
@@ -40,13 +40,17 @@ export async function PATCH(
       return NextResponse.json({ error: 'Senha excede 200 caracteres' }, { status: 400 })
     }
 
-    const users = await query<{ id: string; nome: string; email: string; active: boolean }>(
-      `SELECT id, nome, email, active FROM users WHERE id = $1`,
+    const users = await query<{ id: string; nome: string; email: string; active: boolean; role: Role }>(
+      `SELECT id, nome, email, active, role FROM users WHERE id = $1`,
       [id],
     )
     const target = users[0]
     if (!target) {
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+    }
+    // Gestor comercial só redefine senha da própria equipe
+    if (session.role === 'gestor' && !canManageRole('gestor', target.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const hash = await bcrypt.hash(password, 10)

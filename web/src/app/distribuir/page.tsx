@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { formatCNPJ, formatCompactCurrency } from '@/lib/format'
+import { formatCNPJ, formatCompactCurrency, formatDate } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
+import SectionTabs from '@/components/SectionTabs'
 
 interface Vendedor {
   id: string
@@ -12,6 +13,13 @@ interface Vendedor {
 }
 
 type Tab = 'unassigned' | 'assigned'
+
+// "Novo": lead que entrou pela sincronização nos últimos 7 dias, para não misturar com os antigos.
+const NOVO_MS = 7 * 24 * 60 * 60 * 1000
+function isNovo(lead: VendedorProjeto): boolean {
+  const t = new Date(lead.created_at).getTime()
+  return !isNaN(t) && Date.now() - t <= NOVO_MS
+}
 
 export default function DistribuirPage() {
   const [tab, setTab] = useState<Tab>('unassigned')
@@ -23,6 +31,7 @@ export default function DistribuirPage() {
   const [filterVendedorId, setFilterVendedorId] = useState('')
   const [search, setSearch] = useState('')
   const [ufFilter, setUfFilter] = useState('')
+  const [novosOnly, setNovosOnly] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadingAssigned, setLoadingAssigned] = useState(false)
   const [assigning, setAssigning] = useState(false)
@@ -36,10 +45,16 @@ export default function DistribuirPage() {
   const [pendingForce, setPendingForce] = useState(false)
   const [randomPickCount, setRandomPickCount] = useState('')
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('tab') === 'assigned') setTab('assigned')
+    if (params.get('novos') === 'true') setNovosOnly(true)
+  }, [])
+
   const fetchLeads = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/leads?vendedor_id=unassigned&limit=5000&all=true')
+      const res = await fetch(`/api/leads?vendedor_id=unassigned&limit=5000&all=true${novosOnly ? '&sync=recent' : ''}`)
       const data = await res.json()
       setLeads(Array.isArray(data) ? data : [])
     } catch (err) {
@@ -47,12 +62,12 @@ export default function DistribuirPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [novosOnly])
 
   const fetchAssignedLeads = useCallback(async () => {
     setLoadingAssigned(true)
     try {
-      const res = await fetch('/api/leads?limit=5000&all=true')
+      const res = await fetch(`/api/leads?limit=5000&all=true${novosOnly ? '&sync=recent' : ''}`)
       const data = await res.json()
       const assigned = (Array.isArray(data) ? data : []).filter(
         (l: VendedorProjeto) => l.vendedor_id !== null
@@ -63,7 +78,7 @@ export default function DistribuirPage() {
     } finally {
       setLoadingAssigned(false)
     }
-  }, [])
+  }, [novosOnly])
 
   const fetchVendedores = useCallback(async () => {
     try {
@@ -79,7 +94,7 @@ export default function DistribuirPage() {
 
   useEffect(() => {
     fetch('/api/auth/session').then(r => r.json()).then(s => {
-      if (s?.user?.role !== 'gestor' && s?.user?.role !== 'coordenador') {
+      if (s?.user?.role !== 'gestor' && s?.user?.role !== 'diretoria' && s?.user?.role !== 'coordenador') {
         window.location.href = '/'
       } else {
         setUserRole(s.user.role)
@@ -88,7 +103,7 @@ export default function DistribuirPage() {
   }, [])
 
   useEffect(() => {
-    if (userRole === 'gestor' || userRole === 'coordenador') {
+    if (userRole === 'gestor' || userRole === 'diretoria' || userRole === 'coordenador') {
       fetchLeads()
       fetchAssignedLeads()
       fetchVendedores()
@@ -143,6 +158,7 @@ export default function DistribuirPage() {
       if (!lead.cnpj.includes(s) && !(lead.nome || '').toLowerCase().includes(s)) return false
     }
     if (ufFilter && lead.uf !== ufFilter) return false
+    if (novosOnly && !isNovo(lead)) return false
     if (tab === 'assigned' && filterVendedorId && lead.vendedor_id !== filterVendedorId) return false
     return true
   })
@@ -282,6 +298,10 @@ export default function DistribuirPage() {
         if (extra > 0) {
           msg += ` (${extra} adicionais por agrupamento CNPJ)`
         }
+        const skipped = data.skipped_closed ?? 0
+        if (skipped > 0) {
+          msg += ` | ${skipped} venda(s) fechada(s) de outro vendedor nao foram alteradas`
+        }
         if (warnings.length > 0) {
           msg += ` | Avisos: ${warnings.join('; ')}`
         }
@@ -317,16 +337,24 @@ export default function DistribuirPage() {
       const cnpjArray = Array.from(selectedCnpjs)
 
       let totalUnassigned = 0
+      let keptClosed = 0
       for (const cnpj of cnpjArray) {
         const res = await fetch('/api/leads/assign', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ cnpj, unassign: true }),
         })
-        if (res.ok) totalUnassigned++
+        if (!res.ok) continue
+        const data = await res.json()
+        if ((data.rows_updated ?? 0) > 0) totalUnassigned++
+        else keptClosed++
       }
 
-      setToast(`${totalUnassigned} CNPJ(s) desatribuidos com sucesso!`)
+      let msg = `${totalUnassigned} CNPJ(s) desatribuidos com sucesso!`
+      if (keptClosed > 0) {
+        msg += ` | ${keptClosed} CNPJ(s) com venda fechada mantidos com o vendedor`
+      }
+      setToast(msg)
       setSelectedLeadIds(new Set())
       fetchLeads()
       fetchAssignedLeads()
@@ -374,7 +402,7 @@ export default function DistribuirPage() {
     }
   }
 
-  if (userRole !== 'gestor' && userRole !== 'coordenador') {
+  if (userRole !== 'gestor' && userRole !== 'diretoria' && userRole !== 'coordenador') {
     return <div className="flex items-center justify-center py-20 text-gray-500">Verificando permissoes...</div>
   }
 
@@ -391,6 +419,22 @@ export default function DistribuirPage() {
           }
         </p>
       </div>
+
+      <SectionTabs
+        tabs={[
+          { id: 'unassigned', label: 'Não atribuídos', count: uniqueUnassignedCount },
+          { id: 'assigned', label: 'Distribuídos', count: uniqueAssignedCount },
+        ]}
+        value={tab}
+        onChange={value => setTab(value as Tab)}
+        ariaLabel="Estado da distribuição"
+      />
+
+      {novosOnly && tab === 'assigned' && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+          Emendas que entraram nos últimos 7 dias e estão com responsável. Rooger pode revisar e redistribuir manualmente; o sync não altera o responsável.
+        </p>
+      )}
 
       {/* Manual distribution helper */}
       {tab === 'unassigned' && leads.length > 0 && (
@@ -429,7 +473,7 @@ export default function DistribuirPage() {
       )}
 
       {/* CNPJ Monitoring section - gestor only, assign directly to Rooger */}
-      {userRole === 'gestor' && (
+      {(userRole === 'gestor' || userRole === 'diretoria') && (
         <div className="border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/10 rounded-xl p-4">
           <h2 className="text-sm font-semibold text-amber-800 mb-3">Adicionar CNPJ Monitorado (Rooger)</h2>
           <div className="flex flex-wrap gap-3 items-start">
@@ -470,40 +514,6 @@ export default function DistribuirPage() {
           )}
         </div>
       )}
-
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-1 w-fit">
-        <button
-          onClick={() => setTab('unassigned')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            tab === 'unassigned'
-              ? 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border border-blue-200 dark:border-blue-500/20'
-              : 'text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 border border-transparent'
-          }`}
-        >
-          Nao Atribuidos
-          <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
-            tab === 'unassigned' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
-          }`}>
-            {uniqueUnassignedCount}
-          </span>
-        </button>
-        <button
-          onClick={() => setTab('assigned')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            tab === 'assigned'
-              ? 'bg-blue-50 dark:bg-blue-500/10 text-[#0072F7] border border-blue-200 dark:border-blue-500/20'
-              : 'text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 border border-transparent'
-          }`}
-        >
-          Distribuidos
-          <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
-            tab === 'assigned' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
-          }`}>
-            {uniqueAssignedCount}
-          </span>
-        </button>
-      </div>
 
       {/* Vendedor cards - for unassigned tab: target selection; for assigned tab: summary */}
       {tab === 'unassigned' ? (
@@ -578,6 +588,15 @@ export default function DistribuirPage() {
             ))}
           </select>
         )}
+        <label className="inline-flex items-center gap-2 px-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={novosOnly}
+            onChange={e => setNovosOnly(e.target.checked)}
+            className="rounded border-gray-300 text-[#0072F7] focus:ring-blue-500/30"
+          />
+          Só os novos (7 dias)
+        </label>
       </div>
 
       {/* CNPJ grouping note */}
@@ -659,7 +678,19 @@ export default function DistribuirPage() {
                       <span className="text-gray-500">1</span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-gray-900 dark:text-gray-100 font-medium truncate max-w-[180px]">{lead.nome || '-'}</td>
+                  <td className="px-3 py-2 text-gray-900 dark:text-gray-100 font-medium max-w-[220px]">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate">{lead.nome || '-'}</span>
+                      {isNovo(lead) && (
+                        <span
+                          title={`Entrou em ${formatDate(lead.created_at)}`}
+                          className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25"
+                        >
+                          Novo
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-3 py-2 text-gray-600 dark:text-gray-300 text-xs truncate max-w-[150px]">{lead.nome_programa || '-'}</td>
                   <td className="px-3 py-2 text-[#0072F7] text-xs">{formatCompactCurrency(lead.valor_emenda)}</td>
                   <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{lead.uf || '-'}</td>

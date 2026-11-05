@@ -19,20 +19,35 @@ export class FinanceEngine {
     return fingerprint
   }
 
-  async run<T>(provider:string,scope:Row,fn:()=>Promise<T>):Promise<T>{
-    const s=this.store,c=await s.pool.connect(),lock=`finance:${s.tenant}:${provider}`
-    const acquired=(await c.query('SELECT pg_try_advisory_lock(hashtext($1)) locked',[lock])).rows[0].locked
-    if(!acquired){c.release();throw new FinanceError('Já existe uma sincronização desta origem em andamento.',409)}
-    let id:string|undefined
+  async run<T>(provider:string,scope:Row,fn:(lease:{assertCurrent:()=>Promise<void>})=>Promise<T>):Promise<T>{
+    const s=this.store
+    // Durable uniqueness works with production PgBouncer transaction pooling.
+    // No session advisory lock or checked-out connection survives provider I/O.
+    await s.rows(`UPDATE finance_runs SET status='failed',error='Execução interrompida: sem atividade por 30 minutos.',finished_at=now()
+      WHERE tenant_key=$1 AND provider=$2 AND status='running' AND heartbeat_at<now()-interval '30 minutes'`,[s.tenant,provider])
+    let id:string
+    try{id=(await s.rows(`INSERT INTO finance_runs(tenant_key,provider,status,scope) VALUES($1,$2,'running',$3) RETURNING id`,[s.tenant,provider,scope]))[0].id}
+    catch(e){if((e as {code?:string})?.code==='23505')throw new FinanceError('Já existe uma sincronização desta origem em andamento.',409);throw e}
+    let lost=false
+    const beat=async()=>{
+      const rows=await s.rows("UPDATE finance_runs SET heartbeat_at=now() WHERE id=$1 AND tenant_key=$2 AND status='running' RETURNING id",[id,s.tenant])
+      if(!rows.length)lost=true
+    }
+    const assertCurrent=async()=>{
+      if(lost)throw new FinanceError('A execução perdeu sua autorização. Conferir o histórico antes de continuar.',409)
+      await beat()
+      if(lost)throw new FinanceError('A execução foi encerrada por outro processo.',409)
+    }
+    const heartbeat=setInterval(()=>{void beat().catch(()=>{lost=true})},20000)
     try{
-      id=(await c.query(`INSERT INTO finance_runs(tenant_key,provider,status,scope) VALUES($1,$2,'running',$3) RETURNING id`,[s.tenant,provider,scope])).rows[0].id
-      const result=await fn()
-      await c.query("UPDATE finance_runs SET status='completed',item_count=$2,finished_at=now() WHERE id=$1",[id,Number((result as Row)?.count??0)])
+      const result=await fn({assertCurrent})
+      await assertCurrent()
+      await s.rows("UPDATE finance_runs SET status='completed',item_count=$2,finished_at=now() WHERE id=$1 AND status='running'",[id,Number((result as Row)?.count??0)])
       return result
     }catch(error){
-      if(id)await c.query("UPDATE finance_runs SET status='failed',error=$2,finished_at=now() WHERE id=$1",[id,error instanceof Error?error.message:'Falha na integração'])
+      await s.rows("UPDATE finance_runs SET status='failed',error=$2,finished_at=now() WHERE id=$1 AND status='running'",[id,error instanceof Error?error.message:'Falha na integração'])
       throw error
-    }finally{await c.query('SELECT pg_advisory_unlock(hashtext($1))',[lock]);c.release()}
+    }finally{clearInterval(heartbeat)}
   }
 
   async importHotmart(client:HotmartClient,from:string,to:string){
@@ -50,10 +65,10 @@ export class FinanceEngine {
     })
   }
 
-  async pull(client:ContaAzulClient,from:string,to:string){
+  async pull(client:ContaAzulClient,from:string,to:string,source:Row={}){
     isoDate(from);isoDate(to)
     if(from>to)throw new FinanceError('Intervalo de sincronização inválido.')
-    return this.run('conta_azul_pull',{from,to},async()=>{
+    return this.run('conta_azul_pull',{from,to,...source},async()=>{
       await this.checkAccount(client)
       let count=0
       for(const kind of ['receivable','payable'] as const){
@@ -63,6 +78,7 @@ export class FinanceEngine {
           await this.reconcile(normalizeContaAzul(item,detail,kind));count++
         }
       }
+      if('finishCopy' in client&&typeof client.finishCopy==='function')await client.finishCopy()
       return{count}
     })
   }
@@ -112,12 +128,13 @@ export class FinanceEngine {
   async push(client:ContaAzulClient){
     const s=this.store,settings=await s.settings()
     if(!settings.writesEnabled||!settings.companyConfirmed)throw new FinanceError('Envios desabilitados. Configure e confirme a empresa da Conta Azul antes de habilitar.',409)
-    return this.run('conta_azul_push',{},async()=>{
+    return this.run('conta_azul_push',{},async({assertCurrent})=>{
       await this.checkAccount(client)
       await s.rows(`UPDATE finance_jobs SET status='uncertain',last_error='Processamento interrompido; conciliar antes de reenviar.',updated_at=now()
         WHERE tenant_key=$1 AND status='processing' AND started_at<now()-interval '5 minutes'`,[s.tenant])
       let count=0,failed=0,uncertain=0
       for(let i=0;i<20;i++){
+        await assertCurrent()
         const job=await s.transaction(async c=>(await c.query(`UPDATE finance_jobs SET status='processing',attempts=attempts+1,started_at=now(),updated_at=now()
           WHERE id=(SELECT id FROM finance_jobs WHERE tenant_key=$1 AND status='pending' ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING *`,[s.tenant])).rows[0])
         if(!job)break
@@ -137,6 +154,7 @@ export class FinanceEngine {
           if(existing.some((r:Row)=>(r.cliente??r.fornecedor)?.id===entry.remote_person_id&&Number(r.total)===Number(entry.amount_cents)/100)){
             throw new FinanceError('Há título com a mesma pessoa, valor e vencimento na Conta Azul. Confira e vincule o lançamento existente antes de enviar.',409)
           }
+          await assertCurrent()
           attempted=true
           const remote=await client.createEntry(entry,settings)
           await s.transaction(async c=>{
@@ -171,14 +189,16 @@ export class FinanceEngine {
     ])
     const summary=summarizeReport(rows.map(e=>({origin:e.remote_id?'conta_azul':e.origin,kind:e.kind,amountCents:Number(e.amount_cents),settledCents:Number(e.settled_cents),dueDate:e.due_date,status:e.status,payments:e.payments})),date)
     const pull=runs.find(r=>r.provider==='conta_azul_pull')
+    const sourceStamp=pull?.scope?.mirrorUpdatedAt??pull?.finished_at??null
     const warnings:string[]=[]
     if(!pull)warnings.push('Conta Azul ainda não sincronizada. Totais confirmados podem estar incompletos.')
-    else if(pull.status!=='completed')warnings.push('A última leitura da Conta Azul não foi concluída. Há dados parciais ou desatualizados.')
-    else if(Date.now()-new Date(pull.finished_at).getTime()>86400000)warnings.push('Dados Conta Azul sem atualização há mais de 24 horas.')
+    else if(pull.status!=='completed'||(pull.scope?.mirrorRunStatus&&pull.scope.mirrorRunStatus!=='completed'))warnings.push('A última leitura da Conta Azul não foi concluída. Há dados parciais ou desatualizados.')
+    else if(Date.now()-new Date(sourceStamp).getTime()>86400000)warnings.push('Dados Conta Azul sem atualização há mais de 24 horas.')
+    if(pull?.scope?.connectionStatus&&pull.scope.connectionStatus!=='active')warnings.push('Conexão Conta Azul expirada ou desativada; os valores refletem o último espelho disponível.')
     if(review[0]?.count)warnings.push(`${review[0].count} venda(s) precisam de conferência.`)
     if(summary.unsyncedPayableCents||summary.unsyncedReceivableCents)warnings.push('Previsões locais sem vínculo estão separadas dos totais confirmados na Conta Azul.')
     if(rows.some(e=>e.remote_id&&Number(e.settled_cents)>0&&!e.payments.length))warnings.push('Há valores baixados sem detalhamento por data; não são contados nos realizados do dia.')
-    return{date,generatedAt:new Date().toISOString(),summary,warnings,coverage:pull?.scope??null,lastSync:pull?.finished_at??null,
+    return{date,generatedAt:new Date().toISOString(),summary,warnings,coverage:pull?.scope??null,lastSync:sourceStamp,
       entries:rows.map((e):Row=>({...e,amount_cents:Number(e.amount_cents),settled_cents:Number(e.settled_cents)})),runs}
   }
 }

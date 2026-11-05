@@ -29,6 +29,8 @@ export const CreateUsuarioSchema = z.object({
     'coord_prestacao',
     'assistente_prestacao',
     'gestor_financeiro',
+    'gestor',
+    'diretoria',
   ]).default('vendedor'),
 })
 

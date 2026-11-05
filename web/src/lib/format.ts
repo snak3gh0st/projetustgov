@@ -57,20 +57,21 @@ export function formatParlamentarSummary(parlamentares: (string | null)[]): stri
   return `${unique.length} parlamentares`
 }
 
-/** Digits-only E.164-ish path for https://wa.me/ — Brazil prepends 55 when missing. */
+/**
+ * Build a WhatsApp deep-link only for a complete Brazilian phone number.
+ * The CRM should show an unavailable state instead of opening a malformed
+ * conversation when a contact has only a partial or invalid phone value.
+ */
 export function whatsappMeUrlFromTelefone(telefone: string | null | undefined): string | null {
   const d = String(telefone ?? '').replace(/\D/g, '')
-  if (!d) return null
-  if (d.startsWith('55') && d.length >= 12) {
-    return `https://wa.me/${d}`
+  const local = d.startsWith('55') ? d.slice(2) : d
+
+  // Brazil: 2-digit area code + 8-digit landline or 9-digit mobile.
+  if ((local.length !== 10 && local.length !== 11) || local.startsWith('0')) {
+    return null
   }
-  if ((d.length === 10 || d.length === 11) && !d.startsWith('0')) {
-    return `https://wa.me/55${d}`
-  }
-  if (d.length >= 8 && d.length < 12) {
-    return `https://wa.me/55${d}`
-  }
-  return `https://wa.me/${d}`
+
+  return `https://wa.me/55${local}`
 }
 
 /**
@@ -94,3 +95,28 @@ export function googleCalendarEventUrl(opts: {
   return `https://calendar.google.com/calendar/render?${params.toString()}`
 }
 
+/** Lê valor digitado em reais ("R$ 1.234,56", "1234.56", "1.234"); NaN se vazio ou inválido. */
+export function parseCurrencyInput(raw: string): number {
+  const trimmed = raw.replace(/[^\d.,-]/g, '')
+  if (!trimmed) return NaN
+  const digitsOnly = trimmed.replace(/\D/g, '')
+  if (!digitsOnly) return NaN
+
+  const hasComma = trimmed.includes(',')
+  const hasDot = trimmed.includes('.')
+
+  if (hasComma && hasDot) {
+    return Number(trimmed.replace(/\./g, '').replace(',', '.'))
+  }
+  if (hasComma) {
+    return Number(trimmed.replace(',', '.'))
+  }
+  if (hasDot) {
+    const parts = trimmed.split('.')
+    const maybeThousands = parts.length > 1 && parts.every((p, i) => (i === 0 ? p.length >= 1 : p.length === 3))
+    if (maybeThousands) {
+      return Number(trimmed.replace(/\./g, ''))
+    }
+  }
+  return Number(trimmed)
+}

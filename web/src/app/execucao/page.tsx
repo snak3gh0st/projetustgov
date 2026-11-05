@@ -1,9 +1,11 @@
-import { verifySession } from '@/lib/dal'
 import { redirect } from 'next/navigation'
-import ExecucaoClient from './ExecucaoClient'
+import { legacyExecucaoTarget } from '@/lib/lead-tabs'
 
-export default async function ExecucaoPage() {
-  const session = await verifySession()
-  // Vendedores can see execucao — filtered to their CNPJs via API
-  return <ExecucaoClient userRole={session.role} />
+// Execução e Prestação de Contas viraram abas da página Leads; links antigos caem na aba certa.
+export default function ExecucaoPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (typeof value === 'string') search.set(key, value)
+  }
+  redirect(legacyExecucaoTarget(search))
 }

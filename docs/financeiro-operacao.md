@@ -2,12 +2,29 @@
 
 A Projete integra vendas próprias e Hotmart, forma recebíveis, apura comissões e consolida contas a pagar/receber da Conta Azul. A emissão fiscal permanece manual.
 
+```mermaid
+flowchart LR
+  H[Hotmart: compras e eventos] --> P
+  V[Vendas próprias do CRM] --> P
+  subgraph P[Projete]
+    O[Vendas e calendários] --> C[Conferência e fechamento de comissões]
+    O --> F[Fila de títulos]
+    C --> F
+    M[Espelho do BI financeiro] --> R[Relatório diário do Thiago]
+  end
+  F -->|Envios habilitados e conferidos| CA[Conta Azul]
+  CA -->|Sincronização BI existente| M
+  R --> UI[Tela e CSV]
+  R --> E[E-mail ou Slack opcionais]
+  D[David: emissão fiscal manual] --> O
+```
+
 ## Preparação do ambiente
 
 1. Aplicar `migrations/20261105_financeiro_integrado.sql` no banco do ambiente, antes de publicar o módulo. Em `web/`, com as variáveis do ambiente definidas, `npm run db:finance:migrate` aplica a migração aditiva.
-2. Publicar a versão que contém `/financeiro`. Acesso: `gestor`, `admin`, `gestor_financeiro`.
+2. Publicar a versão que contém `/financeiro/operacao`, na aba **Vendas, comissões e relatório** do financeiro existente. Acesso: `diretoria`, `admin`, `gestor_financeiro`. O gestor comercial continua restrito à sua área.
 3. Conectar a Conta Azul no menu existente. Em Financeiro → Integrações, carregar as opções, conferir a empresa e escolher conta financeira/categorias. A identificação da empresa fica vinculada à operação; trocar a empresa bloqueia a sincronização para não misturar CNPJs.
-4. Importar vendas Projete e ler o histórico Conta Azul, incluindo lançamentos manuais. Conferir clientes e calendários; vincular títulos já existentes. Os envios começam desabilitados.
+4. Importar vendas Projete e usar **Atualizar do BI** para copiar o espelho Conta Azul existente, incluindo lançamentos manuais. Concluir antes a sincronização do BI. Conferir clientes e calendários; vincular títulos já existentes. Os envios começam desabilitados.
 5. Habilitar envios somente após essa conferência. A operação cria títulos; não executa pagamentos bancários nem envia novas cobranças aos alunos.
 
 `DATABASE_SSL=disable` é uma opção explícita para PostgreSQL local sem TLS. O comportamento padrão para bancos hospedados permanece igual ao existente.
@@ -50,13 +67,13 @@ Antes de criar um título, o conector verifica se há uma parcela com a mesma pe
 4. Aprovar a competência encerrada. O fechamento preserva os itens aprovados, agrupa por beneficiário e cria contas a pagar para o dia 15 do mês seguinte.
 5. Vincular beneficiários aos fornecedores da Conta Azul e processar os envios. Baixas posteriores do ERP atualizam a situação do pagamento.
 
-Reaprovar a mesma competência retorna o fechamento existente. Liberações retroativas em período já fechado são bloqueadas; ajustes devem usar uma competência aberta e evidência que explique o evento original. Alterações comerciais ou estornos posteriores deixam a venda em conferência e não recalculam o fechamento aprovado.
+Reaprovar a mesma competência retorna o fechamento existente. Liberações retroativas em período já fechado são bloqueadas; ajustes devem usar uma competência aberta e evidência que explique o evento original. Alterações comerciais ou estornos posteriores deixam a venda em conferência e não recalculam o fechamento aprovado. Correções de valor/beneficiário em comissões ainda abertas revogam a liberação anterior e exigem nova conferência. Comissões removidas ou de vendas reabertas são anuladas enquanto não aprovadas; títulos locais pendentes são cancelados. Títulos já enviados e fechamentos aprovados exigem ajustes conciliados no ERP.
 
 ## Relatório do Thiago
 
 O relatório diário inclui vencimentos do dia, vencidos, próximos sete dias e pagamentos/recebimentos realizados por data da baixa. Lançamentos manuais e despesas da Conta Azul entram no mesmo relatório. Previsões locais sem vínculo são mostradas à parte; não entram nos totais confirmados do ERP.
 
-O período de vencimentos importado e a última atualização são visíveis. Uma leitura incompleta ou com mais de 24 horas gera aviso. O relatório não é uma apuração do saldo bancário disponível.
+O relatório reutiliza as tabelas da sincronização Conta Azul já existente no BI; não abre uma segunda varredura da API. A cópia é bloqueada enquanto o BI sincroniza. O período de vencimentos importado e a data real da atualização da origem são visíveis; copiar novamente não torna um espelho antigo recente. Uma leitura incompleta ou com mais de 24 horas gera aviso. O relatório não é uma apuração do saldo bancário disponível.
 
 Interface e CSV para usuários financeiros:
 
@@ -74,11 +91,11 @@ O agendador da hospedagem chama os endpoints com `Authorization: Bearer <CRON_SE
 
 | Rotina | Endpoint | Frequência inicial sugerida |
 |---|---|---|
-| Importação CRM/Hotmart, leitura ERP e fila habilitada | `/api/cron/financeiro?task=sync` | A cada 15 minutos |
+| Importação CRM/Hotmart, cópia do espelho BI e fila habilitada | `/api/cron/financeiro?task=sync` | A cada 15 minutos |
 | Relatório diário | `/api/cron/financeiro?task=report` | Após a sincronização da manhã, horário de Brasília |
 | Demonstrativos aprovados | `/api/cron/financeiro?task=statements` | Diariamente após a sincronização |
 
-A sincronização padrão cobre vencimentos de um ano atrás a um ano à frente. Usar `from=AAAA-MM-DD&to=AAAA-MM-DD` para recuperar outros períodos. O histórico Hotmart vai da data inicial até hoje. Uma falha parcial retorna HTTP 207 e uma lista de erros, em vez de sucesso silencioso.
+A cópia padrão considera vencimentos de um ano atrás a um ano à frente, dentro do histórico já existente no espelho BI. Agendar a sincronização Conta Azul existente antes desta rotina; esta rotina não atualiza o provedor por conta própria. Usar `from=AAAA-MM-DD&to=AAAA-MM-DD` para recuperar outros períodos. O histórico Hotmart vai da data inicial até hoje. Uma falha parcial retorna HTTP 207 e uma lista de erros, em vez de sucesso silencioso.
 
 E-mail reutiliza o Resend existente (`RESEND_API_KEY`, `DIGEST_FROM_EMAIL`). Selecionar o usuário financeiro ativo responsável pelo relatório e habilitar a opção na tela. Demonstrativos são enviados somente aos beneficiários ativos e com seu próprio detalhamento. Essa entrega é opcional e inicia desabilitada.
 
@@ -94,7 +111,7 @@ Slack é opcional: `FINANCE_SLACK_WEBHOOK_URL` e `FINANCE_SLACK_ENABLED=true`. A
 
 ## Validação local
 
-Requer Node 22.18+ (ou Node 24+) para os testes TypeScript nativos e PostgreSQL isolado para a suíte de persistência.
+Requer Node compatível com a aplicação, dependências instaladas (incluindo `tsx`) e PostgreSQL isolado para a suíte de persistência. As execuções são registradas por origem no banco, com unicidade e heartbeat, compatíveis com PgBouncer em transaction pooling; nenhuma conexão fica reservada durante chamadas externas.
 
 ```sh
 cd web

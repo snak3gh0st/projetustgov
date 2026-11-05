@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { query } from '@/lib/db'
+import { query, queryAs } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 // Gestor only — dry-runs by default. confirm=true is required to move open leads.
 export async function POST(request: NextRequest) {
   const session = await getApiSession()
-  if (!session || session.role !== 'gestor') {
+  if (!session || (session.role !== 'gestor' && session.role !== 'diretoria')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -74,7 +74,8 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  const result = await query<{ id: number }>(
+  const result = await queryAs<{ id: number }>(
+    { userId: session.userId, origem: 'distribuicao' },
     `UPDATE vendedor_projetos
      SET vendedor_id = $1, updated_at = NOW()
      WHERE vendedor_id = $2

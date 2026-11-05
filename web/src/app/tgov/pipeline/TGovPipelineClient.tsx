@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { TGOV_STATUS_ORDER, tgovStatusSortKey, APROVACAO_ONLY_ROLES, EXECUCAO_ONLY_ROLES, PRESTACAO_ONLY_ROLES } from '@/lib/tgov'
+import SectionTabs from '@/components/SectionTabs'
 
 // ── Types ───────────────────────────────────────────────────────────────────
 type PipelineTab = 'aprovacao' | 'execucao' | 'prestacao_contas'
@@ -276,22 +277,14 @@ export default function TGovPipelineClient({ userRole }: { userRole: string }) {
           </p>
         </div>
 
-        {/* Tab bar */}
-        <div className="flex gap-1 mb-6 border-b border-gray-200 dark:border-gray-700">
-          {visibleTabs.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                activeTab === tab
-                  ? 'bg-white dark:bg-gray-900 border border-b-white dark:border-b-gray-900 border-gray-200 dark:border-gray-700 -mb-px text-blue-600'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-              }`}
-            >
-              {TAB_LABELS[tab]}
-            </button>
-          ))}
-        </div>
+        {/* Stage switcher */}
+        <SectionTabs
+          ariaLabel="Etapa do pipeline"
+          value={activeTab}
+          onChange={value => setActiveTab(value as PipelineTab)}
+          tabs={visibleTabs.map(tab => ({ id: tab, label: TAB_LABELS[tab] }))}
+          className="mb-6"
+        />
 
         {/* Content */}
         {!current.loaded ? (

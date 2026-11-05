@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Pool } from 'pg'
 import * as XLSX from 'xlsx'
 import { AUTO_DISTRIBUTION_ENABLED } from '@/lib/distribution-policy'
+import { canEditLeads, getApiSession } from '@/lib/dal'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -193,6 +194,10 @@ const INSERT_SQL = `
 `
 
 export async function POST(request: NextRequest) {
+  const session = await getApiSession()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!canEditLeads(session.role)) return NextResponse.json({ error: 'Forbidden: read-only role' }, { status: 403 })
+
   const pool = getPool()
 
   try {
