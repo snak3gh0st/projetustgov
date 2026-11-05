@@ -17,11 +17,12 @@ const DIRETORIA_MANAGES: Role[] = [
 
 const COMMERCIAL_TEAM: Role[] = ['vendedor', 'coordenador', 'csm', 'visualizador']
 
-/** Who can create/manage users of which roles. Single source of truth. */
+/** Who can create/manage users of which roles. Single source of truth.
+ * Diretoria e admin cadastram diretoria; um diretor já cadastrado não é alterado nem excluído pela tela. */
 export const ROLE_CAN_CREATE: Partial<Record<Role, Role[]>> = {
-  diretoria:            DIRETORIA_MANAGES,
+  diretoria:            [...DIRETORIA_MANAGES, 'diretoria'],
   gestor:               COMMERCIAL_TEAM,
-  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao', 'gestor_financeiro'],
+  admin:                ['vendedor', 'visualizador', 'coordenador', 'adm_produto', 'csm', 'coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao', 'gestor_financeiro', 'diretoria'],
   adm_produto:          ['coord_aprovacao', 'assistente_aprovacao', 'projetista', 'coord_execucao', 'assistente_execucao', 'coord_prestacao', 'assistente_prestacao'],
   coord_aprovacao:      ['assistente_aprovacao', 'projetista'],
   assistente_aprovacao: ['projetista'],

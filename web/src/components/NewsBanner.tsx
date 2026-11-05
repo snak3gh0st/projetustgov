@@ -6,6 +6,12 @@ import { AnimatePresence, m } from 'motion/react'
 // Ao publicar mudanças visíveis: adicione um release no topo (versão nova + itens).
 const NEWS_RELEASES: { version: string; items: string[] }[] = [
   {
+    version: 'v1.27',
+    items: [
+      'Em Usuários, a diretoria e o admin já podem cadastrar alguém com o cargo Diretoria',
+    ],
+  },
+  {
     version: 'v1.26',
     items: [
       'Relatório semanal da diretoria em Gestão: caixa, agenda de pagamentos da próxima semana, resultado, vendas e atividade do time; enviado por e-mail toda sexta às 18h',

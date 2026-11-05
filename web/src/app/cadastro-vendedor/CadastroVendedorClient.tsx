@@ -74,6 +74,7 @@ const ROLE_SELECT_BG: Record<string, string> = {
 }
 
 const ROLE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'diretoria', label: 'Diretoria' },
   { value: 'gestor', label: 'Gestor comercial' },
   { value: 'vendedor', label: 'Vendedor' },
   { value: 'visualizador', label: 'Visualizador' },

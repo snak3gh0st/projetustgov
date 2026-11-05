@@ -59,8 +59,8 @@ test('gestor manages only commercial users', () => {
   assert.deepEqual(ROLE_CAN_DELETE.gestor, ['vendedor', 'coordenador', 'csm', 'visualizador'])
 })
 
-test('diretoria manages what gestor managed, plus gestor', () => {
-  assert.deepEqual(ROLE_CAN_CREATE.diretoria, [...OLD_GESTOR_MANAGES, 'gestor'])
+test('diretoria manages what gestor managed, plus gestor; creates diretoria but never deletes one', () => {
+  assert.deepEqual(ROLE_CAN_CREATE.diretoria, [...OLD_GESTOR_MANAGES, 'gestor', 'diretoria'])
   assert.deepEqual(ROLE_CAN_DELETE.diretoria, [...OLD_GESTOR_MANAGES, 'gestor'])
 })
 
@@ -134,4 +134,9 @@ test('csm stays out of TransfereGov and Operação, keeps the CSM area', () => {
     assert.equal(can('csm'), false, can.name)
   }
   assert.equal(canCsm('csm'), true)
+})
+
+test('only diretoria and admin can register a new diretoria', () => {
+  assert.deepEqual(ALL_ROLES.filter((r) => ROLE_CAN_CREATE[r]?.includes('diretoria')).sort(), ['admin', 'diretoria'])
+  assert.deepEqual(ALL_ROLES.filter((r) => ROLE_CAN_DELETE[r]?.includes('diretoria')), [])
 })
