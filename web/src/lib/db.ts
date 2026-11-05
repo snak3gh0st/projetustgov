@@ -10,7 +10,7 @@ export function getPool(): Pool {
       idleTimeoutMillis: 10000,
       connectionTimeoutMillis: 10000,
       statement_timeout: 30000,
-      ssl: { rejectUnauthorized: false },
+      ssl: process.env.DATABASE_SSL === 'disable' ? false : { rejectUnauthorized: false },
     })
   }
   return pool

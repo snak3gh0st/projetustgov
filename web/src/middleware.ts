@@ -3,6 +3,9 @@ import { auth } from '@/auth.config'
 export default auth((req) => {
   const { pathname } = req.nextUrl
 
+  // The Hotmart webhook authenticates its provider token, failing closed.
+  if (pathname === '/api/integrations/hotmart/webhook') return
+
   // Public routes that don't need auth
   // Conta Azul OAuth callback is public: state is HMAC-signed and carries userId.
   const publicPaths = [
@@ -150,6 +153,8 @@ export default auth((req) => {
 
   if (role === 'gestor_financeiro') {
     const FINANCE_PATHS = [
+      '/financeiro',
+      '/api/financeiro',
       '/admin/conta-azul',
       '/api/integrations/conta-azul',
       '/comissoes',

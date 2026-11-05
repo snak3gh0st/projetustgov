@@ -44,6 +44,7 @@ const BASE_WITH_EXECUCAO: NavItem[] = [
 export function getNavItemsForRole(role: NavRole): NavItem[] {
   if (role === 'gestor_financeiro') {
     return [
+      { href: '/financeiro', label: 'Financeiro', icon: 'comissoes' },
       { href: '/admin/conta-azul', label: 'Conta Azul', icon: 'comissoes' },
       { href: '/comissoes', label: 'Comissoes', icon: 'comissoes' },
       { href: '/bi', label: 'BI Analytics', icon: 'bi' },
@@ -57,6 +58,7 @@ export function getNavItemsForRole(role: NavRole): NavItem[] {
 
     return [
       ...BASE_WITH_EXECUCAO,
+      { href: '/financeiro', label: 'Financeiro', icon: 'comissoes' },
       { href: '/tgov/pipeline', label: 'TGov Pipeline', icon: 'pipeline' },
       { href: '/tgov?view=dashboard', label: 'TGov Dashboard', icon: 'tgov' },
       { href: '/tgov', label: 'TGov BI', icon: 'pipeline' },
