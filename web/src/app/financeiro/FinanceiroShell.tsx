@@ -33,6 +33,7 @@ const TABS = [
   { href: '/financeiro/caixa', label: 'Caixa' },
   { href: '/financeiro/pagar-receber', label: 'Pagar e receber' },
   { href: '/financeiro/clientes', label: 'Clientes e CRM' },
+  { href: '/financeiro/operacao', label: 'Vendas, comissões e relatório' },
 ]
 
 const PHASES: Record<string, string> = {
@@ -116,7 +117,7 @@ export default function FinanceiroShell({ canSync, children }: { canSync: boolea
   }
 
   let body: React.ReactNode = children
-  if (status && !conn) {
+  if (status && !conn && pathname !== '/financeiro/operacao') {
     body = (
       <Panel>
         <h2 className="text-lg font-semibold text-slate-900 dark:text-gray-100">Conecte o Conta Azul para ver o financeiro</h2>
@@ -130,7 +131,7 @@ export default function FinanceiroShell({ canSync, children }: { canSync: boolea
         )}
       </Panel>
     )
-  } else if (status && !last) {
+  } else if (status && !last && pathname !== '/financeiro/operacao') {
     const p = running?.metadata.progress
     const ratio = p && p.total ? Math.min(1, p.done / p.total) : 0
     body = (

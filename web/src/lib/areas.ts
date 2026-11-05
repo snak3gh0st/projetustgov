@@ -61,6 +61,7 @@ const AREA_NAV: Record<AreaId, Item[]> = {
   ],
   financeiro: [
     { href: '/financeiro', label: 'BI Financeiro', icon: 'financeiro', roles: ['gestor_financeiro', 'diretoria', 'admin'] },
+    { href: '/financeiro/operacao', label: 'Vendas e comissões', icon: 'comissoes', roles: ['gestor_financeiro', 'diretoria', 'admin'] },
     { href: '/admin/conta-azul', label: 'Conta Azul', icon: 'conta-azul', roles: ['gestor_financeiro', 'diretoria', 'admin'] },
     { href: '/comissoes', label: 'Comissões a pagar', icon: 'comissoes', roles: ['gestor_financeiro'] },
     { href: '/bi', label: 'BI comercial', icon: 'bi', roles: ['gestor_financeiro'] },

@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "db:finance:migrate": "node scripts/migrate-finance.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "tsx --test 'src/**/*.test.ts'",
+    "test": "tsx --test 'src/**/*.test.ts' 'tests/*.test.mjs'",
     "lint": "next lint",
     "backup": "node scripts/backup.mjs"
   },
