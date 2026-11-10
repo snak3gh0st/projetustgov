@@ -19,7 +19,8 @@ export interface TimelineEvent {
   created_at: string
 }
 
-export type TimelineFilter = 'tudo' | 'whatsapp' | 'notas' | 'movimentacoes'
+export type TimelineFilter = 'tudo' | 'whatsapp' | 'notas' | 'movimentacoes' | 'workspace'
+export interface TimelineWorkspace { id:string; summary:string; actor_name:string; created_at:string; project_kind:string; project_key:string }
 
 /** Mensagem de WhatsApp de uma conversa ligada ao lead (mesmo formato de MensagemView, com o telefone da conversa). */
 export interface TimelineMensagem {
@@ -39,10 +40,14 @@ export type TimelineItem =
   | { kind: 'nota'; id: string; at: string; note: TimelineNote }
   | { kind: 'evento'; id: string; at: string; event: TimelineEvent }
   | { kind: 'whatsapp'; id: string; at: string; mensagem: TimelineMensagem }
+  | { kind: 'workspace'; id: string; at: string; activity: TimelineWorkspace }
 
 /** Ordem cronológica crescente: o mais recente fica embaixo, junto da caixa de nota. */
-export function buildTimeline(notes: TimelineNote[], events: TimelineEvent[], filter: TimelineFilter, mensagens: TimelineMensagem[] = []): TimelineItem[] {
+export function buildTimeline(notes: TimelineNote[], events: TimelineEvent[], filter: TimelineFilter, mensagens: TimelineMensagem[] = [], workspace: TimelineWorkspace[] = []): TimelineItem[] {
   const items: TimelineItem[] = []
+  if (filter === 'tudo' || filter === 'workspace') {
+    for (const activity of workspace) items.push({ kind: 'workspace', id: `workspace-${activity.id}`, at: activity.created_at, activity })
+  }
   if (filter === 'tudo' || filter === 'whatsapp') {
     for (const m of mensagens) items.push({ kind: 'whatsapp', id: `whatsapp-${m.id}`, at: m.enviada_em, mensagem: m })
   }

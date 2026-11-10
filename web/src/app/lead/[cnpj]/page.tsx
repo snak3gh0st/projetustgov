@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { formatCNPJ, formatCurrency, googleCalendarEventUrl } from '@/lib/format'
+import { formatCNPJ, formatCurrency } from '@/lib/format'
+import ClientWorkspace from '@/components/workspace/ClientWorkspace'
 import { useLinkWhatsappFn } from '@/components/whatsapp/WhatsappNoProjete'
 import type { VendedorProjeto } from '@/lib/types'
 import LeadContacts from '@/components/LeadContacts'
@@ -305,7 +306,7 @@ export default function LeadDetailPage() {
                 WhatsApp
               </a>
             )}
-            {email && <a href={`mailto:${email}`} className={buttonClass('secondary', 'sm')}>Email</a>}
+            <a href={`/workspace/clientes/${cnpjClean}?tab=mail`} className={buttonClass('secondary', 'sm')}>Workspace</a>
           </div>
         )}
       </header>
@@ -328,22 +329,10 @@ export default function LeadDetailPage() {
                 {temReuniao ? 'Reunião marcada com este lead.' : 'Nenhuma reunião marcada.'}
               </p>
               <a
-                href={googleCalendarEventUrl({
-                  title: `Reunião PROJETUS: ${nome}`,
-                  details: [
-                    `Instituição: ${nome}`,
-                    telefone ? `Telefone: ${telefone}` : null,
-                    email ? `Email: ${email}` : null,
-                    `CNPJ: ${formatCNPJ(cnpjClean)}`,
-                    'Local: Google Meet',
-                  ].filter(Boolean).join('\n'),
-                  guestEmail: email,
-                })}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={`/workspace/clientes/${cnpjClean}?tab=meetings`}
                 className={buttonClass('secondary', 'sm', 'w-full')}
               >
-                Agendar no Google Agenda
+                Agenda e Meet no Workspace
               </a>
             </div>
           </Panel>
@@ -396,6 +385,8 @@ export default function LeadDetailPage() {
           <LeadContacts cnpj={apiCnpj} canModify={canModifyData(role)} refreshKey={contactsBump} onChange={() => setContatosReload((n) => n + 1)} />
         </aside>
       </div>
+
+      {projetos.length > 0 && <ClientWorkspace key={contactsBump} cnpj={cnpjClean} embedded />}
 
       {first && (
         <SaleModal
