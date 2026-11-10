@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {calendarDays,dayEventLayout,eventsOnDay,legacyWorkspaceArea,localDateKey,meetAddress,workspaceHref,workspaceRecipient} from './presentation.ts'
+import {calendarDays,dayEventLayout,eventsOnDay,legacyWorkspaceArea,localDateKey,meetAddress,workspaceHref,workspaceRecipient,workspaceRecipientLabel} from './presentation.ts'
 test('tool routes preserve the client and distinguish projects without depending on UI state',()=>{
   const href=workspaceHref('calendario','12.345.678/0001-90','comercial:10002'),url=new URL(href,'https://projete.projetus.org')
   assert.equal(url.pathname,'/workspace/calendario');assert.equal(url.searchParams.get('cliente'),'12345678000190');assert.equal(url.searchParams.get('projectKey'),'10002')
@@ -36,6 +36,8 @@ test('contact entries open a draft in the exact project with a normalized saved 
   assert.equal(url.searchParams.get('action'),'compose');assert.equal(url.searchParams.get('to'),'financeiro@example.test');assert.equal(url.searchParams.get('projectKey'),'42')
   assert.equal(workspaceRecipient(url.searchParams.get('to')!,['Financeiro@example.test','outro@example.test']),'Financeiro@example.test')
   assert.equal(workspaceRecipient('externo@example.test',['cliente@example.test']),undefined)
+  assert.equal(workspaceRecipientLabel('client@example.test',[{nome_pessoa:'Ana',email:'CLIENT@example.test'}]),'Ana · client@example.test')
+  assert.equal(workspaceRecipientLabel('novo@example.test',[{nome_pessoa:'Ana',email:'client@example.test'}]),'novo@example.test')
   assert.equal(workspaceRecipient('cliente@example.test\r\nBcc: externo@example.test',['cliente@example.test']),undefined)
 })
 test('meeting entries preserve an agreement and actions cannot spill into other tools',()=>{

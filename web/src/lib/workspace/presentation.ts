@@ -22,6 +22,10 @@ export function workspaceHref(area:WorkspaceArea,cnpj='',selection='cliente:',en
 export function workspaceRecipient(recipient:string|undefined,emails:string[]):string|undefined {
   return recipient?emails.find(email=>email.toLowerCase()===recipient.trim().toLowerCase()):undefined
 }
+export function workspaceRecipientLabel(email:string,contacts:{email?:string|null;nome_pessoa?:string|null}[]=[]) {
+  const name=contacts.find(contact=>contact.email?.trim().toLowerCase()===email.trim().toLowerCase()&&contact.nome_pessoa?.trim())?.nome_pessoa?.trim()
+  return name?`${name} · ${email}`:email
+}
 export function legacyWorkspaceArea(tab?:string):WorkspaceArea {
   return ({mail:'email',drive:'drive',meetings:'calendario',history:'historico',meet:'meet'} as Record<string,WorkspaceArea>)[tab||'']||'email'
 }

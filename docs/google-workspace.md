@@ -2,7 +2,7 @@
 
 ## Uso
 
-Abra Workspace no menu ou na ficha do cliente. O ambiente tem navegação própria para **E-mail, Calendário, Drive e Meet**, além do Histórico. Cliente e projeto ficam na barra de contexto, e são preservados ao trocar de ferramenta. Conecte sua conta corporativa e escolha o registro comercial ou convênio. Não cria outro cadastro de cliente.
+Abra Workspace no menu ou na ficha do cliente. O ambiente tem navegação própria para **E-mail, Calendário, Drive e Meet**, além do Histórico. Cliente e projeto ficam na barra de contexto, e são preservados ao trocar de ferramenta. Conecte sua conta corporativa e escolha o registro comercial ou convênio. Não cria outro cadastro de cliente. A busca encontra a organização por nome ou CNPJ e também pelo nome ou e-mail dos contatos responsáveis cadastrados no CRM. Os resultados e a seleção de destinatários mostram o nome da pessoa junto ao endereço de e-mail.
 
 - `/workspace/email`: caixa de conversas e leitura lado a lado; no celular, caixa e leitura ocupam telas alternadas. A composição abre separadamente.
 - `/workspace/calendario`: visão de mês ou semana dos eventos vinculados ao projeto, navegação entre períodos e criação de reuniões por data. Não representa todos os eventos pessoais da conta.
