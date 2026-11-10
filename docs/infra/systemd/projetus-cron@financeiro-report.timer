@@ -1,0 +1,10 @@
+[Unit]
+Description=Projete: relatorio financeiro diario (canais opcionais)
+
+[Timer]
+OnCalendar=*-*-* 05:30:00 America/Sao_Paulo
+Persistent=true
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

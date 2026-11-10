@@ -91,15 +91,28 @@ O agendador da hospedagem chama os endpoints com `Authorization: Bearer <CRON_SE
 
 | Rotina | Endpoint | Frequência inicial sugerida |
 |---|---|---|
-| Importação CRM/Hotmart, cópia do espelho BI e fila habilitada | `/api/cron/financeiro?task=sync` | A cada 15 minutos |
-| Relatório diário | `/api/cron/financeiro?task=report` | Após a sincronização da manhã, horário de Brasília |
-| Demonstrativos aprovados | `/api/cron/financeiro?task=statements` | Diariamente após a sincronização |
+| Importação CRM/Hotmart, cópia do espelho BI e fila habilitada | `/api/cron/financeiro-sync` | A cada 15 minutos |
+| Relatório diário | `/api/cron/financeiro-report` | Após a sincronização da manhã, horário de Brasília |
+| Demonstrativos aprovados | `/api/cron/financeiro-statements` | Diariamente após a sincronização |
+
+As rotas acima são aliases autenticados de tarefas fixas, compatíveis com `run-cron.sh` e os timers em `docs/infra/systemd/`. O endpoint com `?task=` continua disponível. O timer de sincronização tem timeout de 360 segundos; resultado parcial (207) é sinalizado como falha pelo executor existente.
 
 A cópia padrão considera vencimentos de um ano atrás a um ano à frente, dentro do histórico já existente no espelho BI. Agendar a sincronização Conta Azul existente antes desta rotina; esta rotina não atualiza o provedor por conta própria. Usar `from=AAAA-MM-DD&to=AAAA-MM-DD` para recuperar outros períodos. O histórico Hotmart vai da data inicial até hoje. Uma falha parcial retorna HTTP 207 e uma lista de erros, em vez de sucesso silencioso.
 
 E-mail reutiliza o Resend existente (`RESEND_API_KEY`, `DIGEST_FROM_EMAIL`). Selecionar o usuário financeiro ativo responsável pelo relatório e habilitar a opção na tela. Demonstrativos são enviados somente aos beneficiários ativos e com seu próprio detalhamento. Essa entrega é opcional e inicia desabilitada.
 
 Slack é opcional: `FINANCE_SLACK_WEBHOOK_URL` e `FINANCE_SLACK_ENABLED=true`. A exportação JSON/CSV funciona sem Slack. As entregas ficam registradas por dia/canal ou fechamento/beneficiário, com prevenção de repetição e chave idempotente no provedor de e-mail.
+
+## Relatório semanal do Philipe
+
+O fluxo semanal existente permanece separado do relatório diário operacional. Consolida financeiro do grupo TS&CO e comercial da Projete, preserva o retrato por semana e oferece a página `/gestao/relatorio-semanal`.
+
+- Destinatário configurado: `philipe@projetus.org` (`WEEKLY_REPORT_TO`).
+- Remetente: `PROJETUS <report@projetus.org>` (`WEEKLY_REPORT_FROM`).
+- Frequência: sexta-feira, **18h em America/Sao_Paulo**.
+- Timer: `projetus-cron@relatorio-semanal.timer`; rota `GET /api/cron/relatorio-semanal` com Bearer `CRON_SECRET`.
+- Verificação em 09/11/2026: timer ativo, execução de 06/11 concluída sem erro e retrato registrado para Philipe. Próxima execução prevista em 13/11 às 18h de Brasília.
+- A prévia `?preview=1` gera HTML sem gravar nem enviar; o teste operacional não dispara outro e-mail. A chave do provedor disponível é restrita a envio, portanto não comprova entrega na caixa de entrada.
 
 ## Falhas e conciliação
 

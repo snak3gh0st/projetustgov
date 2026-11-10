@@ -59,7 +59,23 @@ test('HTTP finance mutation rejects a foreign origin and malformed JSON',{skip:!
 })
 test('HTTP scheduler and Hotmart webhook require their own secrets',{skip:!enabled},async()=>{
   assert.equal((await fetch(`${base}/api/cron/financeiro?task=report`)).status,401)
+  for(const task of ['sync','report','statements'])assert.equal((await fetch(`${base}/api/cron/financeiro-${task}`)).status,401)
   assert.equal((await fetch(`${base}/api/integrations/hotmart/webhook`,{method:'POST',body:'{}'})).status,401)
+})
+
+test('HTTP native cron aliases preserve authorization and cannot change their assigned task',{skip:!enabled||!process.env.FINANCE_TEST_CRON_SECRET},async()=>{
+  const headers={Authorization:`Bearer ${process.env.FINANCE_TEST_CRON_SECRET}`}
+  const report=await fetch(`${base}/api/cron/financeiro-report?task=sync`,{headers})
+  assert.equal(report.status,200)
+  assert.deepEqual((await report.json()).deliveries,[])
+  const statements=await fetch(`${base}/api/cron/financeiro-statements?task=push`,{headers})
+  assert.equal(statements.status,200)
+  assert.deepEqual(await statements.json(),{skipped:true})
+  const sync=await fetch(`${base}/api/cron/financeiro-sync?task=report`,{headers})
+  assert.ok([200,207].includes(sync.status))
+  const data=await sync.json()
+  assert.equal(typeof data.results.projete.count,'number')
+  assert.equal(data.results.hotmart.skipped,true)
 })
 test('HTTP CSV report is private, authenticated and includes consolidated entries',{skip:!enabled},async()=>{
   const r=await fetch(`${base}/api/financeiro/report?format=csv`,{headers:{Cookie:financeCookie}})

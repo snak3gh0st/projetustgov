@@ -76,7 +76,12 @@ CREATE TABLE IF NOT EXISTS finance_runs (
   error TEXT, started_at TIMESTAMPTZ NOT NULL DEFAULT now(), finished_at TIMESTAMPTZ,
   heartbeat_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-ALTER TABLE finance_runs ADD COLUMN IF NOT EXISTS heartbeat_at TIMESTAMPTZ NOT NULL DEFAULT now();
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public'
+    AND table_name='finance_runs' AND column_name='heartbeat_at') THEN
+    ALTER TABLE finance_runs ADD COLUMN heartbeat_at TIMESTAMPTZ NOT NULL DEFAULT now();
+  END IF;
+END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS finance_runs_one_active ON finance_runs(tenant_key,provider) WHERE status='running';
 CREATE TABLE IF NOT EXISTS finance_audit (
   id BIGSERIAL PRIMARY KEY, tenant_key TEXT NOT NULL, actor_id UUID,
@@ -90,11 +95,16 @@ CREATE TABLE IF NOT EXISTS finance_deliveries (
   PRIMARY KEY(tenant_key,delivery_key)
 );
 -- Existing Conta Azul mirrors accept UUID and legacy numeric external IDs.
-ALTER TABLE finance_sales ALTER COLUMN remote_person_id TYPE TEXT USING remote_person_id::text;
-ALTER TABLE finance_entries ALTER COLUMN remote_person_id TYPE TEXT USING remote_person_id::text,
-  ALTER COLUMN remote_id TYPE TEXT USING remote_id::text,
-  ALTER COLUMN remote_event_id TYPE TEXT USING remote_event_id::text;
-ALTER TABLE finance_people ALTER COLUMN remote_person_id TYPE TEXT USING remote_person_id::text;
+-- Avoid taking exclusive locks for no-op type conversions on reapplication.
+DO $$ DECLARE c RECORD; BEGIN
+  FOR c IN SELECT table_name,column_name FROM information_schema.columns
+    WHERE table_schema='public' AND data_type<>'text' AND (
+      (table_name IN ('finance_sales','finance_people') AND column_name='remote_person_id') OR
+      (table_name='finance_entries' AND column_name IN ('remote_person_id','remote_id','remote_event_id')))
+  LOOP
+    EXECUTE format('ALTER TABLE public.%I ALTER COLUMN %I TYPE TEXT USING %I::text',c.table_name,c.column_name,c.column_name);
+  END LOOP;
+END $$;
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='sigma_app') THEN
     GRANT SELECT,INSERT,UPDATE,DELETE ON finance_settings,finance_sales,finance_closings,finance_entries,
