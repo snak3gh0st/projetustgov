@@ -1,5 +1,8 @@
 'use client'
 
+import WorkspaceShortcuts from '@/components/workspace/WorkspaceShortcuts'
+import { workspaceHref } from '@/lib/workspace/presentation'
+
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatCNPJ, formatCurrency } from '@/lib/format'
@@ -108,25 +111,6 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
           <WhatsAppAction telefone={shown.telefone} cnpj={shown.cnpj} label="WhatsApp" className="min-h-10 w-full" />
           <button
             type="button"
-            onClick={() => router.push(`/workspace/clientes/${shown.cnpj.replace(/\D/g,'')}?projectKind=comercial&projectKey=${shown.id}&tab=mail`)}
-            className={buttonClass('secondary', 'md', 'w-full')}
-          >
-            <MailIcon />
-            Workspace
-          </button>
-          <a
-            href={`/workspace/clientes/${shown.cnpj.replace(/\D/g,'')}?projectKind=comercial&projectKey=${shown.id}&tab=meetings`}
-            className={buttonClass('secondary', 'md', 'w-full')}
-            title="Agendar uma reunião com Meet no Workspace"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
-              <rect x="2" y="3" width="12" height="11" rx="1.5" />
-              <path d="M2 6.5h12M5 1.5v3M11 1.5v3" strokeLinecap="round" />
-            </svg>
-            Agendar
-          </a>
-          <button
-            type="button"
             onClick={() => router.push(`/lead/${encodeURIComponent(shown.cnpj)}`)}
             className={buttonClass('primary', 'md', 'w-full')}
           >
@@ -135,6 +119,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
               <path d="M6 3l5 5-5 5" />
             </svg>
           </button>
+          <WorkspaceShortcuts compact cnpj={shown.cnpj} selection={`comercial:${shown.id}`} className="col-span-2 border-t border-line pt-1" />
         </div>
       )}
     >
@@ -263,7 +248,7 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
                     />
                   ) : (
                     <>
-                      <span className="min-w-0 flex-1 truncate">{shown.email || <span className="text-ink-3">Sem email</span>}</span>
+                      <span className="min-w-0 flex-1 truncate">{shown.email ? <a href={workspaceHref('email',shown.cnpj,`comercial:${shown.id}`,{action:'compose',recipient:shown.email})} className="text-accent-ink hover:underline">{shown.email}</a> : <span className="text-ink-3">Sem email</span>}</span>
                       {canModify && <EditButton label="Editar email" onClick={() => { setEditingField('email'); setEditValue(shown.email || '') }} />}
                     </>
                   )}

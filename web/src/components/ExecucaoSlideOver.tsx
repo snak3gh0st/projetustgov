@@ -1,5 +1,9 @@
 'use client'
 
+import WorkspaceShortcuts from '@/components/workspace/WorkspaceShortcuts'
+import useWorkspaceClient from '@/components/workspace/useWorkspaceClient'
+import { workspaceHref } from '@/lib/workspace/presentation'
+
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatCNPJ, formatCompactCurrency, formatDate } from '@/lib/format'
@@ -101,6 +105,7 @@ export default function ExecucaoSlideOver({
   onContactSummaryUpdate,
   onClose,
 }: ExecucaoSlideOverProps) {
+  const hasWorkspace = useWorkspaceClient(cnpj)
   const router = useRouter()
   const linkWhatsapp = useLinkWhatsappFn()
   const toast = useToast()
@@ -324,7 +329,7 @@ export default function ExecucaoSlideOver({
           <button
             type="button"
             disabled={!emailContact}
-            onClick={() => { if (emailContact?.email) window.open(`mailto:${emailContact.email}`, '_blank') }}
+            onClick={() => { if (emailContact?.email) { if (hasWorkspace) router.push(workspaceHref('email',h.cnpj,'cliente:',{action:'compose',recipient:emailContact.email})); else window.open(`mailto:${emailContact.email}`, '_blank') } }}
             className={buttonClass('secondary', 'md', 'w-full')}
           >
             Email
@@ -339,6 +344,7 @@ export default function ExecucaoSlideOver({
         </div>
       }
     >
+      {hasWorkspace && <WorkspaceShortcuts cnpj={h.cnpj} compact className="mb-4 border-b border-line pb-2" />}
       <div className="flex items-end justify-between gap-3 rounded-lg bg-raised/70 px-3 py-2.5">
         <div>
           <p className="text-xs text-ink-3">Valor total dos convênios</p>
@@ -379,7 +385,7 @@ export default function ExecucaoSlideOver({
                     </a>
                   )}
                   {c.email && (
-                    <a href={`mailto:${c.email}`} className="text-accent-ink hover:underline">{c.email}</a>
+                    <a href={hasWorkspace?workspaceHref('email',h.cnpj,'cliente:',{action:'compose',recipient:c.email}):`mailto:${c.email}`} className="text-accent-ink hover:underline">{c.email}</a>
                   )}
                 </div>
               </li>
@@ -441,6 +447,7 @@ export default function ExecucaoSlideOver({
                   key={conv.nr_convenio}
                   className={`space-y-3 rounded-lg p-4 ring-1 ring-inset ${semDesembolso ? 'bg-amber-50/50 ring-amber-200 dark:bg-amber-500/[0.06] dark:ring-amber-500/25' : 'ring-line'}`}
                 >
+                  {hasWorkspace && <WorkspaceShortcuts cnpj={h.cnpj} selection={`convenio:${conv.nr_convenio}`} areas={['drive','calendario','meet']} />}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
                       <span className="font-mono text-ink-3">#{conv.nr_convenio}</span>

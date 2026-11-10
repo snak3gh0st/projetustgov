@@ -1,5 +1,8 @@
 'use client'
 
+import WorkspaceShortcuts from '@/components/workspace/WorkspaceShortcuts'
+import useWorkspaceClient from '@/components/workspace/useWorkspaceClient'
+
 import { useCallback, useEffect, useState } from 'react'
 import TGovStatusDonut from '@/components/TGovStatusDonut'
 import CommentsThread from './CommentsThread'
@@ -1365,6 +1368,7 @@ function ExecucaoSidecard({
   currentUserRole: string
   onRowUpdate: (patch: Partial<TGovExecucaoTableRow>) => void
 }) {
+  const hasWorkspace = useWorkspaceClient(row.cnpj)
   const execKey = row.nrConvenio || row.numeroProposta || ''
   return (
     <>
@@ -1407,6 +1411,7 @@ function ExecucaoSidecard({
 
         {/* Content */}
         <div className="px-6 py-5 space-y-6">
+          {hasWorkspace && <WorkspaceShortcuts cnpj={row.cnpj} compact className="border-b border-line pb-2" />}
           {/* Status + Execution */}
           <div className="flex items-center gap-3">
             <SituacaoBadge situacao={row.situacao} />
@@ -1555,6 +1560,7 @@ function AprovacaoSidecard({
   currentUserRole: string
   onRowUpdate: (patch: Partial<TGovAprovacaoTableRow>) => void
 }) {
+  const hasWorkspace = useWorkspaceClient(row.cnpj)
   const tgovPropostaLink = buildTGovAprovacaoLink(row.transferGovId)
   return (
     <>
@@ -1591,6 +1597,7 @@ function AprovacaoSidecard({
 
         {/* Content */}
         <div className="px-6 py-5 space-y-6">
+          {hasWorkspace && <WorkspaceShortcuts cnpj={row.cnpj} compact className="border-b border-line pb-2" />}
           {/* Vencimento */}
           <VencimentoBadge vencimento={row.vencimento} />
 

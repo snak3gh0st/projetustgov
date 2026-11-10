@@ -1,18 +1,18 @@
 'use client'
 import {useEffect,useState} from 'react'
 import Button from '@/components/ui/Button'
-import {localDateTime} from '@/lib/workspace/presentation'
+import {localDateTime,workspaceRecipient} from '@/lib/workspace/presentation'
 import WorkspaceDialog from './WorkspaceDialog'
 import WorkspaceIcon from './WorkspaceIcon'
 import {dateLabel,Field,fieldClass,Notice,RequestError,useResource,type Data,type WorkspaceApi} from './shared'
-export default function MeetingComposer({open,...props}:{open:boolean;api:WorkspaceApi;client:Data;initialDate?:Date;onClose:()=>void;onDone:()=>void}) {
+export default function MeetingComposer({open,...props}:{open:boolean;api:WorkspaceApi;client:Data;initialDate?:Date;initialRecipient?:string;onClose:()=>void;onDone:()=>void}) {
   return open?<MeetingForm {...props}/>:null
 }
-function MeetingForm({api,client,initialDate,onClose,onDone}:{api:WorkspaceApi;client:Data;initialDate?:Date;onClose:()=>void;onDone:()=>void}) {
+function MeetingForm({api,client,initialDate,initialRecipient,onClose,onDone}:{api:WorkspaceApi;client:Data;initialDate?:Date;initialRecipient?:string;onClose:()=>void;onDone:()=>void}) {
   const [date]=useState(()=>{const d=initialDate?new Date(initialDate):new Date();if(!initialDate)d.setDate(d.getDate()+1);if(!initialDate||d.getHours()===0)d.setHours(9,0,0,0);return d})
   const [calendarId,setCalendar]=useState(''),[title,setTitle]=useState(`Reunião · ${client.name}`),[description,setDescription]=useState('')
   const [start,setStart]=useState(()=>localDateTime(date)),[end,setEnd]=useState(()=>localDateTime(new Date(date.getTime()+3600000)))
-  const [attendees,setAttendees]=useState<string[]>(client.emails.slice(0,1)),[team,setTeam]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[uncertain,setUncertain]=useState(false),[availability,setAvailability]=useState<Data|null>(null)
+  const [attendees,setAttendees]=useState<string[]>(workspaceRecipient(initialRecipient,client.emails)?[workspaceRecipient(initialRecipient,client.emails)!]:client.emails.slice(0,1)),[team,setTeam]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[uncertain,setUncertain]=useState(false),[availability,setAvailability]=useState<Data|null>(null)
   const calendars=useResource(()=>api.get('calendars'),[api]),timezone=Intl.DateTimeFormat().resolvedOptions().timeZone
   useEffect(()=>{if(calendars.data?.items.length&&!calendarId)setCalendar((calendars.data.items.find((c:Data)=>c.primary)||calendars.data.items[0]).id)},[calendars.data,calendarId])
   useEffect(()=>setAvailability(null),[start,end,calendarId])

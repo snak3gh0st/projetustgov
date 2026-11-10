@@ -1,5 +1,7 @@
 'use client'
 
+import { workspaceHref } from '@/lib/workspace/presentation'
+
 import { useState } from 'react'
 import WhatsAppAction from '@/components/WhatsAppAction'
 import { inputClass } from '@/components/leads/list-ui'
@@ -71,7 +73,7 @@ export default function ContatoLead({ cnpj, telefone, email, endereco, canEdit, 
           <div className="flex min-w-0 flex-1 items-center gap-2">
             {atual ? (
               campo === 'email'
-                ? <a href={`mailto:${atual}`} className="truncate text-sm text-accent-ink hover:underline">{atual}</a>
+                ? <a href={workspaceHref('email',cnpj,'cliente:',{action:'compose',recipient:atual})} className="truncate text-sm text-accent-ink hover:underline">{atual}</a>
                 : <span className="truncate text-sm tabular-nums text-ink">{atual}</span>
             ) : (
               <span className="text-sm text-ink-3">{campo === 'email' ? 'Sem email' : 'Sem telefone'}</span>

@@ -9,7 +9,17 @@ Abra Workspace no menu ou na ficha do cliente. O ambiente tem navegação própr
 - `/workspace/drive`: pastas, arquivos em grade ou lista e painel de detalhes e conferência. A navegação e os uploads em subpastas são limitados à pasta vinculada ao projeto.
 - `/workspace/meet`: entrada por código ou link válido do Google Meet, próximas reuniões e reuniões anteriores.
 
-Os links antigos `/workspace/clientes/:cnpj` continuam funcionando e direcionam para a ferramenta com o mesmo cliente e projeto. A ficha do CRM oferece atalhos compactos para as quatro áreas.
+O menu de todas as equipes oferece uma barra fixa com as quatro ferramentas, inclusive no celular. As entradas com contexto aparecem nos seguintes pontos:
+
+- Meu dia: e-mail e calendário por lead; reuniões também oferecem Meet.
+- Pipeline e listas comerciais: o painel do lead preserva a emenda comercial selecionada.
+- Ficha do cliente: acesso geral, contatos, e-mails, reunião, documentos de cada emenda e convênio.
+- Execução: ferramentas do cliente e documentos/reuniões de cada convênio registrado na Projete.
+- CSM e painéis TransfereGov: ferramentas do cliente quando ele existe no CRM e o usuário tem acesso. Identificadores do TransfereGov não são tratados como IDs comerciais da Projete.
+- Financeiro, Clientes: ferramentas nos detalhes de clientes vinculados ao CRM e acessíveis ao usuário. Clientes exclusivos do ERP não recebem um vínculo presumido.
+- WhatsApp: as quatro ferramentas no painel do lead associado à conversa.
+
+Os links antigos `/workspace/clientes/:cnpj` continuam funcionando. Endereços de contato abrem um rascunho pela Projete; Agendar prepara uma reunião. O destinatário sugerido precisa constar nos contatos atuais do cliente. Os links preservam a intenção durante o OAuth e nunca enviam mensagem ou convite sozinhos. Trocar o cliente/projeto descarta a intenção inicial.
 
 - E-mails: o Gmail da conta conectada é consultado pelos endereços válidos já cadastrados no cliente. Endereço compartilhado por clientes recebe aviso; vincule a conversa ao projeto após conferir. Novo envio e resposta usam os contatos selecionados, sem copiar mensagens privadas para outros vendedores.
 - Documentos: selecione uma pasta existente ou crie uma subpasta em um local autorizado. Registre os arquivos para conferência; anexos e uploads de até 15 MB ficam nessa pasta. Aprovação exige observação e a versão atual do Google; nova versão retorna para análise.

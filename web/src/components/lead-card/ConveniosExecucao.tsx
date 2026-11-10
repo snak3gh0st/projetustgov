@@ -1,5 +1,7 @@
 'use client'
 
+import WorkspaceShortcuts from '@/components/workspace/WorkspaceShortcuts'
+
 import { StatusSelect, Tag } from '@/components/leads/list-ui'
 import { formatCurrency } from '@/lib/format'
 import { CRM_STATUS_SELECT_OPTIONS, formatCrmStatusLabel } from '@/lib/crm-catalog'
@@ -14,6 +16,7 @@ export interface ConvenioRow {
 }
 
 interface ConveniosExecucaoProps {
+  cnpj?: string
   convenios: ConvenioRow[]
   /** Status comercial de Execução/Prestação do CNPJ (um só para todos os convênios). */
   status: string
@@ -25,7 +28,7 @@ interface ConveniosExecucaoProps {
 }
 
 // Convênios do CNPJ em Execução e Prestação de Contas: status comercial por CNPJ, como na lista.
-export default function ConveniosExecucao({ convenios, status, onStatus, canChange, options = CRM_STATUS_SELECT_OPTIONS }: ConveniosExecucaoProps) {
+export default function ConveniosExecucao({ cnpj, convenios, status, onStatus, canChange, options = CRM_STATUS_SELECT_OPTIONS }: ConveniosExecucaoProps) {
   return (
     <div>
       <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
@@ -59,6 +62,7 @@ export default function ConveniosExecucao({ convenios, status, onStatus, canChan
                 {c.valor_global != null && <span>Valor <strong className="font-medium tabular-nums text-ink">{formatCurrency(Number(c.valor_global))}</strong></span>}
                 {c.pct_execucao != null && <span>Executado <strong className="font-medium tabular-nums text-ink">{Number(c.pct_execucao).toFixed(1).replace('.', ',')}%</strong></span>}
               </div>
+              {cnpj && <WorkspaceShortcuts cnpj={cnpj} selection={`convenio:${c.nr_convenio}`} areas={['drive','calendario','meet']} />}
             </li>
           )
         })}
