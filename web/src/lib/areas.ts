@@ -111,9 +111,10 @@ export function primaryAreaForRole(role: Role): AreaId {
 }
 
 export function getAreaNav(role: Role, area: AreaId, opts: { whatsapp?: boolean } = {}): AreaNavItem[] {
-  return AREA_NAV[area]
+  const items = AREA_NAV[area]
     .filter((i) => i.roles.includes(role) && (!i.requires || (i.requires === 'whatsapp' && opts.whatsapp)))
     .map(({ roles: _roles, requires: _requires, ...item }) => item)
+  return getAreasForRole(role).includes(area) ? [...items, { href: '/workspace', label: 'Workspace', icon: 'workspace' }] : items
 }
 
 /** Para onde / leva quem abre o PROJETE em outra tela; null mantém / (Pipeline). */

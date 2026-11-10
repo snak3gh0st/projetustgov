@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatCNPJ, formatCurrency, googleCalendarEventUrl } from '@/lib/format'
+import { formatCNPJ, formatCurrency } from '@/lib/format'
 import type { VendedorProjeto } from '@/lib/types'
 import { formatCrmStatusLabel, normalizeCrmStatus, normalizeTipoVendedor } from '@/lib/crm-catalog'
 import WhatsAppAction from '@/components/WhatsAppAction'
@@ -108,29 +108,16 @@ export default function LeadSlideOver({ lead, allEmendas, onClose, canModify = f
           <WhatsAppAction telefone={shown.telefone} cnpj={shown.cnpj} label="WhatsApp" className="min-h-10 w-full" />
           <button
             type="button"
-            disabled={!shown.email}
-            onClick={() => window.open(`mailto:${shown.email}`, '_blank')}
+            onClick={() => router.push(`/workspace/clientes/${shown.cnpj.replace(/\D/g,'')}?projectKind=comercial&projectKey=${shown.id}&tab=mail`)}
             className={buttonClass('secondary', 'md', 'w-full')}
           >
             <MailIcon />
-            Email
+            Workspace
           </button>
           <a
-            href={googleCalendarEventUrl({
-              title: `Reunião PROJETUS: ${shown.nome || shown.cnpj}`,
-              details: [
-                shown.nome ? `Instituição: ${shown.nome}` : null,
-                shown.telefone ? `Telefone: ${shown.telefone}` : null,
-                shown.email ? `Email: ${shown.email}` : null,
-                `CNPJ: ${shown.cnpj}`,
-                'Local: Google Meet',
-              ].filter(Boolean).join('\n'),
-              guestEmail: shown.email,
-            })}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={`/workspace/clientes/${shown.cnpj.replace(/\D/g,'')}?projectKind=comercial&projectKey=${shown.id}&tab=meetings`}
             className={buttonClass('secondary', 'md', 'w-full')}
-            title="Abrir Google Calendar com o Meet"
+            title="Agendar uma reunião com Meet no Workspace"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
               <rect x="2" y="3" width="12" height="11" rx="1.5" />

@@ -30,6 +30,14 @@ test('filters keep only notes or only moves', () => {
   assert.deepEqual(buildTimeline(notes, events, 'movimentacoes').map((i) => i.kind), ['evento'])
 })
 
+test('Workspace activity joins the client timeline and keeps its project identity', () => {
+  const activity = { id:'42',summary:'Documento conferido',actor_name:'Alice',created_at:'2026-10-19T12:00:00Z',project_kind:'comercial',project_key:'10001' }
+  const items = buildTimeline([note('n1','2026-10-18T10:00:00Z')], [], 'tudo', [], [activity])
+  assert.deepEqual(items.map(i=>i.kind),['nota','workspace'])
+  assert.deepEqual(buildTimeline([], [], 'workspace', [], [activity]).map(i=>i.id),['workspace-42'])
+  assert.equal(buildTimeline([], [], 'notas', [], [activity]).length,0)
+})
+
 test('items at the same instant keep a stable, unique order', () => {
   const at = '2026-10-18T10:00:00Z'
   const items = buildTimeline([note('a', at), note('b', at)], [event(at), event(at, 'Proposta Enviada')], 'tudo')

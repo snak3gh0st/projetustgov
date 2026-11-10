@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { useToast } from '@/components/ui/Toast'
 import { LeadEventLine } from '@/components/LeadEvents'
 import { Tag, TAG_TONE, selectClass } from '@/components/leads/list-ui'
-import { buildTimeline, type TimelineEvent, type TimelineFilter, type TimelineMensagem, type TimelineNote } from '@/lib/lead-timeline'
+import { buildTimeline, type TimelineEvent, type TimelineFilter, type TimelineMensagem, type TimelineNote, type TimelineWorkspace } from '@/lib/lead-timeline'
 import { AvisoDesconectado } from '@/components/whatsapp/AvisoDesconectado'
 import { MensagemBolha } from '@/components/whatsapp/MensagemBolha'
 
@@ -138,6 +138,7 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey, cnpjDigi
   const toast = useToast()
   const [notes, setNotes] = useState<TimelineNote[] | null>(null)
   const [events, setEvents] = useState<TimelineEvent[] | null>(null)
+  const [workspace, setWorkspace] = useState<TimelineWorkspace[]>([])
   const [filter, setFilter] = useState<TimelineFilter>('tudo')
   const [tipo, setTipo] = useState<NoteTipo>('ligacao')
   // WhatsApp: null = ainda não sabemos se o canal está ligado para este usuário.
@@ -164,6 +165,14 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey, cnpjDigi
   }, [notesUrl])
 
   useEffect(() => { void loadNotes() }, [loadNotes])
+  useEffect(() => {
+    let live = true
+    const load = () => { void fetch(`/api/workspace/clients/${cnpj.replace(/\D/g, '')}?view=client_history`, { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : { items: [] }).then(d => { if (live) setWorkspace(d.items ?? []) }).catch(() => {}) }
+    const changed = (event: Event) => { if ((event as CustomEvent).detail?.cnpj === cnpj.replace(/\D/g, '')) load() }
+    load();window.addEventListener('projete-workspace-change', changed)
+    return () => { live = false;window.removeEventListener('projete-workspace-change', changed) }
+  }, [cnpj, refreshKey])
 
   useEffect(() => {
     let cancelled = false
@@ -204,7 +213,7 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey, cnpjDigi
   useEffect(() => { if (!telefone && telefones[0]) setTelefone(telefones[0].valor) }, [telefone, telefones])
 
   const ready = notes !== null && events !== null
-  const items = useMemo(() => (ready ? buildTimeline(notes, events, filter, mensagens) : []), [ready, notes, events, filter, mensagens])
+  const items = useMemo(() => (ready ? buildTimeline(notes, events, filter, mensagens, workspace) : []), [ready, notes, events, filter, mensagens, workspace])
   const counts = useMemo(() => ({ notas: notes?.length ?? 0, movimentacoes: events?.length ?? 0, whatsapp: mensagens.length }), [notes, events, mensagens])
   const podeWhatsapp = Boolean(whatsappOn && canSendWhatsapp && (telefones.length > 0 || telefone))
   const numerosDistintos = new Set(mensagens.map((m) => m.telefone)).size > 1
@@ -300,7 +309,8 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey, cnpjDigi
           value={filter}
           onChange={(v) => setFilter(v as TimelineFilter)}
           tabs={[
-            { id: 'tudo', label: 'Tudo', count: ready ? counts.notas + counts.movimentacoes + counts.whatsapp : undefined },
+            { id: 'tudo', label: 'Tudo', count: ready ? counts.notas + counts.movimentacoes + counts.whatsapp + workspace.length : undefined },
+            { id: 'workspace', label: 'Workspace', count: workspace.length },
             ...(whatsappOn ? [{ id: 'whatsapp', label: 'WhatsApp', count: counts.whatsapp }] : []),
             { id: 'notas', label: 'Notas', count: ready ? counts.notas : undefined },
             { id: 'movimentacoes', label: 'Movimentações', count: ready ? counts.movimentacoes : undefined },
@@ -341,7 +351,9 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey, cnpjDigi
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  {item.kind === 'nota' ? (
+                  {item.kind === 'workspace' ? (
+                    <div className="rounded-lg border border-line bg-raised/40 px-3 py-2"><p className="text-sm text-ink">{item.activity.summary}</p><p className="mt-1 text-xs text-ink-3">{item.activity.actor_name} · {new Date(item.at).toLocaleString('pt-BR')} · {item.activity.project_kind === 'cliente' ? 'Cliente' : `${item.activity.project_kind} ${item.activity.project_key}`}</p></div>
+                  ) : item.kind === 'nota' ? (
                     <NoteItem note={item.note} canWrite={canWriteNotes} onSave={saveNote} onDelete={deleteNote} />
                   ) : item.kind === 'whatsapp' ? (
                     <div>
