@@ -1,0 +1,10 @@
+[Unit]
+Description=Projete: vendas, espelho financeiro e fila habilitada
+
+[Timer]
+OnCalendar=*-*-* *:00/15:00 America/Sao_Paulo
+Persistent=true
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=Projete: demonstrativos aprovados (envio opcional)
+
+[Timer]
+OnCalendar=*-*-* 05:45:00 America/Sao_Paulo
+Persistent=true
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

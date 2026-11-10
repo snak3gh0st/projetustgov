@@ -4,6 +4,9 @@ import { commercialOnlyBlock, csmCanReadCommercial } from '@/lib/area-access'
 export default auth((req) => {
   const { pathname } = req.nextUrl
 
+  // The Hotmart webhook authenticates its provider token, failing closed.
+  if (pathname === '/api/integrations/hotmart/webhook') return
+
   // Public routes that don't need auth
   // Conta Azul OAuth callback is public: state is HMAC-signed and carries userId.
   const publicPaths = [
