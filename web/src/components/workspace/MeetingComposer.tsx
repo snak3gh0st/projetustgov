@@ -1,7 +1,7 @@
 'use client'
 import {useEffect,useState} from 'react'
 import Button from '@/components/ui/Button'
-import {localDateTime,workspaceRecipient} from '@/lib/workspace/presentation'
+import {localDateTime,workspaceRecipient,workspaceRecipientLabel} from '@/lib/workspace/presentation'
 import WorkspaceDialog from './WorkspaceDialog'
 import WorkspaceIcon from './WorkspaceIcon'
 import {dateLabel,Field,fieldClass,Notice,RequestError,useResource,type Data,type WorkspaceApi} from './shared'
@@ -25,7 +25,7 @@ function MeetingForm({api,client,initialDate,initialRecipient,onClose,onDone}:{a
     {slot&&<Notice>{slot.errors?.length?'Não foi possível confirmar a disponibilidade.':slot.busy?.length?`Compromissos neste intervalo: ${slot.busy.map((s:Data)=>`${dateLabel(s.start)} a ${dateLabel(s.end)}`).join('; ')}`:'Este horário está livre no calendário selecionado.'}</Notice>}
     <Field label="Calendário"><select required className={fieldClass} value={calendarId} onChange={e=>setCalendar(e.target.value)}><option value="">Selecione</option>{calendars.data?.items.map((c:Data)=><option key={c.id} value={c.id}>{c.summary}{c.primary?' · principal':''}</option>)}</select></Field>
     {calendars.error&&<Notice error>{calendars.error}</Notice>}
-    <fieldset><legend className="mb-2 text-sm font-medium text-ink-2">Convidados do cliente</legend><div className="flex flex-wrap gap-2">{client.emails.length===0&&<p className="text-xs text-ink-3">Cadastre um e-mail na ficha para convidar este cliente.</p>}{client.emails.map((email:string)=><label key={email} className="flex items-center gap-2 rounded-md border border-line px-2.5 py-2 text-xs text-ink-2"><input type="checkbox" checked={attendees.includes(email)} onChange={e=>setAttendees(e.target.checked?[...attendees,email]:attendees.filter(v=>v!==email))}/>{email}</label>)}</div></fieldset>
+    <fieldset><legend className="mb-2 text-sm font-medium text-ink-2">Convidados do cliente</legend><div className="flex flex-wrap gap-2">{client.emails.length===0&&<p className="text-xs text-ink-3">Cadastre um e-mail na ficha para convidar este cliente.</p>}{client.emails.map((email:string)=><label key={email} className="flex items-center gap-2 rounded-md border border-line px-2.5 py-2 text-xs text-ink-2"><input type="checkbox" checked={attendees.includes(email)} onChange={e=>setAttendees(e.target.checked?[...attendees,email]:attendees.filter(v=>v!==email))}/>{workspaceRecipientLabel(email,client.contacts||[])}</label>)}</div></fieldset>
     <Field label="Convidados internos"><input className={fieldClass} value={team} maxLength={2000} placeholder="E-mails corporativos, separados por vírgula" onChange={e=>setTeam(e.target.value)}/></Field>
     <Field label="Pauta"><textarea rows={3} maxLength={5000} className={fieldClass} value={description} onChange={e=>setDescription(e.target.value)}/></Field>
     {error&&<Notice error>{error}</Notice>}{uncertain&&<Notice>Confira sua Agenda antes de criar outra reunião. O convite pode ter sido enviado.</Notice>}

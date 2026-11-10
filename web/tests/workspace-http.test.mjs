@@ -37,6 +37,20 @@ test('Workspace APIs require an active session and assigned client',{skip:!enabl
     assert.equal(search.clients.some(c=>c.cnpj===clientA),expected)
   }
 })
+test('client search finds responsible contacts and emails without leaking other portfolios or multiplying projects',{skip:!enabled},async()=>{
+  async function search(term,cookie=aliceCookie){
+    const response=await fetch(`${base}/api/workspace?search=${encodeURIComponent(term)}`,{headers:{Cookie:cookie}})
+    assert.equal(response.status,200);return (await response.json()).clients
+  }
+  for(const term of ['ANA','client@example.test','Cliente Alfa','12.345.678/0001-90']){
+    const rows=await search(term);assert.equal(rows.length,1);assert.equal(rows[0].cnpj,clientA);assert.equal(rows[0].projects,2)
+    assert.ok(rows[0].contacts.some(c=>c.nome_pessoa==='Ana'&&c.email==='client@example.test'))
+  }
+  assert.equal((await search('Ana',bobCookie)).length,0)
+  const secondary=await search('Contador');assert.equal(secondary.length,1);assert.equal(secondary[0].contacts[0].nome_pessoa,'Contador');assert.equal(secondary[0].cnpj,clientA)
+  const other=await search('Contador',bobCookie);assert.equal(other.length,1);assert.equal(other[0].cnpj,clientB);assert.equal(other[0].projects,1)
+  assert.equal((await search('Contato inexistente')).length,0)
+})
 test('Workspace rejects foreign origin, read-only profiles and stale JWT privileges',{skip:!enabled},async()=>{
   const response=await fetch(path(),{method:'POST',headers:{Cookie:aliceCookie,Origin:'https://untrusted.example','Content-Type':'application/json'},body:'{}'})
   assert.equal(response.status,403)
