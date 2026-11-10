@@ -1,0 +1,41 @@
+.workspace-app{display:flex;flex-direction:column;height:calc(100dvh - 8rem);min-height:640px;max-width:1800px;margin:0 auto;overflow:hidden;border:1px solid oklch(var(--line));border-radius:14px;background:oklch(var(--surface));font-family:var(--font-body),sans-serif}
+.workspace-app h1,.workspace-app h2,.workspace-app h3{font-family:var(--font-body),sans-serif;letter-spacing:-.015em}
+.ws-tool{container-type:inline-size;min-height:0;min-width:0;flex:1;overflow:hidden}
+.ws-toolbar{display:flex;min-height:62px;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid oklch(var(--line));padding:12px 20px}
+.ws-icon-button{display:inline-flex;flex-shrink:0;width:40px;height:40px;align-items:center;justify-content:center;border-radius:8px;color:oklch(var(--ink-2));transition:background-color 150ms,color 150ms}
+.ws-icon-button:hover{background:oklch(var(--raised));color:oklch(var(--ink))}.ws-icon-button:disabled{cursor:not-allowed;opacity:.4}
+.ws-blank{display:flex;min-height:220px;flex:1;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center}
+.ws-blank-icon{display:grid;width:64px;height:64px;place-items:center;margin-bottom:20px;border-radius:18px;background:oklch(var(--raised));color:oklch(var(--ink-2))}
+.ws-dialog{position:fixed;width:min(620px,calc(100vw - 32px));max-height:calc(100dvh - 48px);overflow:auto;padding:0;border:1px solid oklch(var(--line-strong));border-radius:12px;background:oklch(var(--surface));color:oklch(var(--ink));margin:auto;z-index:50}
+.ws-dialog::backdrop{background:rgb(0 0 0/.35)}
+.ws-compose{inset:auto 24px 24px auto;margin:0;width:min(620px,calc(100vw - 32px))}
+.ws-mail{display:grid;height:100%;grid-template-columns:minmax(0,1fr)}
+.ws-mail-list{display:flex;min-height:0;min-width:0;flex-direction:column;border-right:1px solid oklch(var(--line))}
+.ws-mail-reader{display:none;min-height:0;min-width:0;flex-direction:column;background:oklch(var(--surface))}
+.ws-mail[data-reading=true] .ws-mail-list{display:none}.ws-mail[data-reading=true] .ws-mail-reader{display:flex}
+.ws-mail[data-ready=false] .ws-mail-list{display:none}
+.ws-mail-message{padding:20px 24px;border-bottom:1px solid oklch(var(--line))}
+.ws-mail-preview{border-bottom:1px solid oklch(var(--line));padding:17px 18px;text-align:left;transition:background-color 150ms}
+.ws-mail-preview:hover{background:oklch(var(--raised)/.5)}.ws-mail-preview[aria-current=true]{background:oklch(var(--accent-soft))}
+.ws-mail-search{min-height:38px;width:100%;border:0;outline:none;background:transparent;color:oklch(var(--ink));font-size:13px}
+.ws-mail-search::placeholder{color:oklch(var(--ink-3))}
+.ws-month{display:grid;flex:1;min-height:380px;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(6,minmax(84px,1fr))}
+.ws-month-day{min-width:0;overflow:hidden;border-right:1px solid oklch(var(--line));border-bottom:1px solid oklch(var(--line));padding:7px}
+.ws-month-day:nth-child(7n){border-right:0}
+.ws-calendar-event{display:block;width:100%;overflow:hidden;border-radius:4px;background:oklch(var(--accent-soft));padding:3px 6px;text-overflow:ellipsis;white-space:nowrap;text-align:left;font-size:11px;font-weight:500;color:oklch(var(--accent-ink))}
+.ws-week{display:grid;min-width:650px;grid-template-columns:48px repeat(7,minmax(0,1fr))}
+.ws-week-track{position:relative;height:1152px;background-image:linear-gradient(to bottom,oklch(var(--line)) 1px,transparent 1px);background-size:100% 48px;border-right:1px solid oklch(var(--line))}
+.ws-week-event{position:absolute;inset-inline:3px;overflow:hidden;border:1px solid oklch(var(--accent)/.2);border-radius:5px;background:oklch(var(--accent-soft));padding:4px 5px;text-align:left;font-size:11px;color:oklch(var(--accent-ink))}
+.ws-file-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px}
+.ws-file-tile{overflow:hidden;border:1px solid oklch(var(--line));border-radius:10px;text-align:left;transition:border-color 150ms,background-color 150ms}
+.ws-file-tile:hover{border-color:oklch(var(--line-strong));background:oklch(var(--raised)/.35)}.ws-file-tile[aria-pressed=true]{border-color:oklch(var(--accent));background:oklch(var(--accent-soft)/.5)}
+.ws-file-preview{display:grid;height:120px;place-items:center;margin:7px;border-radius:6px;background:oklch(var(--raised)/.55)}
+.ws-document-panel{border-top:1px solid oklch(var(--line));background:oklch(var(--surface));padding:20px}
+.ws-context-menu{position:absolute;top:calc(100% + 8px);left:0;z-index:30;width:min(350px,calc(100vw - 48px));overflow:hidden;border:1px solid oklch(var(--line-strong));border-radius:10px;background:oklch(var(--surface))}
+.ws-fade-in{animation:ws-reveal 160ms ease-out both}@keyframes ws-reveal{from{opacity:.6;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+@container(min-width:660px){.ws-mail{grid-template-columns:280px minmax(0,1fr)}.ws-mail[data-reading=true] .ws-mail-list,.ws-mail[data-ready=false] .ws-mail-list{display:flex}.ws-mail-reader{display:flex}.ws-reader-back{display:none}}
+@container(min-width:1000px){.ws-mail{grid-template-columns:330px minmax(0,1fr)}}
+@container(min-width:720px){.ws-drive-body{display:grid;grid-template-columns:minmax(0,1fr) 280px}.ws-document-panel{border-top:0;border-left:1px solid oklch(var(--line));overflow:auto}}
+.ws-month-heading::first-letter{text-transform:uppercase}
+@media(max-width:767px){.workspace-app{height:calc(100dvh - 7rem);min-height:620px;border-radius:10px}.ws-toolbar{padding:10px 12px;gap:8px}.ws-month{grid-template-rows:repeat(6,minmax(70px,1fr));min-height:420px}.ws-month-day{padding:4px}.ws-compose{right:16px;bottom:16px}.ws-file-grid{grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px}}
+@media(prefers-reduced-motion:reduce){.ws-fade-in{animation:none}.ws-icon-button,.ws-mail-preview,.ws-file-tile{transition:none}}
