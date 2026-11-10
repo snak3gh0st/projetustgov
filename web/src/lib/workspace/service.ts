@@ -92,9 +92,11 @@ export class WorkspaceService {
     if(write&&folder.capabilities?.canAddChildren!==true)throw new WorkspaceError('Sua conta Google não pode adicionar arquivos nesta pasta.',403)
     return{context,folder}
   }
-  async files(key:ContextKey,pageToken=''){
+  async files(key:ContextKey,pageToken='',folderId=''){
     await this.connected();const {context,folder}=await this.folder(key)
-    const list=await this.google.files(folder.id,pageToken),stored=await this.store.rows('SELECT * FROM workspace_documents WHERE context_id=$1 ORDER BY updated_at DESC LIMIT 60',[context.id])
+    const active=folderId&&folderId!==folder.id?await this.google.file(folderId):folder
+    if(active.trashed||active.mimeType!==FOLDER_MIME||(active.id!==folder.id&&!await this.google.withinFolder(active,folder.id)))throw new WorkspaceError('A pasta deve estar dentro do Drive vinculado a este projeto.',403)
+    const list=await this.google.files(active.id,pageToken),stored=await this.store.rows('SELECT * FROM workspace_documents WHERE context_id=$1 ORDER BY updated_at DESC LIMIT 60',[context.id])
     const documents=[]
     for(const d of stored){
       try{
@@ -107,7 +109,7 @@ export class WorkspaceService {
         documents.push({...docView(updated),url:safeGoogleUrl(file.webViewLink),unavailable:false})
       }catch(e){if(e instanceof WorkspaceError&&[403,404].includes(e.status)){documents.push({id:d.id,fileId:d.file_id,unavailable:true});continue}throw e}
     }
-    return{folder:{id:folder.id,name:folder.name,url:safeGoogleUrl(folder.webViewLink),canAdd:folder.capabilities?.canAddChildren===true},
+    return{folder:{id:active.id,name:active.name,url:safeGoogleUrl(active.webViewLink),canAdd:active.capabilities?.canAddChildren===true},rootFolder:{id:folder.id,name:folder.name},
       files:(list.files??[]).map((f:GoogleFile)=>({...f,webViewLink:safeGoogleUrl(f.webViewLink)})),documents,nextPageToken:list.nextPageToken??null}
   }
   async registerDocument(key:ContextKey,fileId:string,typeLabel:string){
@@ -133,11 +135,13 @@ export class WorkspaceService {
     await this.store.activity(context.id,this.actor.userId,'document.reviewed',`Conferência documental: ${{review:'em análise',approved:'aprovado',rejected:'rejeitado'}[input.status]}`,null,{documentId:doc.id,version})
     return{ok:true}
   }
-  async upload(key:ContextKey,input:{requestId:string;name:string;mimeType:string;typeLabel:string;bytes:Uint8Array;source?:unknown}){
-    const account=await this.connected(),{context,folder}=await this.folder(key,true)
+  async upload(key:ContextKey,input:{requestId:string;name:string;mimeType:string;typeLabel:string;bytes:Uint8Array;source?:unknown;parentId?:string}){
+    const account=await this.connected(),{context,folder:root}=await this.folder(key)
+    const folder=input.parentId&&input.parentId!==root.id?await this.google.file(input.parentId):root
+    if(folder.trashed||folder.mimeType!==FOLDER_MIME||folder.capabilities?.canAddChildren!==true||(folder.id!==root.id&&!await this.google.withinFolder(folder,root.id)))throw new WorkspaceError('Você só pode enviar arquivos para uma pasta autorizada deste projeto.',403)
     if(!input.bytes.length||input.bytes.length>15000000)throw new WorkspaceError('Escolha um arquivo de até 15 MB.',413)
     const {createHash}=await import('node:crypto')
-    const payload={name:input.name,mimeType:input.mimeType,typeLabel:input.typeLabel,hash:createHash('sha256').update(input.bytes).digest('hex'),source:input.source??null}
+    const payload={name:input.name,mimeType:input.mimeType,typeLabel:input.typeLabel,...(input.parentId?{parentId:folder.id}:{}),hash:createHash('sha256').update(input.bytes).digest('hex'),source:input.source??null}
     return this.store.operation(this.actor,context.id,'upload_file',input.requestId,payload,account.google_sub,async()=>{
       const file=await this.google.createFile(input.name,input.mimeType,folder.id,context.id,input.bytes)
       if(!file.id)throw new WorkspaceError('O Google não confirmou o arquivo. Confira a pasta antes de repetir.',502,true)

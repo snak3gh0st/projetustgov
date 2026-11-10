@@ -2,7 +2,14 @@
 
 ## Uso
 
-Abra Workspace no menu ou na ficha do cliente. Conecte sua conta corporativa, escolha o cliente e depois o registro comercial ou convênio. A seleção determina a pasta, os vínculos de conversas e as reuniões. Não cria outro cadastro de cliente.
+Abra Workspace no menu ou na ficha do cliente. O ambiente tem navegação própria para **E-mail, Calendário, Drive e Meet**, além do Histórico. Cliente e projeto ficam na barra de contexto, e são preservados ao trocar de ferramenta. Conecte sua conta corporativa e escolha o registro comercial ou convênio. Não cria outro cadastro de cliente.
+
+- `/workspace/email`: caixa de conversas e leitura lado a lado; no celular, caixa e leitura ocupam telas alternadas. A composição abre separadamente.
+- `/workspace/calendario`: visão de mês ou semana dos eventos vinculados ao projeto, navegação entre períodos e criação de reuniões por data. Não representa todos os eventos pessoais da conta.
+- `/workspace/drive`: pastas, arquivos em grade ou lista e painel de detalhes e conferência. A navegação e os uploads em subpastas são limitados à pasta vinculada ao projeto.
+- `/workspace/meet`: entrada por código ou link válido do Google Meet, próximas reuniões e reuniões anteriores.
+
+Os links antigos `/workspace/clientes/:cnpj` continuam funcionando e direcionam para a ferramenta com o mesmo cliente e projeto. A ficha do CRM oferece atalhos compactos para as quatro áreas.
 
 - E-mails: o Gmail da conta conectada é consultado pelos endereços válidos já cadastrados no cliente. Endereço compartilhado por clientes recebe aviso; vincule a conversa ao projeto após conferir. Novo envio e resposta usam os contatos selecionados, sem copiar mensagens privadas para outros vendedores.
 - Documentos: selecione uma pasta existente ou crie uma subpasta em um local autorizado. Registre os arquivos para conferência; anexos e uploads de até 15 MB ficam nessa pasta. Aprovação exige observação e a versão atual do Google; nova versão retorna para análise.

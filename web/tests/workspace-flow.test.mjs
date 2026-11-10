@@ -1,7 +1,7 @@
 import test,{before,after} from 'node:test'
 import assert from 'node:assert/strict'
 import pg from 'pg'
-import {randomUUID} from 'node:crypto'
+import {randomUUID,createHash} from 'node:crypto'
 import {WorkspaceStore} from '../src/lib/workspace/store.ts'
 import {WorkspaceService} from '../src/lib/workspace/service.ts'
 import {WorkspaceError,FOLDER_MIME} from '../src/lib/workspace/domain.ts'
@@ -16,6 +16,7 @@ let sendFails=false,uploadMetadataFails=false
 const files=new Map([
   ['folder-client',{id:'folder-client',name:'Cliente Alfa · Aprovação',mimeType:FOLDER_MIME,capabilities:{canAddChildren:true},webViewLink:'https://drive.google.com/drive/folders/folder-client'}],
   ['folder-other',{id:'folder-other',name:'Cliente Alfa · Execução',mimeType:FOLDER_MIME,capabilities:{canAddChildren:true}}],
+  ['nested-folder',{id:'nested-folder',name:'Contratos',mimeType:FOLDER_MIME,parents:['folder-client'],capabilities:{canAddChildren:true}}],
   ['document',{id:'document',name:'Contrato.pdf',mimeType:'application/pdf',version:'1',parents:['folder-client'],webViewLink:'https://drive.google.com/file/d/document/view'}],
 ])
 const events=new Map()
@@ -37,10 +38,10 @@ const google=new GoogleApi(async()=>'fake-access',async(input,init)=>{
   }
   if(path.endsWith('/threads'))return Response.json({threads:[{id:'thread-client'}]})
   if(path.endsWith('/files')&&init?.method==='POST'){
-    if(path.startsWith('/upload')){counts.upload++;const file={id:`upload-${counts.upload}`,name:'Anexo.pdf',mimeType:'application/pdf',version:'1',parents:['folder-client']};files.set(file.id,file);return Response.json(file)}
+    if(path.startsWith('/upload')){counts.upload++;const metadata=JSON.parse(Buffer.from(body).toString().match(/\r\n\r\n(\{[^\r\n]*\})\r\n--/)[1]);const file={id:`upload-${counts.upload}`,name:'Anexo.pdf',mimeType:'application/pdf',version:'1',parents:metadata.parents};files.set(file.id,file);return Response.json(file)}
     counts.folder++;const data=JSON.parse(body),file={id:`new-folder-${counts.folder}`,...data,capabilities:{canAddChildren:true}};files.set(file.id,file);return Response.json(file)
   }
-  if(path.endsWith('/files'))return Response.json({files:Array.from(files.values()).filter(f=>f.parents?.includes('folder-client'))})
+  if(path.endsWith('/files')){const parent=u.searchParams.get('q')?.match(/'([^']+)' in parents/)?.[1];return Response.json({files:Array.from(files.values()).filter(f=>f.parents?.includes(parent))})}
   if(path.includes('/files/')){
     const id=decodeURIComponent(path.split('/').at(-1))
     if(uploadMetadataFails&&id.startsWith('upload-'))return new Response('',{status:403})
@@ -144,4 +145,23 @@ test('competing operation claims invoke the provider once and do not hold a data
   const pending=store.operation({userId:alice,role:'vendedor'},first.id,'send_email',id,{test:'race'},'google-alice',run)
   while(!invoked)await new Promise(resolve=>setTimeout(resolve,5))
   try{await assert.rejects(store.operation({userId:alice,role:'vendedor'},first.id,'send_email',id,{test:'race'},'google-alice',run),e=>e.status===409);assert.equal(invoked,1);assert.equal(pool.totalCount,pool.idleCount)}finally{finish();await pending}
+})
+test('Drive navigation and uploads stay inside the project folder, including nested directories',{skip:!url},async()=>{
+  const listing=await service.files(key,'','nested-folder')
+  assert.equal(listing.folder.id,'nested-folder');assert.equal(listing.rootFolder.id,'folder-client')
+  await assert.rejects(service.files(key,'','folder-other'),e=>e.status===403)
+  const input={requestId:randomUUID(),name:'Contrato.pdf',mimeType:'application/pdf',typeLabel:'Contrato',bytes:new Uint8Array([1,2,3]),parentId:'nested-folder'}
+  const uploaded=await service.upload(key,input)
+  assert.deepEqual(files.get(uploaded.id).parents,['nested-folder'])
+  const before=counts.upload
+  await assert.rejects(service.upload(key,{...input,requestId:randomUUID(),parentId:'folder-other'}),e=>e.status===403)
+  assert.equal(counts.upload,before)
+})
+test('root uploads retain replay compatibility with operations created before the redesign',{skip:!url},async()=>{
+  const input={requestId:randomUUID(),name:'Existing.pdf',mimeType:'application/pdf',typeLabel:'Contrato',bytes:new Uint8Array([1,2,3])}
+  const payload={name:input.name,mimeType:input.mimeType,typeLabel:input.typeLabel,hash:createHash('sha256').update(input.bytes).digest('hex'),source:null}
+  const hash=createHash('sha256').update(JSON.stringify({kind:'upload_file',contextId:first.id,payload,googleSub:'google-alice'})).digest('hex')
+  await store.rows(`INSERT INTO workspace_operations(user_id,request_id,context_id,kind,google_sub,payload_hash,status,response) VALUES($1,$2,$3,'upload_file','google-alice',$4,'done',$5)`,[alice,input.requestId,first.id,hash,{id:'previously-uploaded'}])
+  const before=counts.upload
+  assert.equal((await service.upload(key,input)).id,'previously-uploaded');assert.equal(counts.upload,before)
 })

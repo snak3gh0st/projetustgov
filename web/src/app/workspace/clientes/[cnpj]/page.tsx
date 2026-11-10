@@ -1,7 +1,10 @@
 import { verifySession } from '@/lib/dal'
-import ClientWorkspace from '@/components/workspace/ClientWorkspace'
-import Link from 'next/link'
-export default async function ClientWorkspacePage({params}:{params:{cnpj:string}}){
+import {redirect} from 'next/navigation'
+import {legacyWorkspaceArea,workspaceHref} from '@/lib/workspace/presentation'
+export default async function ClientWorkspacePage({params,searchParams}:{params:{cnpj:string};searchParams:Record<string,string|undefined>}){
   await verifySession()
-  return <div className="mx-auto max-w-7xl space-y-4 p-4 md:p-8"><Link href="/workspace" className="text-sm text-ink-2 hover:text-accent">← Workspace da equipe</Link><ClientWorkspace cnpj={params.cnpj}/></div>
+  const href=workspaceHref(legacyWorkspaceArea(searchParams.tab),params.cnpj,`${searchParams.projectKind||'cliente'}:${searchParams.projectKey||''}`)
+  const url=new URL(href,'https://projete.projetus.org')
+  for(const key of ['googleError','googleConnected'])if(searchParams[key])url.searchParams.set(key,searchParams[key]!)
+  redirect(url.pathname+url.search)
 }

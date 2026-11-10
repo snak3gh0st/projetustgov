@@ -81,3 +81,22 @@ test('expired grants refresh once under concurrent requests without exposing sto
   const current=(await pool.query('SELECT version,refresh_lock FROM google_workspace_connections WHERE user_id=$1',[alice])).rows[0]
   assert.equal(current.version,old.version+1);assert.equal(current.refresh_lock,null)
 })
+test('dedicated tool URLs render and legacy links preserve the client and project',{skip:!enabled},async()=>{
+  for(const area of ['email','calendario','drive','meet','historico']){
+    const r=await fetch(`${base}/workspace/${area}?cliente=${clientA}&projectKind=comercial&projectKey=10001`,{headers:{Cookie:aliceCookie}})
+    assert.equal(r.status,200);const html=await r.text();assert.ok(html.includes('Áreas do Workspace'))
+  }
+  const legacy=await fetch(`${base}/workspace/clientes/${clientA}?tab=meetings&projectKind=comercial&projectKey=10002`,{headers:{Cookie:aliceCookie},redirect:'manual'})
+  assert.equal(legacy.status,307);const target=new URL(legacy.headers.get('location'),base)
+  assert.equal(target.pathname,'/workspace/calendario');assert.equal(target.searchParams.get('cliente'),clientA);assert.equal(target.searchParams.get('projectKey'),'10002')
+})
+test('HTTP Drive browses and uploads into a verified subfolder without permitting foreign resources',{skip:!enabled||process.env.WORKSPACE_TEST_PROVIDER!=='1'},async()=>{
+  const url=`${path()}?view=files&projectKind=comercial&projectKey=10001&folderId=fixture-subfolder`
+  const response=await fetch(url,{headers:{Cookie:aliceCookie}}),listing=await response.json()
+  assert.equal(response.status,200);assert.equal(listing.folder.id,'fixture-subfolder');assert.ok(listing.files.some(f=>f.id==='fixture-nested'))
+  const form=new FormData();form.set('file',new Blob(['Fictional nested upload'],{type:'application/pdf'}),'Nested.pdf');form.set('typeLabel','Contrato');form.set('requestId',randomUUID());form.set('projectKind','comercial');form.set('projectKey','10001');form.set('parentId','fixture-subfolder')
+  const uploaded=await fetch(path(),{method:'PUT',headers:{Cookie:aliceCookie,Origin:base},body:form})
+  assert.equal(uploaded.status,200)
+  const foreign=await fetch(`${path()}?view=files&projectKind=comercial&projectKey=10001&folderId=fixture-foreign-folder`,{headers:{Cookie:aliceCookie}})
+  assert.equal(foreign.status,403)
+})

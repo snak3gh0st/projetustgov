@@ -7,7 +7,8 @@ import { seesAllLeads } from '@/lib/roles'
 export const dynamic='force-dynamic'
 export async function GET(request:NextRequest){
   try{
-    const actor=await workspaceSession(),store=workspaceStore(),search=(request.nextUrl.searchParams.get('search')||'').trim().slice(0,100)
+    const actor=await workspaceSession(),store=workspaceStore(),rawSearch=(request.nextUrl.searchParams.get('search')||'').trim().slice(0,100)
+    const search=/^[\d.\s/\-]+$/.test(rawSearch)?rawSearch.replace(/\D/g,''):rawSearch
     const clients=await store.rows(`SELECT regexp_replace(vp.cnpj,'\\D','','g') cnpj,MAX(vp.nome) name,COUNT(*)::int projects
       FROM vendedor_projetos vp WHERE ($1 OR vp.vendedor_id=$2 OR vp.closer_id=$2)
       AND (vp.nome ILIKE $3 OR regexp_replace(vp.cnpj,'\\D','','g') LIKE $3)

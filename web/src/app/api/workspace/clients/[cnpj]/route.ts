@@ -24,7 +24,7 @@ export async function GET(request:NextRequest,{params}:{params:{cnpj:string}}){
       case 'overview':result={...await service.overview(key),configured:googleReadiness(),canWrite:canWriteWorkspace(actor.role)};break
       case 'mail':result=await service.mail(key,z.string().max(2000).parse(query.pageToken||''));break
       case 'thread':result=await service.thread(key,identifier.parse(query.id));break
-      case 'files':result=await service.files(key,z.string().max(2000).parse(query.pageToken||''));break
+      case 'files':result=await service.files(key,z.string().max(2000).parse(query.pageToken||''),query.folderId?identifier.parse(query.folderId):'');break
       case 'folders':await service.connected();result=await google.folders(z.string().max(100).parse(query.search||''),z.string().max(2000).parse(query.pageToken||''));break
       case 'calendars':await service.connected();result={items:await google.calendars()};break
       case 'availability':{
@@ -81,7 +81,7 @@ export async function PUT(request:NextRequest,{params}:{params:{cnpj:string}}){
     const raw=Object.fromEntries(Array.from(form.entries()).filter(([,v])=>typeof v==='string'))
     const {service,key}=await setup(request,params.cnpj,raw,true)
     if(!actor)throw new WorkspaceError('Sessão expirada.',401)
-    const p=z.object({requestId:uuid,typeLabel:text(100)}).parse(raw)
+    const p=z.object({requestId:uuid,typeLabel:text(100),parentId:identifier.optional()}).parse(raw)
     const name=text(250).parse(file.name),mimeType=z.string().regex(/^[a-z0-9.+\-]+\/[a-z0-9.+\-]+$/i).parse(file.type||'application/octet-stream')
     return NextResponse.json(await service.upload(key,{...p,name,mimeType,bytes:new Uint8Array(await file.arrayBuffer())}),{headers:PRIVATE_HEADERS})
   }catch(e){return workspaceFailure(e)}

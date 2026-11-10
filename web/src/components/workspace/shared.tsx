@@ -8,7 +8,7 @@ export type Data = Record<string, any>
 export type WorkspaceApi = {
   get: (view: string, params?: Record<string,string>) => Promise<Data>
   mutate: (action: string, values: Data) => Promise<Data>
-  upload: (file: File, typeLabel: string) => Promise<Data>
+  upload: (file: File, typeLabel: string, parentId?:string) => Promise<Data>
 }
 export const fieldClass = 'w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:opacity-60'
 export class RequestError extends Error { constructor(message:string,public uncertain=false,public status=0){super(message)} }

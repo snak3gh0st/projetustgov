@@ -9,6 +9,10 @@ const scopes=['openid','email','profile',...['gmail.readonly','gmail.send','cale
 const folder={id:'fixture-folder',name:'Cliente Alfa · Documentos',mimeType:'application/vnd.google-apps.folder',capabilities:{canAddChildren:true},webViewLink:'https://drive.google.com/drive/folders/fixture-folder'}
 const file={id:'fixture-document',name:'Contrato de prestação de serviços.pdf',mimeType:'application/pdf',version:'1',parents:[folder.id],webViewLink:'https://drive.google.com/file/d/fixture-document/view'}
 const files=new Map([[folder.id,folder],[file.id,file]]),events=new Map()
+files.set('fixture-subfolder',{id:'fixture-subfolder',name:'Contratos',mimeType:folder.mimeType,parents:[folder.id],capabilities:{canAddChildren:true}})
+files.set('fixture-sheet',{id:'fixture-sheet',name:'Controle de entregas',mimeType:'application/vnd.google-apps.spreadsheet',version:'1',parents:[folder.id],webViewLink:'https://docs.google.com/spreadsheets/d/fixture-sheet/edit'})
+files.set('fixture-nested',{id:'fixture-nested',name:'Termo de referência.pdf',mimeType:'application/pdf',version:'1',parents:['fixture-subfolder']})
+files.set('fixture-foreign-folder',{id:'fixture-foreign-folder',name:'Outro projeto',mimeType:folder.mimeType,parents:[],capabilities:{canAddChildren:true}})
 let uploadCount=0
 globalThis.fetch=async(input,init)=>{
   const url=new URL(typeof input==='string'||input instanceof URL?String(input):input.url),path=url.pathname
@@ -36,10 +40,10 @@ globalThis.fetch=async(input,init)=>{
   }
   if(path.includes('/events/'))return events.has(path.split('/').at(-1))?Response.json(events.get(path.split('/').at(-1))):new Response('',{status:404})
   if(path.endsWith('/files')&&init?.method==='POST'){
-    const metadata=path.startsWith('/upload')?{name:'Contrato anexado.pdf',mimeType:'application/pdf',parents:[folder.id]}:JSON.parse(String(init.body))
+    const metadata=path.startsWith('/upload')?JSON.parse(Buffer.from(init.body).toString().match(/\r\n\r\n(\{[^\r\n]*\})\r\n--/)[1]):JSON.parse(String(init.body))
     const created={id:`fixture-upload-${++uploadCount}`,version:'1',...metadata};files.set(created.id,created);return Response.json(created)
   }
-  if(path.endsWith('/files'))return Response.json({files:Array.from(files.values()).filter(f=>url.searchParams.get('q')?.includes("mimeType='application/vnd.google-apps.folder'")?f.mimeType===folder.mimeType:f.parents?.includes(folder.id))})
+  if(path.endsWith('/files')){const query=url.searchParams.get('q')||'',parent=query.match(/'([^']+)' in parents/)?.[1];return Response.json({files:Array.from(files.values()).filter(f=>query.includes("mimeType='application/vnd.google-apps.folder'")?f.mimeType===folder.mimeType:f.parents?.includes(parent))})}
   if(path.includes('/files/'))return files.has(path.split('/').at(-1))?Response.json(files.get(path.split('/').at(-1))):new Response('',{status:404})
   return Response.json({error:'Unmapped local test endpoint'},{status:404})
 }

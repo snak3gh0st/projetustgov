@@ -1,46 +1,18 @@
 'use client'
-import { useEffect,useState } from 'react'
-import Button from '@/components/ui/Button'
-import Panel from '@/components/ui/Panel'
-import { dateLabel,Field,fieldClass,GoogleLink,Notice,RequestError,useResource,type Data,type WorkspaceApi } from './shared'
-
-function nextDay(hour:number){const d=new Date();d.setDate(d.getDate()+1);d.setHours(hour,0,0,0);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T${String(hour).padStart(2,'0')}:00`}
-export default function MeetingsPanel({api,client,canWrite}:{api:WorkspaceApi;client:Data;canWrite:boolean}){
-  const [version,setVersion]=useState(0),[calendarId,setCalendar]=useState(''),[title,setTitle]=useState(`Reunião PROJETUS · ${client.name}`),[description,setDescription]=useState('')
-  const [start,setStart]=useState(()=>nextDay(9)),[end,setEnd]=useState(()=>nextDay(10)),[attendees,setAttendees]=useState<string[]>(client.emails.slice(0,1)),[team,setTeam]=useState('')
-  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[uncertain,setUncertain]=useState(false),[availability,setAvailability]=useState<Data|null>(null)
-  const calendars=useResource(()=>api.get('calendars'),[api]),events=useResource(()=>api.get('events'),[api,version])
-  const timezone=Intl.DateTimeFormat().resolvedOptions().timeZone
-  useEffect(()=>{if(calendars.data?.items.length&&!calendarId){const first=calendars.data.items.find((c:Data)=>c.primary)||calendars.data.items[0];setCalendar(first.id)}},[calendars.data,calendarId])
-  useEffect(()=>setAvailability(null),[start,end,calendarId])
-  async function act(create:boolean){
-    setBusy(true);setError('');setMessage('')
-    try{
-      const dates={start:new Date(start).toISOString(),end:new Date(end).toISOString()}
-      if(create){await api.mutate('create_meeting',{calendarId,title,description,...dates,attendees:[...attendees,...team.split(/[,;\s]+/).filter(Boolean)],timeZone:timezone});setVersion(v=>v+1);setMessage('Reunião criada e convites enviados pelo Google.');setDescription('')}
-      else setAvailability(await api.get('availability',{calendarId,...dates}))
-    }catch(e){setError((e as Error).message);if(create)setUncertain(e instanceof RequestError&&e.uncertain)}finally{setBusy(false)}
-  }
-  const slot=availability?.calendars?.[calendarId]
-  return <div className="grid items-start gap-4 xl:grid-cols-2">
-    <Panel title="Agendar com Google Meet" description={`Horários no seu fuso: ${timezone}. O convite identifica o cliente e o projeto.`}>
-      <form className="space-y-4" onSubmit={e=>{e.preventDefault();void act(true)}}>
-        {calendars.error&&<Notice error>{calendars.error}</Notice>}
-        <Field label="Calendário"><select required className={fieldClass} value={calendarId} onChange={e=>setCalendar(e.target.value)}><option value="">Selecione um calendário</option>{calendars.data?.items.map((c:Data)=><option key={c.id} value={c.id}>{c.summary}{c.primary?' · principal':''}</option>)}</select></Field>
-        <Field label="Título da reunião"><input required maxLength={200} className={fieldClass} value={title} onChange={e=>setTitle(e.target.value)}/></Field>
-        <div className="grid gap-3 sm:grid-cols-2"><Field label="Início"><input required type="datetime-local" className={fieldClass} value={start} onChange={e=>setStart(e.target.value)}/></Field><Field label="Fim"><input required type="datetime-local" className={fieldClass} value={end} onChange={e=>setEnd(e.target.value)}/></Field></div>
-        <Button size="sm" loading={busy} disabled={!calendarId||!start||!end} onClick={()=>void act(false)}>Consultar disponibilidade</Button>
-        {slot&&<Notice>{slot.errors?.length?'O Google não confirmou a disponibilidade deste calendário.':slot.busy?.length?`${slot.busy.length} compromisso(s) neste intervalo: ${slot.busy.map((s:Data)=>`${dateLabel(s.start)} a ${dateLabel(s.end)}`).join('; ')}`:'Nenhum compromisso encontrado neste calendário e intervalo.'}</Notice>}
-        <fieldset><legend className="mb-2 text-sm font-medium text-ink-2">Convidados do cliente</legend><div className="space-y-2">{client.emails.length===0&&<p className="text-sm text-ink-3">Cadastre o e-mail do cliente na ficha antes de convidá-lo.</p>}{client.emails.map((email:string)=><label key={email} className="flex items-center gap-2 break-all text-sm text-ink-2"><input type="checkbox" checked={attendees.includes(email)} onChange={e=>setAttendees(e.target.checked?[...attendees,email]:attendees.filter(v=>v!==email))}/>{email}</label>)}</div></fieldset>
-        <Field label="Convidados internos · e-mails corporativos separados por vírgula"><input className={fieldClass} value={team} onChange={e=>setTeam(e.target.value)} maxLength={2000}/></Field>
-        <Field label="Pauta"><textarea rows={3} maxLength={5000} className={fieldClass} value={description} onChange={e=>setDescription(e.target.value)}/></Field>
-        {error&&<Notice error>{error}</Notice>}{message&&<Notice>{message}</Notice>}
-        <Button type="submit" variant="primary" loading={busy} disabled={!canWrite||uncertain||!calendarId||!title.trim()||(!attendees.length&&!team.trim())}>Criar reunião e enviar convites</Button>
-        {uncertain&&<Notice>Confira o calendário antes de criar outra reunião. O convite pode ter sido enviado.</Notice>}
-      </form>
-    </Panel>
-    <Panel title="Reuniões deste projeto" description="Eventos criados pela sua conexão Google." actions={<Button size="sm" onClick={events.reload}>Atualizar</Button>}>
-      {events.error&&<Notice error>{events.error}</Notice>}{events.busy?<p role="status" className="text-sm text-ink-3">Consultando reuniões…</p>:!events.data?.items.length?<p className="text-sm text-ink-3">Nenhuma reunião vinculada à sua conta neste projeto.</p>:<ul className="divide-y divide-line">{events.data.items.map((event:Data)=><li key={event.id} className="space-y-2 py-4"><p className="text-sm font-semibold text-ink">{event.unavailable?'Evento indisponível para esta conta':event.title}</p>{!event.unavailable&&<><p className="text-xs text-ink-3">{dateLabel(event.start)} a {dateLabel(event.end)}</p>{event.status==='cancelled'?<Notice>Reunião cancelada no Google.</Notice>:<><div className="flex flex-wrap gap-2"><GoogleLink href={event.meetUrl}>Entrar no Meet</GoogleLink><GoogleLink href={event.url}>Ver na Agenda</GoogleLink></div>{!event.meetUrl&&<p className="text-xs text-ink-3">{event.conferenceStatus==='failure'?'O Google não conseguiu gerar o Meet. Confira o evento na Agenda.':'O link do Meet ainda não está disponível. Atualize os eventos em alguns segundos.'}</p>}</>}</>}</li>)}</ul>}
-    </Panel>
-  </div>
+import {useMemo,useState} from 'react'
+import Button,{buttonClass} from '@/components/ui/Button'
+import {Skeleton} from '@/components/ui/Skeleton'
+import {meetAddress,type CalendarEvent} from '@/lib/workspace/presentation'
+import WorkspaceIcon from './WorkspaceIcon'
+import MeetingComposer from './MeetingComposer'
+import {EventDialog} from './CalendarPanel'
+import {dateLabel,fieldClass,GoogleLink,Notice,useResource,type Data,type WorkspaceApi} from './shared'
+export default function MeetingsPanel({api,client,canWrite,ready,emptyState}:{api:WorkspaceApi;client:Data;canWrite:boolean;ready:boolean;emptyState:React.ReactNode}) {
+  const [create,setCreate]=useState(false),[version,setVersion]=useState(0),[code,setCode]=useState(''),[past,setPast]=useState(false),[selected,setSelected]=useState<CalendarEvent|null>(null)
+  const resource=useResource(()=>ready?api.get('events'):Promise.resolve({items:[]}),[api,ready,version]),join=meetAddress(code)
+  const events=useMemo(()=>(resource.data?.items||[]).filter((e:CalendarEvent)=>!e.unavailable&&e.status!=='cancelled'&&e.start&&(past?new Date(e.end||e.start)<new Date():new Date(e.end||e.start)>=new Date())).sort((a:CalendarEvent,b:CalendarEvent)=>past?String(b.start).localeCompare(String(a.start)):String(a.start).localeCompare(String(b.start))),[resource.data,past])
+  return <div className="flex h-full min-h-0 flex-col"><div className="ws-toolbar"><h1 className="text-lg font-semibold text-ink">Meet</h1><Button size="sm" variant="primary" disabled={!canWrite} icon={<WorkspaceIcon name="plus" className="h-4 w-4"/>} onClick={()=>setCreate(true)}>Nova reunião</Button></div><div className="min-h-0 flex-1 overflow-auto">
+    <div className="flex flex-wrap items-center justify-between gap-6 border-b border-line bg-canvas/40 px-6 py-8 lg:px-8"><div className="max-w-md"><div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-accent-soft text-accent-ink"><WorkspaceIcon name="meet" className="h-6 w-6"/></div><h2 className="text-2xl font-semibold text-ink">É hora de conversar.</h2><p className="mt-2 text-sm leading-relaxed text-ink-2">Entre em uma chamada ou organize a próxima reunião com seu cliente.</p></div><div className="w-full max-w-sm"><label className="mb-2 block text-xs font-medium text-ink-2" htmlFor="meet-code">Entrar com código ou link</label><div className="flex gap-2"><input id="meet-code" className={fieldClass} placeholder="abc-defg-hij" value={code} onChange={e=>setCode(e.target.value)} maxLength={300}/>{join?<a className={buttonClass('primary')} href={join} target="_blank" rel="noopener noreferrer">Entrar</a>:<Button variant="primary" disabled>Entrar</Button>}</div>{code&&!join?<p role="status" className="mt-2 text-xs text-ink-2">Informe um código ou endereço válido do Google Meet.</p>:<p className="mt-2 text-xs text-ink-3">A chamada abre no Google Meet.</p>}</div></div>
+    {!ready?emptyState:<div className="px-6 py-5 lg:px-8"><div className="mb-5 flex items-center justify-between gap-3"><div className="flex gap-5"><button className={`min-h-10 text-sm ${!past?'font-semibold text-ink':'text-ink-3'}`} aria-pressed={!past} onClick={()=>setPast(false)}>Próximas reuniões</button><button className={`min-h-10 text-sm ${past?'font-semibold text-ink':'text-ink-3'}`} aria-pressed={past} onClick={()=>setPast(true)}>Anteriores</button></div><button className="ws-icon-button" aria-label="Atualizar reuniões" onClick={resource.reload}><WorkspaceIcon name="refresh" className="h-4 w-4"/></button></div>{resource.error&&<Notice error>{resource.error}</Notice>}{resource.busy?<Skeleton className="h-28 w-full"/>:!events.length?<div className="flex flex-col items-center justify-center py-14 text-center"><WorkspaceIcon name="calendario" className="mb-4 h-8 w-8 text-ink-3"/><h3 className="text-base font-semibold text-ink">{past?'Nenhuma reunião anterior':'Espaço para a próxima conversa'}</h3><p className="mt-2 max-w-sm text-sm leading-relaxed text-ink-2">{past?'As reuniões deste projeto ficam organizadas aqui.':'Agende um horário. O cliente recebe o convite e o link do Meet.'}</p>{!past&&canWrite&&<Button className="mt-5" onClick={()=>setCreate(true)}>Agendar reunião</Button>}</div>:<ol className="space-y-3">{events.map((event:CalendarEvent)=><li key={event.id} className="flex flex-wrap items-center gap-4 rounded-xl border border-line p-4"><div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-raised text-center"><span><span className="block text-[10px] uppercase text-ink-3">{new Date(event.start!).toLocaleDateString('pt-BR',{month:'short'})}</span><span className="block text-xl font-semibold tabular text-ink">{new Date(event.start!).getDate()}</span></span></div><button className="min-w-0 flex-1 text-left" onClick={()=>setSelected(event)}><h3 className="text-sm font-semibold text-ink">{event.title}</h3><p className="mt-1 text-xs text-ink-2">{dateLabel(event.start!)} · {client.name}</p></button><div className="ml-[72px] basis-full sm:ml-0 sm:basis-auto"><GoogleLink href={event.meetUrl}>{past?'Abrir Meet':'Entrar no Meet'}</GoogleLink></div></li>)}</ol>}</div>}
+  </div><MeetingComposer open={create} api={api} client={client} onClose={()=>setCreate(false)} onDone={()=>{setCreate(false);setVersion(v=>v+1)}}/><EventDialog event={selected} onClose={()=>setSelected(null)}/></div>
 }
