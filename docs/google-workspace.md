@@ -14,13 +14,13 @@ Editores completos de Docs/Sheets/Slides e a chamada abrem no Google. Esta entre
 ## Configuração e publicação
 
 1. Configure um cliente OAuth Web interno à organização no Google Cloud, com Gmail API, Drive API e Calendar API habilitadas. A URI autorizada é exatamente `https://projete.projetus.org/api/integrations/google/callback`; ela foi conferida no JSON fornecido nesta sessão.
-2. Configure as variáveis privadas do ambiente de execução:
+2. No aplicativo da Projete no **Coolify** (`btapps`, aplicação `ohxmnamg1umgut184jgi2o57`), configure as variáveis privadas do ambiente de execução:
    - `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` (alias legado `GOOGLE_SECRET_KEY`).
    - `GOOGLE_REDIRECT_URI` com a URI acima.
    - `GOOGLE_WORKSPACE_DOMAIN=projetus.org`.
    - `GOOGLE_WORKSPACE_TOKEN_ENCRYPTION_KEY`: 32 bytes aleatórios em base64. Gere uma vez e guarde com os segredos do ambiente. Não regenere em cada build: autorizações existentes dependem dessa chave.
-3. Com o banco do ambiente correto, execute `cd web && npm run db:workspace:migrate`. A migração é aditiva e reaplicável, com trava transacional. Ela cria apenas tabelas de conexões e vínculos Workspace; não modifica clientes, comissões, relatórios ou títulos do Conta Azul.
-4. Publique a aplicação. A configuração real foi preparada localmente em `web/.env.local`, ignorado pelo Git e com permissão 0600; isso não configura o servidor de produção.
+3. Aplique `migrations/20261110_google_workspace.sql` no banco `projetus_hub` em `btdb`, antes da publicação. Em um checkout completo também é possível executar `cd web && npm run db:workspace:migrate` com a conexão do ambiente correto. A imagem do Coolify usa apenas a base `/web`, portanto não contém a pasta de migrações da raiz. A migração é aditiva e reaplicável, com trava transacional; não modifica clientes, comissões, relatórios ou títulos do Conta Azul.
+4. Publique pelo Coolify, que acompanha `main` e faz build de `/web`. Verifique o commit da fila, a imagem em execução e `https://projete.projetus.org`. Railway e Vercel são legados e seus checks não determinam essa publicação. A configuração local em `web/.env.local` é ignorada pelo Git e tem permissão 0600; a configuração de produção deve existir no Coolify.
 5. O usuário entra na Projete e clica Conectar Google. A autorização Google real é feita pelo titular. Habilitar bibliotecas no Cloud não substitui esse consentimento.
 
 Escopos solicitados: OpenID/email/profile; Gmail leitura e envio; Calendar eventos, disponibilidade e lista de calendários; Drive. O acesso amplo ao Drive é necessário para localizar pastas existentes e compartilhadas. A aplicação não pede acesso administrativo ao domínio. A API confere usuário ativo e perfil atual no banco em cada solicitação, além do vínculo ao cliente e das permissões do Google. Tokens são cifrados por usuário e nunca enviados ao navegador.
