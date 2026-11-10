@@ -1,5 +1,9 @@
 'use client'
 
+import WorkspaceShortcuts from '@/components/workspace/WorkspaceShortcuts'
+import useWorkspaceClient from '@/components/workspace/useWorkspaceClient'
+import { workspaceHref } from '@/lib/workspace/presentation'
+
 import { useEffect, useState } from 'react'
 import { formatCNPJ, formatCompactCurrency, formatDate } from '@/lib/format'
 import { useLinkWhatsappFn } from '@/components/whatsapp/WhatsappNoProjete'
@@ -61,6 +65,7 @@ const SITUACAO_COLORS: Record<string, string> = {
 }
 
 export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
+  const hasWorkspace = useWorkspaceClient(cnpj)
   const linkWhatsapp = useLinkWhatsappFn()
   const [data, setData] = useState<CsmClientDetails | null>(null)
   const [loading, setLoading] = useState(true)
@@ -195,6 +200,7 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-4">
+              {hasWorkspace && <WorkspaceShortcuts cnpj={cnpj} compact className="border-b border-line pb-2" />}
               {/* Principal Contact */}
               {principalContact && (
                 <div className="space-y-2">
@@ -274,7 +280,7 @@ export default function CsmSideCard({ cnpj, onClose }: CsmSideCardProps) {
                                 <path d="M1 4l7 5 7-5"/>
                               </svg>
                               <a
-                                href={`mailto:${contact.email}`}
+                                href={hasWorkspace?workspaceHref('email',cnpj,'cliente:',{action:'compose',recipient:contact.email}):`mailto:${contact.email}`}
                                 className="text-xs text-[#0072F7] hover:text-blue-700 truncate"
                               >
                                 {contact.email}

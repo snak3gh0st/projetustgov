@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import type { LeadContact, TelefoneStatus } from '@/lib/types'
-import { googleCalendarEventUrl } from '@/lib/format'
+import { workspaceHref } from '@/lib/workspace/presentation'
 import WhatsAppAction from '@/components/WhatsAppAction'
 import { buttonClass } from '@/components/ui/Button'
 
@@ -295,31 +295,16 @@ export default function LeadContacts({ cnpj, canModify, refreshKey, onChange }: 
                       )}
                       {contact.email && (
                         <a
-                          href={`mailto:${contact.email}`}
+                          href={workspaceHref('email',cnpj,'cliente:',{action:'compose',recipient:contact.email})}
                           className="text-[#0072F7] hover:text-blue-700"
                         >
                           {contact.email}
                         </a>
                       )}
                       <a
-                        href={googleCalendarEventUrl({
-                          title: contact.nome_pessoa
-                            ? `Reunião PROJETUS — ${contact.nome_pessoa}`
-                            : `Reunião PROJETUS — ${cnpj}`,
-                          details: [
-                            contact.nome_pessoa ? `Contato: ${contact.nome_pessoa}` : null,
-                            contact.cargo ? `Cargo: ${contact.cargo}` : null,
-                            contact.telefone ? `Telefone: ${contact.telefone}` : null,
-                            contact.email ? `Email: ${contact.email}` : null,
-                            `CNPJ: ${cnpj}`,
-                            'Local: Google Meet',
-                          ].filter(Boolean).join('\n'),
-                          guestEmail: contact.email,
-                        })}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href={workspaceHref('calendario',cnpj,'cliente:',{action:'meeting',recipient:contact.email||undefined})}
                         className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-700 text-xs font-medium"
-                        title="Abrir Google Calendar / Meet"
+                        title="Agendar no Workspace da Projete"
                       >
                         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
                           <rect x="2" y="3" width="12" height="11" rx="1.5" />

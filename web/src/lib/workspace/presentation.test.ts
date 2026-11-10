@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {calendarDays,dayEventLayout,eventsOnDay,legacyWorkspaceArea,localDateKey,meetAddress,workspaceHref} from './presentation.ts'
+import {calendarDays,dayEventLayout,eventsOnDay,legacyWorkspaceArea,localDateKey,meetAddress,workspaceHref,workspaceRecipient} from './presentation.ts'
 test('tool routes preserve the client and distinguish projects without depending on UI state',()=>{
   const href=workspaceHref('calendario','12.345.678/0001-90','comercial:10002'),url=new URL(href,'https://projete.projetus.org')
   assert.equal(url.pathname,'/workspace/calendario');assert.equal(url.searchParams.get('cliente'),'12345678000190');assert.equal(url.searchParams.get('projectKey'),'10002')
@@ -29,4 +29,20 @@ test('Meet entry accepts actual meeting codes and rejects untrusted links',()=>{
   assert.equal(meetAddress(' ABC-DEFG-HIJ '),'https://meet.google.com/abc-defg-hij')
   assert.equal(meetAddress('https://meet.google.com/abc-defg-hij?authuser=1'),'https://meet.google.com/abc-defg-hij')
   for(const value of ['https://meet.google.com.evil.test/abc-defg-hij','javascript:alert(1)','https://user:pass@meet.google.com/abc-defg-hij','https://meet.google.com/not-a-meeting'])assert.equal(meetAddress(value),null)
+})
+
+test('contact entries open a draft in the exact project with a normalized saved recipient',()=>{
+  const url=new URL(workspaceHref('email','12.345.678/0001-90','comercial:42',{action:'compose',recipient:' FINANCEIRO@example.test '}),'https://projete.projetus.org')
+  assert.equal(url.searchParams.get('action'),'compose');assert.equal(url.searchParams.get('to'),'financeiro@example.test');assert.equal(url.searchParams.get('projectKey'),'42')
+  assert.equal(workspaceRecipient(url.searchParams.get('to')!,['Financeiro@example.test','outro@example.test']),'Financeiro@example.test')
+  assert.equal(workspaceRecipient('externo@example.test',['cliente@example.test']),undefined)
+  assert.equal(workspaceRecipient('cliente@example.test\r\nBcc: externo@example.test',['cliente@example.test']),undefined)
+})
+test('meeting entries preserve an agreement and actions cannot spill into other tools',()=>{
+  const url=new URL(workspaceHref('calendario','12345678000190','convenio:987654',{action:'meeting',recipient:'cliente@example.test'}),'https://projete.projetus.org')
+  assert.equal(url.searchParams.get('projectKind'),'convenio');assert.equal(url.searchParams.get('projectKey'),'987654');assert.equal(url.searchParams.get('action'),'meeting')
+  assert.equal(workspaceHref('drive','12345678000190','cliente:',{action:'compose',recipient:'cliente@example.test'}),'/workspace/drive?cliente=12345678000190')
+  assert.equal(workspaceHref('email','','cliente:',{action:'compose'}),'/workspace/email')
+  const invalid=new URL(workspaceHref('email','12345678000190','cliente:',{action:'compose',recipient:'a@example.test\r\nBcc: b@example.test'}),'https://projete.projetus.org')
+  assert.equal(invalid.searchParams.has('to'),false)
 })

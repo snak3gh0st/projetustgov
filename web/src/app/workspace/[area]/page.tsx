@@ -6,5 +6,5 @@ export default async function WorkspaceAreaPage({params,searchParams}:{params:{a
   await verifySession()
   if(!WORKSPACE_AREAS.some(a=>a.id===params.area))notFound()
   const kind=['cliente','comercial','convenio'].includes(searchParams.projectKind||'')?searchParams.projectKind:'cliente'
-  return <WorkspaceHome key={`${params.area}:${searchParams.cliente||''}:${kind}:${searchParams.projectKey||''}`} area={params.area as WorkspaceArea} initialCnpj={searchParams.cliente||''} initialSelection={`${kind}:${searchParams.projectKey||''}`}/>
+  return <WorkspaceHome key={`${params.area}:${searchParams.cliente||''}:${kind}:${searchParams.projectKey||''}:${searchParams.action||''}:${searchParams.to||''}`} area={params.area as WorkspaceArea} initialAction={searchParams.action} initialRecipient={searchParams.to} initialCnpj={searchParams.cliente||''} initialSelection={`${kind}:${searchParams.projectKey||''}`}/>
 }

@@ -32,6 +32,10 @@ test('Workspace APIs require an active session and assigned client',{skip:!enabl
   assert.equal((await fetch(path(clientB),{headers:{Cookie:aliceCookie}})).status,403)
   const r=await fetch(path(),{headers:{Cookie:aliceCookie}}),data=await r.json();assert.equal(r.status,200);assert.equal(data.client.projects.filter(p=>p.projectKind==='comercial').length,2)
   assert.ok(!JSON.stringify(data).includes('token_encrypted'))
+  for(const [cookie,expected] of [[aliceCookie,true],[bobCookie,false]]){
+    const search=await fetch(`${base}/api/workspace?search=12.345.678%2F0001-90`,{headers:{Cookie:cookie}}).then(r=>r.json())
+    assert.equal(search.clients.some(c=>c.cnpj===clientA),expected)
+  }
 })
 test('Workspace rejects foreign origin, read-only profiles and stale JWT privileges',{skip:!enabled},async()=>{
   const response=await fetch(path(),{method:'POST',headers:{Cookie:aliceCookie,Origin:'https://untrusted.example','Content-Type':'application/json'},body:'{}'})
@@ -41,7 +45,7 @@ test('Workspace rejects foreign origin, read-only profiles and stale JWT privile
   try{await post({action:'bind_folder',folderId:'fixture-folder'},403)}finally{await pool.query("UPDATE users SET role='vendedor' WHERE id=$1",[alice])}
 })
 test('OAuth state validates the active user and signed Google identity through the callback',{skip:!enabled||process.env.WORKSPACE_TEST_PROVIDER!=='1'},async()=>{
-  const connect=await fetch(`${base}/api/integrations/google/connect?returnTo=${encodeURIComponent(`/workspace/clientes/${clientA}?projectKind=comercial&projectKey=10001`)}`,{headers:{Cookie:aliceCookie},redirect:'manual'})
+  const connect=await fetch(`${base}/api/integrations/google/connect?returnTo=${encodeURIComponent(`/workspace/email?cliente=${clientA}&projectKind=comercial&projectKey=10001&action=compose&to=client%40example.test`)}`,{headers:{Cookie:aliceCookie},redirect:'manual'})
   assert.equal(connect.status,307)
   const google=new URL(connect.headers.get('location')),state=google.searchParams.get('state'),cookie=connect.headers.getSetCookie().find(c=>c.startsWith('projete-google-oauth=')).split(';')[0]
   assert.equal(google.origin,'https://accounts.google.com');assert.equal(google.searchParams.get('code_challenge_method'),'S256')
@@ -49,7 +53,7 @@ test('OAuth state validates the active user and signed Google identity through t
   const attack=await fetch(`${base}/api/integrations/google/callback?state=${state}&code=workspace-code-${state}`,{headers:{Cookie:`${bobCookie}; ${cookie}`},redirect:'manual'})
   assert.ok(new URL(attack.headers.get('location')).searchParams.has('googleError'))
   const result=await fetch(`${base}/api/integrations/google/callback?state=${state}&code=workspace-code-${state}`,{headers:{Cookie:`${aliceCookie}; ${cookie}`},redirect:'manual'})
-  const target=new URL(result.headers.get('location'));assert.equal(target.pathname,`/workspace/clientes/${clientA}`);assert.equal(target.searchParams.get('googleConnected'),'1')
+  const target=new URL(result.headers.get('location'));assert.equal(target.pathname,'/workspace/email');assert.equal(target.searchParams.get('googleConnected'),'1');assert.equal(target.searchParams.get('cliente'),clientA);assert.equal(target.searchParams.get('projectKey'),'10001');assert.equal(target.searchParams.get('action'),'compose');assert.equal(target.searchParams.get('to'),'client@example.test')
   const row=(await pool.query('SELECT * FROM google_workspace_connections WHERE user_id=$1',[alice])).rows[0]
   assert.equal(row.email,'alice@projetus.org');assert.ok(!row.access_token_encrypted.includes('workspace-test-access'))
 })

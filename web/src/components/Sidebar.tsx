@@ -12,6 +12,7 @@ import AreaRail, { rememberArea } from '@/components/AreaRail'
 import { NavIcon } from '@/components/NavIcon'
 import BrandLockup from '@/components/BrandLockup'
 import NotificationBell from '@/components/NotificationBell'
+import WorkspaceShortcuts from '@/components/workspace/WorkspaceShortcuts'
 
 interface SidebarProps {
   user: {
@@ -172,6 +173,10 @@ export default function Sidebar({ user, defaultOpen = true, showBell = false, pr
       </nav>
 
       {/* Usuário, tema e sair */}
+      <div className="border-t border-line px-2 py-2">
+        {open && <p className="px-3 pb-1 text-xs font-medium text-ink-2">Workspace</p>}
+        <WorkspaceShortcuts compact iconOnly={!open} className={open ? '' : 'flex-col'} />
+      </div>
       <div className="border-t border-line p-3 space-y-2">
         <ThemeToggle compact={!open} />
         <div className={`flex items-center gap-2.5 ${open ? 'px-1' : 'flex-col'}`}>

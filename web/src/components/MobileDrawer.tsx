@@ -12,6 +12,7 @@ import { NavIcon } from '@/components/NavIcon'
 import BrandLockup from '@/components/BrandLockup'
 import SectionTabs from '@/components/SectionTabs'
 import { readRememberedArea, rememberArea } from '@/components/AreaRail'
+import WorkspaceShortcuts from '@/components/workspace/WorkspaceShortcuts'
 
 interface MobileDrawerProps {
   user: {
@@ -108,6 +109,9 @@ export default function MobileDrawer({ user, preferredArea = null, whatsapp = fa
               ))}
             </nav>
 
+            <div className="border-t border-line px-3 py-2" onClick={() => setOpen(false)}>
+              <WorkspaceShortcuts compact />
+            </div>
             <div className="p-4 border-t border-line space-y-3">
               <ThemeToggle />
               <div className="flex items-center justify-between gap-3">

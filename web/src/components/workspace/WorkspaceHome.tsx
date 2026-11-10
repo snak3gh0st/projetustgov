@@ -14,9 +14,11 @@ import CalendarPanel from './CalendarPanel'
 import useWorkspaceApi from './useWorkspaceApi'
 import {dateLabel,Notice,request,useResource,type Data} from './shared'
 
-export default function WorkspaceHome({area='email',initialCnpj='',initialSelection='cliente:'}:{area?:WorkspaceArea;initialCnpj?:string;initialSelection?:string}) {
+export default function WorkspaceHome({area='email',initialCnpj='',initialSelection='cliente:',initialAction,initialRecipient}:{area?:WorkspaceArea;initialCnpj?:string;initialSelection?:string;initialAction?:string;initialRecipient?:string}) {
   const [cnpj,setCnpj]=useState(/^\d{14}$/.test(initialCnpj)?initialCnpj:''),[selection,setSelection]=useState(initialSelection)
   const [search,setSearch]=useState(''),[query,setQuery]=useState(''),[refresh,setRefresh]=useState(0),[oauth,setOauth]=useState(''),[oauthFailed,setOauthFailed]=useState(false)
+  const [entryPending,setEntryPending]=useState(true)
+  const entryAction=entryPending&&cnpj===initialCnpj&&selection===initialSelection?initialAction:undefined
   const clientPicker=useRef<HTMLDetailsElement>(null),accountPicker=useRef<HTMLDetailsElement>(null)
   const home=useResource(()=>request(`/api/workspace?search=${encodeURIComponent(query)}`),[query])
   const changed=useCallback(()=>{setRefresh(v=>v+1);window.dispatchEvent(new CustomEvent('projete-workspace-change',{detail:{cnpj}}))},[cnpj])
@@ -38,9 +40,9 @@ export default function WorkspaceHome({area='email',initialCnpj='',initialSelect
     const close=(e:PointerEvent)=>{for(const ref of[clientPicker,accountPicker])if(ref.current&&!ref.current.contains(e.target as Node))ref.current.open=false}
     document.addEventListener('pointerdown',close);return()=>document.removeEventListener('pointerdown',close)
   },[])
-  function chooseClient(value:string){setCnpj(value);setSelection('cliente:');if(clientPicker.current)clientPicker.current.open=false}
+  function chooseClient(value:string){setEntryPending(false);setCnpj(value);setSelection('cliente:');if(clientPicker.current)clientPicker.current.open=false}
   function openClients(){if(clientPicker.current){clientPicker.current.open=true;clientPicker.current.querySelector('input')?.focus()}}
-  const returnTo=workspaceHref(area,cnpj,selection),connectLink=`/api/integrations/google/connect?returnTo=${encodeURIComponent(returnTo)}`
+  const returnTo=workspaceHref(area,cnpj,selection,{action:entryAction==='compose'?'compose':entryAction==='meeting'?'meeting':undefined,recipient:initialRecipient}),connectLink=`/api/integrations/google/connect?returnTo=${encodeURIComponent(returnTo)}`
   const blank=<div className="ws-blank"><div className="ws-blank-icon"><WorkspaceIcon name={area} className="h-7 w-7"/></div><h2 className="text-lg font-semibold text-ink">{!connected?'Seu trabalho, conectado.':'Escolha com quem trabalhar'}</h2><p className="mt-2 max-w-[34ch] text-sm leading-relaxed text-ink-2">{!connected?`Conecte sua conta corporativa para usar ${area==='email'?'o e-mail':area==='drive'?'os arquivos do Drive':'a agenda e as reuniões'} dentro da Projete.`:'Selecione um cliente e um projeto para reunir as conversas, os arquivos e os compromissos.'}</p><div className="mt-5">{!connected&&configured?<a href={connectLink} className={buttonClass('primary')}>Conectar Google</a>:connected?<Button variant="primary" onClick={openClients}>Selecionar cliente</Button>:<span className="text-xs text-ink-3">A conexão Google está sendo preparada.</span>}</div></div>
   return <section className="workspace-app" aria-label="Workspace Projete">
     <header className="flex min-h-[66px] shrink-0 items-center justify-between gap-3 border-b border-line px-4 sm:px-5">
@@ -57,15 +59,15 @@ export default function WorkspaceHome({area='email',initialCnpj='',initialSelect
             <summary className="flex min-h-9 max-w-[290px] cursor-pointer list-none items-center gap-2 rounded-md text-ink hover:text-accent"><WorkspaceIcon name="company" className="h-4 w-4 shrink-0"/><span className="truncate font-medium">{client.name||home.data?.clients.find((c:Data)=>c.cnpj===cnpj)?.name||'Selecionar cliente'}</span><WorkspaceIcon name="down" className="h-3 w-3 shrink-0"/></summary>
             <div className="ws-context-menu"><label className="flex items-center gap-2 border-b border-line px-3"><WorkspaceIcon name="search" className="h-4 w-4 text-ink-3"/><input className="ws-mail-search" aria-label="Buscar cliente por nome ou CNPJ" placeholder="Buscar cliente por nome ou CNPJ" value={search} onChange={e=>setSearch(e.target.value)}/></label><div className="max-h-72 overflow-auto p-1.5">{home.busy?<div className="space-y-2 p-3"><Skeleton className="h-10 w-full"/><Skeleton className="h-10 w-full"/></div>:!home.data?.clients.length?<p className="p-4 text-sm text-ink-3">Nenhum cliente encontrado.</p>:home.data.clients.map((c:Data)=><button key={c.cnpj} className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left hover:bg-raised ${c.cnpj===cnpj?'bg-accent-soft':''}`} onClick={()=>chooseClient(c.cnpj)}><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-ink">{c.name}</span><span className="mt-1 block text-[11px] text-ink-3">{formatCNPJ(c.cnpj)}</span></span>{c.cnpj===cnpj&&<WorkspaceIcon name="check" className="h-4 w-4 text-accent"/>}</button>)}</div></div>
           </details>
-          <span className="hidden text-line-strong sm:block">/</span><label className="min-w-0 flex-1"><span className="sr-only">Projeto do cliente</span><select className="h-9 w-full max-w-[310px] cursor-pointer truncate border-0 bg-transparent pr-5 text-xs text-ink-2 outline-none disabled:cursor-default" value={selection} disabled={!client.projects.length} onChange={e=>setSelection(e.target.value)}>{client.projects.length?client.projects.map((p:Data)=><option key={`${p.projectKind}:${p.projectKey}`} value={`${p.projectKind}:${p.projectKey}`}>{p.projectKind==='cliente'?'Geral do cliente':p.label}</option>):<option value={selection}>Selecionar projeto</option>}</select></label>
+          <span className="hidden text-line-strong sm:block">/</span><label className="min-w-0 flex-1"><span className="sr-only">Projeto do cliente</span><select className="h-9 w-full max-w-[310px] cursor-pointer truncate border-0 bg-transparent pr-5 text-xs text-ink-2 outline-none disabled:cursor-default" value={selection} disabled={!client.projects.length} onChange={e=>{setEntryPending(false);setSelection(e.target.value)}}>{client.projects.length?client.projects.map((p:Data)=><option key={`${p.projectKind}:${p.projectKey}`} value={`${p.projectKind}:${p.projectKey}`}>{p.projectKind==='cliente'?'Geral do cliente':p.label}</option>):<option value={selection}>Selecionar projeto</option>}</select></label>
           {cnpj&&<Link href={`/lead/${cnpj}`} title="Abrir ficha do cliente" className="hidden items-center gap-1 text-xs text-ink-3 hover:text-accent lg:flex">Ficha do cliente <WorkspaceIcon name="external" className="h-3 w-3"/></Link>}
         </div>
         {(oauth||home.error||overview.error)&&<div className="shrink-0 space-y-2 border-b border-line p-3">{oauth&&<Notice error={oauthFailed}>{oauth}</Notice>}{(home.error||overview.error)&&<Notice error>{home.error||overview.error} <button className="underline" onClick={()=>{setSelection('cliente:');home.reload();overview.reload()}}>Atualizar</button></Notice>}</div>}
         <div className="ws-tool" key={`${area}:${cnpj}:${selection}:${connection?.email||''}:${connection?.status||''}`} aria-label={tool.description}>
-          {area==='email'&&<MailPanel api={api} client={client} canWrite={canWrite} folderBound={Boolean(context.folder_id)} account={connection?.email||''} ready={ready} emptyState={blank}/>}
-          {area==='calendario'&&<CalendarPanel api={api} client={client} canWrite={canWrite} ready={ready} emptyState={blank}/>}
+          {area==='email'&&<MailPanel initialCompose={entryAction==='compose'} initialRecipient={initialRecipient} api={api} client={client} canWrite={canWrite} folderBound={Boolean(context.folder_id)} account={connection?.email||''} ready={ready} emptyState={blank}/>}
+          {area==='calendario'&&<CalendarPanel initialMeeting={entryAction==='meeting'} initialRecipient={initialRecipient} api={api} client={client} canWrite={canWrite} ready={ready} emptyState={blank}/>}
           {area==='drive'&&<DrivePanel api={api} clientName={client.name} context={context} canWrite={canWrite} ready={ready} emptyState={blank}/>}
-          {area==='meet'&&<MeetingsPanel api={api} client={client} canWrite={canWrite} ready={ready} emptyState={blank}/>}
+          {area==='meet'&&<MeetingsPanel initialMeeting={entryAction==='meeting'} initialRecipient={initialRecipient} api={api} client={client} canWrite={canWrite} ready={ready} emptyState={blank}/>}
           {area==='historico'&&<History api={api} ready={Boolean(info?.client)} refresh={refresh} emptyState={blank}/>}
         </div>
       </div>

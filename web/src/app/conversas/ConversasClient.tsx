@@ -1,5 +1,7 @@
 'use client'
 
+import WorkspaceShortcuts from '@/components/workspace/WorkspaceShortcuts'
+
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -107,6 +109,7 @@ function PainelLead({ c, gestao, atendentes, onChange }: {
           <p className="font-mono text-xs text-ink-3">{formatCNPJ(c.lead_cnpj)}</p>
           <p className="mt-1 text-xs text-ink-2">Responsável: {c.donos_nomes || 'Sem dono'}</p>
           <Link href={`/lead/${c.lead_cnpj}`} className={buttonClass('secondary', 'sm', 'mt-2 w-full')}>Abrir card do lead</Link>
+          <WorkspaceShortcuts cnpj={c.lead_cnpj} compact className="mt-2" />
         </div>
       ) : (
         <p className="text-ink-3">Este número não está em nenhum lead.</p>

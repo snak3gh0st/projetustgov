@@ -2,13 +2,16 @@
 import {useEffect,useMemo,useRef,useState} from 'react'
 import Button from '@/components/ui/Button'
 import {Skeleton} from '@/components/ui/Skeleton'
+import {workspaceRecipient} from '@/lib/workspace/presentation'
 import WorkspaceIcon from './WorkspaceIcon'
 import WorkspaceDialog from './WorkspaceDialog'
 import {dateLabel,Field,fieldClass,GoogleLink,Notice,RequestError,useResource,type Data,type WorkspaceApi} from './shared'
 
 function sender(value:string){return value?.replace(/<[^>]*>/g,'').replaceAll('"','').trim()||'Contato'}
-export default function MailPanel({api,client,canWrite,folderBound,account,ready=true,emptyState}:{api:WorkspaceApi;client:Data;canWrite:boolean;folderBound:boolean;account:string;ready?:boolean;emptyState?:React.ReactNode}) {
+export default function MailPanel({api,client,canWrite,folderBound,account,ready=true,emptyState,initialCompose=false,initialRecipient}:{api:WorkspaceApi;client:Data;canWrite:boolean;folderBound:boolean;account:string;ready?:boolean;emptyState?:React.ReactNode;initialCompose?:boolean;initialRecipient?:string}) {
   const [page,setPage]=useState(''),[id,setId]=useState(''),[compose,setCompose]=useState(false),[version,setVersion]=useState(0),[filter,setFilter]=useState('all'),[search,setSearch]=useState('')
+  const entryHandled=useRef(false)
+  useEffect(()=>{if(ready&&canWrite&&initialCompose&&!entryHandled.current){entryHandled.current=true;setCompose(true)}},[ready,canWrite,initialCompose])
   const root=useRef<HTMLDivElement>(null)
   const resource=useResource(()=>ready?api.get('mail',{pageToken:page}):Promise.resolve({items:[],hasContacts:false,ambiguousEmails:[]}),[api,page,version,ready])
   const items=useMemo(()=>(resource.data?.items||[]).filter((item:Data)=>(filter!=='linked'||item.linked)&&(!search||`${item.subject} ${item.from} ${item.snippet}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()))),[resource.data,filter,search])
@@ -25,7 +28,7 @@ export default function MailPanel({api,client,canWrite,folderBound,account,ready
       </div>
       <div className={`ws-mail-reader ${!ready?'!flex':''}`}>{!ready?emptyState:id?<Thread key={id} api={api} id={id} emails={client.emails} canWrite={canWrite} folderBound={folderBound} linked={Boolean(selected?.linked)} ambiguous={Boolean(resource.data?.ambiguousEmails.length)} onBack={()=>setId('')} onChange={()=>setVersion(v=>v+1)}/>:<div className="ws-blank"><div className="ws-blank-icon"><WorkspaceIcon name="email" className="h-7 w-7"/></div><h2 className="text-base font-semibold text-ink">Uma conversa de cada vez</h2><p className="mt-2 max-w-[32ch] text-sm leading-relaxed text-ink-2">Selecione uma mensagem para ler, responder ou salvar os anexos no projeto.</p></div>}</div>
     </div>
-    <Composer open={compose} api={api} emails={client.emails} onClose={()=>setCompose(false)} onDone={()=>{setCompose(false);setVersion(v=>v+1)}}/>
+    <Composer open={compose} initialRecipient={workspaceRecipient(initialRecipient,client.emails)} api={api} emails={client.emails} onClose={()=>setCompose(false)} onDone={()=>{setCompose(false);setVersion(v=>v+1)}}/>
   </div>
 }
 function Thread({api,id,emails,canWrite,folderBound,linked,ambiguous,onBack,onChange}:{api:WorkspaceApi;id:string;emails:string[];canWrite:boolean;folderBound:boolean;linked:boolean;ambiguous:boolean;onBack:()=>void;onChange:()=>void}) {
@@ -41,8 +44,9 @@ function Thread({api,id,emails,canWrite,folderBound,linked,ambiguous,onBack,onCh
     <Composer open={reply} api={api} emails={emails} threadId={id} subject={data?.subject} onClose={()=>setReply(false)} onDone={()=>{setReply(false);resource.reload();onChange()}}/>
   </>
 }
-function Composer({open,api,emails,threadId,subject='',onClose,onDone}:{open:boolean;api:WorkspaceApi;emails:string[];threadId?:string;subject?:string;onClose:()=>void;onDone:()=>void}) {
+function Composer({open,api,emails,threadId,subject='',initialRecipient,onClose,onDone}:{open:boolean;api:WorkspaceApi;emails:string[];threadId?:string;subject?:string;initialRecipient?:string;onClose:()=>void;onDone:()=>void}) {
   const [to,setTo]=useState<string[]>(emails.slice(0,1)),[title,setTitle]=useState(subject),[text,setText]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[uncertain,setUncertain]=useState(false)
+  useEffect(()=>{if(open&&initialRecipient)setTo([initialRecipient])},[open,initialRecipient])
   useEffect(()=>{if(threadId)setTitle(subject)},[threadId,subject])
   useEffect(()=>{setTo(current=>current.length?current:emails.slice(0,1))},[emails])
   async function submit(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');try{await api.mutate('send_email',{to,subject:title,text,...(threadId?{threadId}:{})});setText('');setTitle('');onDone()}catch(e){setError((e as Error).message);setUncertain(e instanceof RequestError&&e.uncertain)}finally{setBusy(false)}}

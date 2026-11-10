@@ -1,5 +1,8 @@
 'use client'
 
+import WorkspaceShortcuts from '@/components/workspace/WorkspaceShortcuts'
+import useWorkspaceClient from '@/components/workspace/useWorkspaceClient'
+
 import { useCallback, useMemo, useState } from 'react'
 import { HBars, StackBar } from '@/components/financeiro/charts'
 import { MINUS, count, fullDate, money, moneyCompact, pct } from '@/components/financeiro/format'
@@ -27,6 +30,7 @@ export default function ClientesClient() {
   const [status, setStatus] = useState<CrmStatus | 'all'>('all')
   const [seller, setSeller] = useState('all')
   const [open, setOpen] = useState<ClienteCrmRow | null>(null)
+  const hasWorkspace = useWorkspaceClient(open?.status!=='semcrm'?open?.doc:null)
   const close = useCallback(() => setOpen(null), [])
 
   const sellers = useMemo(() => {
@@ -161,6 +165,7 @@ export default function ClientesClient() {
             <div>
               <Pill tone={STATUS[open.status].tone}>{STATUS[open.status].label}</Pill>
             </div>
+            {hasWorkspace && <WorkspaceShortcuts cnpj={open.doc} areas={['email','drive','calendario']} className="border-b border-line pb-2" />}
             <KeyValues
               items={[
                 ['CNPJ', <span key="d" className="font-mono text-xs">{formatDoc(open.doc)}</span>],

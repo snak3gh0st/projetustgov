@@ -1,5 +1,8 @@
 'use client'
 
+import WorkspaceShortcuts from '@/components/workspace/WorkspaceShortcuts'
+import { workspaceHref } from '@/lib/workspace/presentation'
+
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { formatCNPJ, formatCurrency } from '@/lib/format'
@@ -294,7 +297,7 @@ export default function LeadDetailPage() {
             </div>
           )}
         </div>
-        {(whatsapp || email) && (
+        {projetos.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {whatsapp && (
               <a
@@ -306,7 +309,7 @@ export default function LeadDetailPage() {
                 WhatsApp
               </a>
             )}
-            <a href={`/workspace/clientes/${cnpjClean}?tab=mail`} className={buttonClass('secondary', 'sm')}>Workspace</a>
+            <WorkspaceShortcuts cnpj={cnpjClean} />
           </div>
         )}
       </header>
@@ -329,7 +332,7 @@ export default function LeadDetailPage() {
                 {temReuniao ? 'Reunião marcada com este lead.' : 'Nenhuma reunião marcada.'}
               </p>
               <a
-                href={`/workspace/clientes/${cnpjClean}?tab=meetings`}
+                href={workspaceHref('calendario',cnpjClean)}
                 className={buttonClass('secondary', 'sm', 'w-full')}
               >
                 Agenda e Meet no Workspace
@@ -359,6 +362,7 @@ export default function LeadDetailPage() {
           {convenios.length > 0 && (
             <Panel title={`Convênios em Execução e Prestação (${convenios.length})`} padded={false}>
               <ConveniosExecucao
+                cnpj={projetos.length > 0 ? cnpjClean : undefined}
                 convenios={convenios}
                 status={execStatus}
                 onStatus={projetos.length > 0 ? (v) => void updateExecStatus(v) : null}

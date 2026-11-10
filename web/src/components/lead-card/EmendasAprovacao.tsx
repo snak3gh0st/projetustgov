@@ -1,5 +1,7 @@
 'use client'
 
+import WorkspaceShortcuts from '@/components/workspace/WorkspaceShortcuts'
+
 import { useState } from 'react'
 import Button from '@/components/ui/Button'
 import { StatusSelect } from '@/components/leads/list-ui'
@@ -180,6 +182,7 @@ export default function EmendasAprovacao({
             )}
 
             <Comissao p={p} />
+            <WorkspaceShortcuts cnpj={p.cnpj} selection={`comercial:${p.id}`} areas={['email','drive','calendario']} />
 
             <div className="flex items-center gap-3">
               <input

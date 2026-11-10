@@ -1,5 +1,7 @@
 'use client'
 
+import WorkspaceShortcuts from '@/components/workspace/WorkspaceShortcuts'
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { m } from 'motion/react'
@@ -103,6 +105,7 @@ function ItemRow({ item, index }: { item: MeuDiaItem; index: number }) {
           {place && <span className="min-w-0 truncate text-xs text-ink-3">{place}</span>}
         </div>
       </Link>
+      <WorkspaceShortcuts cnpj={item.cnpj} areas={item.motivo==='reuniao'?['calendario','meet']:['email','calendario']} className="px-2 pb-1" />
     </m.li>
   )
 }

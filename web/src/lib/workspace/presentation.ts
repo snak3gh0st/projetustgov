@@ -6,12 +6,21 @@ export const WORKSPACE_AREAS: {id:WorkspaceArea;label:string;description:string}
   {id:'meet',label:'Meet',description:'Suas reuniões em um só lugar'},
   {id:'historico',label:'Histórico',description:'Atividades do projeto'},
 ]
-export function workspaceHref(area:WorkspaceArea,cnpj='',selection='cliente:') {
+export type WorkspaceEntry = {action?:'compose'|'meeting';recipient?:string}
+export function workspaceHref(area:WorkspaceArea,cnpj='',selection='cliente:',entry:WorkspaceEntry={}) {
   const [projectKind,projectKey='']=selection.split(':')
   const params=new URLSearchParams()
   if(cnpj)params.set('cliente',cnpj.replace(/\D/g,''))
   if(projectKind!=='cliente'&&cnpj){params.set('projectKind',projectKind);params.set('projectKey',projectKey)}
+  if(cnpj&&((area==='email'&&entry.action==='compose')||(['calendario','meet'].includes(area)&&entry.action==='meeting'))){
+    params.set('action',entry.action)
+    if(entry.recipient&&/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(entry.recipient.trim()))params.set('to',entry.recipient.trim().toLowerCase())
+  }
   return `/workspace/${area}${params.size?`?${params}`:''}`
+}
+/** A deep link may suggest a saved contact, never introduce an external recipient. */
+export function workspaceRecipient(recipient:string|undefined,emails:string[]):string|undefined {
+  return recipient?emails.find(email=>email.toLowerCase()===recipient.trim().toLowerCase()):undefined
 }
 export function legacyWorkspaceArea(tab?:string):WorkspaceArea {
   return ({mail:'email',drive:'drive',meetings:'calendario',history:'historico',meet:'meet'} as Record<string,WorkspaceArea>)[tab||'']||'email'
