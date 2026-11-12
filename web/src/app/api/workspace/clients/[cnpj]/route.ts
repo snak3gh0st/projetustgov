@@ -59,6 +59,9 @@ export async function POST(request:NextRequest,{params}:{params:{cnpj:string}}){
       case 'save_attachment':result=await service.saveAttachment(key,z.object({threadId:identifier,messageId:identifier,attachmentId:identifier,typeLabel:text(100)}).merge(requestId).parse(raw));break
       case 'create_meeting':result=await service.meeting(key,z.object({calendarId:identifier,title:text(200),description:z.string().max(5000).default(''),
         start:z.string().datetime({offset:true}),end:z.string().datetime({offset:true}),attendees:z.array(z.string().email()).min(1).max(30),timeZone:z.string().max(100).default('America/Sao_Paulo')}).merge(requestId).parse(raw));break
+      case 'record_meeting_outcome':result=await service.recordMeetingOutcome(key,z.object({meetingId:uuid,
+        status:z.enum(['pending','completed','rescheduled','cancelled','no_show']),note:z.string().trim().max(2000).default(''),
+        version:z.number().int().min(0).max(1000000)}).merge(requestId).parse(raw));break
       default:throw new WorkspaceError('Ação Workspace desconhecida.')
     }
     return NextResponse.json(result,{headers:PRIVATE_HEADERS})

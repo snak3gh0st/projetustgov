@@ -28,6 +28,18 @@ Os links antigos `/workspace/clientes/:cnpj` continuam funcionando. Endereços d
 
 Editores completos de Docs/Sheets/Slides e a chamada abrem no Google. Esta entrega não administra grupos, não altera compartilhamentos no Drive e não importa toda a caixa postal. Perfis de consulta não enviam mensagens/convites nem alteram documentos. A carteira e as permissões seguem o CRM atual.
 
+## Agenda Comercial da Equipe
+
+`/workspace/equipe` é exclusiva dos perfis Gestor comercial, Diretoria e Admin. Rooger Cordeiro foi conferido como gestor ativo; não é necessário alterar seu cargo ou ampliar o acesso ao CRM. O menu Comercial/Gestão e o calendário do Workspace oferecem a entrada.
+
+A visão oferece semana/dia, filtros por comercial e situação, cliente/projeto, horário, Meet e resultado. Inclui apenas reuniões criadas no fluxo de clientes/projetos da Projete, de comerciais ativos com vínculo atual ao cliente e à conta Google. Reuniões criadas diretamente fora da Projete não são importadas automaticamente.
+
+A consulta usa exclusivamente a autorização Google do gestor. Cada comercial deve conectar o Google e conceder leitura da agenda comercial à conta corporativa conectada pelo gestor. Recomenda-se uma agenda Google exclusiva do comercial, mantendo os compromissos particulares em outra agenda. Conceder somente livre/ocupado permite consultar horários, mas não libera os detalhes necessários nesta visão. A Projete não altera compartilhamentos, não adiciona convidados e não usa tokens dos vendedores para montar a visão do gestor. Falta de permissão, evento privado ou resposta sem detalhes nunca usa o título/cliente guardado como alternativa. O identificador `primary` é resolvido para a agenda do titular da reunião.
+
+O responsável pela reunião registra o resultado no próprio calendário/Meet: realizada, reagendada, cancelada, cliente ausente ou sem resultado. Observações e versão ficam no vínculo existente; reenvios são idempotentes e alterações concorrentes exigem atualização. O gestor acompanha em leitura e não registra resultados de outro usuário. Realização/ausência só são aceitas depois do horário final; o término do horário, sozinho, indica ausência de resultado. O registro na Projete não muda data, convite ou cancelamento no Google.
+
+Por consulta, até 80 vínculos recentes são conferidos no Google com paralelismo limitado. Se houver mais vínculos ou a consulta atingir o orçamento de tempo, a interface sinaliza resultado parcial e orienta filtrar um comercial. Google sem compartilhamento ou conexão pendente é informado explicitamente. O envio de e-mails, a agenda privada e as rotinas financeiras seguem as permissões anteriores. Não há migração, escopo OAuth novo ou variável de ambiente nova nesta entrega.
+
 ## Configuração e publicação
 
 1. Configure um cliente OAuth Web interno à organização no Google Cloud, com Gmail API, Drive API e Calendar API habilitadas. A URI autorizada é exatamente `https://projete.projetus.org/api/integrations/google/callback`; ela foi conferida no JSON fornecido nesta sessão.

@@ -2,10 +2,11 @@ import test,{before,after} from 'node:test'
 import assert from 'node:assert/strict'
 import pg from 'pg'
 import {randomUUID} from 'node:crypto'
-import {alice,bob,viewer,clientA,clientB,testPassword,prepareWorkspaceDb,requireLocalTestDb} from './workspace-fixture.mjs'
+import {seal} from '../src/lib/workspace/security.ts'
+import {alice,bob,viewer,manager,clientA,clientB,testPassword,prepareWorkspaceDb,requireLocalTestDb} from './workspace-fixture.mjs'
 
 const base=process.env.WORKSPACE_TEST_BASE_URL,database=process.env.WORKSPACE_TEST_DATABASE_URL,enabled=!!(base&&database)
-let pool,aliceCookie,bobCookie,viewerCookie
+let pool,aliceCookie,bobCookie,viewerCookie,managerCookie
 async function login(email){
   const jar=new Map(),merge=r=>{for(const line of r.headers.getSetCookie()){const pair=line.split(';')[0],i=pair.indexOf('=');jar.set(pair.slice(0,i),pair.slice(i+1))}},cookie=()=>Array.from(jar,([k,v])=>`${k}=${v}`).join('; ')
   const csrf=await fetch(`${base}/api/auth/csrf`);merge(csrf)
@@ -23,7 +24,7 @@ async function post(values,status=200,cookie=aliceCookie){
 before(async()=>{
   if(!enabled)return;requireLocalTestDb(database);assert.equal(new URL(base).hostname,'localhost')
   pool=new pg.Pool({connectionString:database});await prepareWorkspaceDb(pool)
-  aliceCookie=await login('alice@workspace.example.test');bobCookie=await login('bob@workspace.example.test');viewerCookie=await login('leitura@workspace.example.test')
+  aliceCookie=await login('alice@workspace.example.test');bobCookie=await login('bob@workspace.example.test');viewerCookie=await login('leitura@workspace.example.test');managerCookie=await login('gestor@workspace.example.test')
 })
 after(async()=>{await pool?.end()})
 test('Workspace APIs require an active session and assigned client',{skip:!enabled},async()=>{
@@ -117,4 +118,27 @@ test('HTTP Drive browses and uploads into a verified subfolder without permittin
   assert.equal(uploaded.status,200)
   const foreign=await fetch(`${path()}?view=files&projectKind=comercial&projectKey=10001&folderId=fixture-foreign-folder`,{headers:{Cookie:aliceCookie}})
   assert.equal(foreign.status,403)
+})
+
+test('team calendar is management-only, honors current roles and never grants access to another mailbox',{skip:!enabled||process.env.WORKSPACE_TEST_PROVIDER!=='1'},async()=>{
+  const url=`${base}/api/workspace/equipe?start=2026-11-01T00%3A00%3A00Z&end=2026-12-01T00%3A00%3A00Z`
+  assert.equal((await fetch(url)).status,401)
+  for(const cookie of [aliceCookie,bobCookie,viewerCookie])assert.equal((await fetch(url,{headers:{Cookie:cookie}})).status,403)
+  await pool.query("UPDATE google_workspace_connections SET status='disconnected' WHERE user_id=$1",[manager])
+  const disconnected=await fetch(url,{headers:{Cookie:managerCookie}}).then(r=>r.json());assert.equal(disconnected.connected,false)
+  const key=process.env.GOOGLE_WORKSPACE_TOKEN_ENCRYPTION_KEY,purpose=`google-token:${manager}`
+  await pool.query(`INSERT INTO google_workspace_connections(user_id,google_sub,email,domain,access_token_encrypted,refresh_token_encrypted,expires_at,scopes)
+    VALUES($1,'google-manager','manager@projetus.org','projetus.org',$2,$3,now()+interval '1 hour','{}')
+    ON CONFLICT(user_id) DO UPDATE SET status='active',access_token_encrypted=$2,refresh_token_encrypted=$3,expires_at=now()+interval '1 hour'`,
+    [manager,seal('workspace-test-access',key,purpose),seal('workspace-test-refresh',key,purpose)])
+  const r=await fetch(url,{headers:{Cookie:managerCookie}}),data=await r.json();assert.equal(r.status,200);assert.equal(data.connected,true)
+  assert.ok(data.items.some(e=>e.sellerId===alice&&e.cnpj===clientA))
+  const meeting=data.items.find(e=>e.sellerId===alice)
+  await post({action:'record_meeting_outcome',requestId:randomUUID(),meetingId:meeting.meetingId,status:'cancelled',note:'Teste de privacidade',version:0},404,managerCookie)
+  await post({action:'record_meeting_outcome',requestId:randomUUID(),meetingId:meeting.meetingId,status:'cancelled',note:'Cancelamento registrado',version:0})
+  const updated=await fetch(url,{headers:{Cookie:managerCookie}}).then(r=>r.json());assert.equal(updated.items.find(e=>e.meetingId===meeting.meetingId).outcome.status,'cancelled')
+  assert.equal((await fetch(`${base}/api/workspace/equipe`,{method:'POST',headers:{Cookie:managerCookie,Origin:base}})).status,405)
+  const html=await fetch(`${base}/workspace/equipe`,{headers:{Cookie:managerCookie}}).then(r=>r.text());assert.ok(html.includes('Agenda Comercial da Equipe'))
+  await pool.query("UPDATE users SET role='vendedor' WHERE id=$1",[manager])
+  try{assert.equal((await fetch(url,{headers:{Cookie:managerCookie}})).status,403)}finally{await pool.query("UPDATE users SET role='gestor' WHERE id=$1",[manager])}
 })
