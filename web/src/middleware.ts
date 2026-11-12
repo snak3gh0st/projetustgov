@@ -42,7 +42,7 @@ export default auth((req) => {
 
   // Role-based area isolation
   // Shared workspace: active-session, CRM ownership and mutation checks live in each route.
-  if (['/workspace','/api/workspace','/api/integrations/google'].some(p => pathname === p || pathname.startsWith(p + '/'))) return
+  if (['/workspace','/api/workspace','/api/integrations/google','/despesas','/api/despesas'].some(p => pathname === p || pathname.startsWith(p + '/'))) return
 
   // adm_produto = TGov-only (cannot access CRM areas)
   // vendedor / coordenador / visualizador = CRM-only (cannot access TGov)

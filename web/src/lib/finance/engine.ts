@@ -125,7 +125,7 @@ export class FinanceEngine {
     })
   }
 
-  async push(client:ContaAzulClient){
+  async push(client:ContaAzulClient,expenseEntryId?:string){
     const s=this.store,settings=await s.settings()
     if(!settings.writesEnabled||!settings.companyConfirmed)throw new FinanceError('Envios desabilitados. Configure e confirme a empresa da Conta Azul antes de habilitar.',409)
     return this.run('conta_azul_push',{},async({assertCurrent})=>{
@@ -136,7 +136,10 @@ export class FinanceEngine {
       for(let i=0;i<20;i++){
         await assertCurrent()
         const job=await s.transaction(async c=>(await c.query(`UPDATE finance_jobs SET status='processing',attempts=attempts+1,started_at=now(),updated_at=now()
-          WHERE id=(SELECT id FROM finance_jobs WHERE tenant_key=$1 AND status='pending' ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING *`,[s.tenant])).rows[0])
+          WHERE id=(SELECT j.id FROM finance_jobs j JOIN finance_entries e ON e.id=j.entry_id
+            WHERE j.tenant_key=$1 AND j.status='pending'
+            AND ${expenseEntryId?'e.id=$2 AND e.source_ref LIKE \'expense:%\'':"e.source_ref NOT LIKE 'expense:%'"}
+            ORDER BY j.created_at LIMIT 1 FOR UPDATE OF j SKIP LOCKED) RETURNING *`,expenseEntryId?[s.tenant,expenseEntryId]:[s.tenant])).rows[0])
         if(!job)break
         let attempted=false
         try{

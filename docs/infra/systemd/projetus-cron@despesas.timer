@@ -1,0 +1,10 @@
+[Unit]
+Description=Projete - despesas liberadas pendentes de integracao (5 minutos)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=projetus-cron@despesas.service
+
+[Install]
+WantedBy=timers.target
