@@ -2,6 +2,7 @@
 // (onde entra) e, quando trabalha em mais de uma, troca pela barra de áreas.
 // Tela isolada de outra área fica no menu da área principal do perfil.
 import type { Role } from './roles'
+import { canReadTeamCalendar } from './workspace/calendar-policy'
 
 export type AreaId = 'comercial' | 'operacao' | 'financeiro' | 'gestao' | 'admin'
 
@@ -114,7 +115,9 @@ export function getAreaNav(role: Role, area: AreaId, opts: { whatsapp?: boolean 
   const items = AREA_NAV[area]
     .filter((i) => i.roles.includes(role) && (!i.requires || (i.requires === 'whatsapp' && opts.whatsapp)))
     .map(({ roles: _roles, requires: _requires, ...item }) => item)
-  return getAreasForRole(role).includes(area) ? [...items, { href: '/workspace', label: 'Workspace', icon: 'workspace' }] : items
+  return getAreasForRole(role).includes(area) ? [...items,
+    ...(canReadTeamCalendar(role) && ['comercial','gestao'].includes(area) ? [{ href: '/workspace/equipe', label: 'Agenda da equipe', icon: 'hoje' }] : []),
+    { href: '/workspace', label: 'Workspace', icon: 'workspace' }] : items
 }
 
 /** Para onde / leva quem abre o PROJETE em outra tela; null mantém / (Pipeline). */

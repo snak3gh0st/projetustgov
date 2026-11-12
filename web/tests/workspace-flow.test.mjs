@@ -138,6 +138,21 @@ test('Meet invitation is created once, isolated by project, with private history
   assert.ok(!(await store.history(first.id,bob)).some(h=>h.action==='meeting.created'))
   await assert.rejects(service.meeting(key,{...input,requestId:randomUUID(),attendees:['outsider@untrusted.test']}),e=>e.status===403)
 })
+test('meeting results belong to their author, replay safely and reject stale or premature confirmations',{skip:!url},async()=>{
+  const item=(await service.meetings(key)).items[0]
+  const input={requestId:randomUUID(),meetingId:item.meetingId,status:'completed',note:'Contrato conferido',version:0}
+  const saved=await service.recordMeetingOutcome(key,input)
+  assert.equal(saved.outcome.version,1);assert.deepEqual(await service.recordMeetingOutcome(key,input),saved)
+  assert.equal((await service.meetings(key)).items[0].outcome.status,'completed')
+  await assert.rejects(service.recordMeetingOutcome(key,{...input,requestId:randomUUID(),status:'cancelled'}),e=>e.status===409)
+  const someoneElse=new WorkspaceService(store,google,{userId:bob,role:'gestor'})
+  await assert.rejects(someoneElse.recordMeetingOutcome(key,{...input,requestId:randomUUID(),version:1}),e=>e.status===404)
+  assert.ok(!(await store.history(first.id,bob)).some(h=>h.action==='meeting.outcome'))
+  const future=new Date(Date.now()+86400000),end=new Date(future.getTime()+3600000)
+  const next=await service.meeting(key,{requestId:randomUUID(),calendarId:'primary',title:'Futura',description:'',start:future.toISOString(),end:end.toISOString(),attendees:['client@example.test'],timeZone:'America/Sao_Paulo'})
+  const link=(await service.meetings(key)).items.find(m=>m.id===next.id)
+  await assert.rejects(service.recordMeetingOutcome(key,{...input,requestId:randomUUID(),meetingId:link.meetingId,status:'no_show'}),e=>e.status===400)
+})
 test('competing operation claims invoke the provider once and do not hold a database connection',{skip:!url},async()=>{
   const id=randomUUID();let invoked=0,finish
   const gate=new Promise(resolve=>{finish=resolve})

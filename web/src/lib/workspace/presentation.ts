@@ -40,8 +40,8 @@ export function calendarDays(anchor:Date,view:'month'|'week') {
   first.setDate(first.getDate()-first.getDay())
   return Array.from({length:view==='month'?42:7},(_,i)=>new Date(first.getFullYear(),first.getMonth(),first.getDate()+i))
 }
-export type CalendarEvent = {id:string;title?:string;start?:string;end?:string;status?:string;unavailable?:boolean;meetUrl?:string|null;url?:string|null}
-export function eventsOnDay(events:CalendarEvent[],day:Date) {
+export type CalendarEvent = {id:string;title?:string;start?:string;end?:string;status?:string;unavailable?:boolean;meetUrl?:string|null;url?:string|null;meetingId?:string;outcome?:{status:string;note?:string;version:number}|null}
+export function eventsOnDay<T extends CalendarEvent>(events:T[],day:Date) {
   const from=new Date(day.getFullYear(),day.getMonth(),day.getDate()),to=new Date(day.getFullYear(),day.getMonth(),day.getDate()+1)
   return events.filter(event=>{
     if(!event.start||event.unavailable||event.status==='cancelled')return false

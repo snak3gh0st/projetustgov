@@ -2,6 +2,7 @@ import { WorkspaceError, FOLDER_MIME, contactEmails, emailAddress, gmailContactQ
   type ContextKey, type GoogleFile, type WorkspaceActor } from './domain.ts'
 import { GoogleApi, eventView } from './google.ts'
 import { WorkspaceStore } from './store.ts'
+import { type MeetingOutcome } from './calendar-policy.ts'
 
 type Row=Record<string,any>
 export class WorkspaceService {
@@ -164,10 +165,33 @@ export class WorkspaceService {
     const account=await this.connected(),{context}=await this.load(key)
     const links=await this.store.links(context.id,this.actor.userId,'event',account.google_sub),events=[]
     for(const link of links){
-      try{const event=eventView(await this.google.event(link.metadata.calendarId,link.remote_id),link.metadata.calendarId);events.push(event)}
+      try{const event=eventView(await this.google.event(link.metadata.calendarId,link.remote_id),link.metadata.calendarId);events.push({...event,meetingId:link.id,outcome:link.metadata.commercialOutcome||null})}
       catch(e){if(e instanceof WorkspaceError&&[403,404].includes(e.status)){events.push({...link.metadata,id:link.remote_id,unavailable:true});continue}throw e}
     }
     return{items:events.sort((a,b)=>String(b.start).localeCompare(String(a.start)))}
+  }
+  async recordMeetingOutcome(key:ContextKey,input:{requestId:string;meetingId:string;status:MeetingOutcome;note:string;version:number}){
+    const account=await this.connected(),{context}=await this.load(key)
+    const link=(await this.store.rows(`SELECT * FROM workspace_links WHERE id=$1 AND context_id=$2
+      AND user_id=$3 AND google_sub=$4 AND kind='event'`,[input.meetingId,context.id,this.actor.userId,account.google_sub]))[0]
+    if(!link)throw new WorkspaceError('Reunião não encontrada na sua agenda deste projeto.',404)
+    return this.store.operation(this.actor,context.id,'meeting_outcome',input.requestId,input,account.google_sub,async()=>{
+      const event=await this.google.event(link.metadata.calendarId,link.remote_id)
+      if(['completed','no_show'].includes(input.status)&&(!Number.isFinite(Date.parse(event.end?.dateTime||''))||Date.parse(event.end.dateTime)>Date.now()))
+        throw new WorkspaceError('Registre a realização ou ausência depois do horário final da reunião.')
+      const outcome={status:input.status,note:input.note,version:input.version+1,recordedAt:new Date().toISOString(),recordedBy:this.actor.userId}
+      const updated=await this.store.rows(`WITH changed AS (
+        UPDATE workspace_links SET metadata=jsonb_set(metadata,'{commercialOutcome}',$5::jsonb),updated_at=now()
+        WHERE id=$1 AND context_id=$2 AND user_id=$3 AND kind='event'
+        AND COALESCE(metadata->'commercialOutcome'->>'version','0')=$4::text RETURNING metadata
+      ), audit AS (
+        INSERT INTO workspace_activity(context_id,actor_id,private_user_id,action,summary,detail)
+        SELECT $2,$3,$3,'meeting.outcome','Resultado da reunião registrado',jsonb_build_object('meetingId',$1::text)
+        FROM changed
+      ) SELECT metadata FROM changed`,[link.id,context.id,this.actor.userId,String(input.version),JSON.stringify(outcome)])
+      if(!updated.length)throw new WorkspaceError('O resultado mudou. Atualize a agenda antes de salvar novamente.',409)
+      return{outcome}
+    })
   }
   async meeting(key:ContextKey,input:{requestId:string;calendarId:string;title:string;description:string;start:string;end:string;attendees:string[];timeZone:string}){
     const account=await this.connected(),{client,context}=await this.load(key),dates=validateMeeting(input.start,input.end)

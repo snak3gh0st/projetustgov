@@ -1,6 +1,7 @@
 import {readFile} from 'node:fs/promises'
 import bcrypt from 'bcryptjs'
 export const alice='10000000-0000-4000-8000-000000000001',bob='10000000-0000-4000-8000-000000000002',viewer='10000000-0000-4000-8000-000000000003'
+export const manager='10000000-0000-4000-8000-000000000004'
 export const clientA='12345678000190',clientB='98765432000190',testPassword='local-workspace-acceptance-only'
 export function requireLocalTestDb(url){
   const parsed=new URL(url)
@@ -13,7 +14,7 @@ export async function prepareWorkspaceDb(pool){
     CREATE TABLE IF NOT EXISTS lead_contacts(id integer PRIMARY KEY,lead_cnpj text,nome_pessoa text,cargo text,email text,principal boolean);
     CREATE TABLE IF NOT EXISTS projetos_execucao(nr_convenio text PRIMARY KEY,cnpj text,objeto text,situacao text);`)
   const password=await bcrypt.hash(testPassword,6)
-  for(const [id,name,role]of [[alice,'Alice','vendedor'],[bob,'Bob','vendedor'],[viewer,'Leitura','visualizador']]){
+  for(const [id,name,role]of [[alice,'Alice','vendedor'],[bob,'Bob','vendedor'],[viewer,'Leitura','visualizador'],[manager,'Gestor','gestor']]){
     await pool.query(`INSERT INTO users(id,nome,email,role,active,password_hash) VALUES($1,$2,$3,$4,true,$5)
       ON CONFLICT(id) DO UPDATE SET role=EXCLUDED.role,active=true,password_hash=EXCLUDED.password_hash`,[id,name,`${name.toLowerCase()}@workspace.example.test`,role,password])
   }

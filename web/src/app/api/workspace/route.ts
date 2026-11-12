@@ -4,6 +4,7 @@ import { googleReadiness } from '@/lib/workspace/config'
 import { disconnectGoogle } from '@/lib/workspace/connection'
 import { PRIVATE_HEADERS,canWriteWorkspace } from '@/lib/workspace/domain'
 import { seesAllLeads } from '@/lib/roles'
+import { canReadTeamCalendar } from '@/lib/workspace/calendar-policy'
 export const dynamic='force-dynamic'
 export async function GET(request:NextRequest){
   try{
@@ -28,7 +29,7 @@ export async function GET(request:NextRequest){
       ) people ON true
       ORDER BY c.name`,
     [seesAllLeads(actor.role)||actor.role==='admin',actor.userId,`%${search}%`])
-    return NextResponse.json({connection:await store.safeConnection(actor.userId),configured:googleReadiness(),clients,canWrite:canWriteWorkspace(actor.role)},{headers:PRIVATE_HEADERS})
+    return NextResponse.json({connection:await store.safeConnection(actor.userId),configured:googleReadiness(),clients,canWrite:canWriteWorkspace(actor.role),canReadTeamCalendar:canReadTeamCalendar(actor.role)},{headers:PRIVATE_HEADERS})
   }catch(e){return workspaceFailure(e)}
 }
 export async function DELETE(request:NextRequest){
