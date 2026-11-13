@@ -2,6 +2,22 @@
 
 Entrada compartilhada `/despesas` em todas as áreas e no menu do Financeiro. Qualquer usuário ativo pode registrar sua solicitação. O módulo não concede acesso ao restante do Financeiro, ao CRM nem ao Workspace pessoal de outras pessoas.
 
+## Responsáveis confirmados
+
+Definição informada por Paulo em 12/11/2026:
+
+| Responsabilidade no fluxo | Pessoa | Cadastro na política |
+| --- | --- | --- |
+| COO | Raphel | Autoridade COO, com limite de valor ainda pendente |
+| CEO | Philipe | Autoridade CEO, com limite de valor ainda pendente |
+| Head financeiro | Thiago | Head da área Financeiro e responsável pela conferência/liberação financeira |
+
+Philipe e Thiago foram encontrados como usuários ativos na consulta somente leitura ao cadastro de produção, respectivamente nos perfis `diretoria` e `gestor_financeiro`. Nenhum perfil geral foi alterado. O usuário correspondente ao Raphel deve ser identificado no cadastro antes de vinculá-lo à autoridade COO.
+
+Essa definição não atribui a Thiago a aprovação como Head de todas as áreas. Os demais Heads, o Administrativo e os substitutos continuam pendentes de definição. O próprio pedido de Thiago exige outro responsável na aprovação e na liberação, conforme a proibição de autoaprovação. Não se presume uma substituição automática pelo COO ou CEO; a política deve indicar os substitutos e suas alçadas.
+
+Este é o mapeamento confirmado para a configuração inicial; a política permanece desativada até completar as regras e os vínculos com usuários. Nenhuma configuração de aprovação/liberação foi gravada em produção por esta atualização.
+
 ## Preparação
 
 1. Aplicar `20261105_financeiro_integrado.sql` se necessário e executar `npm run db:expenses:migrate` com a conexão correta. A migração é aditiva e reaplicável. Não liga conectores ou canais de entrega.
