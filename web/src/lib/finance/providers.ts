@@ -61,11 +61,15 @@ export class ContaAzulClient {
     return created.id
   }
   async createEntry(entry:Row,settings:Pick<FinanceSettings,'financialAccountId'|'receivableCategoryId'|'payableCategoryId'>) {
+    // Expense classifications are frozen on financial release; commission defaults stay unchanged.
+    const expense=entry.source_ref?.startsWith('expense:')?entry.expense_config:null
+    if(expense)settings={...settings,financialAccountId:expense.financialAccountId,payableCategoryId:expense.payableCategoryId}
     const value=Number(entry.amount_cents)/100
     const key=`projete:${entry.id}`
     const body={descricao:entry.description,data_competencia:String(entry.competence_date).slice(0,10),valor:value,
       conta_financeira:settings.financialAccountId,[entry.kind==='payable'?'id_fornecedor':'id_cliente']:entry.remote_person_id,
-      referencia_externa:key,observacao:key,rateio:[{id_categoria:entry.kind==='payable'?settings.payableCategoryId:settings.receivableCategoryId,valor:value}],
+      referencia_externa:key,observacao:key,rateio:[{id_categoria:entry.kind==='payable'?settings.payableCategoryId:settings.receivableCategoryId,valor:value,
+        ...(expense?.costCenterId?{rateio_centro_custo:[{id_centro_custo:expense.costCenterId,valor:value}]}:{})}],
       condicao_pagamento:{parcelas:[{descricao:entry.description,data_vencimento:String(entry.due_date).slice(0,10),
         conta_financeira:settings.financialAccountId,nota:`Projete:${entry.id}`,detalhe_valor:{valor_bruto:value}}]}}
     const r=await this.request(`/v1/financeiro/${entry.kind==='payable'?'contas-a-pagar':'contas-a-receber'}`,'POST',body)
