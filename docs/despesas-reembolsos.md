@@ -8,11 +8,11 @@ Definição informada por Paulo em 12/11/2026:
 
 | Responsabilidade no fluxo | Pessoa | Cadastro na política |
 | --- | --- | --- |
-| COO | Raphel | Autoridade COO, com limite de valor ainda pendente |
+| COO | Rafael | Autoridade COO, com limite de valor ainda pendente |
 | CEO | Philipe | Autoridade CEO, com limite de valor ainda pendente |
 | Head financeiro | Thiago | Head da área Financeiro e responsável pela conferência/liberação financeira |
 
-Philipe e Thiago foram encontrados como usuários ativos na consulta somente leitura ao cadastro de produção, respectivamente nos perfis `diretoria` e `gestor_financeiro`. Existe também um usuário ativo chamado **Rafael**, no perfil `diretoria`; a correspondência entre ele e o nome “Raphel” informado deve ser confirmada antes de vinculá-lo à autoridade COO. Nenhum perfil geral foi alterado.
+Paulo confirmou que o nome “Raphel” informado se refere ao usuário **Rafael** já cadastrado. Os três usuários foram encontrados ativos na consulta somente leitura ao cadastro de produção: Rafael e Philipe no perfil `diretoria`, Thiago no perfil `gestor_financeiro`. Nenhum perfil geral foi alterado.
 
 Essa definição não atribui a Thiago a aprovação como Head de todas as áreas. Os demais Heads, o Administrativo e os substitutos continuam pendentes de definição. O próprio pedido de Thiago exige outro responsável na aprovação e na liberação, conforme a proibição de autoaprovação. Não se presume uma substituição automática pelo COO ou CEO; a política deve indicar os substitutos e suas alçadas.
 
