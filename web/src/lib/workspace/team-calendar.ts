@@ -43,7 +43,9 @@ export class TeamCalendarService {
           if (raw.visibility === 'private' || (raw.status !== 'cancelled' && !raw.summary)) return
           const event = eventView(raw, calendarId)
           if (!event.start || Date.parse(event.start) >= Date.parse(to) || Date.parse(event.end || event.start) <= Date.parse(from)) return
-          items.push({ ...event, meetingId: row.id, sellerId: row.user_id, sellerName: row.seller_name,
+          // The team view deliberately omits personal descriptions, attendees and organizer details.
+          items.push({ id:event.id,calendarId:event.calendarId,title:event.title,start:event.start,end:event.end,status:event.status,
+            meetUrl:event.meetUrl,url:event.url,conferenceStatus:event.conferenceStatus,meetingId: row.id, sellerId: row.user_id, sellerName: row.seller_name,
             clientName: row.client_name, cnpj: row.cnpj, projectKind: row.project_kind, projectKey: row.project_key,
             outcome: row.metadata.commercialOutcome || null })
         } catch (e) {

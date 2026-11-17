@@ -17,6 +17,10 @@ export function googleId(value: unknown): string {
   if (typeof value !== 'string' || !/^[A-Za-z0-9_@.\-]{1,300}$/.test(value)) throw new WorkspaceError('Identificador Google inválido.')
   return value
 }
+export function googleCalendarId(value:unknown):string {
+  if(typeof value!=='string'||!/^[A-Za-z0-9_@.+#\-]{1,300}$/.test(value))throw new WorkspaceError('Calendário Google inválido.')
+  return value
+}
 export function emailAddress(value: unknown): string {
   const email = String(value ?? '').trim().toLowerCase()
   if (!/^[a-z0-9.!#$%&'*+/=?^_`{|}~\-]+@[a-z0-9](?:[a-z0-9.\-]*[a-z0-9])?\.[a-z]{2,}$/i.test(email) || email.length > 254) {
