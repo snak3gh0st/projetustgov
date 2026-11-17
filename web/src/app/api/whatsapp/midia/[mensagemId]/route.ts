@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { conversaVisivel, whatsappGuard } from '@/lib/whatsapp/api'
+import { configForInstance } from '@/lib/whatsapp/channels'
 import { mediaBase64 } from '@/lib/whatsapp/evolution'
 import { exibivel, faixaPedida } from '@/lib/whatsapp/midia'
 
@@ -18,11 +19,13 @@ export async function GET(request: Request, { params }: { params: { mensagemId: 
     `SELECT conversa_id, wa_id, tipo, midia FROM whatsapp_mensagens WHERE id = $1`,
     [id]
   )
-  if (!msg || !(await conversaVisivel(msg.conversa_id, guard.session, guard.cfg))) {
+  const conversa = msg ? await conversaVisivel(msg.conversa_id, guard.session, guard.cfg) : null
+  const cfg = conversa ? configForInstance(conversa.instancia) : null
+  if (!msg || !conversa || !cfg) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
   try {
-    const { base64, mimetype } = await mediaBase64(msg.wa_id)
+    const { base64, mimetype } = await mediaBase64(msg.wa_id, cfg)
     const base = mimetype.split(';')[0]
     const nome = msg.midia?.fileName || `whatsapp-${msg.tipo}.${EXT[base] ?? (base.startsWith('audio/') ? 'ogg' : 'bin')}`
     // Na página só foto, áudio e vídeo; o resto (HTML, SVG, PDF...) sempre baixa.

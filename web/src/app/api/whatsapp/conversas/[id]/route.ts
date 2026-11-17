@@ -1,3 +1,4 @@
+import { configForInstance } from '@/lib/whatsapp/channels'
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { aguardandoResposta, canManageConversations } from '@/lib/whatsapp/access'
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   )
   const mais = rows.length > PAGE
   return NextResponse.json({
-    conversa: { ...conversa, aguardando: aguardandoResposta(conversa) },
+    conversa: { ...conversa, canal: configForInstance(conversa.instancia)?.channel, aguardando: aguardandoResposta(conversa) },
     mensagens: rows.slice(0, PAGE).reverse(),
     mais,
   })

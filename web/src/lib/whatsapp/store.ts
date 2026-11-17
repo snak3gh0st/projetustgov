@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { getPool, query } from '@/lib/db'
+import { configForInstance } from './channels'
 import { mensagensDoChat, parDoContato } from './evolution'
 import { localPhoneSql, phoneVariants } from './phone'
 import { comTrava } from './trava'
@@ -109,7 +110,7 @@ export async function conversaDoContato(
   const faltaLid = !lid && !porTelefone?.lid
   const faltaTelefone = !telefone && !temTelefone(porLid)
   if ((faltaLid || faltaTelefone) && !opts.historico) {
-    const par = await parDoContato(lid ?? c.jid)
+    const par = await parDoContato(lid ?? c.jid, { cfg: configForInstance(c.instancia) ?? undefined })
     const novoLid = lid ?? par.lid
     const novoTelefone = telefone ?? par.telefone
     if (novoLid !== lid || novoTelefone !== telefone) {
@@ -225,8 +226,9 @@ export async function recordStatus(ev: StatusEvent): Promise<void> {
   await query(
     `UPDATE whatsapp_mensagens SET status = $2
      WHERE wa_id = $1 AND direcao = 'enviada'
+       AND conversa_id IN (SELECT id FROM whatsapp_conversas WHERE instancia = $3)
        AND ($2 = 'falhou' OR ${RANK.replace('%s', 'status')} < ${RANK.replace('%s', '$2')})`,
-    [ev.waId, ev.status]
+    [ev.waId, ev.status, ev.instancia]
   )
 }
 

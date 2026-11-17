@@ -11,7 +11,7 @@ type Filtro = typeof FILTROS[number]
 
 // GET /api/whatsapp/conversas?filtro=minhas|em-aberto|todas|novas|arquivadas&cnpj=&busca=
 export async function GET(request: NextRequest) {
-  const guard = await whatsappGuard()
+  const guard = await whatsappGuard(request)
   if (guard instanceof NextResponse) return guard
   const { session, cfg } = guard
   const sp = new URL(request.url).searchParams
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       `${CONVERSA_SELECT} WHERE ${where.join(' AND ')} ORDER BY ${filtro === 'novas' ? 'wc.created_at DESC' : 'wc.ultima_mensagem_em DESC NULLS LAST'} LIMIT 200`,
       params
     ),
-    connectionStateCached(),
+    connectionStateCached(cfg),
   ])
   return NextResponse.json({
     filtro,
