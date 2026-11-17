@@ -32,6 +32,7 @@ const TABS = [
   { href: '/financeiro/resultado', label: 'Resultado' },
   { href: '/financeiro/caixa', label: 'Caixa' },
   { href: '/financeiro/pagar-receber', label: 'Pagar e receber' },
+  { href: '/despesas', label: 'Despesas e reembolsos' },
   { href: '/financeiro/clientes', label: 'Clientes e CRM' },
   { href: '/financeiro/operacao', label: 'Vendas, comissões e relatório' },
 ]
