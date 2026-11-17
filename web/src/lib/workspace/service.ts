@@ -3,6 +3,7 @@ import { WorkspaceError, FOLDER_MIME, contactEmails, emailAddress, gmailContactQ
 import { GoogleApi, eventView } from './google.ts'
 import { WorkspaceStore } from './store.ts'
 import { type MeetingOutcome } from './calendar-policy.ts'
+import {calendarWindow,eventRelates,readableCalendar,type EventQuery} from './calendar-sync.ts'
 
 type Row=Record<string,any>
 export class WorkspaceService {
@@ -163,12 +164,50 @@ export class WorkspaceService {
   }
   async meetings(key:ContextKey){
     const account=await this.connected(),{context}=await this.load(key)
-    const links=await this.store.links(context.id,this.actor.userId,'event',account.google_sub),events=[]
+    const links=await this.store.links(context.id,this.actor.userId,'event',account.google_sub),events:Row[]=[]
     for(const link of links){
       try{const event=eventView(await this.google.event(link.metadata.calendarId,link.remote_id),link.metadata.calendarId);events.push({...event,meetingId:link.id,outcome:link.metadata.commercialOutcome||null})}
-      catch(e){if(e instanceof WorkspaceError&&[403,404].includes(e.status)){events.push({...link.metadata,id:link.remote_id,unavailable:true});continue}throw e}
+      catch(e){if(e instanceof WorkspaceError&&[403,404].includes(e.status)){events.push({id:link.remote_id,calendarId:link.metadata.calendarId,unavailable:true});continue}throw e}
     }
     return{items:events.sort((a,b)=>String(b.start).localeCompare(String(a.start)))}
+  }
+  async syncedMeetings(key:ContextKey,input:EventQuery={}){
+    const account=await this.connected(),{client,context}=await this.load(key),window=calendarWindow(input)
+    const calendar=await readableCalendar(this.google,input.calendarId),page=await this.google.events(calendar.id,window.start,window.end,input.pageToken)
+    const links=await this.store.links(context.id,this.actor.userId,'event',account.google_sub)
+    const primaryAlias=calendar.primary?['primary',calendar.id]:[calendar.id]
+    const items=[]
+    for(const raw of page.items??[]){
+      if(raw.status==='cancelled')continue
+      const event=eventView(raw,calendar.id,['owner','writer'].includes(calendar.accessRole))
+      if(event.redacted)continue
+      const link=links.find(l=>l.remote_id===raw.id&&primaryAlias.includes(l.metadata.calendarId))
+      const ownContext=raw.extendedProperties?.private?.projeteContext
+      if(!link&&(ownContext?ownContext!==context.id:!eventRelates(raw,client.emails)))continue
+      items.push({...event,source:link?'projete':'google',meetingId:link?.id??null,outcome:link?.metadata.commercialOutcome??null,linked:!!link})
+    }
+    return{items,nextPageToken:page.nextPageToken??null,window,calendar:{id:calendar.id,name:calendar.summary??calendar.id},refreshedAt:new Date().toISOString(),ambiguousEmails:client.ambiguousEmails}
+  }
+  async linkMeeting(key:ContextKey,input:{requestId:string;calendarId:string;eventId:string}){
+    const account=await this.connected(),{client,context}=await this.load(key),calendar=await readableCalendar(this.google,input.calendarId)
+    const raw=await this.google.event(calendar.id,input.eventId),view=eventView(raw,calendar.id,['owner','writer'].includes(calendar.accessRole))
+    if(raw.status==='cancelled'||view.redacted)throw new WorkspaceError('Esta reunião não está disponível para vinculação.',403)
+    if(raw.extendedProperties?.private?.projeteContext&&raw.extendedProperties.private.projeteContext!==context.id)throw new WorkspaceError('A reunião foi criada para outro projeto.',409)
+    if(!eventRelates(raw,client.emails))throw new WorkspaceError('A reunião precisa incluir um contato cadastrado deste cliente.',403)
+    return this.store.operation(this.actor,context.id,'link_meeting',input.requestId,input,account.google_sub,async()=>{
+      const links=await this.store.links(context.id,this.actor.userId,'event',account.google_sub),existing=links.find(l=>l.remote_id===raw.id)
+      if(existing){
+        if(![calendar.id,...(calendar.primary?['primary']:[])].includes(existing.metadata.calendarId))throw new WorkspaceError('Este identificador já está vinculado a outra agenda.',409)
+        return{meetingId:existing.id}
+      }
+      // Concurrent link requests preserve an outcome recorded after the first insert.
+      const linked=(await this.store.rows(`INSERT INTO workspace_links(context_id,user_id,kind,remote_id,metadata,google_sub)
+        VALUES($1,$2,'event',$3,$4,$5) ON CONFLICT(context_id,user_id,kind,remote_id,google_sub)
+        DO UPDATE SET metadata=workspace_links.metadata RETURNING *`,[context.id,this.actor.userId,raw.id,{...view,source:'google'},account.google_sub]))[0]
+      if(![calendar.id,...(calendar.primary?['primary']:[])].includes(linked.metadata.calendarId))throw new WorkspaceError('Este identificador já está vinculado a outra agenda.',409)
+      await this.store.activity(context.id,this.actor.userId,'meeting.linked','Reunião existente do Google vinculada ao projeto',this.actor.userId)
+      return{meetingId:linked.id}
+    })
   }
   async recordMeetingOutcome(key:ContextKey,input:{requestId:string;meetingId:string;status:MeetingOutcome;note:string;version:number}){
     const account=await this.connected(),{context}=await this.load(key)

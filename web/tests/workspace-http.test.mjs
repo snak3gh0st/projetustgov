@@ -142,3 +142,27 @@ test('team calendar is management-only, honors current roles and never grants ac
   await pool.query("UPDATE users SET role='vendedor' WHERE id=$1",[manager])
   try{assert.equal((await fetch(url,{headers:{Cookie:managerCookie}})).status,403)}finally{await pool.query("UPDATE users SET role='gestor' WHERE id=$1",[manager])}
 })
+
+test('personal Meet synchronization finds pre-existing Google meetings without selecting a CRM client',{skip:!enabled||process.env.WORKSPACE_TEST_PROVIDER!=='1'},async()=>{
+  const url=`${base}/api/workspace/calendar?view=events&start=2026-11-01T00%3A00%3A00Z&end=2026-12-01T00%3A00%3A00Z`
+  assert.equal((await fetch(url)).status,401)
+  const response=await fetch(url,{headers:{Cookie:aliceCookie}}),data=await response.json()
+  assert.equal(response.status,200);assert.match(response.headers.get('cache-control'),/no-store/)
+  const existing=data.items.find(e=>e.id==='existing-google-event');assert.equal(existing.title,'Reunião criada antes no Google');assert.equal(existing.meetUrl,'https://meet.google.com/def-ghij-klm')
+  assert.equal((await pool.query("SELECT 1 FROM workspace_links WHERE user_id=$1 AND remote_id='existing-google-event'",[alice])).rowCount,0)
+  assert.equal((await fetch(`${url}&userId=${alice}`,{headers:{Cookie:bobCookie}})).status,409)
+  const html=await fetch(`${base}/workspace/meet`,{headers:{Cookie:aliceCookie}}).then(r=>r.text());assert.match(html,/Minha agenda Google/)
+  assert.equal((await fetch(`${base}/api/workspace/calendar?start=2026-11-01T00:00:00Z`,{headers:{Cookie:aliceCookie}})).status,400)
+})
+test('discovered Google meeting is a suggestion until explicitly linked to the selected client project',{skip:!enabled||process.env.WORKSPACE_TEST_PROVIDER!=='1'},async()=>{
+  const url=`${path()}?view=events&projectKind=comercial&projectKey=10001&start=2026-11-01T00%3A00%3A00Z&end=2026-12-01T00%3A00%3A00Z`
+  const before=await fetch(url,{headers:{Cookie:aliceCookie}}).then(r=>r.json())
+  assert.equal(before.items.find(e=>e.id==='existing-google-event').linked,false)
+  const requestId=randomUUID(),linked=await post({action:'link_meeting',requestId,calendarId:'primary',eventId:'existing-google-event'})
+  assert.deepEqual(await post({action:'link_meeting',requestId,calendarId:'primary',eventId:'existing-google-event'}),linked)
+  const after=await fetch(url,{headers:{Cookie:aliceCookie}}).then(r=>r.json())
+  assert.equal(after.items.filter(e=>e.id==='existing-google-event').length,1)
+  assert.equal(after.items.find(e=>e.id==='existing-google-event').meetingId,linked.meetingId)
+  assert.equal((await pool.query("SELECT 1 FROM workspace_links WHERE user_id=$1 AND remote_id='existing-google-event'",[alice])).rowCount,1)
+  const general=await fetch(`${base}/api/workspace/calendar`,{headers:{Cookie:aliceCookie}}).then(r=>r.json());assert.ok(general.items.some(e=>e.id==='existing-google-event'))
+})

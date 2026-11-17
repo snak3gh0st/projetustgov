@@ -5,9 +5,9 @@
 Abra Workspace no menu ou na ficha do cliente. O ambiente tem navegação própria para **E-mail, Calendário, Drive e Meet**, além do Histórico. Cliente e projeto ficam na barra de contexto, e são preservados ao trocar de ferramenta. Conecte sua conta corporativa e escolha o registro comercial ou convênio. Não cria outro cadastro de cliente. A busca encontra a organização por nome ou CNPJ e também pelo nome ou e-mail dos contatos responsáveis cadastrados no CRM. Os resultados e a seleção de destinatários mostram o nome da pessoa junto ao endereço de e-mail.
 
 - `/workspace/email`: caixa de conversas e leitura lado a lado; no celular, caixa e leitura ocupam telas alternadas. A composição abre separadamente.
-- `/workspace/calendario`: visão de mês ou semana dos eventos vinculados ao projeto, navegação entre períodos e criação de reuniões por data. Não representa todos os eventos pessoais da conta.
+- `/workspace/calendario`: visão de mês ou semana dos compromissos existentes na Agenda Google conectada, incluindo reuniões anteriores à integração. Sem cliente selecionado, mostra a agenda pessoal; com cliente, filtra vínculos e contatos cadastrados. A consulta acompanha o mês/semana visível.
 - `/workspace/drive`: pastas, arquivos em grade ou lista e painel de detalhes e conferência. A navegação e os uploads em subpastas são limitados à pasta vinculada ao projeto.
-- `/workspace/meet`: entrada por código ou link válido do Google Meet, próximas reuniões e reuniões anteriores.
+- `/workspace/meet`: entrada por código/link, próximas reuniões e anteriores já existentes no Google. Oferece seleção de agenda e período (padrão: últimos/próximos 90 dias, ajustável até 370 dias por consulta). Abre sem selecionar automaticamente o primeiro cliente.
 
 O menu de todas as equipes oferece uma barra fixa com as quatro ferramentas, inclusive no celular. As entradas com contexto aparecem nos seguintes pontos:
 
@@ -27,6 +27,18 @@ Os links antigos `/workspace/clientes/:cnpj` continuam funcionando. Endereços d
 - Histórico: atividades aparecem no Workspace e na linha do tempo da ficha. Conversas e eventos ficam privados ao titular; a conferência documental é compartilhada com quem tem acesso ao cliente, respeitando também as permissões do Drive.
 
 Editores completos de Docs/Sheets/Slides e a chamada abrem no Google. Esta entrega não administra grupos, não altera compartilhamentos no Drive e não importa toda a caixa postal. Perfis de consulta não enviam mensagens/convites nem alteram documentos. A carteira e as permissões seguem o CRM atual.
+
+## Sincronização de reuniões existentes
+
+A listagem consulta `events.list` na conta do próprio usuário, com intervalo explícito, recorrências expandidas em ocorrências, cancelamentos excluídos e paginação. As alterações do Google aparecem ao abrir a ferramenta, atualizar manualmente, retornar à janela ou a cada minuto enquanto a página está visível. Não há cópia integral do calendário nem dependência de um vínculo local para exibir compromissos. O indicador “Consultado no Google” registra uma consulta bem-sucedida; erros limpam os resultados e não reutilizam metadados locais como evidência de acesso atual.
+
+“Minha agenda Google” permite consultar a conta sem vínculo com cliente. Agendas compartilhadas só aparecem quando o próprio Google concede leitura de eventos; acesso apenas a livre/ocupado não permite buscar detalhes. Eventos privados de agendas com leitura limitada são reduzidos a horário ocupado, sem título, pauta, participantes ou Meet. Nenhum token de colega é usado para compor a agenda pessoal.
+
+Na visualização por cliente, reuniões externas são encontradas por e-mail exato dos participantes/organizador nos contatos atuais do CRM. O nome do cliente na descrição não é evidência de vínculo. Eventos criados pela Projete para outro projeto não são reassociados automaticamente. Reuniões externas aparecem como “Encontrada no Google · sem vínculo com o projeto”; o usuário escolhe “Vincular a este projeto” após conferir. Essa ação grava somente o vínculo e histórico privados na Projete, preserva resultados já registrados e não recria eventos nem reenvia convites. Não é inferida a realização da reunião a partir da resposta ao convite.
+
+A consulta usa páginas de cem eventos, mantém o cursor opaco do Google e mostra “Carregar mais” mesmo quando uma página não contém reuniões do cliente ou Meet. Uma listagem parcial nunca é apresentada como completa. Meet mostra compromissos com link Google Meet (inclusive links legados na pauta/local) ou criação de conferência pendente. Chamadas instantâneas sem evento na Agenda e artefatos do Meet, como gravações/transcrições, não fazem parte desta listagem.
+
+Rotas: `GET /api/workspace/calendar` (agenda pessoal, sem exigir acesso a um cliente); `GET /api/workspace/clients/:cnpj?view=events` (mesma fonte, filtrada pelo cliente/projeto e protegida pelo CRM); `POST ... action=link_meeting` (vínculo explícito). As respostas têm cache privado, conferem usuário ativo e preservam o isolamento por identidade Google. Não exige novos escopos OAuth, migração ou variáveis de ambiente. A agenda da equipe mantém sua regra de reuniões explicitamente vinculadas e não recebe pautas nem listas pessoais de participantes.
 
 ## Agenda Comercial da Equipe
 

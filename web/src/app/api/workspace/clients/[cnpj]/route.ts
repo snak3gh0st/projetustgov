@@ -8,6 +8,7 @@ import { googleReadiness } from '@/lib/workspace/config'
 export const dynamic='force-dynamic'
 export const maxDuration=120
 const identifier=z.string().regex(/^[A-Za-z0-9_@.\-]{1,300}$/)
+const calendarIdentifier=z.string().regex(/^[A-Za-z0-9_@.+#\-]{1,300}$/)
 const uuid=z.string().uuid()
 const text=(max:number)=>z.string().trim().min(1).max(max)
 const selection=z.object({projectKind:z.enum(['cliente','comercial','convenio']).default('cliente'),projectKey:z.string().max(60).default('')})
@@ -29,11 +30,12 @@ export async function GET(request:NextRequest,{params}:{params:{cnpj:string}}){
       case 'calendars':await service.connected();result={items:await google.calendars()};break
       case 'availability':{
         await service.connected()
-        const p=z.object({calendarId:identifier,start:z.string().datetime({offset:true}),end:z.string().datetime({offset:true})}).parse(query)
+        const p=z.object({calendarId:calendarIdentifier,start:z.string().datetime({offset:true}),end:z.string().datetime({offset:true})}).parse(query)
         if(Date.parse(p.end)<=Date.parse(p.start)||Date.parse(p.end)-Date.parse(p.start)>86400000)throw new WorkspaceError('Informe um intervalo de até 24 horas.')
         result=await google.availability(p.calendarId,p.start,p.end);break
       }
-      case 'events':result=await service.meetings(key);break
+      case 'events':result=await service.syncedMeetings(key,z.object({calendarId:z.string().max(300).optional(),start:z.string().max(40).optional(),end:z.string().max(40).optional(),pageToken:z.string().max(2000).optional()}).parse(query));break
+      case 'read_calendars':await service.connected();result={items:await google.calendars('reader')};break
       case 'history':{const context=await store.context(key);result={items:await store.history(context.id,actor.userId)};break}
       case 'client_history':result={items:await store.rows(`SELECT a.id,a.action,a.summary,a.created_at,u.nome actor_name,c.project_kind,c.project_key
         FROM workspace_activity a JOIN workspace_contexts c ON c.id=a.context_id JOIN users u ON u.id=a.actor_id
@@ -57,11 +59,12 @@ export async function POST(request:NextRequest,{params}:{params:{cnpj:string}}){
       case 'register_document':{const p=z.object({fileId:identifier,typeLabel:text(100)}).parse(raw);result=await service.registerDocument(key,p.fileId,p.typeLabel);break}
       case 'review_document':result=await service.reviewDocument(key,z.object({id:uuid,status:z.enum(['review','approved','rejected']),version:text(100),note:text(2000)}).parse(raw));break
       case 'save_attachment':result=await service.saveAttachment(key,z.object({threadId:identifier,messageId:identifier,attachmentId:identifier,typeLabel:text(100)}).merge(requestId).parse(raw));break
-      case 'create_meeting':result=await service.meeting(key,z.object({calendarId:identifier,title:text(200),description:z.string().max(5000).default(''),
+      case 'create_meeting':result=await service.meeting(key,z.object({calendarId:calendarIdentifier,title:text(200),description:z.string().max(5000).default(''),
         start:z.string().datetime({offset:true}),end:z.string().datetime({offset:true}),attendees:z.array(z.string().email()).min(1).max(30),timeZone:z.string().max(100).default('America/Sao_Paulo')}).merge(requestId).parse(raw));break
       case 'record_meeting_outcome':result=await service.recordMeetingOutcome(key,z.object({meetingId:uuid,
         status:z.enum(['pending','completed','rescheduled','cancelled','no_show']),note:z.string().trim().max(2000).default(''),
         version:z.number().int().min(0).max(1000000)}).merge(requestId).parse(raw));break
+      case 'link_meeting':result=await service.linkMeeting(key,z.object({calendarId:z.string().max(300),eventId:identifier}).merge(requestId).parse(raw));break
       default:throw new WorkspaceError('Ação Workspace desconhecida.')
     }
     return NextResponse.json(result,{headers:PRIVATE_HEADERS})

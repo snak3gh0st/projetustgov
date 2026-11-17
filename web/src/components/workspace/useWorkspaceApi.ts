@@ -5,8 +5,11 @@ export default function useWorkspaceApi(cnpj:string,selection:string,onChange:()
   return useMemo<WorkspaceApi>(()=>{
     const [projectKind,projectKey='']=selection.split(':'),base=`/api/workspace/clients/${encodeURIComponent(cnpj)}`
     return {
-      get:(view,params={})=>request(`${base}?${new URLSearchParams({projectKind,projectKey,view,...params})}`),
+      get:(view,params={})=>!cnpj&&['events','read_calendars'].includes(view)
+        ?request(`/api/workspace/calendar?${new URLSearchParams({view:view==='read_calendars'?'calendars':view,...params})}`)
+        :request(`${base}?${new URLSearchParams({projectKind,projectKey,view,...params})}`),
       async mutate(action,values){
+        if(!cnpj)throw new RequestError('Selecione um cliente e projeto para vincular ou criar uma reunião.')
         const operation=await operationId(`${cnpj}:${selection}:${action}`,values)
         try{const result=await request(base,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...values,action,projectKind,projectKey,requestId:operation.id})});operation.clear();onChange();return result}
         catch(e){if(e instanceof RequestError&&!e.uncertain&&e.status!==409)operation.clear();throw e}

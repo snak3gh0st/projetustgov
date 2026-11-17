@@ -1,4 +1,4 @@
-import { WorkspaceError, emailAddress, googleId, safeGoogleUrl, type GoogleFile } from './domain.ts'
+import { WorkspaceError, emailAddress, googleId, googleCalendarId, safeGoogleUrl, type GoogleFile } from './domain.ts'
 
 type Row=Record<string,any>
 type Fetcher=typeof fetch
@@ -76,16 +76,22 @@ export class GoogleApi {
     if(typeof data.id!=='string'||typeof data.threadId!=='string')throw new WorkspaceError('Envio sem confirmação. Confira a pasta Enviados no Gmail.',502,true)
     return{id:data.id,threadId:data.threadId}
   }
-  async calendars(){
+  async calendars(minAccessRole:'writer'|'reader'='writer'){
     const result:Row[]=[];let pageToken=''
     for(let i=0;i<20;i++){
-      const r=await this.request('calendar','/users/me/calendarList',{query:{minAccessRole:'writer',maxResults:'100',...(pageToken?{pageToken}:{})}})
+      const r=await this.request('calendar','/users/me/calendarList',{query:{minAccessRole,maxResults:'100',...(pageToken?{pageToken}:{})}})
       result.push(...(r.items??[]));pageToken=r.nextPageToken??'';if(!pageToken)return result
     }
     throw new WorkspaceError('Há calendários demais nesta conta para carregar de uma vez.',422)
   }
+  async events(calendarId:string,start:string,end:string,pageToken=''){
+    const result=await this.request('calendar',`/calendars/${encodeURIComponent(googleCalendarId(calendarId))}/events`,{query:{timeMin:start,timeMax:end,
+      singleEvents:'true',orderBy:'startTime',showDeleted:'false',maxResults:'100',...(pageToken?{pageToken}:{})}})
+    if(!Array.isArray(result.items)||result.nextPageToken&&typeof result.nextPageToken!=='string')throw new WorkspaceError('A Agenda Google retornou uma listagem inválida.',502)
+    return result
+  }
   async availability(calendarId:string,start:string,end:string){
-    return this.request('calendar','/freeBusy',{method:'POST',body:{timeMin:start,timeMax:end,items:[{id:googleId(calendarId)}]}})
+    return this.request('calendar','/freeBusy',{method:'POST',body:{timeMin:start,timeMax:end,items:[{id:googleCalendarId(calendarId)}]}})
   }
   async createMeeting(input:{requestId:string;calendarId:string;title:string;description:string;start:string;end:string;attendees:string[];contextId:string}){
     const id=`p${input.requestId.replaceAll('-','')}`
@@ -94,7 +100,7 @@ export class GoogleApi {
       extendedProperties:{private:{projeteContext:input.contextId,projeteOperation:input.requestId}},
       conferenceData:{createRequest:{requestId:input.requestId,conferenceSolutionKey:{type:'hangoutsMeet'}}}}
     let data:Row
-    try{data=await this.request('calendar',`/calendars/${encodeURIComponent(googleId(input.calendarId))}/events`,{method:'POST',query:{conferenceDataVersion:'1',sendUpdates:'all'},body,mutation:true})}
+    try{data=await this.request('calendar',`/calendars/${encodeURIComponent(googleCalendarId(input.calendarId))}/events`,{method:'POST',query:{conferenceDataVersion:'1',sendUpdates:'all'},body,mutation:true})}
     catch(e){
       if(!(e instanceof WorkspaceError&&e.status===409))throw e
       try{data=await this.event(input.calendarId,id)}catch{throw new WorkspaceError('O evento pode já existir. Confira a agenda antes de criar outra reunião.',502,true)}
@@ -103,7 +109,7 @@ export class GoogleApi {
     if(typeof data.id!=='string')throw new WorkspaceError('O Google não confirmou o evento. Confira a agenda.',502,true)
     return data
   }
-  async event(calendarId:string,id:string){return this.request('calendar',`/calendars/${encodeURIComponent(googleId(calendarId))}/events/${googleId(id)}`)}
+  async event(calendarId:string,id:string){return this.request('calendar',`/calendars/${encodeURIComponent(googleCalendarId(calendarId))}/events/${googleId(id)}`)}
 }
 
 function oneLine(s:string){if(/[\r\n]/.test(s))throw new WorkspaceError('Cabeçalho de e-mail inválido.');return s}
@@ -152,8 +158,13 @@ function htmlToText(html:string){
       return Number.isFinite(number)&&number>0&&number<=0x10ffff?String.fromCodePoint(number):''
     }).replace(/[\t ]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim()
 }
-export function eventView(event:Row,calendarId:string){
-  const meet=event.hangoutLink??event.conferenceData?.entryPoints?.find((p:Row)=>p.entryPointType==='video')?.uri
-  return{id:event.id,calendarId,title:event.summary??'Reunião',start:event.start?.dateTime??event.start?.date,end:event.end?.dateTime??event.end?.date,
-    status:event.status??'confirmed',meetUrl:safeGoogleUrl(meet),url:safeGoogleUrl(event.htmlLink),conferenceStatus:event.conferenceData?.createRequest?.status?.statusCode??null}
+export function eventView(event:Row,calendarId:string,readPrivate=true){
+  const redacted=!readPrivate&&['private','confidential'].includes(event.visibility)
+  const candidates=[event.hangoutLink,...(event.conferenceData?.entryPoints??[]).filter((p:Row)=>p.entryPointType==='video').map((p:Row)=>p.uri),event.location,event.description]
+  const meet=redacted?null:candidates.map(v=>typeof v==='string'?v.match(/https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}\b/i)?.[0]:null).find(Boolean)
+  return{id:event.id,calendarId,title:redacted?'Ocupado':event.summary??'Reunião',start:event.start?.dateTime??event.start?.date,end:event.end?.dateTime??event.end?.date,
+    status:event.status??'confirmed',meetUrl:safeGoogleUrl(meet),url:redacted?null:safeGoogleUrl(event.htmlLink),conferenceStatus:event.conferenceData?.createRequest?.status?.statusCode??null,
+    ...(redacted?{redacted:true,description:'',location:'',attendees:[],organizer:null}:{redacted:false,description:String(event.description??'').replace(/<br\s*\/?\s*>/gi,'\n').replace(/<[^>]*>/g,'').slice(0,10000),location:String(event.location??'').slice(0,2000),
+      attendees:(event.attendees??[]).slice(0,100).map((a:Row)=>({email:String(a.email??''),name:String(a.displayName??''),responseStatus:a.responseStatus??'needsAction'})),
+      organizer:event.organizer?{email:String(event.organizer.email??''),name:String(event.organizer.displayName??'')}:null})}
 }

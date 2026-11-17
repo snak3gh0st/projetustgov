@@ -9,6 +9,7 @@ const scopes=['openid','email','profile',...['gmail.readonly','gmail.send','cale
 const folder={id:'fixture-folder',name:'Cliente Alfa · Documentos',mimeType:'application/vnd.google-apps.folder',capabilities:{canAddChildren:true},webViewLink:'https://drive.google.com/drive/folders/fixture-folder'}
 const file={id:'fixture-document',name:'Contrato de prestação de serviços.pdf',mimeType:'application/pdf',version:'1',parents:[folder.id],webViewLink:'https://drive.google.com/file/d/fixture-document/view'}
 const files=new Map([[folder.id,folder],[file.id,file]]),events=new Map()
+events.set('existing-google-event',{id:'existing-google-event',summary:'Reunião criada antes no Google',description:'Pauta existente da reunião',start:{dateTime:'2026-11-18T14:00:00-03:00'},end:{dateTime:'2026-11-18T15:00:00-03:00'},hangoutLink:'https://meet.google.com/def-ghij-klm',attendees:[{email:'client@example.test',responseStatus:'accepted'}],organizer:{email:'alice@projetus.org'},htmlLink:'https://calendar.google.com/calendar/event?eid=existing-google-event'})
 files.set('fixture-subfolder',{id:'fixture-subfolder',name:'Contratos',mimeType:folder.mimeType,parents:[folder.id],capabilities:{canAddChildren:true}})
 files.set('fixture-sheet',{id:'fixture-sheet',name:'Controle de entregas',mimeType:'application/vnd.google-apps.spreadsheet',version:'1',parents:[folder.id],webViewLink:'https://docs.google.com/spreadsheets/d/fixture-sheet/edit'})
 files.set('fixture-nested',{id:'fixture-nested',name:'Termo de referência.pdf',mimeType:'application/pdf',version:'1',parents:['fixture-subfolder']})
@@ -37,6 +38,10 @@ globalThis.fetch=async(input,init)=>{
   if(path.endsWith('/freeBusy'))return Response.json({calendars:{primary:{busy:[]}}})
   if(path.endsWith('/events')&&init?.method==='POST'){
     const event=JSON.parse(String(init.body));event.hangoutLink='https://meet.google.com/abc-defg-hij';event.htmlLink='https://calendar.google.com/calendar/event?eid=fixture';events.set(event.id,event);return Response.json(event)
+  }
+  if(path.endsWith('/events')){
+    const from=Date.parse(url.searchParams.get('timeMin')),to=Date.parse(url.searchParams.get('timeMax'))
+    return Response.json({items:Array.from(events.values()).filter(e=>e.status!=='cancelled'&&Date.parse(e.start?.dateTime)<to&&Date.parse(e.end?.dateTime)>from)})
   }
   if(path.includes('/events/'))return events.has(path.split('/').at(-1))?Response.json(events.get(path.split('/').at(-1))):new Response('',{status:404})
   if(path.endsWith('/files')&&init?.method==='POST'){
