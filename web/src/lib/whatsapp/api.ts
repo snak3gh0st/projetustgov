@@ -5,12 +5,13 @@ import { getApiSession } from '@/lib/dal'
 import { query } from '@/lib/db'
 import { canUseWhatsapp, conversationScopeSql } from './access'
 import { whatsappConfig, type WhatsappConfig } from './evolution'
+import { whatsappChannels } from './channels'
 
 type Session = NonNullable<Awaited<ReturnType<typeof getApiSession>>>
 
 /** Sessão + canal configurado + papel que usa WhatsApp. Devolve a resposta de erro pronta quando falha. */
-export async function whatsappGuard(): Promise<{ session: Session; cfg: WhatsappConfig } | NextResponse> {
-  const cfg = whatsappConfig()
+export async function whatsappGuard(request?: Request): Promise<{ session: Session; cfg: WhatsappConfig } | NextResponse> {
+  const cfg = whatsappConfig(request ? new URL(request.url).searchParams.get('canal') ?? 'qr' : 'qr')
   if (!cfg) return NextResponse.json({ error: 'WhatsApp não configurado' }, { status: 404 })
   const session = await getApiSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -20,6 +21,7 @@ export async function whatsappGuard(): Promise<{ session: Session; cfg: Whatsapp
 
 export interface ConversaRow {
   id: number
+  instancia: string
   telefone: string
   jid: string
   lid: string | null
@@ -45,7 +47,7 @@ const LEAD_DO_CNPJ = `REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = wc.lead_cnpj`
 
 /** SELECT de conversas com nome do lead, donos e atendente. $1 = instância, $2 = usuário (escopo). */
 export const CONVERSA_SELECT = `
-  SELECT wc.id, wc.telefone, wc.jid, wc.lid, wc.nome_contato, wc.created_at, wc.lead_cnpj, wc.atendente_id, wc.arquivada_em, wc.historico_ate,
+  SELECT wc.id, wc.instancia, wc.telefone, wc.jid, wc.lid, wc.nome_contato, wc.created_at, wc.lead_cnpj, wc.atendente_id, wc.arquivada_em, wc.historico_ate,
          wc.ultima_recebida_em, wc.ultima_enviada_em, wc.ultima_mensagem_em, wc.ultima_previa, wc.nao_lidas,
          ARRAY(
            SELECT DISTINCT COALESCE(e.nome, ce.label_id)
@@ -76,8 +78,8 @@ export async function conversaVisivel(idBruto: number | string, session: Session
   const id = Number(idBruto)
   if (!Number.isSafeInteger(id) || id <= 0) return null
   const rows = await query<ConversaRow>(
-    `${CONVERSA_SELECT} WHERE wc.instancia = $1 AND wc.id = $3 AND ${scopeWhere(session.role)}`,
-    [cfg.instance, session.userId, id]
+    `${CONVERSA_SELECT} WHERE wc.instancia = ANY($1::text[]) AND wc.id = $3 AND ${scopeWhere(session.role)}`,
+    [whatsappChannels().map((c) => c.instance), session.userId, id]
   )
   return rows[0] ?? null
 }

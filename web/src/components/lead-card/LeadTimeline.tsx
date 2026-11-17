@@ -386,7 +386,7 @@ export default function LeadTimeline({ cnpj, canWriteNotes, refreshKey, cnpjDigi
               tabs={[{ id: 'nota', label: 'Nota' }, { id: 'whatsapp', label: 'WhatsApp' }]}
             />
           )}
-          {modoAtual === 'whatsapp' && estado && estado !== 'conectado' && <AvisoDesconectado />}
+          {modoAtual === 'whatsapp' && estado && estado !== 'conectado' && <AvisoDesconectado estado={estado} />}
           <textarea
             aria-label={modoAtual === 'whatsapp' ? 'Mensagem de WhatsApp' : 'Nova nota'}
             rows={2}

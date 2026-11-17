@@ -123,3 +123,13 @@ test('a label association without chat or with an unknown type is ignored', () =
   assert.equal(parseWebhook({ event: 'labels.association', instance: 'consultorias', data: { type: 'edit', chatId: 'x@lid', labelId: '4' } })[0].kind, 'ignorado')
   assert.equal(parseWebhook({ event: 'labels.association', instance: 'consultorias', data: { type: 'add', labelId: '4' } })[0].kind, 'ignorado')
 })
+
+test('official SEND_MESSAGE echoes preserve instance and wamid', () => {
+  const [ev] = parseWebhook({ event: 'send.message', instance: 'official-test', data: { key: key({ id: 'wamid.test', fromMe: true }), message: { conversation: 'Resposta' }, messageTimestamp: 1 } })
+  assert.equal(ev.kind, 'mensagem')
+  if (ev.kind === 'mensagem') { assert.equal(ev.instancia, 'official-test'); assert.equal(ev.waId, 'wamid.test'); assert.equal(ev.fromMe, true) }
+})
+test('terminal logout and connection reason codes are retained without raw secrets', () => {
+  assert.deepEqual(parseWebhook({ event: 'status.instance', instance: 'consultorias', data: { status: 'closed', disconnectionReasonCode: 401, disconnectionObject: 'sensitive' } }), [{ kind: 'conexao', instancia: 'consultorias', estado: 'desconectado', codigo: 401 }])
+  assert.deepEqual(parseWebhook({ event: 'connection.update', instance: 'consultorias', data: { state: 'close', statusReason: 408 } }), [{ kind: 'conexao', instancia: 'consultorias', estado: 'desconectado', codigo: 408 }])
+})

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { aguardandoSql, seesAllConversations } from '@/lib/whatsapp/access'
+import { whatsappChannels } from '@/lib/whatsapp/channels'
 import { whatsappGuard } from '@/lib/whatsapp/api'
 
 export const dynamic = 'force-dynamic'
@@ -16,7 +17,7 @@ export async function GET() {
     `WITH pendentes AS (
        SELECT wc.id, wc.ultima_recebida_em, wc.atendente_id, wc.lead_cnpj
        FROM whatsapp_conversas wc
-       WHERE wc.instancia = $1 AND wc.arquivada_em IS NULL AND ${aguardandoSql('wc')}
+       WHERE wc.instancia = ANY($1::text[]) AND wc.arquivada_em IS NULL AND ${aguardandoSql('wc')}
      ),
      responsaveis AS (
        SELECT p.id, p.ultima_recebida_em, p.atendente_id AS user_id FROM pendentes p WHERE p.atendente_id IS NOT NULL
@@ -28,12 +29,12 @@ export async function GET() {
      SELECT r.user_id, u.nome, COUNT(DISTINCT r.id)::int AS aguardando, MIN(r.ultima_recebida_em) AS mais_antiga
      FROM responsaveis r JOIN users u ON u.id = r.user_id
      GROUP BY r.user_id, u.nome ORDER BY aguardando DESC, u.nome`,
-    [guard.cfg.instance]
+    [whatsappChannels().map((c) => c.instance)]
   )
   const [aberto] = await query<{ total: number }>(
     `SELECT COUNT(*)::int AS total FROM whatsapp_conversas
-     WHERE instancia = $1 AND lead_cnpj IS NULL AND atendente_id IS NULL AND arquivada_em IS NULL`,
-    [guard.cfg.instance]
+     WHERE instancia = ANY($1::text[]) AND lead_cnpj IS NULL AND atendente_id IS NULL AND arquivada_em IS NULL`,
+    [whatsappChannels().map((c) => c.instance)]
   )
   return NextResponse.json({ porConsultor, emAberto: aberto?.total ?? 0 })
 }

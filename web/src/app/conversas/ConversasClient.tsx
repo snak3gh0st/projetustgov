@@ -18,6 +18,7 @@ import { juntarMensagens, rotuloDia } from '@/lib/whatsapp/janela'
 import { conversaNova } from '@/lib/whatsapp/access'
 
 interface Conversa {
+  canal?: string
   id: number
   telefone: string
   nome_contato: string | null
@@ -153,7 +154,7 @@ function PainelLead({ c, gestao, atendentes, onChange }: {
   )
 }
 
-export default function ConversasClient({ gestao }: { gestao: boolean }) {
+export default function ConversasClient({ gestao, canais, modelos }: { gestao: boolean; canais: { id: string; nome: string }[]; modelos: { name: string; language: string }[] }) {
   const toast = useToast()
   const params = useSearchParams()
   const [filtro, setFiltro] = useState<Filtro>(() => {
@@ -161,6 +162,9 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
     return pedido && (gestao ? FILTROS_GESTAO : FILTROS_CONSULTOR).includes(pedido)
       ? pedido : gestao ? 'todas' : 'minhas'
   })
+  const [canal, setCanal] = useState(params.get('canal') === 'oficial' && canais.some((c) => c.id === 'oficial') ? 'oficial' : 'qr')
+  const [modelo, setModelo] = useState('')
+  const listaRequest = useRef(0)
   const [busca, setBusca] = useState('')
   const [conversas, setConversas] = useState<Conversa[] | null>(null)
   const [estado, setEstado] = useState<string | null>(null)
@@ -187,15 +191,17 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
   const novoCnpj = params.get('cnpj')
 
   const carregarLista = useCallback(async () => {
-    const q = new URLSearchParams({ filtro })
+    const requestId = ++listaRequest.current
+    const q = new URLSearchParams({ filtro, canal })
     if (busca.trim()) q.set('busca', busca.trim())
     const r = await fetch(`/api/whatsapp/conversas?${q}`, { cache: 'no-store' }).catch(() => null)
     if (r?.ok) {
       const d = await r.json()
+      if (requestId !== listaRequest.current) return
       setConversas(d.conversas)
       setEstado(d.estado ?? null)
-    } else setConversas((prev) => prev ?? [])
-  }, [filtro, busca])
+    } else if (requestId === listaRequest.current) setConversas((prev) => prev ?? [])
+  }, [filtro, busca, canal])
 
   // Página mais recente. Ao abrir, substitui; na atualização, junta às já carregadas (as antigas continuam).
   const carregarConversa = useCallback(async (id: number, abrir = false) => {
@@ -205,6 +211,7 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
     // Conferido depois do corpo chegar: a pessoa pode ter trocado de conversa enquanto ele baixava.
     if (!d || abertaRef.current !== id) return
     setAtiva(d.conversa)
+    if (d.conversa.canal) setCanal(d.conversa.canal)
     if (abrir) {
       rolagemRef.current = { modo: 'fim' }
       setMensagens(d.mensagens)
@@ -249,11 +256,11 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
   // Abrir pelo card do lead: usa a conversa do telefone, se já existir.
   useEffect(() => {
     if (!novoTelefone || ativaId) return
-    fetch(`/api/whatsapp/conversas?filtro=todas&busca=${encodeURIComponent(novoTelefone.replace(/\D/g, '').slice(-8))}`)
+    fetch(`/api/whatsapp/conversas?canal=${canal}&filtro=todas&busca=${encodeURIComponent(novoTelefone.replace(/\D/g, '').slice(-8))}`)
       .then((r) => (r.ok ? r.json() : { conversas: [] }))
       .then((d) => { const c = (d.conversas as Conversa[]).find((x) => x.telefone.endsWith(novoTelefone.replace(/\D/g, '').slice(-8))); if (c) setAtivaId(c.id) })
       .catch(() => {})
-  }, [novoTelefone, ativaId])
+  }, [novoTelefone, ativaId, canal])
 
   useEffect(() => {
     abertaRef.current = ativaId
@@ -335,10 +342,10 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
   // Conversa escolhida que ainda não carregou: espera (senão o envio iria pelo telefone da URL).
   const carregando = () => { if (ativaId && !ativa) { toast.error('Espere a conversa carregar e envie de novo.'); return true } return false }
 
-  async function enviar(texto: string): Promise<boolean> {
+  async function enviar(texto: string, template?: string): Promise<boolean> {
     if (carregando()) return false
-    const body = ativa ? { conversa_id: ativa.id, texto } : { telefone: novoTelefone, cnpj: novoCnpj, texto }
-    const r = await fetch('/api/whatsapp/enviar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null)
+    const body = ativa ? { conversa_id: ativa.id, texto, template } : { telefone: novoTelefone, cnpj: novoCnpj, texto, template }
+    const r = await fetch(`/api/whatsapp/enviar?canal=${canal}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null)
     const d = r ? await r.json().catch(() => ({})) : {}
     if (d?.conversa_id && !ativaId) setAtivaId(Number(d.conversa_id))
     else if (ativaId) { noFimRef.current = true; await carregarConversa(ativaId) }
@@ -355,7 +362,7 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
     form.set('arquivo', arquivo)
     if (opts.voz) form.set('voz', '1')
     if (opts.legenda) form.set('legenda', opts.legenda)
-    const r = await fetch('/api/whatsapp/enviar', { method: 'POST', body: form }).catch(() => null)
+    const r = await fetch(`/api/whatsapp/enviar?canal=${canal}`, { method: 'POST', body: form }).catch(() => null)
     const d = r ? await r.json().catch(() => ({})) : {}
     if (d?.conversa_id && !ativaId) setAtivaId(Number(d.conversa_id))
     else if (ativaId) { noFimRef.current = true; await carregarConversa(ativaId) }
@@ -387,7 +394,8 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
         <h1 className="font-heading text-2xl font-semibold text-ink">WhatsApp</h1>
         {gestao && <Link href="/conversas/conexao" className={buttonClass('secondary', 'sm')}>Conexão do WhatsApp</Link>}
       </div>
-      {estado && estado !== 'conectado' && <AvisoDesconectado gestao={gestao} />}
+      {canais.length > 1 && <label className="flex items-center gap-2 text-sm text-ink">Número de atendimento<select aria-label="Número de atendimento" className={selectClass} value={canal} onChange={(e) => { listaRequest.current++; setCanal(e.target.value); setAtivaId(null); setAtiva(null); setMensagens(null); setConversas(null); setEstado(null) }}>{canais.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label>}
+      {estado && estado !== 'conectado' && <AvisoDesconectado gestao={gestao} estado={estado} canal={canal} />}
 
       <div
         ref={gradeRef}
@@ -467,6 +475,7 @@ export default function ConversasClient({ gestao }: { gestao: boolean }) {
                 )}
               </div>
               {/* Uma caixa por conversa: anexo, voz e rascunho não passam para a próxima. */}
+              {canal === 'oficial' && <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 py-2 text-xs text-ink-2"><span>Fora das 24 horas, use um modelo aprovado.</span>{modelos.length > 0 ? <><select aria-label="Modelo aprovado" className={selectClass} value={modelo} onChange={(e) => setModelo(e.target.value)}><option value="">Escolher modelo</option>{modelos.map((m) => <option key={m.name} value={m.name}>{m.name} ({m.language})</option>)}</select><Button size="sm" disabled={!modelo} onClick={() => void enviar('', modelo)}>Enviar modelo</Button></> : <span>A gestão precisa configurar um modelo para iniciar conversas.</span>}</div>}
               <Composer key={ativaId ?? `novo-${novoTelefone}`} onSend={enviar} onSendArquivo={enviarArquivo} arquivoSolto={solto?.conversa === ativaId ? solto.arquivo : null} />
             </>
           ) : (

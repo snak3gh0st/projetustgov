@@ -1,79 +1,83 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import PageHeader from '@/components/ui/PageHeader'
 import Panel from '@/components/ui/Panel'
 import Button from '@/components/ui/Button'
+import type { EstadoConexao } from '@/lib/whatsapp/channels'
 
-type Estado = 'conectado' | 'conectando' | 'desconectado'
-
-const ESTADO_LABEL: Record<Estado, { texto: string; cor: string }> = {
-  conectado: { texto: 'Conectado', cor: 'bg-emerald-500' },
-  conectando: { texto: 'Conectando', cor: 'bg-amber-500' },
-  desconectado: { texto: 'Desconectado', cor: 'bg-red-500' },
+const LABEL: Record<EstadoConexao, string> = {
+  conectado: 'Conectado', conectando: 'Conectando', desconectado: 'Desconectado', indisponivel: 'Não foi possível verificar a conexão',
 }
 
-// Liga o número das consultorias ao PROJETE pelo QR code (gestão).
 export default function ConexaoClient() {
-  const [estado, setEstado] = useState<Estado | null>(null)
+  const params = useSearchParams()
+  const [canal, setCanal] = useState(params.get('canal') === 'oficial' ? 'oficial' : 'qr')
+  const [canais, setCanais] = useState<{ id: string; nome: string }[]>([])
+  const [estado, setEstado] = useState<EstadoConexao | null>(null)
   const [qr, setQr] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(false)
+  const busy = useRef(false)
+  const canalAtual = useRef(canal)
+  canalAtual.current = canal
 
   const atualizar = useCallback(async () => {
-    const r = await fetch('/api/whatsapp/conexao', { cache: 'no-store' }).catch(() => null)
-    const d = r?.ok ? await r.json() : null
-    setEstado(d?.estado ?? 'desconectado')
-    if (d?.estado === 'conectado') setQr(null)
-  }, [])
+    const r = await fetch(`/api/whatsapp/conexao?canal=${canal}`, { cache: 'no-store' }).catch(() => null)
+    const d = r?.ok ? await r.json().catch(() => null) : null
+    if (canalAtual.current !== canal) return
+    setEstado(d?.estado ?? 'indisponivel')
+    setQr(d?.qrBase64 ?? null)
+    if (d?.canais) setCanais(d.canais)
+  }, [canal])
 
   const conectar = useCallback(async () => {
+    if (busy.current || canal !== 'qr') return
+    busy.current = true
     setCarregando(true)
     setErro(null)
-    const r = await fetch('/api/whatsapp/conexao', { method: 'POST' }).catch(() => null)
-    const d = r ? await r.json().catch(() => null) : null
-    setCarregando(false)
-    if (!r?.ok) { setErro(d?.error ?? 'Não foi possível falar com o serviço do WhatsApp.'); return }
-    setEstado(d.estado)
-    setQr(d.qrBase64)
-  }, [])
+    try {
+      const r = await fetch('/api/whatsapp/conexao?canal=qr', { method: 'POST' }).catch(() => null)
+      const d = r ? await r.json().catch(() => null) : null
+      if (canalAtual.current !== 'qr') return
+      if (!r?.ok) { setErro(d?.error ?? 'Não foi possível falar com o serviço do WhatsApp.'); return }
+      setEstado(d.estado)
+      setQr(d.qrBase64)
+    } finally {
+      busy.current = false
+      setCarregando(false)
+    }
+  }, [canal])
 
-  useEffect(() => { void atualizar() }, [atualizar])
-  // O QR expira: renova a cada 20 s enquanto não conecta.
+  // Polling only observes the session and the QR emitted by Evolution. It never starts another socket.
   useEffect(() => {
-    if (!qr || estado === 'conectado') return
-    const t = window.setInterval(() => { void atualizar().then(() => void conectar()) }, 20_000)
-    return () => window.clearInterval(t)
-  }, [qr, estado, atualizar, conectar])
+    void atualizar()
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void atualizar() }, 5_000)
+    return () => window.clearInterval(timer)
+  }, [atualizar])
 
-  const info = estado ? ESTADO_LABEL[estado] : null
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      <Link href="/conversas" className="text-sm text-ink-3 hover:text-ink">Voltar para o WhatsApp</Link>
-      <PageHeader title="Conexão do WhatsApp" description="Número das consultorias ligado ao PROJETE." />
+      <Link href={`/conversas?canal=${canal}`} className="text-sm text-ink-3 hover:text-ink">Voltar para o WhatsApp</Link>
+      <PageHeader title="Conexão do WhatsApp" description="Acompanhe cada número de atendimento." />
+      {canais.length > 1 && <label className="block text-sm text-ink">Número<select aria-label="Número de atendimento" value={canal} onChange={(e) => { setCanal(e.target.value); setQr(null); setEstado(null); setErro(null) }} className="ml-2 rounded border border-line bg-surface p-2">{canais.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label>}
       <Panel>
-        <div className="space-y-4">
-          <p className="flex items-center gap-2 text-sm text-ink">
-            <span aria-hidden className={`h-2.5 w-2.5 rounded-full ${info?.cor ?? 'bg-line-strong'}`} />
-            {info?.texto ?? 'Verificando...'}
-          </p>
-          {estado !== 'conectado' && (
-            <>
-              <ol className="list-decimal space-y-1 pl-5 text-sm text-ink-2">
-                <li>No celular das consultorias, abra o WhatsApp e toque em Aparelhos conectados.</li>
-                <li>Toque em Conectar um aparelho e aponte a câmera para o código abaixo.</li>
-                <li>O celular continua funcionando normalmente depois de conectar.</li>
-              </ol>
-              {qr ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={qr} alt="QR code para conectar o WhatsApp" className="h-64 w-64 rounded-lg border border-line bg-white p-2" />
-              ) : (
-                <Button variant="primary" onClick={() => void conectar()} disabled={carregando}>{carregando ? 'Gerando código...' : 'Gerar QR code'}</Button>
-              )}
-            </>
-          )}
-          {erro && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{erro}</p>}
+        <div className="space-y-4 text-sm text-ink">
+          <p role="status">{estado ? canal === 'oficial' && estado === 'conectado' ? 'Canal configurado. A entrega é confirmada por mensagem.' : LABEL[estado] : 'Verificando...'}</p>
+          {canal === 'oficial' ? <p className="text-ink-2">Este número usa a API oficial. A gestão configura a conexão da Meta; não é necessário ler QR. Para iniciar conversas fora da janela de atendimento, use um modelo aprovado.</p> : estado !== 'conectado' && <>
+            <ol className="list-decimal space-y-1 pl-5 text-ink-2">
+              <li>No celular das consultorias, abra o WhatsApp e toque em Aparelhos conectados.</li>
+              <li>Toque em Conectar um aparelho e leia o código.</li>
+            </ol>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {qr ? <img src={qr} alt="QR code para conectar o WhatsApp" className="h-64 w-64 rounded-lg border border-line bg-white p-2" />
+              : estado === 'conectando' ? <p>Aguardando o código ou a confirmação do celular. Esta tela acompanha a tentativa em andamento.</p>
+                : <Button variant="primary" onClick={() => void conectar()} disabled={carregando || estado !== 'desconectado'}>{carregando ? 'Gerando código...' : 'Gerar QR code'}</Button>}
+          </>}
+          {estado === 'indisponivel' && <p className="text-ink-2">Uma falha na consulta não confirma que o número foi desconectado. Aguarde uma nova verificação.</p>}
+          {erro && <p role="alert" className="text-red-700 dark:text-red-300">{erro}</p>}
         </div>
       </Panel>
     </div>

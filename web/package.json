@@ -10,7 +10,8 @@
     "start": "next start",
     "test": "tsx --test 'src/**/*.test.ts' 'tests/*.test.mjs'",
     "lint": "next lint",
-    "backup": "node scripts/backup.mjs"
+    "backup": "node scripts/backup.mjs",
+    "test:whatsapp": "node --conditions=react-server --import tsx --test src/lib/whatsapp/*.test.ts tests/whatsapp-evolution.test.ts"
   },
   "dependencies": {
     "@auth/pg-adapter": "^1.11.1",

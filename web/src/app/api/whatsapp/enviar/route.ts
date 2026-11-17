@@ -4,8 +4,9 @@ import { canEditLeads, verifyLeadAccess } from '@/lib/dal'
 import { query } from '@/lib/db'
 import { SendLimiter, canManageConversations } from '@/lib/whatsapp/access'
 import { conversaVisivel, whatsappGuard } from '@/lib/whatsapp/api'
-import { sendMedia, sendText, sendVoice } from '@/lib/whatsapp/evolution'
+import { sendMedia, sendText, sendVoice, sendTemplate } from '@/lib/whatsapp/evolution'
 import { classificarArquivo } from '@/lib/whatsapp/midia'
+import { configForInstance, freeformAllowed, officialTemplates } from '@/lib/whatsapp/channels'
 import { canonicalPhone } from '@/lib/whatsapp/phone'
 import { cnpjsDoTelefone, recordMessage } from '@/lib/whatsapp/store'
 import type { MensagemTipo, MidiaInfo } from '@/lib/whatsapp/webhook'
@@ -23,9 +24,12 @@ type Envio =
 //   JSON { conversa_id?, telefone?, cnpj?, texto }
 //   multipart { conversa_id? | telefone + cnpj, arquivo, voz?: '1', legenda? } - foto, vídeo, documento ou mensagem de voz
 export async function POST(request: NextRequest) {
-  const guard = await whatsappGuard()
+  const guard = await whatsappGuard(request)
   if (guard instanceof NextResponse) return guard
-  const { session, cfg } = guard
+  const { session } = guard
+  let cfg = guard.cfg
+  let template: { name: string; language: string } | undefined
+  let lastInbound: string | null = null
   if (!canEditLeads(session.role)) return NextResponse.json({ error: 'Forbidden: read-only role' }, { status: 403 })
 
   let body: { conversa_id?: number; telefone?: string; cnpj?: string }
@@ -48,8 +52,10 @@ export async function POST(request: NextRequest) {
       midia: voz ? { mimetype: 'audio/ogg; codecs=opus', tamanho: arquivo.size } : { mimetype, fileName: nome, tamanho: arquivo.size },
     }
   } else {
-    const json = await request.json().catch(() => ({})) as { conversa_id?: number; telefone?: string; cnpj?: string; texto?: string }
-    const texto = (json.texto ?? '').trim()
+    const json = await request.json().catch(() => ({})) as { conversa_id?: number; telefone?: string; cnpj?: string; texto?: string; template?: string }
+    template = json.template ? officialTemplates().find((t) => t.name === json.template) : undefined
+    if (json.template && !template) return NextResponse.json({ error: 'Modelo não configurado.' }, { status: 400 })
+    const texto = template ? `Modelo aprovado: ${template.name}` : (json.texto ?? '').trim()
     if (!texto || texto.length > 4096) return NextResponse.json({ error: 'Escreva uma mensagem de até 4096 caracteres.' }, { status: 400 })
     body = json
     envio = { tipo: 'texto', texto }
@@ -63,6 +69,10 @@ export async function POST(request: NextRequest) {
   if (body.conversa_id) {
     const conversa = await conversaVisivel(Number(body.conversa_id), session, cfg)
     if (!conversa) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const channelConfig = configForInstance(conversa.instancia)
+    if (!channelConfig) return NextResponse.json({ error: 'Canal indisponível.' }, { status: 409 })
+    cfg = channelConfig
+    lastInbound = conversa.ultima_recebida_em
     // Conversa sem telefone (só o lid do WhatsApp) guarda o JID no lugar do telefone.
     destino = conversa.telefone.includes('@') ? null : canonicalPhone(conversa.telefone)
     jid = conversa.jid
@@ -78,8 +88,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     // Conversa que já existe segue o escopo de quem a vê (inclusive a ligada à mão pela gestão).
-    const [existente] = await query<{ id: number }>(`SELECT id FROM whatsapp_conversas WHERE instancia = $1 AND telefone = $2`, [cfg.instance, destino])
+    const [existente] = await query<{ id: number; ultima_recebida_em: string | null }>(`SELECT id, ultima_recebida_em FROM whatsapp_conversas WHERE instancia = $1 AND telefone = $2`, [cfg.instance, destino])
     if (existente) {
+      lastInbound = existente.ultima_recebida_em
       if (!(await conversaVisivel(existente.id, session, cfg))) {
         return NextResponse.json({ error: 'Essa conversa está com outra pessoa da equipe. Fale com a gestão.' }, { status: 403 })
       }
@@ -94,6 +105,11 @@ export async function POST(request: NextRequest) {
         ligarA = cnpj
       }
     }
+  }
+
+  if (template && cfg.channel !== 'oficial') return NextResponse.json({ error: 'Modelos são exclusivos do canal oficial.' }, { status: 400 })
+  if (cfg.channel === 'oficial' && !template && !freeformAllowed(lastInbound)) {
+    return NextResponse.json({ error: 'Para iniciar ou retomar pelo número oficial após 24 horas, envie um modelo aprovado pela Meta.', code: 'TEMPLATE_REQUIRED' }, { status: 409 })
   }
 
   if (!limiter.allow(session.userId)) {
@@ -114,15 +130,16 @@ export async function POST(request: NextRequest) {
 
   let waId: string
   try {
-    if (envio.tipo === 'texto') waId = (await sendText(numero, envio.texto)).waId
+    if (template) waId = (await sendTemplate(numero, template.name, template.language, cfg)).waId
+    else if (envio.tipo === 'texto') waId = (await sendText(numero, envio.texto, cfg)).waId
     else {
       const base64 = Buffer.from(await envio.arquivo.arrayBuffer()).toString('base64')
       waId = envio.mediatype === 'audio'
-        ? (await sendVoice(numero, base64)).waId
-        : (await sendMedia(numero, { mediatype: envio.mediatype, mimetype: envio.midia.mimetype!, caption: envio.legenda, fileName: envio.midia.fileName!, base64 })).waId
+        ? (await sendVoice(numero, base64, cfg)).waId
+        : (await sendMedia(numero, { mediatype: envio.mediatype, mimetype: envio.midia.mimetype!, caption: envio.legenda, fileName: envio.midia.fileName!, base64 }, cfg)).waId
     }
   } catch (error) {
-    console.error('[api/whatsapp/enviar] falhou:', error)
+    console.error('[api/whatsapp/enviar] falhou', { instancia: cfg.instance, tipo: error instanceof Error ? error.name : 'unknown' })
     // Fica registrada como não enviada, para a pessoa ver e tentar de novo.
     const falha = await recordMessage({ ...base, waId: `FALHA-${randomUUID()}` }, { origem: 'projete', autorId: session.userId, status: 'falhou' })
     await ligar(falha.conversaId)

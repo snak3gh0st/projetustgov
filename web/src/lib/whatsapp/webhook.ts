@@ -13,7 +13,7 @@ export type WebhookEvent =
       fromMe: boolean; texto: string | null; tipo: MensagemTipo; midia: MidiaInfo | null; enviadaEm: string
     }
   | { kind: 'status'; instancia: string; waId: string; status: 'enviada' | 'entregue' | 'lida' | 'falhou' }
-  | { kind: 'conexao'; instancia: string; estado: 'conectado' | 'conectando' | 'desconectado' }
+  | { kind: 'conexao'; instancia: string; estado: 'conectado' | 'conectando' | 'desconectado'; codigo?: number }
   | { kind: 'qrcode'; instancia: string; base64: string }
   | { kind: 'etiqueta'; instancia: string; chatJid: string; labelId: string; tipo: 'add' | 'remove' }
   | { kind: 'ignorado'; motivo: string }
@@ -97,6 +97,7 @@ export function parseWebhook(body: unknown): WebhookEvent[] {
   const data = body.data
 
   switch (event) {
+    case 'SEND_MESSAGE':
     case 'MESSAGES_UPSERT': {
       const list = Array.isArray(data) ? data : isObj(data) && Array.isArray(data.messages) ? data.messages : [data]
       return list.map((d) => parseMensagem(instancia, d))
@@ -112,7 +113,12 @@ export function parseWebhook(body: unknown): WebhookEvent[] {
     }
     case 'CONNECTION_UPDATE': {
       const estado = isObj(data) ? ESTADO[String(data.state)] : undefined
-      return [estado ? { kind: 'conexao', instancia, estado } : { kind: 'ignorado', motivo: 'conexão sem estado' }]
+      const codigo = isObj(data) && typeof data.statusReason === 'number' ? data.statusReason : undefined
+      return [estado ? { kind: 'conexao', instancia, estado, ...(codigo === undefined ? {} : { codigo }) } : { kind: 'ignorado', motivo: 'conexão sem estado' }]
+    }
+    case 'STATUS_INSTANCE': {
+      if (!isObj(data) || data.status !== 'closed') return [{ kind: 'ignorado', motivo: 'estado de instância desconhecido' }]
+      return [{ kind: 'conexao', instancia, estado: 'desconectado', ...(typeof data.disconnectionReasonCode === 'number' ? { codigo: data.disconnectionReasonCode } : {}) }]
     }
     case 'QRCODE_UPDATED': {
       const base64 = isObj(data) && isObj(data.qrcode) ? str(data.qrcode.base64) : null
