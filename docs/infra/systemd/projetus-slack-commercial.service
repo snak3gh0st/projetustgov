@@ -1,0 +1,11 @@
+[Unit]
+Description=Projete: avisos e resumo comercial no Slack
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/sigma-cron/run-slack-commercial.sh
+TimeoutStartSec=130
+StandardOutput=journal
+StandardError=journal

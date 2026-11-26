@@ -13,7 +13,7 @@ export interface CommercialActivityRow {
   movimentados: number; perdas: number; ligacoes_manuais: number
 }
 
-export async function commercialActivity(day: string, seller: string | null) {
+export async function commercialActivity(day: string, seller: string | null, through: Date | null = null) {
   if (!validActivityDate(day)) throw new Error('Data inválida')
   const [ready] = await query<{ events: boolean; workspace: boolean; whatsapp: boolean }>(`SELECT
     to_regclass('public.lead_events') IS NOT NULL AS events,
@@ -21,15 +21,16 @@ export async function commercialActivity(day: string, seller: string | null) {
     to_regclass('public.whatsapp_mensagens') IS NOT NULL AS whatsapp`)
   const instances = whatsappChannels().map((c) => c.instance)
   const range = (column: string) => `${column} >= $1::date::timestamp AT TIME ZONE 'America/Sao_Paulo'
-    AND ${column} < ($1::date + 1)::timestamp AT TIME ZONE 'America/Sao_Paulo'`
+    AND ${column} < LEAST(($1::date + 1)::timestamp AT TIME ZONE 'America/Sao_Paulo',
+      COALESCE($4::timestamptz, ($1::date + 1)::timestamp AT TIME ZONE 'America/Sao_Paulo'))`
   const empty = `SELECT NULL::uuid AS ator, NULL::text AS contato, NULL::text AS tipo WHERE FALSE`
   const wa = ready.whatsapp && instances.length ? `SELECT wm.autor_id AS ator,
-    COALESCE(wc.lead_cnpj, wc.telefone) AS contato, 'mensagem'::text AS tipo
+    COALESCE(NULLIF(REGEXP_REPLACE(wc.lead_cnpj, '[^0-9]', '', 'g'), ''), wc.telefone) AS contato, 'mensagem'::text AS tipo
     FROM whatsapp_mensagens wm JOIN whatsapp_conversas wc ON wc.id = wm.conversa_id
     WHERE wm.direcao = 'enviada' AND wm.origem = 'projete' AND wm.autor_id IS NOT NULL
       AND wm.status NOT IN ('falhou', 'enviando') AND wm.tipo <> 'reacao' AND wc.instancia = ANY($3::text[])
       AND ${range('wm.enviada_em')}` : empty
-  const mail = ready.workspace ? `SELECT a.actor_id AS ator, c.cnpj AS contato, 'email'::text AS tipo
+  const mail = ready.workspace ? `SELECT a.actor_id AS ator, REGEXP_REPLACE(c.cnpj, '[^0-9]', '', 'g') AS contato, 'email'::text AS tipo
     FROM workspace_activity a JOIN workspace_contexts c ON c.id = a.context_id
     WHERE a.action = 'email.sent' AND ${range('a.created_at')}` : empty
   const moves = ready.events ? `SELECT e.user_id AS ator, COUNT(DISTINCT e.lead_id)::int AS movimentados,
@@ -54,6 +55,6 @@ export async function commercialActivity(day: string, seller: string | null) {
     COALESCE(a.ligacoes_manuais, 0)::int AS ligacoes_manuais
   FROM users u LEFT JOIN atividade a ON a.ator = u.id LEFT JOIN movimentos m ON m.ator = u.id
   WHERE u.active AND u.role IN ('vendedor', 'coordenador', 'gestor', 'diretoria', 'admin')
-    AND ($2::uuid IS NULL OR u.id = $2::uuid) AND $3::text[] IS NOT NULL ORDER BY u.nome`, [day, seller, instances])
+    AND ($2::uuid IS NULL OR u.id = $2::uuid) AND $3::text[] IS NOT NULL ORDER BY u.nome`, [day, seller, instances, through])
   return { data: day, fuso: 'America/Sao_Paulo', voip_integrado: false, consultores: rows }
 }
