@@ -7,11 +7,8 @@ import {prepareWorkspaceDb,requireLocalTestDb,alice,clientA} from './workspace-f
 import {slackConfig} from '../src/lib/slack/config.ts'
 import {SlackStore} from '../src/lib/slack/store.ts'
 import {SlackClient} from '../src/lib/slack/client.ts'
-import {runSlackJob} from '../src/lib/slack/job.ts'
-import {commercialActivity} from '../src/lib/commercial-activity.ts'
-import {getPool} from '../src/lib/db.ts'
 const url=process.env.SLACK_TEST_DATABASE_URL,schema=`slack_${randomUUID().replaceAll('-','')}`
-let admin,pool
+let admin,pool,runSlackJob,commercialActivity,getPool
 const config=slackConfig({SLACK_COMMERCIAL_ENABLED:'true',SLACK_BOT_TOKEN:'xoxb-synthetic',SLACK_SIGNING_SECRET:'synthetic',SLACK_WORKSPACE_ID:'T00000001',SLACK_COMMERCIAL_CHANNEL_ID:'C00000001',SLACK_COMMERCIAL_REPORT_TIME:'18:00'})
 const message={text:'Synthetic test',blocks:[]},pause=async()=>{}
 const dbClient=async()=>{const c=await pool.connect();return{c,store:new SlackStore(c,config)}}
@@ -28,6 +25,9 @@ before(async()=>{
  admin=new pg.Pool({connectionString:url});await admin.query(`CREATE SCHEMA ${schema}`)
  const local=new URL(url);local.searchParams.set('options',`-c search_path=${schema},public`)
  process.env.DATABASE_URL=local.toString();process.env.DATABASE_SSL='disable'
+ ;({runSlackJob}=await import('../src/lib/slack/job.ts'))
+ ;({commercialActivity}=await import('../src/lib/commercial-activity.ts'))
+ ;({getPool}=await import('../src/lib/db.ts'))
  pool=new pg.Pool({connectionString:local.toString()});await prepareWorkspaceDb(pool)
  for(const col of ['codigo_programa','nome_programa','link_externo','orgao_concedente','qualificacao','parlamentar','valor_emenda','valor_global','valor_empenhado','valor_liberado','nr_convenio','objeto','modalidade','situacao','saldo_conta','status_contato_execucao','comissao_valor'])await pool.query(`ALTER TABLE vendedor_projetos ADD COLUMN IF NOT EXISTS ${col} text`)
  await pool.query('CREATE TABLE contact_notes(id bigserial PRIMARY KEY,lead_cnpj text,vendedor_id uuid,tipo text,created_at timestamptz DEFAULT now())')
