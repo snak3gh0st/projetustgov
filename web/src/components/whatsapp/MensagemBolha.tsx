@@ -1,6 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
+import type { MidiaInfo } from '@/lib/whatsapp/webhook'
+import { canonicalPhone } from '@/lib/whatsapp/phone'
 
 // Uma mensagem de WhatsApp: recebida à esquerda, enviada à direita, com origem, autor e status.
 // Foto, áudio e vídeo aparecem no balão; documento vira um cartão que baixa.
@@ -11,7 +14,8 @@ export interface MensagemView {
   origem: 'contato' | 'projete' | 'celular'
   texto: string | null
   tipo: string
-  midia: { mimetype?: string; fileName?: string; tamanho?: number; segundos?: number } | null
+  midia: MidiaInfo | null
+  reacoes?: { emoji: string; direcao: string }[]
   status: 'enviando' | 'enviada' | 'entregue' | 'lida' | 'falhou'
   enviada_em: string
   autor_nome: string | null
@@ -91,13 +95,13 @@ function Midia({ m }: { m: MensagemView }) {
   return <CartaoArquivo m={m} href={baixar} />
 }
 
-export function MensagemBolha({ m, onRetry, compact }: { m: MensagemView; onRetry?: (texto: string) => void; compact?: boolean }) {
+export function MensagemBolha({ m, onRetry, compact, canal = 'qr' }: { m: MensagemView; onRetry?: (texto: string) => void; compact?: boolean; canal?: string }) {
   const enviada = m.direcao === 'enviada'
   // Na janela de conversa o dia vem no separador; no card do lead, que mistura notas, vai junto.
   const hora = new Date(m.enviada_em).toLocaleString('pt-BR', {
     ...(compact ? { day: '2-digit', month: '2-digit' } : {}), hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
   })
-  const temMidia = m.tipo !== 'texto'
+  const temMidia = ['imagem', 'audio', 'video', 'documento', 'figurinha'].includes(m.tipo)
   return (
     <div className={`flex ${enviada ? 'justify-end' : 'justify-start'}`}>
       <div
@@ -109,8 +113,19 @@ export function MensagemBolha({ m, onRetry, compact }: { m: MensagemView; onRetr
               : 'bg-surface text-ink ring-1 ring-inset ring-line'
         }`}
       >
+        {m.midia?.resposta && <blockquote className="mb-2 border-l-2 border-emerald-600 pl-2 text-xs text-ink-2">{m.midia.resposta.texto}</blockquote>}
         {temMidia && <Midia m={m} />}
-        {m.texto && <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{m.texto}</p>}
+        {m.tipo === 'contato' ? <div className="space-y-2">{m.midia?.contatos?.map((c, i) => (
+          <div key={i} className="rounded-lg bg-raised/60 p-2">
+            <p className="font-medium">{c.nome}</p>
+            {c.telefones.length ? c.telefones.map((t) => <div key={t} className="mt-1 flex flex-wrap items-center gap-3">
+              <a href={`tel:${t}`} className="text-xs underline">{t}</a>
+              {canonicalPhone(t) && <Link href={`/conversas?canal=${encodeURIComponent(canal)}&telefone=${encodeURIComponent(canonicalPhone(t)!)}`} className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Conversar</Link>}
+            </div>) : <p className="text-xs text-ink-3">Contato sem telefone compartilhado</p>}
+          </div>
+        ))}</div> : m.texto ? <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{m.tipo === 'reacao' ? `Reação: ${m.texto}` : m.texto}</p>
+          : !temMidia && <p className="text-xs text-ink-3">Mensagem sem conteúdo disponível</p>}
+        {!!m.reacoes?.length && <div className="mt-1 flex flex-wrap gap-1" aria-label="Reações">{m.reacoes.map((r, i) => <span key={i} title={r.direcao === 'enviada' ? 'Reação da equipe' : 'Reação do contato'} className="rounded-full bg-raised px-1.5 py-0.5">{r.emoji}</span>)}</div>}
         <p className="mt-1 flex flex-wrap items-center justify-end gap-x-1.5 whitespace-nowrap text-[11px] leading-4 text-ink-3">
           {enviada && <span>{m.origem === 'celular' ? 'pelo celular' : m.autor_nome ?? 'PROJETE'}</span>}
           <time dateTime={m.enviada_em} className="tabular-nums">{hora}</time>

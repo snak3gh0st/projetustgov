@@ -37,6 +37,7 @@ export interface MeuDiaAguardando {
   cnpj: string | null
   previa: string | null
   desde: string
+  recebidaId: string | null
 }
 
 export const NOVO_JANELA_DIAS = 7

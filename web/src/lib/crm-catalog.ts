@@ -84,7 +84,7 @@ export const CRM_STATUS_ALIASES: Record<string, CrmStatus> = {
   'Contactado': 'Não Contatado', // legado (sem acento) ≠ Contatado
   'Impedimento Técnico': 'Em Atendimento',
   'Impedimento Tecnico': 'Em Atendimento',
-  'Cancelado': 'Em Atendimento',
+  'Cancelado': 'Churn',
 }
 
 /** Cores Tailwind para badges de status (light + dark). */
@@ -136,7 +136,7 @@ export function isCrmHistoryReasonStatus(status: string | null | undefined): boo
 
 export function isManagementCrmStatus(status: string | null | undefined): boolean {
   const normalized = normalizeCrmStatus(status)
-  return normalized === 'Em Aprovação' || normalized === 'Fechado' || normalized === 'Churn'
+  return normalized === 'Fechado'
 }
 
 /** Tipo de serviço fechado — tag para operacional. */

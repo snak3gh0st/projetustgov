@@ -1,5 +1,7 @@
 'use client'
 
+import { useMotivoPerda } from '@/components/leads/useMotivoPerda'
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { formatCNPJ, formatCompactCurrency } from '@/lib/format'
@@ -54,6 +56,7 @@ interface SessionUser {
 // Aba Aprovação da página Leads: emendas agrupadas por CNPJ.
 export default function LeadsClient() {
   const toast = useToast()
+  const { pedirMotivo, dialogoPerda } = useMotivoPerda()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [leads, setLeads] = useState<VendedorProjeto[]>([])
@@ -284,7 +287,9 @@ export default function LeadsClient() {
         return // SaleModal will call submitFechado when confirmed
       }
 
-      const body: Record<string, unknown> = { id, [field]: value }
+      const motivo = field === 'status_contato' && value === 'Churn' ? await pedirMotivo() : undefined
+      if (motivo === null) return
+      const body: Record<string, unknown> = { id, [field]: value, ...(motivo ? { perda_motivo: motivo } : {}) }
 
       const res = await fetch(`/api/leads/${encodeURIComponent(lead.cnpj)}`, {
         method: 'PATCH',
@@ -694,6 +699,7 @@ export default function LeadsClient() {
         }}
       />
 
+      {dialogoPerda}
       <SaleModal
         open={!!saleModal}
         leadNome={saleModal?.leadNome || ''}

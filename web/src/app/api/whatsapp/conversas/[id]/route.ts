@@ -23,9 +23,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   if (antesId && !/^\d{1,18}$/.test(antesId)) return NextResponse.json({ error: 'Mensagem inválida' }, { status: 400 })
   const cursor = !antes ? '' : antesId ? 'AND (m.enviada_em, m.id) < ($2::timestamptz, $3::bigint)' : 'AND m.enviada_em < $2'
   const rows = await query<Record<string, unknown>>(
-    `SELECT m.id, m.wa_id, m.direcao, m.origem, m.texto, m.tipo, m.midia, m.status, m.enviada_em, u.nome AS autor_nome
+    `SELECT m.id, m.wa_id, m.direcao, m.origem, m.texto, m.tipo, m.midia, m.status, m.enviada_em, u.nome AS autor_nome,
+       COALESCE((SELECT jsonb_agg(jsonb_build_object('emoji', r.texto, 'direcao', r.direcao))
+         FROM (SELECT DISTINCT ON (rm.direcao) rm.texto, rm.direcao
+           FROM whatsapp_mensagens rm WHERE rm.conversa_id = m.conversa_id AND rm.tipo = 'reacao'
+             AND rm.midia->>'alvoWaId' = m.wa_id ORDER BY rm.direcao, rm.enviada_em DESC, rm.id DESC) r
+         WHERE COALESCE(r.texto, '') <> ''), '[]'::jsonb) AS reacoes
      FROM whatsapp_mensagens m LEFT JOIN users u ON u.id = m.autor_id
-     WHERE m.conversa_id = $1 ${cursor}
+     WHERE m.conversa_id = $1 AND m.tipo <> 'reacao' ${cursor}
      ORDER BY m.enviada_em DESC, m.id DESC LIMIT ${PAGE + 1}`,
     !antes ? [conversa.id] : antesId ? [conversa.id, antes, antesId] : [conversa.id, antes]
   )

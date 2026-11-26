@@ -12,7 +12,7 @@ const url=process.env.WORKSPACE_TEST_DATABASE_URL,schema=`workspace_${randomUUID
 let admin,pool,store,service,first,second
 const key={cnpj:clientA,projectKind:'comercial',projectKey:'10001'},otherProject={...key,projectKey:'10002'}
 const counts={send:0,upload:0,meeting:0,folder:0}
-let sendFails=false,uploadMetadataFails=false
+let sendFails=false,uploadMetadataFails=false,lastMime=''
 const files=new Map([
   ['folder-client',{id:'folder-client',name:'Cliente Alfa · Aprovação',mimeType:FOLDER_MIME,capabilities:{canAddChildren:true},webViewLink:'https://drive.google.com/drive/folders/folder-client'}],
   ['folder-other',{id:'folder-other',name:'Cliente Alfa · Execução',mimeType:FOLDER_MIME,capabilities:{canAddChildren:true}}],
@@ -30,7 +30,7 @@ const google=new GoogleApi(async()=>'fake-access',async(input,init)=>{
   }
   if(path.includes('/events/'))return events.has(path.split('/').at(-1))?Response.json(events.get(path.split('/').at(-1))):new Response('',{status:404})
   if(path.includes('/attachments/'))return Response.json({data:Buffer.from('Anexo de teste').toString('base64url')})
-  if(path.endsWith('/messages/send')){counts.send++;return sendFails?new Response('',{status:503}):Response.json({id:'sent',threadId:'thread-client'})}
+  if(path.endsWith('/messages/send')){counts.send++;lastMime=Buffer.from(JSON.parse(body).raw,'base64url').toString();return sendFails?new Response('',{status:503}):Response.json({id:'sent',threadId:'thread-client'})}
   if(path.includes('/threads/')){
     const id=path.split('/').at(-1),email=id==='thread-client'?'client@example.test':'outsider@example.test'
     return Response.json({id,messages:[{id:'message-client',internalDate:'1700000000000',payload:{headers:[{name:'From',value:email},{name:'To',value:'alice@projetus.org'},{name:'Subject',value:'Contrato'},{name:'Message-ID',value:'<original@example.test>'}],
@@ -179,4 +179,17 @@ test('root uploads retain replay compatibility with operations created before th
   await store.rows(`INSERT INTO workspace_operations(user_id,request_id,context_id,kind,google_sub,payload_hash,status,response) VALUES($1,$2,$3,'upload_file','google-alice',$4,'done',$5)`,[alice,input.requestId,first.id,hash,{id:'previously-uploaded'}])
   const before=counts.upload
   assert.equal((await service.upload(key,input)).id,'previously-uploaded');assert.equal(counts.upload,before)
+})
+
+test('a commercial proposal copies the configured manager once, including on replay',{skip:!url},async()=>{
+  const previous=process.env.PROPOSAL_COPY_EMAIL
+  process.env.PROPOSAL_COPY_EMAIL='manager@example.test'
+  const sentBefore=counts.send
+  try{
+    const input={requestId:randomUUID(),to:['client@example.test'],subject:'Proposta comercial',text:'Condições aprovadas.'}
+    await service.send(key,input);await service.send(key,input)
+    assert.equal(counts.send,sentBefore+1)
+    assert.match(lastMime,/\r\nCc: manager@example.test\r\n/)
+    assert.match(lastMime,/To: client@example.test/)
+  }finally{if(previous===undefined)delete process.env.PROPOSAL_COPY_EMAIL;else process.env.PROPOSAL_COPY_EMAIL=previous}
 })

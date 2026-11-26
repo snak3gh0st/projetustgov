@@ -53,7 +53,7 @@ export async function POST(request:NextRequest,{params}:{params:{cnpj:string}}){
     const action=z.string().parse(raw.action);let result:unknown
     switch(action){
       case 'link_thread':result=await service.linkThread(key,identifier.parse(raw.threadId));break
-      case 'send_email':result=await service.send(key,z.object({to:z.array(z.string().email()).min(1).max(20),subject:text(200),text:text(100000),threadId:identifier.optional()}).merge(requestId).parse(raw));break
+      case 'send_email':result=await service.send(key,z.object({to:z.array(z.string().email()).min(1).max(20),subject:text(200),text:text(100000),threadId:identifier.optional(),proposal:z.boolean().optional()}).merge(requestId).parse(raw));break
       case 'bind_folder':result=await service.bindFolder(key,identifier.parse(raw.folderId));break
       case 'create_folder':result=await service.createFolder(key,z.object({parentId:identifier,name:text(200)}).merge(requestId).parse(raw));break
       case 'register_document':{const p=z.object({fileId:identifier,typeLabel:text(100)}).parse(raw);result=await service.registerDocument(key,p.fileId,p.typeLabel);break}

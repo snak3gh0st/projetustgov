@@ -8,11 +8,14 @@ import { crmAliasSql, normalizedStatusOrderSql, normalizedStatusSql } from '@/li
 
 export const dynamic = 'force-dynamic'
 
+const CRM_CNPJ_SQL = "REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g')"
+
 const CRM_STATUS_SQL = `
   CASE
     WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado', 'Contactado') THEN 'Não Contatado'
     WHEN COALESCE(vp.status_contato, '') IN ('Ainda Não', 'Sem Interesse') THEN 'Sem Interesse'
-    WHEN COALESCE(vp.status_contato, '') IN ('Retorno', 'Em Atendimento', 'Impedimento Técnico', 'Impedimento Tecnico', 'Cancelado') THEN 'Em Atendimento'
+    WHEN COALESCE(vp.status_contato, '') IN ('Retorno', 'Em Atendimento', 'Impedimento Técnico', 'Impedimento Tecnico') THEN 'Em Atendimento'
+    WHEN vp.status_contato = 'Cancelado' THEN 'Churn'
     WHEN COALESCE(vp.status_contato, '') = 'Contatado' THEN 'Contatado'
     WHEN COALESCE(vp.status_contato, '') IN ('Reunião Agendada', 'Reuniao Agendada') THEN 'Reunião Agendada'
     WHEN COALESCE(vp.status_contato, '') = 'Proposta' THEN 'Proposta Enviada'
@@ -113,19 +116,20 @@ export async function GET() {
       // 1. Global stats with status breakdown
       query(`
         SELECT
-          COUNT(DISTINCT cnpj)::int as total_leads,
-          COUNT(DISTINCT CASE WHEN vendedor_id IS NOT NULL THEN cnpj END)::int as total_assigned,
-          COUNT(DISTINCT CASE WHEN vendedor_id IS NULL THEN cnpj END)::int as total_unassigned,
+          COUNT(DISTINCT ${CRM_CNPJ_SQL})::int as total_leads,
+          COUNT(DISTINCT CASE WHEN vendedor_id IS NOT NULL THEN ${CRM_CNPJ_SQL} END)::int as total_assigned,
+          COUNT(DISTINCT CASE WHEN vendedor_id IS NULL THEN ${CRM_CNPJ_SQL} END)::int as total_unassigned,
           COALESCE(SUM(valor_emenda::numeric), 0) as total_valor_emenda,
-          COUNT(DISTINCT CASE WHEN COALESCE(status_contato, 'Não Contatado') = 'Não Contatado' THEN cnpj END)::int as status_nao_contatado,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Sem Interesse' THEN cnpj END)::int as status_sem_interesse,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Em Atendimento' THEN cnpj END)::int as status_em_atendimento,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Contatado' THEN cnpj END)::int as status_contatado,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Reunião Agendada' THEN cnpj END)::int as status_reuniao_agendada,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Proposta Enviada' THEN cnpj END)::int as status_proposta_enviada,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Aprovação' THEN cnpj END)::int as status_aprovacao,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Vendas Aprovação' THEN cnpj END)::int as status_vendas_aprovacao,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Execução/Prestação' THEN cnpj END)::int as status_vendas_execucao
+          COUNT(DISTINCT CASE WHEN COALESCE(status_contato, 'Não Contatado') = 'Não Contatado' THEN ${CRM_CNPJ_SQL} END)::int as status_nao_contatado,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Sem Interesse' THEN ${CRM_CNPJ_SQL} END)::int as status_sem_interesse,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Em Atendimento' THEN ${CRM_CNPJ_SQL} END)::int as status_em_atendimento,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Contatado' THEN ${CRM_CNPJ_SQL} END)::int as status_contatado,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Reunião Agendada' THEN ${CRM_CNPJ_SQL} END)::int as status_reuniao_agendada,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Proposta Enviada' THEN ${CRM_CNPJ_SQL} END)::int as status_proposta_enviada,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Aprovação' THEN ${CRM_CNPJ_SQL} END)::int as status_aprovacao,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Vendas Aprovação' THEN ${CRM_CNPJ_SQL} END)::int as status_vendas_aprovacao,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Execução/Prestação' THEN ${CRM_CNPJ_SQL} END)::int as status_vendas_execucao,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Churn' THEN ${CRM_CNPJ_SQL} END)::int as status_churn
         FROM vendedor_projetos vp
         ${approvalFilter}
       `, vendedorParams),
@@ -135,16 +139,17 @@ export async function GET() {
         SELECT
           vp.vendedor_id,
           u.nome as vendedor_nome,
-          COUNT(DISTINCT vp.cnpj)::int as total_leads,
-          COUNT(DISTINCT CASE WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Não Contatado' THEN vp.cnpj END)::int as nao_contatado,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Sem Interesse' THEN vp.cnpj END)::int as sem_interesse,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Em Atendimento' THEN vp.cnpj END)::int as em_atendimento,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Contatado' THEN vp.cnpj END)::int as contatado,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Reunião Agendada' THEN vp.cnpj END)::int as reuniao_agendada,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Proposta Enviada' THEN vp.cnpj END)::int as proposta_enviada,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Aprovação' THEN vp.cnpj END)::int as aprovacao,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Vendas Aprovação' THEN vp.cnpj END)::int as vendas_aprovacao,
-          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Execução/Prestação' THEN vp.cnpj END)::int as vendas_execucao,
+          COUNT(DISTINCT ${CRM_CNPJ_SQL})::int as total_leads,
+          COUNT(DISTINCT CASE WHEN COALESCE(vp.status_contato, 'Não Contatado') = 'Não Contatado' THEN ${CRM_CNPJ_SQL} END)::int as nao_contatado,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Sem Interesse' THEN ${CRM_CNPJ_SQL} END)::int as sem_interesse,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Em Atendimento' THEN ${CRM_CNPJ_SQL} END)::int as em_atendimento,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Contatado' THEN ${CRM_CNPJ_SQL} END)::int as contatado,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Reunião Agendada' THEN ${CRM_CNPJ_SQL} END)::int as reuniao_agendada,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Proposta Enviada' THEN ${CRM_CNPJ_SQL} END)::int as proposta_enviada,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Aprovação' THEN ${CRM_CNPJ_SQL} END)::int as aprovacao,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Vendas Aprovação' THEN ${CRM_CNPJ_SQL} END)::int as vendas_aprovacao,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Execução/Prestação' THEN ${CRM_CNPJ_SQL} END)::int as vendas_execucao,
+          COUNT(DISTINCT CASE WHEN (${CRM_STATUS_SQL}) = 'Churn' THEN ${CRM_CNPJ_SQL} END)::int as churn,
           COALESCE(SUM(vp.valor_emenda::numeric), 0) as valor_total_emenda,
           COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' AND u.role != 'gestor' THEN vp.comissao_valor::numeric ELSE 0 END), 0) as comissao_total,
           MAX(vp.updated_at) as last_activity
@@ -186,7 +191,7 @@ export async function GET() {
               AND vp2.status_contato NOT IN ('Não Contatado')
               AND vp2.updated_at >= NOW() - INTERVAL '7 days'
             )
-            AND vp.status_contato NOT IN ('Fechado')
+            AND vp.status_contato NOT IN ('Fechado', 'Churn', 'Sem Interesse')
           )::int as stale_count,
           COUNT(DISTINCT vp.cnpj) FILTER (
             WHERE NOT EXISTS (
@@ -344,6 +349,7 @@ export async function GET() {
           'Aprovação': Number(g.status_aprovacao) || 0,
           'Vendas Aprovação': Number(g.status_vendas_aprovacao) || 0,
           'Execução/Prestação': Number(g.status_vendas_execucao) || 0,
+          'Churn': Number(g.status_churn) || 0,
         },
       },
       execucao_pipeline: {
@@ -368,6 +374,7 @@ export async function GET() {
           aprovacao: Number(v.aprovacao) || 0,
           vendas_aprovacao: Number(v.vendas_aprovacao) || 0,
           vendas_execucao: Number(v.vendas_execucao) || 0,
+          churn: Number(v.churn) || 0,
           fechado: Number(v.vendas_aprovacao || 0) + Number(v.vendas_execucao || 0),
           valor_total_emenda: Number(v.valor_total_emenda),
           // Comissionamento: visível apenas para o gestor comercial

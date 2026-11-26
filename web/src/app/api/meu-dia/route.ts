@@ -6,7 +6,7 @@ import { normalizedStatusOrderSql, normalizedStatusSql } from '@/lib/execucao-st
 import { classifyMeuDia, meuDiaStatus, type MeuDiaAguardando, type MeuDiaCandidate } from '@/lib/meu-dia'
 import { whatsappContatosSql } from '@/lib/whatsapp/contato'
 import { aguardandoSql } from '@/lib/whatsapp/access'
-import { whatsappConfig } from '@/lib/whatsapp/evolution'
+import { whatsappChannels } from '@/lib/whatsapp/channels'
 
 export const dynamic = 'force-dynamic'
 
@@ -128,9 +128,9 @@ const AGUARDANDO_SQL = `
   SELECT wc.id AS "conversaId",
          COALESCE((SELECT MAX(vp.nome) FROM vendedor_projetos vp WHERE REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = wc.lead_cnpj),
                   wc.nome_contato, wc.telefone) AS nome,
-         wc.telefone, wc.lead_cnpj AS cnpj, wc.ultima_previa AS previa, wc.ultima_recebida_em AS desde
+         wc.telefone, wc.lead_cnpj AS cnpj, wc.ultima_previa AS previa, wc.ultima_recebida_em AS desde, wc.ultima_recebida_id AS "recebidaId"
   FROM whatsapp_conversas wc
-  WHERE wc.instancia = $2 AND wc.arquivada_em IS NULL AND ${aguardandoSql('wc')}
+  WHERE wc.instancia = ANY($2::text[]) AND wc.arquivada_em IS NULL AND ${aguardandoSql('wc')}
     AND (wc.atendente_id = $1 OR (wc.atendente_id IS NULL AND wc.lead_cnpj IN (
       SELECT REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') FROM vendedor_projetos vp WHERE vp.vendedor_id = $1)))
   ORDER BY wc.ultima_recebida_em ASC
@@ -169,9 +169,9 @@ export async function GET() {
       ...execucao.map((row) => toCandidate(row, row.em_execucao ? 'execucao' : 'prestacao_contas')),
     ]
 
-    const wa = whatsappConfig()
-    const aguardando = wa
-      ? (await query<MeuDiaAguardando & { desde: Date | string }>(AGUARDANDO_SQL, [session.userId, wa.instance]))
+    const channels = whatsappChannels()
+    const aguardando = channels.length
+      ? (await query<MeuDiaAguardando & { desde: Date | string }>(AGUARDANDO_SQL, [session.userId, channels.map((c) => c.instance)]))
           .map((a) => ({ ...a, desde: toIso(a.desde) as string }))
       : undefined
 

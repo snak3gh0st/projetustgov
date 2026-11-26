@@ -30,6 +30,9 @@ interface Conversa {
   atendente_nome: string | null
   donos_nomes: string | null
   arquivada_em: string | null
+  ultima_recebida_em: string | null
+  ultima_recebida_id: string | null
+  resolvida_em: string | null
   ultima_mensagem_em: string | null
   ultima_previa: string | null
   nao_lidas: number
@@ -38,7 +41,7 @@ interface Conversa {
 
 type Filtro = 'minhas' | 'em-aberto' | 'todas' | 'novas' | 'arquivadas'
 const FILTROS_GESTAO: Filtro[] = ['todas', 'novas', 'em-aberto', 'minhas', 'arquivadas']
-const FILTROS_CONSULTOR: Filtro[] = ['minhas', 'todas']
+const FILTROS_CONSULTOR: Filtro[] = ['minhas', 'todas', 'em-aberto', 'arquivadas']
 const POLL_MS = 10_000
 
 const titulo = (c: Pick<Conversa, 'lead_nome' | 'nome_contato' | 'telefone'>) => c.lead_nome || c.nome_contato || formatTelefone(c.telefone)
@@ -160,10 +163,12 @@ export default function ConversasClient({ gestao, canais, modelos }: { gestao: b
   const [filtro, setFiltro] = useState<Filtro>(() => {
     const pedido = params.get('filtro') as Filtro | null
     return pedido && (gestao ? FILTROS_GESTAO : FILTROS_CONSULTOR).includes(pedido)
-      ? pedido : gestao ? 'todas' : 'minhas'
+      ? pedido : 'todas'
   })
   const [canal, setCanal] = useState(params.get('canal') === 'oficial' && canais.some((c) => c.id === 'oficial') ? 'oficial' : 'qr')
   const [modelo, setModelo] = useState('')
+  const [nova, setNova] = useState(false)
+  const [atendimentoPendente, setAtendimentoPendente] = useState(false)
   const listaRequest = useRef(0)
   const [busca, setBusca] = useState('')
   const [conversas, setConversas] = useState<Conversa[] | null>(null)
@@ -189,6 +194,10 @@ export default function ConversasClient({ gestao, canais, modelos }: { gestao: b
   const noFimRef = useRef(true)
   const novoTelefone = params.get('telefone')
   const novoCnpj = params.get('cnpj')
+
+  useEffect(() => {
+    if (novoTelefone) { setAtivaId(null); setAtiva(null); setMensagens(null) }
+  }, [novoTelefone])
 
   const carregarLista = useCallback(async () => {
     const requestId = ++listaRequest.current
@@ -381,9 +390,24 @@ export default function ConversasClient({ gestao, canais, modelos }: { gestao: b
     void carregarLista()
   }
 
+  async function atendimento(acao: 'assumir' | 'concluir' | 'reabrir') {
+    if (!ativa || atendimentoPendente) return
+    setAtendimentoPendente(true)
+    try {
+      const r = await fetch(`/api/whatsapp/conversas/${ativa.id}/atendimento?canal=${canal}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao, ...(acao === 'concluir' ? { recebida_em: ativa.ultima_recebida_em, recebida_id: ativa.ultima_recebida_id } : {}) }),
+      })
+      if (!r.ok) { toast.error((await r.json().catch(() => null))?.error ?? 'Não foi possível salvar o atendimento.'); return }
+      toast.success(acao === 'concluir' ? 'Atendimento concluído. Uma nova mensagem volta para a fila.' : acao === 'assumir' ? 'Atendimento assumido por você.' : 'Atendimento reaberto.')
+      await carregarConversa(ativa.id)
+    } catch { toast.error('Não foi possível salvar o atendimento.') }
+    finally { setAtendimentoPendente(false); void carregarLista() }
+  }
+
   const tabs = useMemo(() => (gestao
     ? [{ id: 'todas', label: 'Todas' }, { id: 'novas', label: 'Novas' }, { id: 'em-aberto', label: 'Em aberto' }, { id: 'minhas', label: 'Minhas' }, { id: 'arquivadas', label: 'Arquivadas' }]
-    : [{ id: 'minhas', label: 'Minhas' }, { id: 'todas', label: 'Todas' }]), [gestao])
+    : [{ id: 'todas', label: 'Todas' }, { id: 'minhas', label: 'Minhas' }, { id: 'em-aberto', label: 'Sem responsável' }, { id: 'arquivadas', label: 'Arquivadas' }]), [gestao])
 
   const mostrarConversa = ativaId !== null || Boolean(novoTelefone)
   // "Hoje" e "Ontem" mudam à meia-noite; a atualização de 10 em 10 s refaz a tela.
@@ -392,8 +416,14 @@ export default function ConversasClient({ gestao, canais, modelos }: { gestao: b
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-semibold text-ink">WhatsApp</h1>
+        <Button size="sm" variant="secondary" onClick={() => setNova((v) => !v)}>Nova conversa</Button>
         {gestao && <Link href="/conversas/conexao" className={buttonClass('secondary', 'sm')}>Conexão do WhatsApp</Link>}
       </div>
+      {nova && <form action="/conversas" className="flex flex-wrap items-end gap-2 rounded-xl border border-line bg-surface p-3">
+        <input type="hidden" name="canal" value={canal} />
+        <label className="space-y-1 text-xs text-ink-2">Número com DDD<input name="telefone" type="tel" required maxLength={24} placeholder="(11) 99999-9999" className={`${inputClass} block`} /></label>
+        <Button type="submit" size="sm">Abrir conversa</Button><p className="text-xs text-ink-3">O contato pode ser atendido sem projeto vinculado.</p>
+      </form>}
       {canais.length > 1 && <label className="flex items-center gap-2 text-sm text-ink">Número de atendimento<select aria-label="Número de atendimento" className={selectClass} value={canal} onChange={(e) => { listaRequest.current++; setCanal(e.target.value); setAtivaId(null); setAtiva(null); setMensagens(null); setConversas(null); setEstado(null) }}>{canais.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></label>}
       {estado && estado !== 'conectado' && <AvisoDesconectado gestao={gestao} estado={estado} canal={canal} />}
 
@@ -444,6 +474,12 @@ export default function ConversasClient({ gestao, canais, modelos }: { gestao: b
                   <p className="truncate text-sm font-semibold text-ink">{ativa ? titulo(ativa) : novoTelefone ? formatTelefone(novoTelefone.replace(/\D/g, '')) : ''}</p>
                   {ativa && <p className="text-xs text-ink-3">{formatTelefone(ativa.telefone)}</p>}
                 </div>
+                {ativa && <div className="ml-auto">
+                  {!ativa.lead_cnpj && !ativa.atendente_id ? <Button size="sm" loading={atendimentoPendente} onClick={() => void atendimento('assumir')}>Assumir atendimento</Button>
+                    : <Button size="sm" variant="secondary" loading={atendimentoPendente} onClick={() => void atendimento(ativa.resolvida_em && !ativa.aguardando ? 'reabrir' : 'concluir')}>
+                      {ativa.resolvida_em && !ativa.aguardando ? 'Reabrir atendimento' : 'Concluir atendimento'}
+                    </Button>}
+                </div>}
               </header>
               <div ref={scrollRef} onScroll={aoRolar} className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-raised/40 px-3 py-3 sm:px-5">
                 {ativaId && mensagens === null ? (
@@ -466,7 +502,7 @@ export default function ConversasClient({ gestao, canais, modelos }: { gestao: b
                                 <span className="rounded-full bg-surface px-3 py-1 text-xs font-medium text-ink-2 shadow-sm ring-1 ring-line">{dia}</span>
                               </div>
                             )}
-                            <MensagemBolha m={m} onRetry={(t) => void enviar(t)} />
+                            <MensagemBolha m={m} canal={canal} onRetry={(t) => void enviar(t)} />
                           </li>
                         )
                       })}
@@ -476,7 +512,9 @@ export default function ConversasClient({ gestao, canais, modelos }: { gestao: b
               </div>
               {/* Uma caixa por conversa: anexo, voz e rascunho não passam para a próxima. */}
               {canal === 'oficial' && <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 py-2 text-xs text-ink-2"><span>Fora das 24 horas, use um modelo aprovado.</span>{modelos.length > 0 ? <><select aria-label="Modelo aprovado" className={selectClass} value={modelo} onChange={(e) => setModelo(e.target.value)}><option value="">Escolher modelo</option>{modelos.map((m) => <option key={m.name} value={m.name}>{m.name} ({m.language})</option>)}</select><Button size="sm" disabled={!modelo} onClick={() => void enviar('', modelo)}>Enviar modelo</Button></> : <span>A gestão precisa configurar um modelo para iniciar conversas.</span>}</div>}
-              <Composer key={ativaId ?? `novo-${novoTelefone}`} onSend={enviar} onSendArquivo={enviarArquivo} arquivoSolto={solto?.conversa === ativaId ? solto.arquivo : null} />
+              {ativa && !ativa.lead_cnpj && !ativa.atendente_id && !gestao
+                ? <p className="border-t border-line p-3 text-sm text-ink-2">Assuma o atendimento para responder a este contato sem projeto.</p>
+                : <Composer key={ativaId ?? `novo-${novoTelefone}`} onSend={enviar} onSendArquivo={enviarArquivo} arquivoSolto={solto?.conversa === ativaId ? solto.arquivo : null} />}
             </>
           ) : (
             <p className="m-auto p-10 text-center text-sm text-ink-3">Escolha uma conversa na lista.</p>

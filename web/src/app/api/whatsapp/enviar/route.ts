@@ -8,7 +8,7 @@ import { sendMedia, sendText, sendVoice, sendTemplate } from '@/lib/whatsapp/evo
 import { classificarArquivo } from '@/lib/whatsapp/midia'
 import { configForInstance, freeformAllowed, officialTemplates } from '@/lib/whatsapp/channels'
 import { canonicalPhone } from '@/lib/whatsapp/phone'
-import { cnpjsDoTelefone, recordMessage } from '@/lib/whatsapp/store'
+import { cnpjsDoTelefone, conversaDoContato, recordMessage } from '@/lib/whatsapp/store'
 import type { MensagemTipo, MidiaInfo } from '@/lib/whatsapp/webhook'
 
 export const dynamic = 'force-dynamic'
@@ -69,6 +69,9 @@ export async function POST(request: NextRequest) {
   if (body.conversa_id) {
     const conversa = await conversaVisivel(Number(body.conversa_id), session, cfg)
     if (!conversa) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!conversa.lead_cnpj && !conversa.atendente_id && !canManageConversations(session.role)) {
+      return NextResponse.json({ error: 'Assuma o atendimento antes de responder a esta conversa.' }, { status: 409 })
+    }
     const channelConfig = configForInstance(conversa.instancia)
     if (!channelConfig) return NextResponse.json({ error: 'Canal indisponível.' }, { status: 409 })
     cfg = channelConfig
@@ -81,8 +84,29 @@ export async function POST(request: NextRequest) {
     destino = canonicalPhone(body.telefone)
     if (!destino) return NextResponse.json({ error: 'Telefone inválido.' }, { status: 400 })
     const cnpj = body.cnpj?.replace(/\D/g, '') || null
+    if (!cnpj) {
+      // A phone shared by a customer can start an independent conversation. Existing lead ownership is preserved.
+      const [existing] = await query<{ id: number }>(`SELECT id FROM whatsapp_conversas WHERE instancia = $1 AND telefone = $2`, [cfg.instance, destino])
+      if (existing) {
+        const visible = await conversaVisivel(existing.id, session, cfg)
+        if (!visible) return NextResponse.json({ error: 'Essa conversa está com outra pessoa da equipe.' }, { status: 403 })
+        if (!visible.lead_cnpj && !visible.atendente_id) {
+          const claimed = await query(`UPDATE whatsapp_conversas SET atendente_id = $2 WHERE id = $1 AND lead_cnpj IS NULL AND atendente_id IS NULL RETURNING id`, [visible.id, session.userId])
+          if (!claimed.length) return NextResponse.json({ error: 'Outra pessoa assumiu esta conversa. Atualize a lista.' }, { status: 409 })
+        }
+        lastInbound = visible.ultima_recebida_em
+        jid = visible.jid
+        lid = visible.lid
+      } else {
+        const cnpjs = await cnpjsDoTelefone(destino)
+        if (cnpjs.length) return NextResponse.json({ error: 'Este telefone já pertence a um lead. Abra a conversa pelo card do lead.' }, { status: 409 })
+        const created = await conversaDoContato({ instancia: cfg.instance, telefone: destino, jid: `${destino}@s.whatsapp.net`, lid: null, nome: null })
+        const claimed = await query(`UPDATE whatsapp_conversas SET atendente_id = $2
+          WHERE id = $1 AND lead_cnpj IS NULL AND (atendente_id IS NULL OR atendente_id = $2) RETURNING id`, [created.id, session.userId])
+        if (!claimed.length) return NextResponse.json({ error: 'Outra pessoa assumiu esta conversa. Atualize a lista.' }, { status: 409 })
+      }
+    } else {
     // Começar conversa pelo card: só com lead que a pessoa enxerga.
-    if (!cnpj) return NextResponse.json({ error: 'Informe o lead da conversa.' }, { status: 400 })
     const stored = await query<{ cnpj: string }>(`SELECT cnpj FROM vendedor_projetos WHERE REGEXP_REPLACE(cnpj, '[^0-9]', '', 'g') = $1 LIMIT 1`, [cnpj])
     if (!stored[0] || !(await verifyLeadAccess(stored[0].cnpj, session.userId, session.role))) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -104,6 +128,7 @@ export async function POST(request: NextRequest) {
         }
         ligarA = cnpj
       }
+    }
     }
   }
 

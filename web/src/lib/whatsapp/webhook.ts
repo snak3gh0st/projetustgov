@@ -2,9 +2,15 @@ import { phoneFromJid } from './phone'
 
 // Eventos do Evolution API (v2) traduzidos para o que o PROJETE grava. Nunca lança: corpo estranho vira 'ignorado'.
 
-export type MensagemTipo = 'texto' | 'imagem' | 'audio' | 'video' | 'documento' | 'figurinha' | 'outro'
+export type MensagemTipo = 'texto' | 'imagem' | 'audio' | 'video' | 'documento' | 'figurinha' | 'contato' | 'reacao' | 'outro'
+export type ContatoCompartilhado = { nome: string; telefones: string[] }
 /** tamanho em bytes e segundos (áudio, vídeo), quando o WhatsApp manda. */
-export type MidiaInfo = { mimetype?: string; fileName?: string; tamanho?: number; segundos?: number }
+export type MidiaInfo = {
+  mimetype?: string; fileName?: string; tamanho?: number; segundos?: number
+  contatos?: ContatoCompartilhado[]
+  alvoWaId?: string
+  resposta?: { waId: string; texto: string }
+}
 
 export type WebhookEvent =
   | {
@@ -21,6 +27,34 @@ export type WebhookEvent =
 type Obj = Record<string, unknown>
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v)
 const str = (v: unknown) => (typeof v === 'string' && v ? v : null)
+
+/** Only data from the card is displayed. Never use a vCard-supplied URL as a link. */
+function contatoCompartilhado(v: unknown): ContatoCompartilhado | null {
+  if (!isObj(v)) return null
+  const card = typeof v.vcard === 'string' ? v.vcard.slice(0, 64_000).replace(/\r?\n[ \t]/g, '') : ''
+  const linhas = card.split(/\r?\n/)
+  const nome = (str(v.displayName) ?? linhas.find((l) => /^FN[:;]/i.test(l))?.split(':').slice(1).join(':') ?? 'Contato').slice(0, 200)
+  const telefones = new Set<string>()
+  for (const linha of linhas) {
+    if (!/^(?:item\d+\.)?TEL[:;]/i.test(linha)) continue
+    const waid = linha.match(/;waid=(\d{7,15})(?:[;:]|$)/i)?.[1]
+    const numero = waid ?? linha.slice(linha.indexOf(':') + 1).replace(/^tel:/i, '').replace(/[^\d+]/g, '')
+    if (/^\+?\d{7,15}$/.test(numero)) telefones.add(numero)
+  }
+  return { nome, telefones: Array.from(telefones).slice(0, 20) }
+}
+
+function textoDa(m: Obj): string | null {
+  if (typeof m.conversation === 'string') return m.conversation
+  for (const field of ['extendedTextMessage', 'imageMessage', 'videoMessage', 'documentMessage']) {
+    const node = m[field]
+    if (isObj(node)) {
+      const text = str(node.text) ?? str(node.caption)
+      if (text) return text
+    }
+  }
+  return null
+}
 
 const MEDIA: [string, MensagemTipo][] = [
   ['imageMessage', 'imagem'], ['audioMessage', 'audio'], ['videoMessage', 'video'],
@@ -49,9 +83,16 @@ export function parseMensagem(instancia: string, d: unknown): WebhookEvent {
     return { kind: 'ignorado', motivo: 'grupo ou transmissão' }
   }
 
-  const m = d.message
+  let m = d.message
+  // WhatsApp wraps replies/media and disappearing messages in these envelopes.
+  for (let i = 0; i < 5; i++) {
+    const wrapper = ['ephemeralMessage', 'viewOnceMessage', 'viewOnceMessageV2', 'viewOnceMessageV2Extension', 'documentWithCaptionMessage']
+      .map((field) => m[field]).find((v) => isObj(v) && isObj(v.message))
+    if (!isObj(wrapper) || !isObj(wrapper.message)) break
+    m = wrapper.message
+  }
   let tipo: MensagemTipo = 'outro'
-  let texto = str(m.conversation) ?? (isObj(m.extendedTextMessage) ? str(m.extendedTextMessage.text) : null)
+  let texto = textoDa(m)
   let midia: MidiaInfo | null = null
   if (texto) tipo = 'texto'
   for (const [field, t] of MEDIA) {
@@ -69,6 +110,29 @@ export function parseMensagem(instancia: string, d: unknown): WebhookEvent {
       ...(Number.isFinite(segundos) && segundos > 0 ? { segundos } : {}),
     }
     break
+  }
+
+  const cards = isObj(m.contactsArrayMessage) && Array.isArray(m.contactsArrayMessage.contacts)
+    ? m.contactsArrayMessage.contacts.slice(0, 100) : m.contactMessage ? [m.contactMessage] : []
+  const contatos = cards.map(contatoCompartilhado).filter((v): v is ContatoCompartilhado => v !== null)
+  if (contatos.length) { tipo = 'contato'; texto = contatos.map((c) => c.nome).join(', '); midia = { contatos } }
+
+  if (isObj(m.reactionMessage) && isObj(m.reactionMessage.key) && str(m.reactionMessage.key.id)) {
+    tipo = 'reacao'
+    texto = typeof m.reactionMessage.text === 'string' ? m.reactionMessage.text.slice(0, 64) : ''
+    midia = { alvoWaId: String(m.reactionMessage.key.id) }
+  }
+  for (const field of ['buttonsResponseMessage', 'templateButtonReplyMessage', 'listResponseMessage']) {
+    const node = m[field]
+    if (isObj(node)) {
+      texto = str(node.selectedDisplayText) ?? str(node.selectedText) ?? str(node.title)
+        ?? (isObj(node.singleSelectReply) ? str(node.singleSelectReply.selectedRowId) : null)
+      if (texto) tipo = 'texto'
+    }
+  }
+  const context = Object.values(m).filter(isObj).map((v) => v.contextInfo).find(isObj)
+  if (context && str(context.stanzaId) && isObj(context.quotedMessage)) {
+    midia = { ...midia, resposta: { waId: String(context.stanzaId), texto: (textoDa(context.quotedMessage) ?? 'Mensagem').slice(0, 300) } }
   }
 
   const fromMe = k.fromMe === true

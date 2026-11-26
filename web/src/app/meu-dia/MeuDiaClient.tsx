@@ -119,7 +119,7 @@ function esperandoLabel(desde: string): string {
 }
 
 // Conversas de WhatsApp em que o contato espera resposta do consultor (só com o canal ligado).
-function AguardandoColumn({ items }: { items: MeuDiaAguardando[] }) {
+function AguardandoColumn({ items, onConcluir, pendente }: { items: MeuDiaAguardando[]; onConcluir: (a: MeuDiaAguardando) => void; pendente: number | null }) {
   return (
     <section aria-labelledby="meu-dia-aguardando" className="overflow-hidden rounded-xl border border-line bg-surface">
       <header className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
@@ -148,6 +148,7 @@ function AguardandoColumn({ items }: { items: MeuDiaAguardando[] }) {
                   {a.previa && <span className="min-w-0 truncate text-xs text-ink-2">{a.previa}</span>}
                 </div>
               </Link>
+              <div className="px-4 pb-2"><Button size="sm" variant="ghost" loading={pendente === a.conversaId} disabled={pendente !== null} onClick={() => onConcluir(a)}>Concluir atendimento</Button></div>
             </li>
           ))}
         </ul>
@@ -174,6 +175,7 @@ export default function MeuDiaClient() {
   const [data, setData] = useState<MeuDia | null>(null)
   const [failed, setFailed] = useState(false)
   const [filtro, setFiltro] = useState<Filtro>('todos')
+  const [concluindo, setConcluindo] = useState<number | null>(null)
   const loadingRef = useRef(false)
 
   const load = useCallback(async (silent: boolean) => {
@@ -191,6 +193,20 @@ export default function MeuDiaClient() {
       loadingRef.current = false
     }
   }, [toast])
+
+  async function concluir(a: MeuDiaAguardando) {
+    if (concluindo !== null) return
+    setConcluindo(a.conversaId)
+    try {
+      const r = await fetch(`/api/whatsapp/conversas/${a.conversaId}/atendimento`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acao: 'concluir', recebida_em: a.desde, recebida_id: a.recebidaId }),
+      })
+      if (!r.ok) { toast.error((await r.json().catch(() => null))?.error ?? 'Não foi possível concluir.'); return }
+      setData((prev) => prev ? { ...prev, aguardando: prev.aguardando?.filter((i) => i.conversaId !== a.conversaId) } : prev)
+      toast.success('Atendimento concluído. Novas mensagens voltam para a fila.')
+    } catch { toast.error('Não foi possível concluir o atendimento.') }
+    finally { setConcluindo(null); void load(true) }
+  }
 
   // Recarrega ao voltar para a aba e a cada minuto: o item some quando o lead deixa de cumprir a regra.
   useEffect(() => {
@@ -252,7 +268,7 @@ export default function MeuDiaClient() {
         </Panel>
       ) : (
         <div className={`grid items-start gap-4 ${comWhatsapp ? 'lg:grid-cols-2 xl:grid-cols-4' : 'lg:grid-cols-3'}`}>
-          {comWhatsapp && <AguardandoColumn items={data!.aguardando!} />}
+          {comWhatsapp && <AguardandoColumn items={data!.aguardando!} onConcluir={(a) => void concluir(a)} pendente={concluindo} />}
           {COLUMNS.map((column) => {
             const items = visible(column.key)
             const headingId = `meu-dia-${column.key}`
