@@ -33,6 +33,7 @@ test('the SQL scope follows the role', () => {
   assert.match(seller, /wc\.atendente_id = \$3/)
   assert.match(seller, /vendedor_id = \$3 OR vp\.closer_id = \$3/)
   assert.match(seller, /wc\.lead_cnpj IN/)
+  assert.match(seller, /wc\.lead_cnpj IS NULL AND wc\.atendente_id IS NULL/)
 })
 
 test('waiting for a reply only when the last received is after the last sent', () => {
@@ -68,4 +69,11 @@ test('a message after the import waits again', () => {
 test('aguardandoSql keeps the historico_ate cut', () => {
   assert.match(aguardandoSql('wc'), /wc\.historico_ate/)
   assert.match(aguardandoSql('wc'), /wc\.ultima_recebida_em > wc\.ultima_enviada_em/)
+  assert.match(aguardandoSql('wc'), /wc\.resolvida_ate/)
+})
+
+test('completing the last inbound removes the pending task, and a new message reopens it', () => {
+  const c = { ultima_enviada_em: '2026-11-17T12:00:00Z', ultima_recebida_em: '2026-11-17T13:00:00Z', resolvida_ate: '2026-11-17T13:00:00Z' }
+  assert.equal(aguardandoResposta(c), false)
+  assert.equal(aguardandoResposta({ ...c, ultima_recebida_em: '2026-11-17T14:00:00Z' }), true)
 })

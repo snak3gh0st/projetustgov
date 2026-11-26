@@ -1,5 +1,7 @@
 'use client'
 
+import { useMotivoPerda } from '@/components/leads/useMotivoPerda'
+
 import WorkspaceShortcuts from '@/components/workspace/WorkspaceShortcuts'
 import { workspaceHref } from '@/lib/workspace/presentation'
 
@@ -62,6 +64,7 @@ function CardSkeleton() {
 export default function LeadDetailPage() {
   const params = useParams()
   const toast = useToast()
+  const { pedirMotivo, dialogoPerda } = useMotivoPerda()
   const cnpj = decodeURIComponent(params.cnpj as string)
   const cnpjClean = cnpj.replace(/\D/g, '')
 
@@ -165,7 +168,9 @@ export default function LeadDetailPage() {
       })
       return
     }
-    const data = await patchLead({ id, [field]: value })
+    const motivo = field === 'status_contato' && value === 'Churn' ? await pedirMotivo() : undefined
+    if (motivo === null) return
+    const data = await patchLead({ id, [field]: value, ...(motivo ? { perda_motivo: motivo } : {}) })
     if (!data) return
     setProjetos((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value, ...mergeFromServer(data) } : p)))
     if (field === 'status_contato') bumpHistory()
@@ -392,6 +397,7 @@ export default function LeadDetailPage() {
 
       {projetos.length > 0 && <ClientWorkspace key={contactsBump} cnpj={cnpjClean} embedded />}
 
+      {dialogoPerda}
       {first && (
         <SaleModal
           open={!!saleModal}

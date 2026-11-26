@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { buildStructuredLeadScopeSql } from '@/lib/crm-scope'
 import { query } from '@/lib/db'
 import { getApiSession } from '@/lib/dal'
+import { crmAliasSql } from '@/lib/execucao-status'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -20,6 +21,7 @@ export async function GET(request: Request) {
     const filterByVendedor = isVendedor ? session.userId : vendedorIdParam
     const vendedorParams = filterByVendedor ? [filterByVendedor] : []
     const approvalScopeSql = buildStructuredLeadScopeSql('vp')
+    const crmStatus = crmAliasSql("COALESCE(vp.status_contato, 'Não Contatado')")
     const approvalFilter = filterByVendedor
       ? `WHERE ${approvalScopeSql} AND vp.vendedor_id = $1`
       : `WHERE ${approvalScopeSql}`
@@ -52,16 +54,18 @@ export async function GET(request: Request) {
       // 1. KPI: Main metrics (conversion, pipeline, commission, contact rate) — single query
       query(`
         SELECT
-          COUNT(DISTINCT vp.cnpj) FILTER (WHERE vp.status_contato = 'Fechado')::int as fechado_count,
-          COUNT(DISTINCT vp.cnpj) FILTER (WHERE vp.vendedor_id IS NOT NULL)::int as assigned_count,
-          COUNT(DISTINCT vp.cnpj) FILTER (
-            WHERE COALESCE(vp.status_contato, 'Não Contatado') IN ('Não Contatado', 'Nao Contatado')
+          COUNT(*) FILTER (WHERE ${crmStatus} = 'Fechado' AND vp.vendedor_id IS NOT NULL)::int as fechado_count,
+          COUNT(*) FILTER (WHERE vp.vendedor_id IS NOT NULL)::int as assigned_count,
+          COUNT(*) FILTER (
+            WHERE COALESCE(${crmStatus}, 'Não Contatado') IN ('Não Contatado', 'Nao Contatado')
               AND vp.vendedor_id IS NOT NULL
           )::int as nao_contatado_count,
-          COALESCE(SUM(CASE WHEN vp.status_contato != 'Fechado' AND vp.vendedor_id IS NOT NULL THEN vp.valor_emenda::numeric ELSE 0 END), 0) as pipeline_value,
-          COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' THEN vp.valor_venda::numeric ELSE 0 END), 0) as closed_value,
-          COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' AND u.role != 'gestor' THEN vp.comissao_valor::numeric ELSE 0 END), 0) as commission_earned,
-          COALESCE(SUM(CASE WHEN vp.status_contato = 'Fechado' AND u.role != 'gestor' THEN COALESCE(vp.comissao_bonus, 0)::numeric ELSE 0 END), 0) as commission_bonus
+          COUNT(*) FILTER (WHERE ${crmStatus} = 'Churn' AND vp.vendedor_id IS NOT NULL)::int as churn_count,
+          COUNT(*) FILTER (WHERE ${crmStatus} NOT IN ('Fechado', 'Churn', 'Sem Interesse') AND vp.vendedor_id IS NOT NULL AND COALESCE(vp.valor_venda, 0) <= 0)::int AS pipeline_without_value,
+          COALESCE(SUM(CASE WHEN ${crmStatus} NOT IN ('Fechado', 'Churn', 'Sem Interesse') AND vp.vendedor_id IS NOT NULL THEN GREATEST(COALESCE(vp.valor_venda, 0), 0) ELSE 0 END), 0) as pipeline_value,
+          COALESCE(SUM(CASE WHEN ${crmStatus} = 'Fechado' THEN vp.valor_venda::numeric ELSE 0 END), 0) as closed_value,
+          COALESCE(SUM(CASE WHEN ${crmStatus} = 'Fechado' AND u.role != 'gestor' THEN vp.comissao_valor::numeric ELSE 0 END), 0) as commission_earned,
+          COALESCE(SUM(CASE WHEN ${crmStatus} = 'Fechado' AND u.role != 'gestor' THEN COALESCE(vp.comissao_bonus, 0)::numeric ELSE 0 END), 0) as commission_bonus
         FROM vendedor_projetos vp
         LEFT JOIN users u ON u.id = vp.vendedor_id
         ${approvalFilter}
@@ -70,24 +74,18 @@ export async function GET(request: Request) {
       // 2. KPI: Avg Days to Close
       query(`
         SELECT
-          COALESCE(AVG(EXTRACT(DAY FROM (vp.updated_at - vp.created_at)))::int, NULL) as avg_days_to_close
+          ROUND(AVG(EXTRACT(EPOCH FROM (vp.fechamento_at - vp.created_at)) / 86400.0) FILTER (WHERE vp.fechamento_at >= vp.created_at))::int as avg_days_to_close
         FROM vendedor_projetos vp
         ${approvalFilter}
-          AND vp.status_contato = 'Fechado'
+          AND ${crmStatus} = 'Fechado' AND vp.fechamento_at IS NOT NULL
       `, vendedorParams),
 
       // 3. KPI: Ticket Medio
       query(`
-        SELECT COALESCE(AVG(cnpj_avg), 0) as ticket_medio
-        FROM (
-          SELECT vp.cnpj, AVG(vp.valor_venda::numeric) as cnpj_avg
-          FROM vendedor_projetos vp
-          ${approvalFilter}
-            AND vp.vendedor_id IS NOT NULL
-            AND vp.status_contato = 'Fechado'
-            AND vp.valor_venda > 0
-          GROUP BY vp.cnpj
-        ) t
+        SELECT COALESCE(AVG(vp.valor_venda::numeric), 0) as ticket_medio
+        FROM vendedor_projetos vp
+        ${approvalFilter}
+          AND vp.vendedor_id IS NOT NULL AND ${crmStatus} = 'Fechado' AND vp.valor_venda > 0
       `, vendedorParams),
 
       // 4. KPI: Activity last 7 days (contact notes)
@@ -106,7 +104,7 @@ export async function GET(request: Request) {
         FROM vendedor_projetos vp
         ${approvalFilter}
           AND vp.vendedor_id IS NOT NULL
-          AND vp.status_contato NOT IN ('Fechado', 'Telefone Invalido')
+          AND ${crmStatus} NOT IN ('Fechado', 'Churn', 'Sem Interesse')
           AND NOT EXISTS (
             SELECT 1 FROM contact_notes cn
             WHERE cn.lead_cnpj = vp.cnpj AND cn.created_at >= NOW() - INTERVAL '7 days'
@@ -124,22 +122,8 @@ export async function GET(request: Request) {
       query(`
         SELECT * FROM (
           SELECT
-            CASE
-              WHEN COALESCE(vp.status_contato, 'Não Contatado') IN ('Nao Contatado', 'Não Contatado', 'Contactado') THEN 'Não Contatado'
-              WHEN vp.status_contato IN ('Ainda Não', 'Sem Interesse') THEN 'Sem Interesse'
-              WHEN vp.status_contato IN ('Retorno', 'Em Atendimento') THEN 'Em Atendimento'
-              WHEN vp.status_contato = 'Contatado' THEN 'Contatado'
-              WHEN vp.status_contato IN ('Reunião Agendada', 'Reuniao Agendada') THEN 'Reunião Agendada'
-              WHEN vp.status_contato = 'Quente' THEN 'Quente'
-              WHEN vp.status_contato = 'Muito Quente' THEN 'Muito Quente'
-              WHEN vp.status_contato IN ('Proposta', 'Proposta Enviada') THEN 'Proposta Enviada'
-              WHEN vp.status_contato IN ('Aguardando Closer', 'Em Aprovação') THEN 'Em Aprovação'
-              WHEN vp.status_contato = 'Fechado' THEN 'Fechado'
-              WHEN vp.status_contato IN ('Impedimento Técnico', 'Impedimento Tecnico') THEN 'Impedimento Técnico'
-              WHEN vp.status_contato = 'Cancelado' THEN 'Cancelado'
-              ELSE vp.status_contato
-            END as status,
-            COUNT(DISTINCT vp.cnpj)::int as count
+            ${crmStatus} as status,
+            COUNT(*)::int as count
           FROM vendedor_projetos vp
           ${approvalFilter}
             AND vp.vendedor_id IS NOT NULL
@@ -157,8 +141,7 @@ export async function GET(request: Request) {
             WHEN 'Proposta Enviada' THEN 8
             WHEN 'Em Aprovação' THEN 9
             WHEN 'Fechado' THEN 10
-            WHEN 'Impedimento Técnico' THEN 11
-            WHEN 'Cancelado' THEN 12
+            WHEN 'Churn' THEN 11
             ELSE 13
           END
       `, vendedorParams),
@@ -167,15 +150,15 @@ export async function GET(request: Request) {
       query(`
         SELECT
           u.nome as vendedor_nome,
-          COALESCE(SUM(vp.comissao_valor::numeric) FILTER (WHERE vp.status_contato = 'Fechado'), 0) as total_comissao,
-          COALESCE(SUM(COALESCE(vp.comissao_bonus, 0)::numeric) FILTER (WHERE vp.status_contato = 'Fechado'), 0) as total_bonus
+          COALESCE(SUM(vp.comissao_valor::numeric) FILTER (WHERE ${crmStatus} = 'Fechado'), 0) as total_comissao,
+          COALESCE(SUM(COALESCE(vp.comissao_bonus, 0)::numeric) FILTER (WHERE ${crmStatus} = 'Fechado'), 0) as total_bonus
         FROM vendedor_projetos vp
         JOIN users u ON u.id = vp.vendedor_id
         ${approvalFilter}
           AND vp.vendedor_id IS NOT NULL
           AND u.role != 'gestor'
         GROUP BY u.nome
-        HAVING COUNT(*) FILTER (WHERE vp.status_contato = 'Fechado') > 0
+        HAVING COUNT(*) FILTER (WHERE ${crmStatus} = 'Fechado') > 0
         ORDER BY total_comissao DESC
       `, vendedorParams),
 
@@ -183,7 +166,7 @@ export async function GET(request: Request) {
       query(`
         SELECT
           vp.uf,
-          COUNT(DISTINCT vp.cnpj)::int as count,
+          COUNT(*)::int as count,
           COALESCE(SUM(vp.valor_emenda::numeric), 0) as valor_emenda
         FROM vendedor_projetos vp
         ${approvalFilter}
@@ -238,6 +221,10 @@ export async function GET(request: Request) {
       kpis: {
         closed_value: Number(m.closed_value) || 0,
         conversion_rate: conversionRate,
+        churn_count: Number(m.churn_count) || 0,
+        churn_rate: assignedCount > 0 ? Number(((Number(m.churn_count) / assignedCount) * 100).toFixed(1)) : null,
+        pipeline_without_value: Number(m.pipeline_without_value) || 0,
+        unit: 'oportunidade',
         fechado_count: fechadoCount,
         assigned_count: assignedCount,
         contact_rate: contactRate,

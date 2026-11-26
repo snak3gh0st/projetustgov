@@ -70,7 +70,7 @@ export class GoogleApi {
     if(typeof r.data!=='string'||r.data.length>20000000)throw new WorkspaceError('Anexo maior que o limite de 15 MB.',413)
     return Buffer.from(r.data,'base64url')
   }
-  async send(input:{from:string;to:string[];subject:string;text:string;requestId:string;threadId?:string;replyMessageId?:string;references?:string}){
+  async send(input:{from:string;to:string[];cc?:string[];subject:string;text:string;requestId:string;threadId?:string;replyMessageId?:string;references?:string}){
     const raw=buildMime(input)
     const data=await this.request('gmail','/messages/send',{method:'POST',body:{raw,...(input.threadId?{threadId:googleId(input.threadId)}:{})},mutation:true})
     if(typeof data.id!=='string'||typeof data.threadId!=='string')throw new WorkspaceError('Envio sem confirmação. Confira a pasta Enviados no Gmail.',502,true)
@@ -113,7 +113,7 @@ export class GoogleApi {
 }
 
 function oneLine(s:string){if(/[\r\n]/.test(s))throw new WorkspaceError('Cabeçalho de e-mail inválido.');return s}
-export function buildMime(input:{from:string;to:string[];subject:string;text:string;requestId:string;replyMessageId?:string;references?:string}){
+export function buildMime(input:{from:string;to:string[];cc?:string[];subject:string;text:string;requestId:string;replyMessageId?:string;references?:string}){
   const subject=oneLine(input.subject),to=input.to.map(emailAddress)
   if(!to.length)throw new WorkspaceError('Selecione ao menos um contato do cliente.')
   const words:string[]=[];let chunk=''
@@ -122,6 +122,7 @@ export function buildMime(input:{from:string;to:string[];subject:string;text:str
   const encodedSubject=words.map(word=>`=?UTF-8?B?${Buffer.from(word).toString('base64')}?=`).join('\r\n ')
   const lines=[`From: ${emailAddress(input.from)}`,`To: ${to.join(',\r\n ')}`,`Subject: ${encodedSubject}`,
     `Message-ID: <${oneLine(input.requestId)}@projete.projetus.org>`,`Date: ${new Date().toUTCString()}`,'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64']
+  if(input.cc?.length)lines.push(`Cc: ${input.cc.map(emailAddress).join(',\r\n ')}`)
   if(input.replyMessageId)lines.push(`In-Reply-To: ${oneLine(input.replyMessageId)}`)
   if(input.references)lines.push(`References: ${oneLine(input.references)}`)
   const text=Buffer.from(input.text).toString('base64').match(/.{1,76}/g)?.join('\r\n')??''

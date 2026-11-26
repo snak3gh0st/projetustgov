@@ -10,5 +10,5 @@ export function whatsappContatosSql(): string {
   if (!whatsappConfigured()) return `SELECT NULL::text AS cnpj_clean, NULL::timestamptz AS at WHERE FALSE`
   return `SELECT wc.lead_cnpj AS cnpj_clean, wm.enviada_em AS at FROM whatsapp_mensagens wm
     JOIN whatsapp_conversas wc ON wc.id = wm.conversa_id
-    WHERE wc.lead_cnpj IS NOT NULL AND wm.status <> 'falhou'`
+    WHERE wc.lead_cnpj IS NOT NULL AND wm.status <> 'falhou' AND wm.tipo <> 'reacao'`
 }

@@ -6,6 +6,36 @@ import { parseMensagem, parseWebhook } from './webhook'
 const upsert = (data: Record<string, unknown>, event = 'messages.upsert') => ({ event, instance: 'consultorias', data, apikey: 'x' })
 const key = (over: Record<string, unknown> = {}) => ({ remoteJid: '5561998765432@s.whatsapp.net', fromMe: false, id: 'ABC1', ...over })
 
+test('forwarded contacts preserve names and phone numbers, including arrays and folded cards', () => {
+  const card = { displayName: 'Pessoa indicada', vcard: 'BEGIN:VCARD\r\nFN:Pessoa indicada\r\nTEL;waid=5511999999999:+55 11 99999-9999\r\nTEL;TYPE=CELL:+55 21 98888-\r\n 7777\r\nEND:VCARD' }
+  for (const message of [{ contactMessage: card }, { contactsArrayMessage: { contacts: [card] } }]) {
+    const ev = parseMensagem('consultorias', { key: key(), message })
+    assert.equal(ev.kind, 'mensagem')
+    if (ev.kind !== 'mensagem') return
+    assert.equal(ev.tipo, 'contato')
+    assert.deepEqual(ev.midia?.contatos, [{ nome: 'Pessoa indicada', telefones: ['5511999999999', '+5521988887777'] }])
+  }
+})
+
+test('reaction additions and removals target the original message without losing emoji', () => {
+  for (const text of ['👍🏽', '']) {
+    const ev = parseMensagem('consultorias', { key: key(), message: { reactionMessage: { key: { id: 'original' }, text } } })
+    assert.equal(ev.kind, 'mensagem')
+    if (ev.kind !== 'mensagem') return
+    assert.equal(ev.tipo, 'reacao'); assert.equal(ev.texto, text); assert.equal(ev.midia?.alvoWaId, 'original')
+  }
+})
+
+test('wrapped messages retain emoji and the quoted reply', () => {
+  const ev = parseMensagem('consultorias', { key: key(), message: { ephemeralMessage: { message: { extendedTextMessage: {
+    text: 'Obrigada 😊', contextInfo: { stanzaId: 'original', quotedMessage: { conversation: 'Proposta enviada' } },
+  } } } } })
+  assert.equal(ev.kind, 'mensagem')
+  if (ev.kind !== 'mensagem') return
+  assert.equal(ev.texto, 'Obrigada 😊')
+  assert.deepEqual(ev.midia?.resposta, { waId: 'original', texto: 'Proposta enviada' })
+})
+
 test('a received text becomes a message from the contact', () => {
   const [ev] = parseWebhook(upsert({ key: key(), pushName: 'Maria', message: { conversation: 'Bom dia' }, messageType: 'conversation', messageTimestamp: 1761130800 }))
   assert.deepEqual(ev, {

@@ -18,15 +18,15 @@ export async function prepareWorkspaceDb(pool){
     await pool.query(`INSERT INTO users(id,nome,email,role,active,password_hash) VALUES($1,$2,$3,$4,true,$5)
       ON CONFLICT(id) DO UPDATE SET role=EXCLUDED.role,active=true,password_hash=EXCLUDED.password_hash`,[id,name,`${name.toLowerCase()}@workspace.example.test`,role,password])
   }
-  await pool.query(`INSERT INTO vendedor_projetos VALUES
+  await pool.query(`INSERT INTO vendedor_projetos(id,cnpj,nome,email,tipo_servico,status_contato,nr_emenda,vendedor_id,closer_id) VALUES
     (10001,'12.345.678/0001-90','Cliente Alfa','client@example.test','Aprovação','Em Atendimento','1',$1,$3),
     (10002,$4,'Cliente Alfa','client@example.test','Execução','Em Atendimento','2',$1,NULL),
     (10003,$5,'Cliente Beta','shared@example.test','Aprovação','Em Atendimento','3',$2,NULL)
     ON CONFLICT DO NOTHING`,[alice,bob,viewer,clientA,clientB])
-  await pool.query(`INSERT INTO lead_contacts VALUES(10001,$1,'Ana','Presidente','client@example.test',true),
+  await pool.query(`INSERT INTO lead_contacts(id,lead_cnpj,nome_pessoa,cargo,email,principal) VALUES(10001,$1,'Ana','Presidente','client@example.test',true),
     (10002,$1,'Contador','Contabilidade','shared@example.test',false),(10003,$2,'Contador','Contabilidade','shared@example.test',true)
     ON CONFLICT DO NOTHING`,[clientA,clientB])
-  await pool.query(`INSERT INTO projetos_execucao VALUES('900001',$1,'Escola','Em Execução'),('900002',$2,'Hospital','Em Execução') ON CONFLICT DO NOTHING`,[clientA,clientB])
+  await pool.query(`INSERT INTO projetos_execucao(nr_convenio,cnpj,objeto,situacao) VALUES('900001',$1,'Escola','Em Execução'),('900002',$2,'Hospital','Em Execução') ON CONFLICT DO NOTHING`,[clientA,clientB])
   const migration=await readFile(new URL('../../migrations/20261110_google_workspace.sql',import.meta.url),'utf8')
   await pool.query(migration)
   await pool.query(migration) // Reapplying the additive migration is safe.

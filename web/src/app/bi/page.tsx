@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { formatCompactCurrency, formatCurrency } from '@/lib/format'
 import SectionTabs from '@/components/SectionTabs'
+import CommercialDailyActivity from '@/components/CommercialDailyActivity'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, AreaChart, Area,
@@ -10,6 +11,9 @@ import {
 
 // --- Types (Aprovacao) ---
 interface BIKpis {
+  churn_count: number
+  churn_rate: number | null
+  pipeline_without_value: number
   closed_value: number
   conversion_rate: number
   fechado_count: number
@@ -113,6 +117,13 @@ const FUNNEL_COLORS: Record<string, string> = {
   'Proposta': '#3b82f6',
   'Aguardando Closer': '#8b5cf6', // violet-500
   'Fechado': '#22c55e',
+  'Churn': '#e11d48',
+  'Sem Interesse': '#64748b',
+  'Em Atendimento': '#f59e0b',
+  'Contatado': '#06b6d4',
+  'Reunião Agendada': '#6366f1',
+  'Proposta Enviada': '#3b82f6',
+  'Em Aprovação': '#8b5cf6',
   'Telefone Invalido': '#9ca3af',
   'Contatado (Aprovação)': '#f97316', // orange-500
 }
@@ -204,7 +215,7 @@ export default function BIDashboard() {
           </div>
           <div className="h-10 w-56 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-4 gap-4">
           {[1, 2, 3, 4, 5, 6, 7].map(i => (
             <div key={i} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5 h-28 animate-pulse" />
           ))}
@@ -281,6 +292,7 @@ export default function BIDashboard() {
       </div>
 
       {/* 2. Tab content */}
+      {['vendedor', 'coordenador', 'gestor', 'diretoria', 'admin'].includes(role) && <CommercialDailyActivity seller={vendedorFilter} />}
       {pipeline === 'aprovacao'
         ? <AprovacaoTab data={data!} />
         : <ExecucaoTab data={execData!} />
@@ -356,7 +368,7 @@ function AprovacaoTab({ data }: { data: BIData }) {
 
         {/* Card 1: Faturamento de Vendas Concluídas */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-5">
-          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Faturamento</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vendas contratadas</p>
           <p className="text-3xl font-heading font-bold text-green-600 mt-2">
             {formatCompactCurrency(kpis.closed_value)}
           </p>
@@ -369,7 +381,7 @@ function AprovacaoTab({ data }: { data: BIData }) {
           <p className={`text-3xl font-heading font-bold mt-2 ${conversionColor}`}>
             {kpis.conversion_rate.toFixed(1)}%
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{kpis.fechado_count}/{kpis.assigned_count} leads</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{kpis.fechado_count}/{kpis.assigned_count} oportunidades</p>
         </div>
 
         {/* Card 3: Taxa de Contato */}
@@ -419,10 +431,15 @@ function AprovacaoTab({ data }: { data: BIData }) {
 
       </div>
 
+      <div className="rounded-xl border border-line bg-surface p-4 text-sm">
+        <p className="font-semibold text-ink">Perdas / cancelamentos (Churn): {kpis.churn_count} · {kpis.churn_rate == null ? 'Sem base para calcular' : `${kpis.churn_rate.toFixed(1)}%`}</p>
+        <p className="mt-1 text-xs text-ink-3">Perdas registradas sobre oportunidades atribuídas. Cada emenda é uma oportunidade; clientes parados continuam no acompanhamento.</p>
+      </div>
+
       {/* Pipeline value + commission summary bar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4 flex items-center justify-between">
-          <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Pipeline Aberto</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Receita negociada em aberto</span>
           <span className="text-lg font-heading font-bold text-[#0072F7]">{formatCompactCurrency(kpis.pipeline_value)}</span>
         </div>
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-xl p-4 flex items-center justify-between">
@@ -437,6 +454,7 @@ function AprovacaoTab({ data }: { data: BIData }) {
         )}
       </div>
 
+      {kpis.pipeline_without_value > 0 && <p className="text-xs text-ink-3">{kpis.pipeline_without_value} oportunidades abertas ainda sem valor negociado. Valores de emendas não entram na receita comercial.</p>}
       {/* Charts Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 

@@ -126,6 +126,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
     }
 
+    if (requestedStatus === 'Churn' && currentStatus !== 'Churn') {
+      const motivo = typeof body.perda_motivo === 'string' ? body.perda_motivo.trim() : ''
+      if (!motivo || motivo.length > 2000) return NextResponse.json({ error: 'Informe o motivo da perda/cancelamento (até 2000 caracteres).' }, { status: 400 })
+      updates.push(`perda_motivo = $${paramIndex++}`, `perda_por = $${paramIndex++}`, 'perda_em = NOW()')
+      values.push(motivo, session.userId)
+    }
+
     // VALIDATION: valor_venda must be provided and positive to close the sale
     // This check runs BEFORE the UPDATE to prevent invalid status changes
     if (isClosedCrmStatus(requestedStatus)) {
@@ -144,7 +151,7 @@ export async function PATCH(
     }
 
     if (requestedStatus !== undefined && isManagementCrmStatus(requestedStatus) && !canManagePipeline && requestedStatus !== currentStatus) {
-      return NextResponse.json({ error: 'A partir de Aprovação, somente Rooger/gestão pode mover a etapa do funil' }, { status: 403 })
+      return NextResponse.json({ error: 'Somente Rooger/gestão pode autorizar o fechamento da venda' }, { status: 403 })
     }
 
     if (requestedStatus !== undefined && isClosedCrmStatus(requestedStatus) && currentStatus !== 'Fechado') {
@@ -189,21 +196,24 @@ export async function PATCH(
     values.push(projectId)
 
     // Vendedor/coordenador can update their own leads or leads where they are closer.
-    // They cannot move the funnel past Proposta Enviada.
+    // Approval submission and loss registration remain limited to the seller's own leads.
     let vendedorCondition = ''
     if (session.role === 'vendedor' || session.role === 'coordenador') {
       if (requestedStatus !== undefined && isManagementCrmStatus(requestedStatus)) {
-        return NextResponse.json({ error: 'Vendedor só pode mover o lead até Proposta Enviada' }, { status: 403 })
+        return NextResponse.json({ error: 'Somente a gestão pode concluir a venda' }, { status: 403 })
       }
       values.push(session.userId)
       vendedorCondition = `AND (vendedor_id = $${paramIndex + 1} OR closer_id = $${paramIndex + 1})`
     }
+    const previousStatusParam = values.length + 1
+    values.push(currentRow.status_contato)
 
     const actor = { userId: session.userId, origem: 'manual' }
     const updateResult = await queryAs<{ id: number }>(actor, `
       UPDATE vendedor_projetos
       SET ${updates.join(', ')}
       WHERE id = $${paramIndex} ${vendedorCondition}
+        AND status_contato IS NOT DISTINCT FROM $${previousStatusParam}
       RETURNING id
     `, values)
 

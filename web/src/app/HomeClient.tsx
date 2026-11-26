@@ -59,6 +59,7 @@ interface VendedorStats {
   proposta: number
   vendas_aprovacao: number
   vendas_execucao: number
+  churn: number
   fechado: number
   valor_total_emenda: number
   comissao_total: number
@@ -409,6 +410,7 @@ const SELLER_SEGMENTS = [
   { key: 'vendas_aprovacao', status: 'Vendas Aprovação' },
   { key: 'vendas_execucao', status: 'Execução/Prestação' },
   { key: 'sem_interesse', status: 'Sem Interesse' },
+  { key: 'churn', status: 'Churn' },
 ] as const
 
 // Desempenho por vendedor em tabela: comparar linhas é a tarefa, não admirar cartões.
@@ -656,7 +658,7 @@ function AprovacaoView({ data, isVendedor }: { data: DashboardData; isVendedor: 
   return (
     <>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
-        <StatTile label="Leads" value={g.total_leads} href="/leads" hint="No funil de aprovação" />
+        <StatTile label="Clientes (CNPJ)" value={g.total_leads} href="/leads" hint="No funil de aprovação" />
         {!isVendedor && <StatTile label="Atribuídos" value={g.total_assigned} href="/leads" hint={pctOf(g.total_assigned)} />}
         {!isVendedor && (
           <StatTile
@@ -676,7 +678,7 @@ function AprovacaoView({ data, isVendedor }: { data: DashboardData; isVendedor: 
       <FunnelStrip
         title="Funil de aprovação"
         total={g.total_leads}
-        totalLabel="leads"
+        totalLabel="clientes (CNPJ)"
         stages={stagesFor(STATUS_ORDER, g.by_status, status => `/leads?status_contato=${encodeURIComponent(status)}`)}
       />
 

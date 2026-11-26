@@ -36,7 +36,10 @@ export interface ConversaRow {
   donos_nomes: string | null
   arquivada_em: string | null
   historico_ate: string | null
+  resolvida_ate: string | null
+  resolvida_em: string | null
   ultima_recebida_em: string | null
+  ultima_recebida_id: string | null
   ultima_enviada_em: string | null
   ultima_mensagem_em: string | null
   ultima_previa: string | null
@@ -47,8 +50,8 @@ const LEAD_DO_CNPJ = `REGEXP_REPLACE(vp.cnpj, '[^0-9]', '', 'g') = wc.lead_cnpj`
 
 /** SELECT de conversas com nome do lead, donos e atendente. $1 = instância, $2 = usuário (escopo). */
 export const CONVERSA_SELECT = `
-  SELECT wc.id, wc.instancia, wc.telefone, wc.jid, wc.lid, wc.nome_contato, wc.created_at, wc.lead_cnpj, wc.atendente_id, wc.arquivada_em, wc.historico_ate,
-         wc.ultima_recebida_em, wc.ultima_enviada_em, wc.ultima_mensagem_em, wc.ultima_previa, wc.nao_lidas,
+  SELECT wc.id, wc.instancia, wc.telefone, wc.jid, wc.lid, wc.nome_contato, wc.created_at, wc.lead_cnpj, wc.atendente_id, wc.arquivada_em, wc.historico_ate, wc.resolvida_ate, wc.resolvida_em,
+         wc.ultima_recebida_em, wc.ultima_recebida_id, wc.ultima_enviada_em, wc.ultima_mensagem_em, wc.ultima_previa, wc.nao_lidas,
          ARRAY(
            SELECT DISTINCT COALESCE(e.nome, ce.label_id)
            FROM whatsapp_chat_etiquetas ce

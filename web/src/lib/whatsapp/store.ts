@@ -66,8 +66,11 @@ export async function unirConversas(ficaId: number, saiId: number): Promise<void
          nome_contato = COALESCE(f.nome_contato, s.nome_contato),
          arquivada_em = CASE WHEN f.arquivada_em IS NULL OR s.arquivada_em IS NULL THEN NULL ELSE GREATEST(f.arquivada_em, s.arquivada_em) END,
          historico_ate = GREATEST(f.historico_ate, s.historico_ate),
+         resolvida_ate = GREATEST(f.resolvida_ate, s.resolvida_ate),
          nao_lidas = f.nao_lidas + s.nao_lidas,
          ultima_recebida_em = GREATEST(f.ultima_recebida_em, s.ultima_recebida_em),
+         ultima_recebida_id = CASE WHEN f.ultima_recebida_em IS NULL OR s.ultima_recebida_em > f.ultima_recebida_em
+           THEN s.ultima_recebida_id ELSE f.ultima_recebida_id END,
          ultima_enviada_em = GREATEST(f.ultima_enviada_em, s.ultima_enviada_em),
          ultima_previa = CASE WHEN f.ultima_mensagem_em IS NULL OR s.ultima_mensagem_em > f.ultima_mensagem_em THEN s.ultima_previa ELSE f.ultima_previa END,
          ultima_mensagem_em = GREATEST(f.ultima_mensagem_em, s.ultima_mensagem_em)
@@ -189,15 +192,23 @@ async function gravarMensagem(ev: MensagemEvent, opts: GravarOpts): Promise<Grav
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      ON CONFLICT (conversa_id, wa_id) DO UPDATE
        SET origem = CASE WHEN $4 = 'projete' THEN 'projete' ELSE whatsapp_mensagens.origem END,
-           autor_id = COALESCE(EXCLUDED.autor_id, whatsapp_mensagens.autor_id)
+           autor_id = COALESCE(EXCLUDED.autor_id, whatsapp_mensagens.autor_id),
+           texto = CASE WHEN EXCLUDED.tipo = 'reacao' AND EXCLUDED.enviada_em >= whatsapp_mensagens.enviada_em
+             OR whatsapp_mensagens.tipo = 'outro' THEN EXCLUDED.texto ELSE whatsapp_mensagens.texto END,
+           midia = CASE WHEN EXCLUDED.tipo = 'reacao' AND EXCLUDED.enviada_em >= whatsapp_mensagens.enviada_em
+             OR whatsapp_mensagens.tipo = 'outro' THEN EXCLUDED.midia ELSE whatsapp_mensagens.midia END,
+           tipo = CASE WHEN whatsapp_mensagens.tipo = 'outro' THEN EXCLUDED.tipo ELSE whatsapp_mensagens.tipo END,
+           enviada_em = GREATEST(whatsapp_mensagens.enviada_em, EXCLUDED.enviada_em)
      RETURNING id, (xmax = 0) AS nova`,
     [conversa.id, ev.waId, direcao, origem, opts.autorId ?? null, ev.texto, ev.tipo, ev.midia ? JSON.stringify(ev.midia) : null,
       opts.status ?? 'enviada', ev.enviadaEm]
   )
 
-  if (msg.nova && opts.status !== 'falhou') {
+  if (msg.nova && opts.status !== 'falhou' && ev.tipo !== 'reacao') {
     await query(
       `UPDATE whatsapp_conversas SET
+         ultima_recebida_id = CASE WHEN $2 = 'recebida' AND (ultima_recebida_em IS NULL OR $3::timestamptz >= ultima_recebida_em) THEN $6::bigint ELSE ultima_recebida_id END,
+         resolvida_ate = CASE WHEN NOT $5 AND $2 = 'recebida' AND $3::timestamptz >= resolvida_ate THEN NULL ELSE resolvida_ate END,
          ultima_recebida_em = CASE WHEN $2 = 'recebida' THEN GREATEST(ultima_recebida_em, $3::timestamptz) ELSE ultima_recebida_em END,
          ultima_enviada_em = CASE WHEN $2 = 'enviada' THEN GREATEST(ultima_enviada_em, $3::timestamptz) ELSE ultima_enviada_em END,
          nao_lidas = CASE WHEN $5 THEN nao_lidas WHEN $2 = 'recebida' THEN nao_lidas + 1 ELSE 0 END,
@@ -207,7 +218,7 @@ async function gravarMensagem(ev: MensagemEvent, opts: GravarOpts): Promise<Grav
          ultima_previa = CASE WHEN ultima_mensagem_em IS NULL OR $3::timestamptz >= ultima_mensagem_em THEN $4 ELSE ultima_previa END,
          ultima_mensagem_em = GREATEST(ultima_mensagem_em, $3::timestamptz)
        WHERE id = $1`,
-      [conversa.id, direcao, ev.enviadaEm, previaDe(ev), !!opts.historico]
+      [conversa.id, direcao, ev.enviadaEm, previaDe(ev), !!opts.historico, msg.id]
     )
   }
 

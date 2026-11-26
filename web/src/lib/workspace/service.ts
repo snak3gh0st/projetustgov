@@ -4,6 +4,7 @@ import { GoogleApi, eventView } from './google.ts'
 import { WorkspaceStore } from './store.ts'
 import { type MeetingOutcome } from './calendar-policy.ts'
 import {calendarWindow,eventRelates,readableCalendar,type EventQuery} from './calendar-sync.ts'
+import { proposalCopy } from './proposals.ts'
 
 type Row=Record<string,any>
 export class WorkspaceService {
@@ -43,7 +44,7 @@ export class WorkspaceService {
     await this.store.activity(context.id,this.actor.userId,'thread.linked','Conversa vinculada ao projeto',this.actor.userId)
     return{ok:true}
   }
-  async send(key:ContextKey,input:{requestId:string;to:string[];subject:string;text:string;threadId?:string}){
+  async send(key:ContextKey,input:{requestId:string;to:string[];subject:string;text:string;threadId?:string;proposal?:boolean}){
     const account=await this.connected(),{client,context}=await this.load(key)
     const to=input.to.map(emailAddress)
     if(to.some(e=>!client.emails.includes(e)))throw new WorkspaceError('Cadastre os destinatários nos contatos deste cliente antes de enviar.',403)
@@ -53,10 +54,11 @@ export class WorkspaceService {
       if(!last?.messageId)throw new WorkspaceError('A conversa não tem um identificador de resposta válido. Envie uma nova mensagem.')
       subject=last.subject;replyMessageId=last.messageId;references=[last.references,last.messageId].filter(Boolean).join(' ')
     }
-    return this.store.operation(this.actor,context.id,'send_email',input.requestId,input,account.google_sub,async()=>{
-      const sent=await this.google.send({...input,from:account.email,to,subject,replyMessageId,references})
+    const cc=proposalCopy(subject,input.proposal===true,account.email,to)
+    return this.store.operation(this.actor,context.id,'send_email',input.requestId,cc.length?{...input,cc}:input,account.google_sub,async()=>{
+      const sent=await this.google.send({...input,cc,from:account.email,to,subject,replyMessageId,references})
       await this.store.link(context.id,this.actor.userId,'thread',sent.threadId,{subject},account.google_sub)
-      await this.store.activity(context.id,this.actor.userId,'email.sent','E-mail enviado pela conta conectada',this.actor.userId)
+      await this.store.activity(context.id,this.actor.userId,'email.sent',cc.length?'Proposta enviada com cópia para a gestão':'E-mail enviado pela conta conectada',this.actor.userId)
       return sent
     })
   }
