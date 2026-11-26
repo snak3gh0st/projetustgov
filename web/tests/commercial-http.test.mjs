@@ -152,3 +152,27 @@ test('legacy cancellations are included in losses and excluded from negotiated p
   // Both opportunities belong to one customer: Home counts CNPJs, BI counts opportunities.
   assert.equal(dashboard.global.by_status.Churn, 1)
 })
+
+test('Slack previews require management, cron requires its secret and URL buttons cannot mutate CRM', { skip: !enabled }, async () => {
+  await call('/api/gestao/slack?preview=1', { cookie: '', status: 401 })
+  await call('/api/gestao/slack?preview=1', { status: 403 })
+  const managerCookie = await login('gestor@workspace.example.test')
+  const preview = await call('/api/gestao/slack?preview=1', { cookie: managerCookie })
+  assert.equal(preview.enabled, false)
+  assert.ok(preview.preview.text.includes('Resumo comercial'))
+  assert.equal(JSON.stringify(preview).includes('synthetic-signing-secret'), false)
+  await call('/api/cron/slack-comercial', { cookie: '', status: 401 })
+  assert.deepEqual(await call('/api/cron/slack-comercial', { cookie: '', headers: { authorization: 'Bearer synthetic-cron-secret' } }), { skipped: true, reason: 'disabled' })
+  const { createHmac } = await import('node:crypto')
+  const interact = async (team, action, signed = true) => {
+    const raw = new URLSearchParams({ payload: JSON.stringify({ type: 'block_actions', team: { id: team }, actions: [{ action_id: action }] }) }).toString()
+    const timestamp = String(Math.floor(Date.now() / 1000))
+    const signature = `v0=${createHmac('sha256', 'synthetic-signing-secret').update(`v0:${timestamp}:${raw}`).digest('hex')}`
+    return fetch(`${base}/api/integrations/slack/interactivity`, { method: 'POST', body: raw, headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...(signed ? { 'x-slack-request-timestamp': timestamp, 'x-slack-signature': signature } : {}) } })
+  }
+  assert.equal((await interact('T00000001', 'projete_open', false)).status, 401)
+  assert.equal((await interact('T00000002', 'projete_open')).status, 403)
+  assert.equal((await interact('T00000001', 'approve_sale')).status, 400)
+  assert.equal((await interact('T00000001', 'projete_open')).status, 200)
+  assert.equal((await pool.query('SELECT status_contato FROM vendedor_projetos WHERE id=10001')).rows[0].status_contato, 'Churn')
+})

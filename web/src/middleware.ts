@@ -6,6 +6,8 @@ export default auth((req) => {
 
   // The Hotmart webhook authenticates its provider token, failing closed.
   if (pathname === '/api/integrations/hotmart/webhook') return
+  // Slack URL buttons are acknowledged only after signature and workspace verification.
+  if (pathname === '/api/integrations/slack/interactivity') return
 
   // Public routes that don't need auth
   // Conta Azul OAuth callback is public: state is HMAC-signed and carries userId.
