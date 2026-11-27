@@ -83,7 +83,7 @@ export class FinanceEngine {
     })
   }
 
-  async reconcile(remote:ReturnType<typeof normalizeContaAzul>,actor:string|null=null,explicitId?:string){
+  async reconcile(remote:ReturnType<typeof normalizeContaAzul>,actor:string|null=null,explicitId?:string,linkExpense=false){
     const s=this.store
     return s.transaction(async c=>{
       // Serialize note-based recovery and direct response persistence for the same entry.
@@ -96,6 +96,10 @@ export class FinanceEngine {
         && local.remote_person_id && local.remote_person_id===remote.remotePersonId
         && (!local.remote_id||local.remote_id===remote.remoteId)
       if(explicitId&&!matches)throw new FinanceError('O título externo não corresponde a tipo, valor, vencimento e pessoa do lançamento local.',409)
+      if(linkExpense){
+        const job=(await c.query('SELECT status FROM finance_jobs WHERE tenant_key=$1 AND entry_id=$2 FOR UPDATE',[s.tenant,explicitId])).rows[0]
+        if(!job||!['pending','failed','uncertain'].includes(job.status))throw new FinanceError('O lançamento já está vinculado ou em processamento. Atualize a solicitação.',409)
+      }
       if(!matches)local=null
       if(local&&linked&&linked.id!==local.id){
         if(linked.origin!=='conta_azul')throw new FinanceError('Parcela já vinculada a outro lançamento.',409)
@@ -125,7 +129,7 @@ export class FinanceEngine {
     })
   }
 
-  async push(client:ContaAzulClient){
+  async push(client:ContaAzulClient,expenseEntryId?:string,actor:string|null=null){
     const s=this.store,settings=await s.settings()
     if(!settings.writesEnabled||!settings.companyConfirmed)throw new FinanceError('Envios desabilitados. Configure e confirme a empresa da Conta Azul antes de habilitar.',409)
     return this.run('conta_azul_push',{},async({assertCurrent})=>{
@@ -136,7 +140,10 @@ export class FinanceEngine {
       for(let i=0;i<20;i++){
         await assertCurrent()
         const job=await s.transaction(async c=>(await c.query(`UPDATE finance_jobs SET status='processing',attempts=attempts+1,started_at=now(),updated_at=now()
-          WHERE id=(SELECT id FROM finance_jobs WHERE tenant_key=$1 AND status='pending' ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING *`,[s.tenant])).rows[0])
+          WHERE id=(SELECT j.id FROM finance_jobs j JOIN finance_entries e ON e.id=j.entry_id
+            WHERE j.tenant_key=$1 AND j.status='pending'
+            AND ${expenseEntryId?'e.id=$2 AND e.source_ref LIKE \'expense:%\'':"e.source_ref NOT LIKE 'expense:%'"}
+            ORDER BY j.created_at LIMIT 1 FOR UPDATE OF j SKIP LOCKED) RETURNING *`,expenseEntryId?[s.tenant,expenseEntryId]:[s.tenant])).rows[0])
         if(!job)break
         let attempted=false
         try{
@@ -166,7 +173,7 @@ export class FinanceEngine {
             }
             await c.query('UPDATE finance_entries SET remote_id=$3,remote_event_id=$4,synced_at=now(),updated_at=now() WHERE tenant_key=$1 AND id=$2',[s.tenant,entry.id,remote.installmentId,remote.eventId])
             await c.query("UPDATE finance_jobs SET status='done',last_error=NULL,updated_at=now() WHERE id=$1",[job.id])
-            await s.audit(c,null,'entry.exported',entry.id,{remoteId:remote.installmentId})
+            await s.audit(c,actor,'entry.exported',entry.id,{remoteId:remote.installmentId})
           });count++
         }catch(error){
           const unknown=error instanceof ProviderError?error.uncertain:attempted

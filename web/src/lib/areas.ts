@@ -117,6 +117,7 @@ export function getAreaNav(role: Role, area: AreaId, opts: { whatsapp?: boolean 
     .map(({ roles: _roles, requires: _requires, ...item }) => item)
   return getAreasForRole(role).includes(area) ? [...items,
     ...(canReadTeamCalendar(role) && ['comercial','gestao'].includes(area) ? [{ href: '/workspace/equipe', label: 'Agenda da equipe', icon: 'hoje' }] : []),
+    { href: '/despesas', label: 'Despesas e reembolsos', icon: 'comissoes' },
     { href: '/workspace', label: 'Workspace', icon: 'workspace' }] : items
 }
 
