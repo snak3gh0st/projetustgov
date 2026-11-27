@@ -3,7 +3,7 @@ import { isDeepStrictEqual } from 'node:util'
 import type { Pool, PoolClient } from 'pg'
 import { FinanceStore } from '../finance/store.ts'
 import { FinanceError, businessDate, isoDate } from '../finance/domain.ts'
-import { addBusinessDays, areaOf, canRead, chooseAuthority, editable, emptyPolicy, managesPolicy, policySchema, requestSchema, reviewers, validateFile, validateSubmission, type Actor, type Expense, type Policy, type RequestData } from './domain.ts'
+import { financialActions, pendingStep, policyUsers, purchaseOperators, addBusinessDays, areaOf, canRead, chooseAuthority, editable, emptyPolicy, managesPolicy, policySchema, requestSchema, reviewers, validateFile, validateSubmission, type Actor, type Expense, type ExpenseFinancial, type Policy, type RequestData } from './domain.ts'
 
 type Row=Record<string,any>
 export class ExpenseStore extends FinanceStore {
@@ -25,7 +25,8 @@ export class ExpenseStore extends FinanceStore {
       await c.query('SELECT pg_advisory_xact_lock(hashtext($1))',[`expense-policy:${this.tenant}`])
       const previous=await this.policy(c)
       if(previous.version!==version)throw new FinanceError('A política mudou. Atualize antes de salvar.',409)
-      const ids=[...config.adminIds,...config.financeIds,...config.authorities.map(x=>x.userId),...config.areas.flatMap(x=>[x.headId,x.alternateHeadId].filter(Boolean))]
+      if (previous.purchaseIds && !config.purchaseIds) throw new FinanceError('Mantenha os responsáveis por etapa na política.')
+      const ids=policyUsers({...config,version})
       const users=(await c.query('SELECT id FROM users WHERE id=ANY($1::uuid[]) AND active',[ids])).rows
       if(new Set(ids).size!==users.length)throw new FinanceError('Todos os responsáveis devem ser usuários ativos.')
       await c.query(`INSERT INTO expense_policies(tenant_key,version,config,updated_by) VALUES($1,$2,$3,$4)
@@ -43,8 +44,9 @@ export class ExpenseStore extends FinanceStore {
     const documents=(await c.query('SELECT id,type,name,mime_type,size,sha256 FROM expense_documents WHERE request_id=$1 AND removed_at IS NULL ORDER BY id',[r.id])).rows
     const h=(await c.query(`INSERT INTO expense_history(tenant_key,request_id,actor_id,action,revision,note,snapshot)
       VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id`,[this.tenant,r.id,a.userId,action,r.revision,note,{...r,documents,...extra}])).rows[0]
-    const recipients=[r.requester_id,...reviewers(r,r.policy??await this.policy(c))].filter(id=>id!==a.userId)
-    if(r.kind==='authorization'&&r.status==='approved')recipients.push(...(r.policy?.adminIds??[]).filter(id=>id!==a.userId))
+    const current=await this.policy(c)
+    const next=pendingStep(r,current,r.status==='released' ? await this.financial(r,c) : null)
+    const recipients=[r.requester_id,...(next?.ids??[])].filter(id=>id!==a.userId)
     for(const id of Array.from(new Set(recipients)))await c.query(`INSERT INTO expense_notifications(tenant_key,user_id,request_id,history_id) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING`,[this.tenant,id,r.id,h.id])
   }
   async create(id:string,kind:Expense['kind'],input:unknown,authorizationId:string|null,a:Actor){
@@ -53,7 +55,7 @@ export class ExpenseStore extends FinanceStore {
       a=await this.actor(c,a)
       await c.query('SELECT pg_advisory_xact_lock(hashtext($1))',[`expense-create:${id}`])
       const p=await this.policy(c)
-      if(kind==='purchase'&&!p.adminIds.includes(a.userId))throw new FinanceError('A compra pela empresa deve ser registrada pelo Administrativo.',403)
+      if(kind==='purchase'&&!purchaseOperators(p).includes(a.userId))throw new FinanceError('A compra pela empresa deve ser registrada pelo Administrativo.',403)
       if(kind==='authorization'&&authorizationId)throw new FinanceError('Uma autorização não pode ser vinculada a outra.')
       if(authorizationId){
         const parent=await this.get(authorizationId,a,c)
@@ -121,7 +123,7 @@ export class ExpenseStore extends FinanceStore {
     if(r.data.periodStart<parent.data.periodStart||r.data.periodEnd>parent.data.periodEnd)throw new FinanceError('O período realizado diverge do período autorizado.')
     const used=(await c.query(`SELECT COALESCE(sum((data->>'amountCents')::bigint),0)::text total FROM expense_requests WHERE authorization_id=$1 AND id<>$2 AND status NOT IN ('draft','changes','rejected','canceled')`,[parent.id,r.id])).rows[0]
     if(Number(used.total)+r.data.amountCents>Number(parent.approved_amount_cents))throw new FinanceError('O valor solicitado supera o saldo disponível da autorização.',409)
-    if(r.kind==='purchase'&&!r.policy?.adminIds.includes(r.requester_id)&&!(await this.policy(c)).adminIds.includes(r.requester_id))throw new FinanceError('O solicitante da compra não integra o Administrativo.',403)
+    if(r.kind==='purchase'&&!purchaseOperators(r.policy??await this.policy(c)).includes(r.requester_id))throw new FinanceError('O solicitante não está autorizado a registrar a compra pela empresa.',403)
     void now
   }
   async checkReceipts(c:PoolClient,r:Expense){
@@ -155,6 +157,14 @@ export class ExpenseStore extends FinanceStore {
       }else if(action==='cancel'){
         if(r.requester_id!==a.userId||!['draft','changes'].includes(r.status))throw new FinanceError('Cancelamento permitido somente em rascunho ou ajuste.',403)
         status='canceled'
+      }else if(action==='record_payment'||action==='close_reconciliation'){
+        const financial=await this.financial(r,c,true)
+        if(!financialActions(r,current,a,financial).includes(action))throw new FinanceError('Ação indisponível nesta etapa ou para este responsável.',403)
+        const timestamp=action==='record_payment'?'bank_recorded_at':'reconciled_at'
+        const next=(await c.query(`UPDATE expense_requests SET ${timestamp}=$3,revision=revision+1,updated_at=now()
+          WHERE tenant_key=$1 AND id=$2 RETURNING *`,[this.tenant,id,now])).rows[0]
+        await this.history(c,next,a,action,note)
+        return next
       }else{
         if(a.userId===r.requester_id||!reviewers(r,p).includes(a.userId))throw new FinanceError('Esta etapa exige outro responsável com alçada.',403)
         if(action==='return')status='changes'
@@ -176,6 +186,12 @@ export class ExpenseStore extends FinanceStore {
           authority=chooseAuthority(p,r.data.amountCents,r.requester_id);status='exception_review'
         }else if(action==='release'&&r.status==='finance_review'){
           if(!current.enabled)throw new FinanceError('A política está suspensa.',409)
+          if(p.bankIds) {
+            for (const ids of [p.accountingIds ?? [], p.bankIds]) {
+              const active=(await c.query('SELECT 1 FROM users WHERE active AND id=ANY($1::uuid[]) AND id<>$2 LIMIT 1',[ids,r.requester_id])).rowCount
+              if(!active)throw new FinanceError('A etapa do Conta Azul e a autorização bancária exigem responsáveis ativos diferentes do solicitante.',409)
+            }
+          }
           await this.validateParent(c,r,now);await this.checkReceipts(c,r)
           const docs=(await c.query('SELECT type FROM expense_documents WHERE request_id=$1 AND removed_at IS NULL',[id])).rows.map(d=>d.type)
           validateSubmission(r,p,docs)
@@ -200,28 +216,58 @@ export class ExpenseStore extends FinanceStore {
       await this.history(c,next,a,action,note);return next
     })
   }
+  async financial(r:Expense,c:PoolClient|Pool=this.pool,lock=false){
+    if(!r.finance_entry_id)return null
+    return (await c.query(`SELECT e.remote_id,e.remote_event_id,e.status,e.settled_cents,e.paid_date,e.due_date,j.status integration_status,j.last_error
+      FROM finance_entries e LEFT JOIN finance_jobs j ON j.entry_id=e.id WHERE e.tenant_key=$1 AND e.id=$2 ${lock?'FOR UPDATE OF e':''}`,
+    [this.tenant,r.finance_entry_id])).rows[0]??null
+  }
   async detail(id:string,a:Actor){
     const r=await this.get(id,a)
-    const [documents,history,financial]=await Promise.all([this.documents(id),this.rows(`SELECT h.id,h.action,h.revision,h.note,h.created_at,h.snapshot->'documents' documents,h.snapshot->'data' data,h.snapshot->'policy'->'version' policy_version,h.snapshot->>'approved_conditions' approved_conditions,u.nome actor_name FROM expense_history h LEFT JOIN users u ON u.id=h.actor_id WHERE h.tenant_key=$1 AND h.request_id=$2 ORDER BY h.id`,[this.tenant,id]),r.finance_entry_id?this.rows(`SELECT e.remote_id,e.remote_event_id,e.status,e.settled_cents,e.paid_date,e.due_date,j.status integration_status,j.last_error FROM finance_entries e LEFT JOIN finance_jobs j ON j.entry_id=e.id WHERE e.tenant_key=$1 AND e.id=$2`,[this.tenant,r.finance_entry_id]):Promise.resolve([])])
+    const [documents,history,financial,current,linked]=await Promise.all([
+      this.documents(id),
+      this.rows(`SELECT h.id,h.action,h.revision,h.note,h.created_at,h.snapshot->'documents' documents,h.snapshot->'data' data,h.snapshot->'policy'->'version' policy_version,h.snapshot->>'approved_conditions' approved_conditions,u.nome actor_name FROM expense_history h LEFT JOIN users u ON u.id=h.actor_id WHERE h.tenant_key=$1 AND h.request_id=$2 ORDER BY h.id`,[this.tenant,id]),
+      this.financial(r),this.policy(),
+      r.status==='approved' ? this.rows("SELECT 1 FROM expense_requests WHERE tenant_key=$1 AND authorization_id=$2 AND status NOT IN ('rejected','canceled') LIMIT 1",[this.tenant,id]) : [],
+    ])
+    const next=pendingStep(r,current,financial,linked.length>0)
+    const responsible=next ? await this.rows('SELECT nome FROM users WHERE active AND id=ANY($1::uuid[]) ORDER BY nome',[next.ids]) : []
     await this.rows('UPDATE expense_notifications SET seen_at=now() WHERE tenant_key=$1 AND user_id=$2 AND request_id=$3 AND seen_at IS NULL',[this.tenant,a.userId,id])
-    return {request:r,documents,history,financial:financial[0]??null,actions:this.actions(r,a)}
+    return {request:r,documents,history,financial,actions:this.actions(r,a,current,financial,linked.length>0),
+      nextStep:next?{label:next.label,names:responsible.map(u=>String(u.nome))}:null}
   }
-  actions(r:Expense,a:Actor){
+  actions(r:Expense,a:Actor,current:Policy,financial?:ExpenseFinancial|null,hasFollowUp=false){
     if(editable(r,a))return ['save','submit','cancel']
+    if(r.status==='approved'&&r.execution_mode==='company'&&!hasFollowUp&&purchaseOperators(current).includes(a.userId))return ['record_purchase']
+    if(r.status==='released')return financialActions(r,current,a,financial)
     if(a.userId===r.requester_id||!reviewers(r,r.policy??emptyPolicy).includes(a.userId))return []
     return ['return','reject',...(r.status==='finance_review'?['release','escalate']:['approve'])]
   }
   async dashboard(a:Actor){
     const p=await this.policy(),scopePolicies=JSON.stringify(p)
     // Bound by permissions in SQL before pagination; inaccessible rows cannot crowd out the owner's queue.
-    const candidates=await this.rows(`SELECT r.*,u.nome requester_name,e.status payment_status,e.remote_id,j.status integration_status
+    const candidates=await this.rows(`SELECT r.*,u.nome requester_name,e.status payment_status,e.remote_id,j.status integration_status,
+      CASE WHEN r.kind='authorization' AND r.status='approved' THEN
+        EXISTS(SELECT 1 FROM expense_requests child WHERE child.tenant_key=r.tenant_key AND child.authorization_id=r.id AND child.status NOT IN ('rejected','canceled'))
+        ELSE false END has_follow_up
       FROM expense_requests r LEFT JOIN users u ON u.id=r.requester_id LEFT JOIN finance_entries e ON e.id=r.finance_entry_id LEFT JOIN finance_jobs j ON j.entry_id=e.id
       WHERE r.tenant_key=$1 AND (r.requester_id=$2 OR (r.policy IS NOT NULL AND (
         r.authority_id=$2 OR r.policy->'adminIds' ? $2::text OR r.policy->'financeIds' ? $2::text OR $3::jsonb->'adminIds' ? $2::text OR $3::jsonb->'financeIds' ? $2::text OR
+        (r.kind='authorization' AND r.status='approved' AND r.execution_mode='company' AND COALESCE($3::jsonb->'purchaseIds',$3::jsonb->'adminIds') ? $2::text) OR
+        (r.status='released' AND (r.policy->'accountingIds' ? $2::text OR r.policy->'bankIds' ? $2::text)) OR
         EXISTS(SELECT 1 FROM jsonb_array_elements(r.policy->'areas') ar WHERE ar->>'id'=r.data->>'areaId' AND (ar->>'headId'=$2::text OR ar->>'alternateHeadId'=$2::text)) OR
         EXISTS(SELECT 1 FROM jsonb_array_elements($3::jsonb->'areas') ar WHERE ar->>'id'=r.data->>'areaId' AND (ar->>'headId'=$2::text OR ar->>'alternateHeadId'=$2::text)))))
       ORDER BY r.updated_at DESC LIMIT 201`,[this.tenant,a.userId,scopePolicies])
-    const requests=candidates.slice(0,200).filter(r=>canRead(r as Expense,a,p)).map(r=>({...r,actions:this.actions(r as Expense,a)}))
+    const visible=candidates.slice(0,200).filter(r=>canRead(r as Expense,a,p)).map(row=>{
+      const r=row as Expense
+      const financial={...row,status:row.payment_status}
+      return {row,next:pendingStep(r,p,financial,row.has_follow_up),actions:this.actions(r,a,p,financial,row.has_follow_up)}
+    })
+    const names=await this.rows('SELECT id,nome FROM users WHERE active AND id=ANY($1::uuid[])',[Array.from(new Set(visible.flatMap(v=>v.next?.ids??[])))])
+    const nameById=new Map(names.map(u=>[u.id,String(u.nome)]))
+    const requests=visible.map(({row,next,actions})=>({...row,actions,
+      assignedToMe:Boolean(next?.ids.includes(a.userId)&&!['draft','changes'].includes(row.status)),
+      nextStep:next?{label:next.label,names:next.ids.map(id=>nameById.get(id)).filter(Boolean)}:null}))
     const configAdmin=managesPolicy(a)
     const ids=[...p.adminIds,...p.financeIds,...p.authorities.map(x=>x.userId),...p.areas.flatMap(x=>[x.headId,x.alternateHeadId]).filter(Boolean)]
     const users=await this.rows(`SELECT id,nome ${configAdmin?',role':''} FROM users WHERE active ${configAdmin?'':'AND id=ANY($1::uuid[])'} ORDER BY nome`,configAdmin?[]:[ids])

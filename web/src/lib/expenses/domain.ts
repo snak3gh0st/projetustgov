@@ -8,10 +8,13 @@ const money = z.number().int().min(1).max(1_000_000_000_000)
 const externalId = z.string().uuid()
 export const documentTypes = ['receipt','quote','justification','other'] as const
 export const documentLabels = { receipt: 'Comprovante da despesa', quote: 'Orçamento / proposta', justification: 'Justificativa complementar', other: 'Outro documento' }
+export const responsibilityFields = ['adminIds', 'purchaseIds', 'financeIds', 'accountingIds', 'bankIds'] as const
+const responsibilityIds = z.array(uuid).max(30)
 export const policySchema = z.object({
   enabled: z.boolean(), reference: text(500), exportsEnabled: z.boolean(),
   areas: z.array(z.object({ id: z.string().regex(/^[a-z0-9_-]{1,50}$/), name: text(100).min(2), headId: uuid, alternateHeadId: uuid.nullable(), costCenterId: externalId.nullable() }).strict()).max(50),
-  adminIds: z.array(uuid).max(30), financeIds: z.array(uuid).max(30),
+  adminIds: responsibilityIds, financeIds: responsibilityIds,
+  purchaseIds: responsibilityIds.optional(), accountingIds: responsibilityIds.optional(), bankIds: responsibilityIds.optional(),
   authorities: z.array(z.object({ userId: uuid, title: z.enum(['COO','CEO']), limitCents: money }).strict()).max(20),
   categories: z.array(z.object({ id: z.string().regex(/^[a-z0-9_-]{1,50}$/), name: text(100).min(2), requiresAuthorization: z.boolean(), exemptionLimitCents: z.number().int().min(0).max(1_000_000_000_000), categoryId: externalId.nullable(), authorizationDocs: z.array(z.enum(documentTypes)).max(4) }).strict()).max(50),
   holidays: z.array(date).max(1000), calendarYears: z.array(z.number().int().min(2026).max(2100)).max(20),
@@ -19,6 +22,10 @@ export const policySchema = z.object({
   for (const list of [p.areas,p.categories]) if (new Set(list.map(x=>x.id)).size !== list.length) c.addIssue({code:'custom',message:'Identificadores de área ou categoria repetidos.'})
   if(p.areas.some(a=>a.headId===a.alternateHeadId))c.addIssue({code:'custom',message:'O Head substituto deve ser outra pessoa.'})
   if(p.enabled && (!p.reference || !p.areas.length || !p.categories.length || !p.adminIds.length || !p.financeIds.length || !p.authorities.length)) c.addIssue({code:'custom',message:'Informe a política, áreas, categorias e todos os responsáveis antes de ativar.'})
+  const separateRoles = [p.purchaseIds, p.accountingIds, p.bankIds]
+  if (separateRoles.some(ids => ids !== undefined) && (separateRoles.some(ids => ids === undefined) || (p.enabled && separateRoles.some(ids => !ids?.length)))) {
+    c.addIssue({code:'custom',message:'Informe os responsáveis pela compra, Conta Azul e autorização bancária antes de ativar.'})
+  }
   if(p.exportsEnabled&&!p.enabled)c.addIssue({code:'custom',message:'Ative a política antes de habilitar a integração.'})
 })
 export type Policy = z.infer<typeof policySchema> & { version: number }
@@ -46,10 +53,74 @@ export function reviewers(r:Expense,p:Policy):string[] {
   if(r.status==='finance_review')return p.financeIds.filter(id=>id!==r.requester_id)
   return []
 }
+export function purchaseOperators(p: Policy) {
+  return p.purchaseIds ?? p.adminIds
+}
+export function accountingOperators(r: Expense, current: Policy) {
+  return r.policy?.accountingIds ?? current.financeIds
+}
+export function policyUsers(p: Policy) {
+  return [...responsibilityFields.flatMap(key => p[key] ?? []), ...p.authorities.map(x => x.userId),
+    ...p.areas.flatMap(x => x.alternateHeadId ? [x.headId, x.alternateHeadId] : [x.headId])]
+}
+export type ExpenseFinancial = {
+  remote_id?: string | null
+  integration_status?: string | null
+  status?: string | null
+}
+const titleUnderReview = (financial: ExpenseFinancial) => ['canceled','refunded','review'].includes(financial.status??'')
+type PendingStep = { label: string; ids: string[] }
+export function pendingStep(r: Expense, current: Policy, financial?: ExpenseFinancial | null, hasFollowUp = false): PendingStep | null {
+  const p = r.policy ?? current
+  const step = (label: string, ids: string[]) => ({label, ids})
+  switch (r.status) {
+    case 'draft':
+    case 'changes': return step(r.status === 'draft' ? 'Enviar solicitação' : 'Ajustar solicitação', [r.requester_id])
+    case 'head_review': return step(r.kind === 'authorization' ? 'Validar pedido' : 'Aprovar reembolso', reviewers(r, p))
+    case 'admin_review': return step('Análise administrativa', reviewers(r, p))
+    case 'authority_review': return step('Autorizar e emitir protocolo', reviewers(r, p))
+    case 'exception_review': return step('Decidir sobre exceção', reviewers(r, p))
+    case 'finance_review': return step(r.kind === 'purchase' ? 'Conferir obrigação' : 'Conferir e liberar reembolso', reviewers(r, p))
+    case 'approved':
+      if (hasFollowUp) return null
+      if (r.execution_mode === 'company') return step('Executar compra pela empresa', purchaseOperators(current))
+      return step('Solicitar reembolso após o desembolso', [r.requester_id])
+    case 'released': {
+      if (!financial?.remote_id) return step('Lançamento no Conta Azul', accountingOperators(r, current).filter(id => id !== r.requester_id))
+      if (!p.bankIds) return null
+      if (titleUnderReview(financial)) return step('Revisar situação no Conta Azul', accountingOperators(r, current).filter(id => id !== r.requester_id))
+      if (!r.bank_recorded_at) return step('Registrar pagamento bancário', p.bankIds.filter(id => id !== r.requester_id))
+      if (!r.reconciled_at) return step('Conciliar pagamento', accountingOperators(r, current).filter(id => id !== r.requester_id))
+      return null
+    }
+    default: return null
+  }
+}
+export function financialActions(r: Expense, current: Policy, a: Actor, financial?: ExpenseFinancial | null): string[] {
+  if (r.status !== 'released' || a.userId === r.requester_id || !financial) return []
+  const accounts = accountingOperators(r, current).includes(a.userId)
+  if (!financial.remote_id) {
+    if (!accounts) return []
+    const canSend = current.enabled && current.exportsEnabled
+    switch (financial.integration_status) {
+      case 'pending': return canSend ? ['export', 'reconcile'] : ['reconcile']
+      case 'failed': return canSend ? ['retry', 'reconcile'] : ['reconcile']
+      case 'uncertain': return ['reconcile']
+      default: return []
+    }
+  }
+  const banks = r.policy?.bankIds
+  if (!banks || titleUnderReview(financial)) return []
+  if (!r.bank_recorded_at) return banks.includes(a.userId) ? ['record_payment'] : []
+  if (!r.reconciled_at && accounts && financial.status === 'paid') return ['close_reconciliation']
+  return []
+}
 export function canRead(r:Expense,a:Actor,current:Policy) {
   if(r.requester_id===a.userId)return true
   if(['draft','changes'].includes(r.status)&&!r.policy)return false
   const policies=[r.policy,current].filter((p):p is Policy=>!!p)
+  if (r.kind === 'authorization' && r.status === 'approved' && r.execution_mode === 'company' && purchaseOperators(current).includes(a.userId)) return true
+  if (r.status === 'released' && (r.policy?.accountingIds?.includes(a.userId) || r.policy?.bankIds?.includes(a.userId))) return true
   return policies.some(p=>{const area=areaOf(r,p);return area?.headId===a.userId||area?.alternateHeadId===a.userId||p.adminIds.includes(a.userId)||p.financeIds.includes(a.userId)||r.authority_id===a.userId})
 }
 export function chooseAuthority(p:Policy,amount:number,requester:string) {

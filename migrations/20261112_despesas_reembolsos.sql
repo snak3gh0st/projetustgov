@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS expense_requests (
   CHECK (kind <> 'purchase' OR authorization_id IS NOT NULL),
   CHECK (status <> 'released' OR (released_at IS NOT NULL AND finance_entry_id IS NOT NULL))
 );
+ALTER TABLE expense_requests ADD COLUMN IF NOT EXISTS bank_recorded_at TIMESTAMPTZ;
+ALTER TABLE expense_requests ADD COLUMN IF NOT EXISTS reconciled_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS expense_requests_owner ON expense_requests(tenant_key,requester_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS expense_requests_queue ON expense_requests(tenant_key,status,updated_at DESC);
 CREATE INDEX IF NOT EXISTS expense_requests_authorization ON expense_requests(authorization_id);

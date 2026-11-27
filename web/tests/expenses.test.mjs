@@ -190,3 +190,57 @@ db('inactive users cannot act, and notifications follow responsible stage',async
   await assert.rejects(command(r,'approve',2),/inativa/)
   await pool.query('UPDATE users SET active=true WHERE id=$1',[uid(2)])
 })
+
+db('company purchase execution is separate from the administrative review',async()=>{
+  await store.savePolicy({...config,purchaseIds:[uid(9)],accountingIds:[uid(10)],bankIds:[uid(11)]},1,actor(8))
+  const parent=await authorized('company')
+  const queue=await store.dashboard(actor(9))
+  assert.equal(queue.requests.find(r=>r.id===parent.id).assignedToMe,true)
+  assert.deepEqual((await store.detail(parent.id,actor(9))).nextStep,
+    {label:'Executar compra pela empresa',names:['Compras']})
+  await assert.rejects(create('purchase',{},parent.id,3),/Administrativo/)
+  await create('purchase',{},parent.id,9)
+  assert.equal((await store.detail(parent.id,actor(9))).nextStep,null)
+  assert.equal((await store.dashboard(actor(9))).requests.find(r=>r.id===parent.id).assignedToMe,false)
+})
+
+db('released expenses go to accounting, then bank, then accounting for settlement',async()=>{
+  const split={...config,exportsEnabled:true,purchaseIds:[uid(3),uid(9)],accountingIds:[uid(10)],bankIds:[uid(11)]}
+  await store.savePolicy(split,1,actor(8))
+  await store.saveSettings({...await store.settings(),writesEnabled:true},uid(8))
+  let r=await command(await financial(),'release',5)
+  const {client,calls}=provider()
+  const nextFor=async who=>(await store.detail(r.id,actor(who))).nextStep?.names
+  assert.deepEqual(await nextFor(1),['Conta Azul'])
+  assert.ok((await store.dashboard(actor(10))).notifications.some(n=>n.request_id===r.id))
+  assert.deepEqual((await store.detail(r.id,actor(10))).actions,['export','reconcile'])
+  await assert.rejects(exportExpense(store,client,r.id,actor(5)),/restrito/)
+  assert.equal((await exportExpense(store,client,r.id)).skipped,true)
+  assert.equal(calls.length,0)
+  await assert.rejects(command(r,'record_payment',11),/indisponível/)
+
+  // The policy revision for this request keeps the original assignees.
+  await store.savePolicy({...split,accountingIds:[uid(8)],bankIds:[uid(6)]},2,actor(8))
+  assert.equal((await exportExpense(store,client,r.id,actor(10))).count,1)
+  assert.deepEqual(await nextFor(1),['Autorização Bancária'])
+  assert.ok((await store.dashboard(actor(11))).notifications.some(n=>n.request_id===r.id))
+  await pool.query("UPDATE finance_entries SET status='canceled' WHERE id=$1",[r.finance_entry_id])
+  await assert.rejects(command(r,'record_payment',11),/indisponível/)
+  assert.equal((await store.detail(r.id,actor(1))).nextStep.label,'Revisar situação no Conta Azul')
+  await pool.query("UPDATE finance_entries SET status='open' WHERE id=$1",[r.finance_entry_id])
+  await assert.rejects(command(r,'record_payment',10),/indisponível/)
+  const released=r
+  r=await command(r,'record_payment',11)
+  await assert.rejects(command(released,'record_payment',11),/mudou/)
+  assert.deepEqual(await nextFor(1),['Conta Azul'])
+  assert.equal((await store.dashboard(actor(10))).requests.find(row=>row.id===r.id).assignedToMe,true)
+  await assert.rejects(command(r,'close_reconciliation',10),/indisponível/)
+  await pool.query("UPDATE finance_entries SET status='paid',settled_cents=amount_cents WHERE id=$1",[r.finance_entry_id])
+  await assert.rejects(command(r,'close_reconciliation',11),/indisponível/)
+  r=await command(r,'close_reconciliation',10)
+  assert.ok(r.reconciled_at)
+  const detail=await store.detail(r.id,actor(1))
+  assert.equal(detail.nextStep,null)
+  assert.equal(detail.history.find(h=>h.action==='record_payment').actor_name,'Autorização Bancária')
+  assert.equal(detail.history.find(h=>h.action==='close_reconciliation').actor_name,'Conta Azul')
+})

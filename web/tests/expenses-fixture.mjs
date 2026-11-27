@@ -12,8 +12,8 @@ export async function prepare(pool){
   await pool.query(`CREATE TABLE IF NOT EXISTS users(id uuid PRIMARY KEY,nome text,email text UNIQUE,role text,active boolean,password_hash text,last_login_at timestamptz,last_seen_at timestamptz,login_count int,last_login_ip text,last_login_user_agent text,updated_at timestamptz)`)
   for(const file of ['20261105_financeiro_integrado.sql','20261112_despesas_reembolsos.sql','20261112_despesas_reembolsos.sql'])await pool.query(await readFile(new URL(`../../migrations/${file}`,import.meta.url),'utf8'))
   const hash=await bcrypt.hash(password,6)
-  const names=['Solicitante','Head Comercial','Administrativo','Diretor Operacional','Financeiro','Presidência','Head Substituto','Administrador']
-  for(let n=1;n<=8;n++)await pool.query(`INSERT INTO users(id,nome,email,role,active,password_hash) VALUES($1,$2,$3,$4,true,$5) ON CONFLICT(id) DO UPDATE SET active=true,password_hash=EXCLUDED.password_hash,role=EXCLUDED.role`,[uid(n),names[n-1],`pessoa${n}@expenses.example.test`,actor(n).role,hash])
+  const names=['Solicitante','Head Comercial','Administrativo','Diretor Operacional','Financeiro','Presidência','Head Substituto','Administrador','Compras','Conta Azul','Autorização Bancária']
+  for(let n=1;n<=names.length;n++)await pool.query(`INSERT INTO users(id,nome,email,role,active,password_hash) VALUES($1,$2,$3,$4,true,$5) ON CONFLICT(id) DO UPDATE SET active=true,password_hash=EXCLUDED.password_hash,role=EXCLUDED.role`,[uid(n),names[n-1],`pessoa${n}@expenses.example.test`,actor(n).role,hash])
 }
 export async function reset(pool,store){
   for(const table of ['expense_notifications','expense_history'])await pool.query(`DELETE FROM ${table} WHERE tenant_key=$1`,[tenant])

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
 import pg from 'pg'
 import {ExpenseStore} from '../src/lib/expenses/store.ts'
-import {actor,data,uid,password,tenant,prepare,reset,localOnly} from './expenses-fixture.mjs'
+import {actor,config,data,uid,password,tenant,prepare,reset,localOnly} from './expenses-fixture.mjs'
 const base=process.env.EXPENSE_TEST_BASE_URL,database=process.env.EXPENSE_TEST_DATABASE_URL,enabled=!!(base&&database)
 let pool,store,cookies={}
 async function login(n){
@@ -19,7 +19,7 @@ async function post(path,body,n=1,status=200,origin=base){
 before(async()=>{
   if(!enabled)return;localOnly(database);assert.equal(new URL(base).hostname,'localhost')
   pool=new pg.Pool({connectionString:database});await prepare(pool);store=new ExpenseStore(pool,tenant);await reset(pool,store)
-  for(const n of [1,2,3,5,8])cookies[n]=await login(n)
+  for(const n of [1,2,3,5,8,10,11])cookies[n]=await login(n)
 })
 after(async()=>{await pool?.end()})
 const http=(name,fn)=>test(name,{skip:!enabled},fn)
@@ -57,4 +57,36 @@ http('configuration denies normal users and deactivated users lose issued sessio
   assert.equal((await fetch(`${base}/api/despesas/politica`,{method:'PUT',headers:{Cookie:cookies[1],Origin:base,'Content-Type':'application/json'},body:JSON.stringify({version,config})})).status,403)
   await pool.query('UPDATE users SET active=false WHERE id=$1',[uid(1)])
   try{assert.equal((await fetch(`${base}/api/despesas`,{headers:{Cookie:cookies[1]}})).status,401)}finally{await pool.query('UPDATE users SET active=true WHERE id=$1',[uid(1)])}
+})
+
+http('split payout actions are visible and accepted only for the assigned users',async()=>{
+  const policy=await store.policy()
+  const result=await fetch(`${base}/api/despesas/politica`,{
+    method:'PUT',headers:{Cookie:cookies[8],Origin:base,'Content-Type':'application/json'},
+    body:JSON.stringify({version:policy.version,config:{...config,purchaseIds:[uid(3)],accountingIds:[uid(10)],bankIds:[uid(11)]}}),
+  })
+  assert.equal(result.status,200,await result.text())
+  let r=await store.create(randomUUID(),'reimbursement',{
+    ...data,categoryId:'pequenas',exemptionReason:'Dispensada pela política de pequenas despesas',
+  },null,actor(1))
+  r=await store.attach(r.id,r.revision,{type:'receipt',name:'teste.pdf',mime:'application/pdf',bytes:Buffer.from('%PDF-1.4\nresponsabilidades')},actor(1))
+  r=await store.command(r.id,r.revision,'submit',actor(1))
+  const path=`/api/despesas/${r.id}`
+  const note='Documento e referência conferidos'
+  const approved=await post(path,{action:'approve',revision:r.revision,note},2)
+  const released=await post(path,{action:'release',revision:approved.request.revision,note},5)
+  assert.deepEqual(released.nextStep.names,['Conta Azul'])
+  assert.equal(released.integration,undefined)
+
+  // Represent a linked and settled title in the isolated database.
+  await pool.query("UPDATE finance_entries SET remote_id=$1,status='paid',settled_cents=amount_cents WHERE id=$2",[uid(96),released.request.finance_entry_id])
+  const read=async n=>fetch(`${base}${path}`,{headers:{Cookie:cookies[n]}}).then(r=>r.json())
+  assert.deepEqual((await read(11)).nextStep.names,['Autorização Bancária'])
+  const pay={action:'record_payment',revision:released.request.revision,note}
+  await post(path,pay,5,403)
+  const payment=await post(path,pay,11)
+  assert.deepEqual(payment.nextStep.names,['Conta Azul'])
+  const reconciled=await post(path,{action:'close_reconciliation',revision:payment.request.revision,note},10)
+  assert.equal(reconciled.nextStep,null)
+  assert.equal(reconciled.history.at(-1).actor_name,'Conta Azul')
 })
